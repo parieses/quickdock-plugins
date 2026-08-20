@@ -1,0 +1,16 @@
+# 编译产物
+*.exe
+*.so
+*.dylib
+*.test
+*.out
+
+# node_modules（如有前端构建）
+node_modules/
+dist/
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db

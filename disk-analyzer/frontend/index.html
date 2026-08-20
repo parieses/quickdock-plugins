@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>磁盘分析器</title>
+<link rel="stylesheet" href="../common.css">
+<style>
+.p-tree{flex:1;overflow-y:auto;padding:8px}
+.p-node{margin:1px 0}
+.p-node-header{display:flex;align-items:center;gap:5px;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:12px;user-select:none}
+.p-node-header:hover{background:var(--bg-hover)}
+.p-node-header.expanded>.p-arrow{transform:rotate(90deg)}
+.p-arrow{width:12px;height:12px;transition:transform 150ms;flex-shrink:0;color:var(--text-muted)}
+.p-icon{width:16px;height:16px;flex-shrink:0}
+.p-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-primary)}
+.p-size{font-family:var(--font-mono);color:var(--accent);font-size:11px;min-width:72px;text-align:right;flex-shrink:0}
+.p-pct{font-family:var(--font-mono);color:var(--text-muted);font-size:10px;min-width:36px;text-align:right;flex-shrink:0}
+.p-children{padding-left:14px;display:none}
+.p-children.open{display:block}
+.p-stats{display:flex;gap:16px;padding:8px 12px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0;font-size:12px;flex-wrap:wrap}
+.p-stat-label{color:var(--text-muted)}
+.p-stat-value{color:var(--text-primary);font-weight:var(--fw-semibold)}
+.p-loading{text-align:center;padding:40px;color:var(--text-muted)}
+.p-empty{text-align:center;padding:40px;color:var(--text-muted)}
+</style>
+</head>
+<body>
+<div class="p-app">
+  <div class="p-head">
+    <span class="p-head-title">📊 磁盘分析器</span>
+    <span class="p-spacer"></span>
+    <button class="p-btn" id="btnRefresh">↻ 刷新</button>
+    <button class="p-btn p-btn-primary" id="btnRoot">🏠 根目录</button>
+  </div>
+  <div class="p-stats" id="stats">
+    <span><span class="p-stat-label">总空间:</span> <span class="p-stat-value" id="statTotal">-</span></span>
+    <span><span class="p-stat-label">已用:</span> <span class="p-stat-value" id="statUsed">-</span></span>
+    <span><span class="p-stat-label">可用:</span> <span class="p-stat-value" id="statFree">-</span></span>
+    <span><span class="p-stat-label">使用率:</span> <span class="p-stat-value" id="statUsage">-</span></span>
+  </div>
+  <div class="p-tree" id="tree">
+    <div class="p-loading">点击"根目录"开始扫描</div>
+  </div>
+</div>
+<script>
+var cmdQueue=[],cmdRunning=false,currentRoot='C:\\'
+function $(id){return document.getElementById(id)}
+function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function pluginExec(cmd,data){return new Promise(function(resolve,reject){cmdQueue.push({cmd:cmd,data:data||{},resolve:resolve,reject:reject});if(!cmdRunning)nextCmd()})}
+function nextCmd(){if(cmdQueue.length===0){cmdRunning=false;return}cmdRunning=true;var task=cmdQueue.shift(),timer=setTimeout(function(){window.removeEventListener('message',handler);cmdRunning=false;task.reject(new Error('响应超时'))},30000);window.parent.postMessage({type:'plugin:execute',id:Date.now(),command:task.cmd,input:{text:JSON.stringify(task.data)}},'*');var handler=function(e){if(e.data&&e.data.type==='plugin:result'){clearTimeout(timer);window.removeEventListener('message',handler);if(e.data.error){task.reject(new Error(e.data.error))}else{task.resolve(e.data.data)}setTimeout(nextCmd,50)}};window.addEventListener('message',handler)}
+function formatSize(bytes){if(!bytes||bytes===0)return '0 B';var units=['B','KB','MB','GB','TB'],size=parseFloat(bytes),idx=0;while(size>=1024&&idx<units.length-1){size/=1024;idx++}return size.toFixed(1)+' '+units[idx]}
+function getFileIcon(name,isDir){
+  if(isDir)return'📁';
+  var ext=name.split('.').pop().toLowerCase();
+  var icons={exe:'⚙️',lnk:'🔗',dll:'📦',sys:'⚙️',pdf:'📄',doc:'📝',docx:'📝',xls:'📊',xlsx:'📊',ppt:'📑',pptx:'📑',zip:'📦',rar:'📦',7z:'📦',mp3:'🎵',wav:'🎵',mp4:'🎬',avi:'🎬',mkv:'🎬',jpg:'🖼️',png:'🖼️',gif:'🖼️',bmp:'🖼️',txt:'📝',md:'📝',go:'🐹',py:'🐍',js:'📜',ts:'📜',json:'📋',xml:'📋',html:'🌐',css:'🎨'};
+  return icons[ext]||'📄';
+}
+function renderTree(node,parentEl){
+  if(!node||!node.children)return;
+  node.children.forEach(function(child){
+    var div=document.createElement('div');
+    div.className='p-node';
+    div.dataset.path=escapeHtml(child.path);
+    var header=document.createElement('div');
+    header.className='p-node-header';
+    var arrow=document.createElement('span');
+    arrow.className='p-arrow';arrow.textContent='▶';
+    var icon=document.createElement('span');
+    icon.className='p-icon';icon.textContent=getFileIcon(child.name,child.isFile);
+    var name=document.createElement('span');
+    name.className='p-name';name.textContent=child.name;
+    var size=document.createElement('span');
+    size.className='p-size';size.textContent=formatSize(child.size);
+    header.appendChild(arrow);header.appendChild(icon);
+    header.appendChild(name);header.appendChild(size);
+    div.appendChild(header);
+    if(!child.isFile){
+      var childrenDiv=document.createElement('div');
+      childrenDiv.className='p-children';
+      div.appendChild(childrenDiv);
+      header.addEventListener('click',function(){
+        childrenDiv.classList.toggle('open');
+        header.classList.toggle('expanded');
+        if(childrenDiv.classList.contains('open')&&!childrenDiv.dataset.loaded){
+          childrenDiv.innerHTML='<div class="p-loading" style="padding:8px;font-size:11px">加载中...</div>';
+          pluginExec('disk.scan',{path:child.path,depth:1,limit:30}).then(function(data){
+            childrenDiv.innerHTML='';
+            renderTree(data,childrenDiv);
+          }).catch(function(e){
+            childrenDiv.innerHTML='<div class="p-empty" style="padding:8px;font-size:11px">加载失败</div>';
+          });
+          childrenDiv.dataset.loaded='true';
+        }
+      });
+    }
+    parentEl.appendChild(div);
+  });
+}
+function scanRoot(){
+  var tree=$('tree');
+  tree.innerHTML='<div class="p-loading">扫描根目录 C:\\ 中...</div>';
+  pluginExec('disk.scan',{path:'C:\\',depth:1,limit:30}).then(function(data){
+    tree.innerHTML='';
+    renderTree(data,tree);
+    updateStats(data);
+  }).catch(function(e){
+    tree.innerHTML='<div class="p-empty">扫描失败: '+escapeHtml(e.message)+'</div>';
+  });
+}
+function scanPath(path){
+  var tree=$('tree');
+  tree.innerHTML='<div class="p-loading">扫描中...</div>';
+  pluginExec('disk.scan',{path:path,depth:1,limit:30}).then(function(data){
+    tree.innerHTML='';
+    renderTree(data,tree);
+  }).catch(function(e){
+    tree.innerHTML='<div class="p-empty">扫描失败: '+escapeHtml(e.message)+'</div>';
+  });
+}
+function updateStats(node){
+  if(!node)return;
+  pluginExec('disk.info',{}).then(function(info){
+    $('statTotal').textContent=info.total||'-';
+    $('statUsed').textContent=info.used||'-';
+    $('statFree').textContent=info.free||'-';
+    $('statUsage').textContent=info.usage||'-';
+  });
+}
+$('btnRefresh').addEventListener('click',function(){scanPath(currentRoot)});
+$('btnRoot').addEventListener('click',function(){currentRoot='C:\\';scanRoot()});
+window.addEventListener('message',function(e){
+  if(e.data&&e.data.type==='plugin:init'){
+    if(e.data.data&&e.data.data.text){
+      try{var input=JSON.parse(e.data.data.text);if(input.path){currentRoot=input.path;scanPath(input.path);return}}catch(err){}
+      if(input.root){currentRoot='C:\\';scanRoot()}
+    }else{scanRoot()}
+  }
+});
+</script>
+</body>
+</html>

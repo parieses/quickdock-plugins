@@ -1,0 +1,39 @@
+{
+  "id": "com.quickdock.disk-analyzer",
+  "name": "磁盘分析器",
+  "version": "0.1.0",
+  "description": "可视化磁盘空间占用分析工具，类似 SpaceSniffer，支持树图展示目录结构",
+  "author": "QuickDock",
+  "icon": "icon.svg",
+  "category": "系统工具",
+  "platforms": ["windows", "darwin", "linux"],
+  "backend": {
+    "runtime": "native",
+    "entry": "disk-analyzer",
+    "args": []
+  },
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 900,
+    "height": 640
+  },
+  "capabilities": ["command", "frontend"],
+  "permissions": {
+    "filesystem": true
+  },
+  "commands": [
+    {
+      "id": "disk-scan",
+      "title": "扫描磁盘空间",
+      "keywords": ["disk", "磁盘", "空间", "分析", "storage", "space", "占用", "大小"],
+      "aliases": ["磁盘分析", "空间分析", "磁盘占用"]
+    },
+    {
+      "id": "disk-scan-root",
+      "title": "扫描根目录",
+      "keywords": ["root", "根目录", "/", "全盘"],
+      "aliases": ["全盘扫描", "根目录扫描"]
+    }
+  ]
+}
