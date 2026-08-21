@@ -14,7 +14,7 @@ name: Build Plugins
 
 on:
   push:
-    branches: [master]
+    branches: [main]
     paths:
       - 'build.py'
       - '**/plugin.json'
