@@ -4,6 +4,10 @@
 *.dylib
 *.test
 *.out
+*.zip
+
+# 多平台交叉编译中间产物（build.py 输出目录）
+.build/
 
 # node_modules（如有前端构建）
 node_modules/

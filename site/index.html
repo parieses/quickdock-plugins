@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QuickDock 插件中心</title>
+<style>
+  :root { --bg:#121316; --card:#1a1c20; --border:#2a2d33; --text:#e8eaed; --muted:#8b919c; --accent:#4a9eff; --good:#4caf50; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font:14px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; padding:40px 20px; }
+  .wrap { max-width:860px; margin:0 auto; }
+  h1 { font-size:24px; margin-bottom:6px; }
+  .sub { color:var(--muted); margin-bottom:28px; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px; margin-bottom:16px; }
+  .card-head { display:flex; align-items:center; gap:14px; margin-bottom:10px; }
+  .card-head img { width:44px; height:44px; border-radius:8px; background:#26282e; padding:6px; }
+  .card-title { font-size:17px; font-weight:600; }
+  .card-id { color:var(--muted); font-size:12px; font-family:monospace; }
+  .card-desc { color:var(--muted); margin-bottom:14px; }
+  .badge { display:inline-block; padding:1px 10px; border-radius:10px; font-size:12px; background:rgba(76,175,80,.15); color:var(--good); margin-left:8px; }
+  .downloads { display:flex; flex-wrap:wrap; gap:8px; }
+  .dl-item { display:inline-flex; align-items:stretch; gap:0; border-radius:8px; overflow:hidden; border:1px solid var(--border); background:#23262c; }
+  .dl { display:inline-flex; align-items:center; gap:6px; padding:8px 14px; color:var(--text); text-decoration:none; font-size:13px; transition:border-color .15s,background .15s; }
+  .dl:hover { border-color:var(--accent); }
+  .copy-btn { border:0; border-left:1px solid var(--border); background:transparent; color:var(--muted); cursor:pointer; padding:0 10px; font-size:12px; transition:color .15s,background .15s; }
+  .copy-btn:hover { color:var(--accent); background:rgba(74,158,255,.08); }
+  .copy-btn.done { color:var(--good); }
+  .card-actions { margin-top:12px; }
+  .copy-all { display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:8px; border:1px solid var(--border); background:transparent; color:var(--muted); cursor:pointer; font-size:12px; transition:color .15s,border-color .15s; }
+  .copy-all:hover { color:var(--accent); border-color:var(--accent); }
+  .copy-all.done { color:var(--good); border-color:var(--good); }
+  .hint { color:var(--muted); font-size:12px; margin-top:24px; }
+  .hint a { color:var(--accent); }
+  .toast { position:fixed; left:50%; bottom:32px; transform:translateX(-50%) translateY(20px); background:#23262c; border:1px solid var(--border); color:var(--text); padding:10px 18px; border-radius:10px; font-size:13px; opacity:0; transition:opacity .2s,transform .2s; pointer-events:none; z-index:99; }
+  .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🪛 QuickDock 插件中心</h1>
+  <p class="sub">为 <a href="https://github.com/parieses/quickdock" style="color:var(--accent)">QuickDock</a> 开发的非内置插件，提供 Windows 安装包（主程序目前仅支持 Windows）。</p>
+  <div class="card" id="card-io-github-parieses-disk-analyzer">
+    <div class="card-head">
+      <img src="https://github.com/parieses/quickdock-plugins/raw/main/disk-analyzer/icon.svg" alt="icon">
+      <div>
+        <span class="card-title">磁盘分析器</span>
+        <span class="badge">v0.1.0</span>
+        <div class="card-id">io.github.parieses.disk-analyzer</div>
+      </div>
+    </div>
+    <p class="card-desc">可视化磁盘空间占用分析工具，类似 SpaceSniffer，支持树图展示目录结构</p>
+    <div class="downloads">
+      <span class="dl-item"><a class="dl" href="https://github.com/parieses/quickdock-plugins/releases/latest/download/io-github-parieses-disk-analyzer-windows.zip" data-link="https://github.com/parieses/quickdock-plugins/releases/latest/download/io-github-parieses-disk-analyzer-windows.zip">⬇ Windows</a><button class="copy-btn" data-link="https://github.com/parieses/quickdock-plugins/releases/latest/download/io-github-parieses-disk-analyzer-windows.zip" onclick="copyText(this.dataset.link, this)">复制</button></span>
+    </div>
+    <div class="card-actions">
+      <button class="copy-all" onclick="copyAll(document.getElementById('card-io-github-parieses-disk-analyzer'))">📋 复制全部下载链接</button>
+    </div>
+  </div>
+  <p class="hint">安装方法：打开 QuickDock → 插件管理 → 从文件安装 → 选择下载的 zip（或直接把 zip 拖进插件管理页）。升级时覆盖安装，自动备份旧版本。<br>
+  下载 404？对应平台还没有 Release 资产，或该插件没发布对应平台的安装包，见 <a href="https://github.com/parieses/quickdock-plugins/releases/latest/download">Releases</a>。更多信息：<a href="https://github.com/parieses/quickdock-plugins">仓库主页</a>。</p>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+  function showToast(msg) {
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(function() { t.classList.remove('show'); }, 1600);
+  }
+  function copyText(text, btn) {
+    var done = function() {
+      showToast('链接已复制');
+      if (btn) { btn.classList.add('done'); setTimeout(function() { btn.classList.remove('done'); }, 1200); }
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, function() { fallbackCopy(text); });
+    } else { fallbackCopy(text); }
+  }
+  function fallbackCopy(text) {
+    var ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); showToast('链接已复制'); } catch (e) { showToast('复制失败，请手动复制'); }
+    document.body.removeChild(ta);
+  }
+  function copyAll(card) {
+    var links = [];
+    card.querySelectorAll('.dl').forEach(function(a) { links.push(a.href); });
+    if (!links.length) return;
+    copyText(links.join('\n'), card.querySelector('.copy-all'));
+  }
+</script>
+</body>
+</html>

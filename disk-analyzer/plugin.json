@@ -1,5 +1,5 @@
 {
-  "id": "com.quickdock.disk-analyzer",
+  "id": "io.github.parieses.disk-analyzer",
   "name": "磁盘分析器",
   "version": "0.1.0",
   "description": "可视化磁盘空间占用分析工具，类似 SpaceSniffer，支持树图展示目录结构",
@@ -34,6 +34,12 @@
       "title": "扫描根目录",
       "keywords": ["root", "根目录", "/", "全盘"],
       "aliases": ["全盘扫描", "根目录扫描"]
+    },
+    {
+      "id": "disk-open",
+      "title": "打开文件管理器",
+      "keywords": ["open", "打开", "explorer", "文件管理器", "finder", "reveal"],
+      "aliases": ["打开所在目录", "在资源管理器中显示"]
     }
   ]
 }

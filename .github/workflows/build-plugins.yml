@@ -1,0 +1,85 @@
+# 插件自动打包 Workflow（仅 Windows）
+# 触发：push 到 main（仅当插件/build 脚本相关文件变更时）或手动 dispatch。
+# 逻辑：diff 出"本次推送改了哪些插件目录"→ 对每个插件执行 build.py --platform windows。
+#       Go 交叉编译（GOOS=windows），单一 ubuntu runner 即可产出 Windows 安装包。
+#       zip 上传为 Actions artifact。
+# 说明：主程序 QuickDock 目前仅发布 Windows 版本，故插件只打包 windows。需要其他平台时在
+#       build.py 命令后加 --platform all（或 darwin/linux）。
+#
+# 产物命名：<插件ID转-小写>-windows.zip（如 io-github-parieses-disk-analyzer-windows.zip）
+
+name: Build Plugins
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'build.py'
+      - '**/plugin.json'
+      - '**/*.go'
+      - '**/go.mod'
+      - '**/go.sum'
+      - '**/icon.svg'
+      - '**/frontend/**'
+      - '**/README.md'
+      - '.github/workflows/build-plugins.yml'
+  workflow_dispatch: {} # 手动触发：全量打包所有插件
+
+jobs:
+  build:
+    name: Package changed plugins (windows)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # 需要历史记录做 diff（首次推送时 before 为全 0，走全量分支）
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.x'
+          cache: false # 多插件目录，不共享缓存的单个 go.mod
+
+      - name: Detect changed plugin dirs
+        id: changed
+        shell: bash
+        run: |
+          base="${{ github.event.before }}"
+          plugins=""
+          if [ "$base" = "0000000000000000000000000000000000000000" ] || [ -z "$base" ]; then
+            # 首次推送或手动 dispatch：全量打包
+            plugins=$(find . -mindepth 2 -maxdepth 2 -name plugin.json \
+              | sed 's|^\./||; s|/plugin.json$||' | sort -u | tr '\n' ' ')
+          else
+            # diff 出 plugin.json 变更的插件目录（一个插件一个子目录，plugin.json 为标志）
+            plugins=$(git diff --name-only "$base" HEAD -- '*/plugin.json' \
+              | sed 's|/plugin.json$||' | sort -u | tr '\n' ' ')
+          fi
+          echo "changed_plugins=$plugins"
+          echo "changed_plugins=$plugins" >> "$GITHUB_OUTPUT"
+
+      - name: Package plugins (windows)
+        shell: bash
+        run: |
+          changed="${{ steps.changed.outputs.changed_plugins }}"
+          if [ -z "$changed" ]; then
+            echo "无插件变更，跳过打包"
+            exit 0
+          fi
+          for dir in $changed; do
+            if [ -f "$dir/plugin.json" ]; then
+              echo "==> 打包插件: $dir（windows）"
+              python3 build.py "$dir" --platform windows
+            fi
+          done
+
+      - name: Show produced zips
+        shell: bash
+        run: |
+          ls -lh dist/ 2>/dev/null || true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: plugin-zips
+          path: dist/*.zip
+          if-no-files-found: warn
+          retention-days: 30

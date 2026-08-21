@@ -28,3 +28,14 @@ func getDiskStats(path string) (*diskStats, error) {
 	}
 	return &diskStats{Total: total, Used: used, Free: free, UsagePct: pct}, nil
 }
+
+// listDrives 在类 Unix 平台返回根文件系统（"/"）。
+// 体积来自 getDiskStats（Statfs），瞬时返回。
+func listDrives() ([]driveInfo, error) {
+	info, err := getDiskStats("/")
+	di := driveInfo{Letter: "/", Path: "/", Ready: err == nil}
+	if err == nil {
+		di.Total, di.Free, di.Used, di.UsagePct = info.Total, info.Free, info.Used, info.UsagePct
+	}
+	return []driveInfo{di}, nil
+}
