@@ -13,6 +13,7 @@ import json
 import os
 import sys
 import urllib.parse
+from datetime import datetime, timezone
 from pathlib import Path
 
 REPO_OWNER = "parieses"
@@ -172,9 +173,51 @@ def build_cards(plugins: list) -> str:
     return "\n".join(cards)
 
 
+def build_index(plugins: list) -> dict:
+    """构建机器可读的插件市场索引（供 QuickDock 应用内"在线安装"拉取）。
+
+    字段对齐 plugin.json，并补充每个平台的下载直链（releases/latest/download）。
+    downloads 只包含 PLATFORMS 里声明的平台（主程序目前仅 Windows）。
+    """
+    items = []
+    for p in plugins:
+        mf, pdir = p["manifest"], p["dir"]
+        safe_id = mf["id"].replace(".", "-").lower()
+
+        # 图标：raw 链接（与主页一致）
+        icon = mf.get("icon", "")
+        icon_url = f"{RAW_BASE}/{urllib.parse.quote(pdir)}/{urllib.parse.quote(icon)}" if icon else ""
+
+        # 下载直链：仅 PLATFORMS 声明的平台
+        downloads = {}
+        for plat, _ in PLATFORMS:
+            downloads[plat] = f"{REL_BASE}/{safe_id}-{plat}.zip"
+
+        items.append({
+            "id": mf["id"],
+            "name": mf.get("name", mf["id"]),
+            "version": mf.get("version", "0.0.0"),
+            "description": mf.get("description", ""),
+            "author": mf.get("author", ""),
+            "category": mf.get("category", ""),
+            "icon": icon_url,
+            "platforms": mf.get("platforms", []),
+            "permissions": mf.get("permissions", {}),
+            "capabilities": mf.get("capabilities", []),
+            "downloads": downloads,
+        })
+
+    return {
+        "name": "QuickDock 插件中心",
+        "updated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "plugins": items,
+    }
+
+
 def main():
     parser = argparse.ArgumentParser(description="QuickDock 插件中心主页生成器")
     parser.add_argument("-o", "--output", default="site/index.html", help="输出路径（默认 site/index.html）")
+    parser.add_argument("-j", "--json-output", default="site/index.json", help="市场索引 JSON 输出路径（默认 site/index.json，供应用内在线安装拉取）")
     args = parser.parse_args()
 
     repo_root = Path(__file__).parent.resolve()
@@ -192,6 +235,13 @@ def main():
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(html, encoding="utf-8")
     print(f"✅ 主页已生成: {out}")
+
+    # 机器可读的市场索引（QuickDock 应用内"在线安装"拉取）
+    index_data = build_index(plugins)
+    index_out = Path(args.json_output).resolve()
+    index_out.parent.mkdir(parents=True, exist_ok=True)
+    index_out.write_text(json.dumps(index_data, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"✅ 市场索引已生成: {index_out}")
 
 
 if __name__ == "__main__":

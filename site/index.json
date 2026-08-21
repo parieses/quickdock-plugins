@@ -1,0 +1,30 @@
+{
+  "name": "QuickDock 插件中心",
+  "updated": "2026-08-21T13:24:16Z",
+  "plugins": [
+    {
+      "id": "io.github.parieses.disk-analyzer",
+      "name": "磁盘分析器",
+      "version": "0.1.0",
+      "description": "可视化磁盘空间占用分析工具，类似 SpaceSniffer，支持树图展示目录结构",
+      "author": "QuickDock",
+      "category": "系统工具",
+      "icon": "https://github.com/parieses/quickdock-plugins/raw/HEAD/disk-analyzer/icon.svg",
+      "platforms": [
+        "windows",
+        "darwin",
+        "linux"
+      ],
+      "permissions": {
+        "filesystem": true
+      },
+      "capabilities": [
+        "command",
+        "frontend"
+      ],
+      "downloads": {
+        "windows": "https://github.com/parieses/quickdock-plugins/releases/latest/download/io-github-parieses-disk-analyzer-windows.zip"
+      }
+    }
+  ]
+}
