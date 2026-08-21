@@ -17,7 +17,7 @@ from pathlib import Path
 
 REPO_OWNER = "parieses"
 REPO_NAME = "quickdock-plugins"
-RAW_BASE = f"https://github.com/{REPO_OWNER}/{REPO_NAME}/raw/main"
+RAW_BASE = f"https://github.com/{REPO_OWNER}/{REPO_NAME}/raw/HEAD"
 REL_BASE = f"https://github.com/{REPO_OWNER}/{REPO_NAME}/releases/latest/download"
 
 # 主程序目前仅发布 Windows 版本，主页只展示 Windows 下载
