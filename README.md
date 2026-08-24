@@ -6,13 +6,13 @@
 
 | 插件 | ID | 版本 | 说明 |
 |------|----|------|------|
-| [磁盘分析器](./disk-analyzer/) | `io.github.parieses.disk-analyzer` | 0.1.0 | 可视化磁盘空间占用分析，类似 SpaceSniffer，树图展示目录结构 |
-| [接口压测](./api-loadtest/) | `io.github.parieses.api-loadtest` | 0.1.0 | HTTP 接口压测：并发/时长双模式、实时 QPS 与延迟分布(p50/p90/p95/p99)、结果导出 |
-| [PDF 工具箱](./pdf-toolkit/) | `io.github.parieses.pdf-toolkit` | 0.1.0 | PDF 合并/拆分/压缩/加水印/提取图片/转图片，无需 Adobe Acrobat |
-| [颜色工具](./color-converter/) | `io.github.parieses.color-converter` | 0.3.0 | 颜色格式互转（HEX/RGB/HSL + 常见英文色名识别）+ 屏幕取色 |
-| [对比工具](./compare/) | `io.github.parieses.compare` | 0.2.0 | 文件/图片对比（元数据 + 预览 + 文本差异）与文本块逐行 Diff |
-| [Crontab 解释器](./cron-explainer/) | `io.github.parieses.cron-explainer` | 0.2.0 | 解析 cron 表达式，显示可读描述、下次执行时间与可视化时间表 |
-| [HTTP 状态码速查](./http-status/) | `io.github.parieses.http-status` | 0.2.0 | 查询 HTTP 状态码含义、描述和常见场景 |
+| [磁盘分析器](./disk-analyzer/) | `io.github.parieses.disk-analyzer` | 0.1.1 | 可视化磁盘空间占用分析，类似 SpaceSniffer，树图展示目录结构 |
+| [接口压测](./api-loadtest/) | `io.github.parieses.api-loadtest` | 0.1.1 | HTTP 接口压测：并发/时长双模式、实时 QPS 与延迟分布(p50/p90/p95/p99)、结果导出 |
+| [PDF 工具箱](./pdf-toolkit/) | `io.github.parieses.pdf-toolkit` | 0.1.4 | PDF 合并/拆分/压缩/加水印/提取图片，无需 Adobe Acrobat |
+| [颜色工具](./color-converter/) | `io.github.parieses.color-converter` | 0.3.1 | 颜色格式互转（HEX/RGB/HSL + 常见英文色名识别）+ 屏幕取色（F8 取色 / ESC 取消） |
+| [对比工具](./compare/) | `io.github.parieses.compare` | 0.2.1 | 文件/图片对比（元数据 + 预览 + 文本差异）与文本块逐行 Diff |
+| [Crontab 解释器](./cron-explainer/) | `io.github.parieses.cron-explainer` | 0.2.1 | 解析 cron 表达式，显示可读描述、下次执行时间与可视化时间表 |
+| [HTTP 状态码速查](./http-status/) | `io.github.parieses.http-status` | 0.2.1 | 查询 HTTP 状态码含义、描述和常见场景 |
 
 ## 安装方法
 
