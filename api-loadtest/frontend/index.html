@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>接口压测</title>
+<style>
+*{-webkit-box-sizing:border-box;box-sizing:border-box}
+.p-app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+.p-body{flex:1;display:flex;overflow:hidden}
+.p-col{flex:1;display:flex;flex-direction:column;min-width:0;overflow:auto}
+.p-col-config{width:360px;flex:0 0 360px;border-right:1px solid var(--border)}
+.p-pad{padding:var(--sp-3);display:flex;flex-direction:column;gap:var(--sp-3)}
+
+/* 配置项 */
+.field{display:flex;flex-direction:column;gap:6px}
+.field-row{display:flex;gap:var(--sp-2);align-items:center}
+.label{font-size:var(--fs-xs);font-weight:var(--fw-medium);color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px}
+.url-wrap{flex:1;display:flex;gap:var(--sp-2)}
+.url-wrap .p-input{flex:1}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2)}
+.p-input.wide{width:100%}
+textarea.p-input{height:auto;min-height:64px;padding:8px 10px;line-height:1.5;resize:vertical;font-family:var(--font-mono);font-size:var(--fs-xs)}
+.p-hint{font-size:var(--fs-xs);color:var(--text-placeholder)}
+
+/* 分段控件 */
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.seg button{flex:1;height:30px;padding:0 14px;border:none;background:var(--bg-tertiary);color:var(--text-secondary);font-size:var(--fs-sm);cursor:pointer}
+.seg button.active{background:var(--accent);color:#fff}
+.seg button+button{border-left:1px solid var(--border)}
+
+/* 统计卡片 */
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:var(--sp-2);padding:var(--sp-3) var(--sp-3) 0}
+.lat{display:grid;grid-template-columns:repeat(6,1fr);gap:var(--sp-2);padding:var(--sp-2) var(--sp-3) 0}
+.kpi{border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-secondary);padding:8px 10px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.kpi .k-label{font-size:var(--fs-xs);color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi .k-value{font-size:var(--fs-xl);font-weight:var(--fw-semibold);font-family:var(--font-mono);color:var(--text-primary);line-height:1.1}
+.kpi .k-value.sm{font-size:var(--fs-lg)}
+.kpi.accent .k-value{color:var(--accent)}
+.kpi.ok .k-value{color:var(--success)}
+.kpi.bad .k-value{color:var(--danger)}
+.kpi.warn .k-value{color:var(--warning)}
+
+/* 进度 */
+.progress{padding:var(--sp-2) var(--sp-3) 0}
+.progress-bar{height:6px;border-radius:var(--radius-pill);background:var(--bg-tertiary);overflow:hidden}
+.progress-bar>i{display:block;height:100%;background:var(--accent);width:0%;transition:width .3s}
+
+/* 图表区 */
+.charts{display:flex;gap:var(--sp-3);padding:var(--sp-3);flex-wrap:wrap}
+.chart-card{flex:1;min-width:260px;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--bg-secondary);padding:var(--sp-3)}
+.chart-title{font-size:var(--fs-xs);color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.chart-title .p-spacer{flex:1}
+canvas{display:block;width:100%}
+#histCanvas{height:140px}
+#sparkCanvas{height:90px}
+
+/* 状态码 */
+.codes{padding:0 var(--sp-3) var(--sp-3)}
+.code-pills{display:flex;flex-wrap:wrap;gap:6px}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:var(--radius-pill);font-size:var(--fs-xs);font-family:var(--font-mono);border:1px solid var(--border)}
+.pill .cnt{font-weight:var(--fw-semibold)}
+.pill.s2{background:var(--success-soft);color:var(--success);border-color:var(--success-soft)}
+.pill.s3{background:var(--accent-soft);color:var(--accent);border-color:var(--accent-soft)}
+.pill.s4{background:var(--warning-soft);color:var(--warning);border-color:var(--warning-soft)}
+.pill.s5{background:var(--danger-soft);color:var(--danger);border-color:var(--danger-soft)}
+.pill.sx{background:var(--bg-tertiary);color:var(--text-secondary);border-color:var(--border)}
+
+/* 导出弹层 */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:200;padding:24px}
+.modal.show{display:flex}
+.modal-box{width:min(680px,92vw);max-height:84vh;display:flex;flex-direction:column;border:1px solid var(--border-strong);border-radius:var(--radius-lg);background:var(--bg-secondary);box-shadow:var(--shadow-2);overflow:hidden}
+.modal-head{display:flex;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border);font-size:var(--fs-md);font-weight:var(--fw-semibold)}
+.modal-head .p-spacer{flex:1}
+.modal-body{flex:1;overflow:auto;padding:0}
+.modal-body pre{margin:0;padding:14px;font-family:var(--font-mono);font-size:var(--fs-xs);line-height:1.6;white-space:pre-wrap;word-break:break-all;color:var(--text-primary)}
+.modal-foot{display:flex;gap:8px;justify-content:flex-end;padding:10px 14px;border-top:1px solid var(--border)}
+</style>
+</head>
+<body>
+<div class="p-app">
+  <div class="p-head">
+    <span class="p-head-title" data-orig="🚀 接口压测">🚀 接口压测</span>
+    <span id="statusTag" class="p-tag p-tag-neutral">空闲</span>
+    <span class="p-spacer"></span>
+    <button class="p-btn p-btn-primary" id="btnStart" data-orig="▶ 开始压测">▶ 开始压测</button>
+    <button class="p-btn" id="btnStop" data-orig="⏹ 停止" disabled>⏹ 停止</button>
+    <button class="p-btn" id="btnExport" data-orig="⬇ 导出" disabled>⬇ 导出</button>
+  </div>
+
+  <div class="p-body">
+    <!-- 配置 -->
+    <div class="p-col p-col-config">
+      <div class="p-pad">
+        <div class="field">
+          <span class="label" data-orig="目标 URL">目标 URL</span>
+          <div class="url-wrap">
+            <select class="p-select" id="method" style="width:92px">
+              <option>GET</option><option>POST</option><option>PUT</option>
+              <option>PATCH</option><option>DELETE</option><option>HEAD</option>
+            </select>
+            <input class="p-input" id="url" placeholder="https://api.example.com/ping" value="https://httpbin.org/get">
+          </div>
+        </div>
+
+        <div class="field">
+          <span class="label" data-orig="压测模式">压测模式</span>
+          <div class="seg" id="modeSeg">
+            <button data-mode="requests" class="active" data-orig="请求数">请求数</button>
+            <button data-mode="duration" data-orig="时长">时长</button>
+          </div>
+        </div>
+
+        <div class="grid2">
+          <div class="field">
+            <span class="label" data-orig="并发数">并发数</span>
+            <input class="p-input" id="concurrency" type="number" min="1" max="2000" value="10">
+          </div>
+          <div class="field" id="fldRequests">
+            <span class="label" data-orig="总请求数">总请求数</span>
+            <input class="p-input" id="requests" type="number" min="1" max="10000000" value="200">
+          </div>
+          <div class="field" id="fldDuration" style="display:none">
+            <span class="label" data-orig="持续秒数">持续秒数</span>
+            <input class="p-input" id="duration" type="number" min="1" max="86400" value="30">
+          </div>
+          <div class="field">
+            <span class="label" data-orig="超时(ms)">超时(ms)</span>
+            <input class="p-input" id="timeout" type="number" min="100" max="600000" value="10000">
+          </div>
+          <div class="field">
+            <span class="label" data-orig="预热/爬坡(s)">预热/爬坡(s)</span>
+            <input class="p-input" id="rampup" type="number" min="0" max="3600" value="0">
+          </div>
+        </div>
+
+        <div class="field">
+          <span class="label" data-orig="请求头 (每行 Key: Value)">请求头 (每行 Key: Value)</span>
+          <textarea class="p-input" id="headers" rows="4" placeholder="Authorization: Bearer xxx&#10;Accept: application/json"></textarea>
+        </div>
+
+        <div class="field" id="fldBody">
+          <span class="label" data-orig="请求体 (Body)">请求体 (Body)</span>
+          <textarea class="p-input" id="body" rows="5" placeholder='{"key":"value"}'></textarea>
+          <span class="p-hint" data-orig="GET / HEAD 请求将忽略 Body">GET / HEAD 请求将忽略 Body</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 结果 -->
+    <div class="p-col">
+      <div class="kpis">
+        <div class="kpi accent"><span class="k-label" data-orig="实时 QPS">实时 QPS</span><span class="k-value" id="kQps">0</span></div>
+        <div class="kpi"><span class="k-label" data-orig="总请求">总请求</span><span class="k-value" id="kSent">0</span></div>
+        <div class="kpi ok"><span class="k-label" data-orig="成功">成功</span><span class="k-value" id="kOk">0</span></div>
+        <div class="kpi bad"><span class="k-label" data-orig="失败">失败</span><span class="k-value" id="kFail">0</span></div>
+        <div class="kpi warn"><span class="k-label" data-orig="错误率">错误率</span><span class="k-value" id="kErr">0%</span></div>
+      </div>
+
+      <div class="lat">
+        <div class="kpi"><span class="k-label" data-orig="平均延迟">平均延迟</span><span class="k-value sm" id="kAvg">0ms</span></div>
+        <div class="kpi"><span class="k-label" data-orig="最大延迟">最大延迟</span><span class="k-value sm" id="kMax">0ms</span></div>
+        <div class="kpi"><span class="k-label">P50</span><span class="k-value sm" id="kP50">0ms</span></div>
+        <div class="kpi"><span class="k-label">P90</span><span class="k-value sm" id="kP90">0ms</span></div>
+        <div class="kpi"><span class="k-label">P95</span><span class="k-value sm" id="kP95">0ms</span></div>
+        <div class="kpi"><span class="k-label">P99</span><span class="k-value sm" id="kP99">0ms</span></div>
+      </div>
+
+      <div class="progress">
+        <div class="progress-bar"><i id="progBar"></i></div>
+      </div>
+
+      <div class="charts">
+        <div class="chart-card">
+          <div class="chart-title"><span data-orig="延迟分布">延迟分布</span> <span class="p-spacer"></span><span id="histTotal" class="p-hint" data-orig="0 个样本">0 个样本</span></div>
+          <canvas id="histCanvas"></canvas>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title"><span data-orig="QPS 趋势">QPS 趋势</span> <span class="p-spacer"></span><span id="sparkLast" class="p-hint">0</span></div>
+          <canvas id="sparkCanvas"></canvas>
+        </div>
+      </div>
+
+      <div class="codes">
+        <div class="chart-title" style="margin-bottom:8px" data-orig="状态码分布">状态码分布</div>
+        <div class="code-pills" id="codePills"><span class="p-hint" data-orig="尚无数据">尚无数据</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 导出弹层 -->
+<div class="modal" id="exportModal">
+  <div class="modal-box">
+    <div class="modal-head"><span data-orig="压测结果 JSON">压测结果 JSON</span> <span class="p-spacer"></span>
+      <button class="p-btn p-btn-sm" id="btnCopy" data-orig="复制">复制</button>
+      <button class="p-btn p-btn-sm" id="btnDownload" data-orig="下载">下载</button>
+      <button class="p-btn p-btn-sm" id="btnClose" data-orig="关闭">关闭</button>
+    </div>
+    <div class="modal-body"><pre id="exportText" data-orig="（点击"导出"后显示）">（点击"导出"后显示）</pre></div>
+    <div class="modal-foot"><span class="p-hint" data-orig="包含完整配置与统计快照">包含完整配置与统计快照</span></div>
+  </div>
+</div>
+
+<script>
+// ===== 自包含页面 i18n（样板同 pdf-toolkit，key=中文原文，经 <html lang> 判定语言）=====
+var L10N={'en-US':{
+  '接口压测':'API Load Test',
+  '🚀 接口压测':'🚀 API Load Test',
+  '空闲':'Idle',
+  '▶ 开始压测':'▶ Start Test',
+  '⏹ 停止':'⏹ Stop',
+  '⬇ 导出':'⬇ Export',
+  '目标 URL':'Target URL',
+  '压测模式':'Test Mode',
+  '请求数':'Requests',
+  '时长':'Duration',
+  '并发数':'Concurrency',
+  '总请求数':'Total Requests',
+  '持续秒数':'Duration (s)',
+  '超时(ms)':'Timeout (ms)',
+  '预热/爬坡(s)':'Ramp-up (s)',
+  '请求头 (每行 Key: Value)':'Headers (one Key: Value per line)',
+  '请求体 (Body)':'Request Body',
+  'GET / HEAD 请求将忽略 Body':'Body is ignored for GET / HEAD requests',
+  '实时 QPS':'Live QPS',
+  '总请求':'Total',
+  '成功':'Success',
+  '失败':'Failed',
+  '错误率':'Error Rate',
+  '平均延迟':'Avg Latency',
+  '最大延迟':'Max Latency',
+  '延迟分布':'Latency Distribution',
+  'QPS 趋势':'QPS Trend',
+  '状态码分布':'Status Codes',
+  '0 个样本':'0 samples',
+  '尚无数据':'No data yet',
+  '压测结果 JSON':'Load Test Result JSON',
+  '复制':'Copy',
+  '下载':'Download',
+  '关闭':'Close',
+  '（点击"导出"后显示）':'(click "Export" to show)',
+  '包含完整配置与统计快照':'Includes full config and stats snapshot',
+  '响应超时':'Response timed out',
+  '请先填写 URL':'Please enter a URL first',
+  'URL 须以 http:// 或 https:// 开头':'URL must start with http:// or https://',
+  '运行中…':'Running…',
+  '压测已启动：':'Load test started: ',
+  ' 请求':' requests',
+  '启动失败：':'Failed to start: ',
+  '未知':'unknown',
+  '启动错误：':'Start error: ',
+  '已发送停止指令':'Stop command sent',
+  '停止失败：':'Failed to stop: ',
+  '已停止':'Stopped',
+  '已完成':'Completed',
+  '暂无样本':'No samples yet',
+  ' 个样本':' samples',
+  '最近 ':'Last ',
+  '导出失败：':'Export failed: ',
+  '已复制到剪贴板':'Copied to clipboard',
+  '复制失败：':'Copy failed: '
+}};
+function isEn(){return (document.documentElement.getAttribute('lang')||'').toLowerCase().indexOf('en')===0}
+function L(s){if(!isEn())return s;var t=L10N['en-US'];return t[s]!==undefined?t[s]:s}
+function applyStaticL10n(){
+  var els=document.querySelectorAll('[data-orig]'),i;
+  for(i=0;i<els.length;i++)els[i].textContent=L(els[i].getAttribute('data-orig'));
+  document.title=L('接口压测');
+}
+function refreshL10n(){
+  applyStaticL10n();
+  setStatus(running?'info':'neutral',running?L('运行中…'):L('空闲'));
+}
+
+// ---- 插件 RPC 桥接（与磁盘分析器等保持一致：单命令串行队列）----
+var cmdQueue=[],cmdRunning=false;
+function pluginExec(cmd,data){return new Promise(function(resolve,reject){
+  cmdQueue.push({cmd:cmd,data:data||{},resolve:resolve,reject:reject});
+  if(!cmdRunning)nextCmd();
+})}
+function nextCmd(){
+  if(cmdQueue.length===0){cmdRunning=false;return}
+  cmdRunning=true;
+  var task=cmdQueue.shift();
+  var timer=setTimeout(function(){
+    window.removeEventListener('message',handler);
+    cmdRunning=false;task.reject(new Error(L('响应超时')));
+  },30000);
+  window.parent.postMessage({type:'plugin:execute',id:Date.now(),command:task.cmd,input:{text:JSON.stringify(task.data)}},'*');
+  var handler=function(e){
+    if(e.data&&e.data.type==='plugin:result'){
+      clearTimeout(timer);window.removeEventListener('message',handler);
+      if(e.data.error)task.reject(new Error(e.data.error));else task.resolve(e.data.data);
+      setTimeout(nextCmd,20);
+    }
+  };
+  window.addEventListener('message',handler);
+}
+
+// ---- 工具 ----
+function $(id){return document.getElementById(id)}
+function fmtMs(v){v=Math.round(v);if(v>=1000)return (v/1000).toFixed(2)+'s';return v+'ms'}
+function fmtPct(v){return (Math.round(v*10)/10)+'%'}
+
+// ---- 模式切换 ----
+var mode='requests';
+$('modeSeg').addEventListener('click',function(e){
+  var b=e.target.closest('button');if(!b)return;
+  mode=b.getAttribute('data-mode');
+  [].forEach.call(this.children,function(c){c.classList.remove('active')});
+  b.classList.add('active');
+  $('fldRequests').style.display=mode==='requests'?'':'none';
+  $('fldDuration').style.display=mode==='duration'?'':'none';
+});
+
+// 非 GET 才需要 Body
+function syncBodyHint(){
+  var m=$('method').value;
+  $('fldBody').style.opacity=(m==='GET'||m==='HEAD')?'.55':'1';
+}
+$('method').addEventListener('change',syncBodyHint);syncBodyHint();
+
+// ---- 状态 ----
+var running=false, pollTimer=null;
+var prevSent=0, prevElapsed=0, qpsHist=[];
+
+function setStatus(kind,text){
+  var t=$('statusTag');t.className='p-tag p-tag-'+kind;t.textContent=text;
+}
+
+function buildConfig(){
+  var cfg={
+    url:$('url').value.trim(),
+    method:$('method').value,
+    concurrency:Math.max(1,parseInt($('concurrency').value,10)||10),
+    timeoutMs:Math.max(100,parseInt($('timeout').value,10)||10000),
+    rampUpSec:Math.max(0,parseInt($('rampup').value,10)||0),
+    headerText:$('headers').value,
+    body:$('body').value
+  };
+  if(mode==='duration'){
+    cfg.durationSec=Math.max(1,parseInt($('duration').value,10)||30);
+    cfg.requests=0;
+  }else{
+    cfg.requests=Math.max(1,parseInt($('requests').value,10)||200);
+    cfg.durationSec=0;
+  }
+  return cfg;
+}
+
+function startBench(){
+  var cfg=buildConfig();
+  if(!cfg.url){showToast(L('请先填写 URL'),'error');return}
+  if(!/^https?:\/\//.test(cfg.url)){showToast(L('URL 须以 http:// 或 https:// 开头'),'error');return}
+  $('btnStart').disabled=true;$('btnStop').disabled=false;$('btnExport').disabled=true;
+  running=true;prevSent=0;prevElapsed=0;qpsHist=[];
+  setStatus('info',L('运行中…'));
+  pluginExec('bench-start',cfg).then(function(r){
+    if(r&&r.started){
+      showToast(L('压测已启动：')+r.method+' '+r.url+(r.mode==='duration'?(' · '+r.target+'s'):(' · '+r.target+L(' 请求'))));
+      poll();
+    }else{
+      running=false;setStatus('neutral',L('空闲'));
+      $('btnStart').disabled=false;$('btnStop').disabled=true;
+      showToast(L('启动失败：')+(r&&r.reason||L('未知')),'error');
+    }
+  }).catch(function(e){
+    running=false;setStatus('neutral',L('空闲'));
+    $('btnStart').disabled=false;$('btnStop').disabled=true;
+    showToast(L('启动错误：')+e.message,'error');
+  });
+}
+
+function stopBench(){
+  pluginExec('bench-stop',{}).then(function(){
+    showToast(L('已发送停止指令'));
+  }).catch(function(e){showToast(L('停止失败：')+e.message,'error')});
+}
+
+function poll(){
+  if(!running)return;
+  pluginExec('bench-status',{}).then(function(s){
+    if(!s){return}
+    renderStats(s);
+    if(s.done||s.stopped||s.idle){
+      running=false;
+      clearTimeout(pollTimer);
+      $('btnStart').disabled=false;$('btnStop').disabled=true;$('btnExport').disabled=false;
+      setStatus(s.stopped?'warn':'ok', s.stopped?L('已停止'):L('已完成'));
+      // 末次再拉一次
+      pluginExec('bench-status',{}).then(renderStats);
+      return;
+    }
+    pollTimer=setTimeout(poll,400);
+  }).catch(function(e){
+    // 轮询出错则稍后重试，避免中断
+    if(running)pollTimer=setTimeout(poll,800);
+  });
+}
+
+function renderStats(s){
+  if(s.idle){return}
+  // 实时 QPS = 增量 / 增量时间
+  var dSent=Math.max(0,(s.sent||0)-prevSent);
+  var dT=Math.max(0.001,(s.elapsedSec||0)-prevElapsed);
+  var qps=dSent/dT;
+  if(s.done||s.stopped){qps=s.sent/Math.max(0.001,s.elapsedSec);}
+  prevSent=s.sent||0;prevElapsed=s.elapsedSec||0;
+  if(running){qpsHist.push(qps);if(qpsHist.length>60)qpsHist.shift();}
+
+  $('kQps').textContent=Math.round(qps);
+  $('kSent').textContent=s.sent||0;
+  $('kOk').textContent=s.success||0;
+  $('kFail').textContent=s.failed||0;
+  $('kErr').textContent=fmtPct(s.errRate||0);
+  $('kAvg').textContent=fmtMs(s.avgLatency||0);
+  $('kMax').textContent=fmtMs(s.maxLatency||0);
+  $('kP50').textContent=fmtMs(s.p50||0);
+  $('kP90').textContent=fmtMs(s.p90||0);
+  $('kP95').textContent=fmtMs(s.p95||0);
+  $('kP99').textContent=fmtMs(s.p99||0);
+
+  // 进度
+  var prog=0;
+  if(s.mode==='duration'){prog=Math.min(100,(s.elapsedSec/((s.target>0?s.target:1)))*100);}
+  else{prog=s.target>0?Math.min(100,(s.sent/s.target)*100):0;}
+  $('progBar').style.width=prog.toFixed(1)+'%';
+
+  drawHistogram(s.latencyHistogram||[], s.latencyBounds||[]);
+  drawSpark();
+  renderCodes(s.statusCodes||{});
+  $('sparkLast').textContent=L('最近 ')+Math.round(qps)+' QPS';
+}
+
+function renderCodes(codes){
+  var box=$('codePills');box.innerHTML='';
+  var keys=Object.keys(codes);
+  if(keys.length===0){box.innerHTML='<span class="p-hint">'+L('尚无数据')+'</span>';return}
+  keys.sort();
+  keys.forEach(function(k){
+    var cls='sx';
+    var n=parseInt(k,10);
+    if(n>=200&&n<300)cls='s2';else if(n>=300&&n<400)cls='s3';
+    else if(n>=400&&n<500)cls='s4';else if(n>=500)cls='s5';
+    var el=document.createElement('span');el.className='pill '+cls;
+    el.innerHTML=k+' <span class="cnt">'+codes[k]+'</span>';
+    box.appendChild(el);
+  });
+}
+
+// ---- 延迟直方图（canvas）----
+var histLabels=['≤1','≤2','≤5','≤10','≤20','≤50','≤100','≤200','≤500','≤1s','≤2s','≤5s','≤10s+'];
+function drawHistogram(buckets,bounds){
+  var cv=$('histCanvas');var dpr=window.devicePixelRatio||1;
+  var W=cv.clientWidth||300,H=cv.clientHeight||140;
+  cv.width=W*dpr;cv.height=H*dpr;
+  var ctx=cv.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,W,H);
+  if(!buckets||buckets.length===0){ctx.fillStyle='var(--text-muted)';ctx.font='12px sans-serif';ctx.fillText(L('暂无样本'),8,20);return;}
+  var n=buckets.length;
+  var maxV=1;for(var i=0;i<n;i++)maxV=Math.max(maxV,buckets[i]);
+  var total=0;for(var j=0;j<n;j++)total+=buckets[j];
+  $('histTotal').textContent=total+L(' 个样本');
+  var padL=4,padR=4,padB=18,padT=4;
+  var plotW=W-padL-padR, plotH=H-padB-padT;
+  var bw=plotW/n;
+  var accent=getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()||'#4a9eff';
+  for(var k=0;k<n;k++){
+    var h=total>0?(buckets[k]/maxV)*plotH:0;
+    var x=padL+k*bw, y=padT+plotH-h;
+    ctx.fillStyle=accent;ctx.globalAlpha=0.85;
+    ctx.fillRect(x+1,y,bw-2,h);
+    ctx.globalAlpha=1;
+    // 标签
+    if(n<=13){
+      var lbl=histLabels[k]||('b'+k);
+      ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim()||'#7c818b';
+      ctx.font='9px sans-serif';ctx.textAlign='center';
+      ctx.fillText(lbl,x+bw/2,H-6);
+    }
+  }
+}
+
+// ---- QPS 趋势（canvas 折线）----
+function drawSpark(){
+  var cv=$('sparkCanvas');var dpr=window.devicePixelRatio||1;
+  var W=cv.clientWidth||300,H=cv.clientHeight||90;
+  cv.width=W*dpr;cv.height=H*dpr;
+  var ctx=cv.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,W,H);
+  if(qpsHist.length<2){return;}
+  var maxV=1;for(var i=0;i<qpsHist.length;i++)maxV=Math.max(maxV,qpsHist[i]);
+  var pad=6,n=qpsHist.length;
+  var step=W/(n-1);
+  var accent=getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()||'#4a9eff';
+  ctx.strokeStyle=accent;ctx.lineWidth=2;ctx.beginPath();
+  for(var k=0;k<n;k++){
+    var x=k*step;
+    var y=H-pad-((qpsHist[k]/maxV)*(H-pad*2));
+    if(k===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+  // 填充
+  ctx.lineTo((n-1)*step,H-pad);ctx.lineTo(0,H-pad);ctx.closePath();
+  ctx.globalAlpha=0.12;ctx.fillStyle=accent;ctx.fill();ctx.globalAlpha=1;
+}
+
+// ---- 导出 ----
+var lastExport=null;
+function doExport(){
+  pluginExec('bench-export',{}).then(function(r){
+    lastExport=r;
+    $('exportText').textContent=JSON.stringify(r,null,2);
+    $('exportModal').classList.add('show');
+  }).catch(function(e){showToast(L('导出失败：')+e.message,'error')});
+}
+$('btnCopy').addEventListener('click',function(){
+  var txt=$('exportText').textContent;
+  pluginExec('bench-copy',{text:txt}).then(function(){
+    showToast(L('已复制到剪贴板'),'ok');
+  }).catch(function(e){showToast(L('复制失败：')+e.message,'error')});
+});
+$('btnDownload').addEventListener('click',function(){
+  if(!lastExport)return;
+  var blob=new Blob([JSON.stringify(lastExport,null,2)],{type:'application/json'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='api-loadtest-'+(lastExport.runId||Date.now())+'.json';
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(function(){URL.revokeObjectURL(a.href)},1000);
+});
+$('btnClose').addEventListener('click',function(){$('exportModal').classList.remove('show')});
+$('exportModal').addEventListener('click',function(e){if(e.target===$('exportModal'))$('exportModal').classList.remove('show')});
+
+// ---- Toast ----
+var toastTimer=null;
+function showToast(msg,kind){
+  var t=document.createElement('div');
+  t.className='p-toast '+(kind==='error'?'p-toast-error':(kind==='ok'?'p-toast-success':''));
+  t.textContent=msg;document.body.appendChild(t);
+  if(toastTimer)clearTimeout(toastTimer);
+  toastTimer=setTimeout(function(){if(t.parentNode)t.parentNode.removeChild(t)},2600);
+}
+
+// ---- 控件绑定 ----
+$('btnStart').addEventListener('click',startBench);
+$('btnStop').addEventListener('click',stopBench);
+$('btnExport').addEventListener('click',doExport);
+window.addEventListener('resize',function(){if(!running)return;});
+
+// ---- 初始化 ----
+window.addEventListener('message',function(e){
+  if(!e.data||!e.data.type)return;
+  if(e.data.type==='plugin:init'){
+    var input=null;
+    if(e.data.data&&e.data.data.text){try{input=JSON.parse(e.data.data.text)}catch(_){}}
+    if(input){
+      if(input.url)$('url').value=input.url;
+      if(input.method)$('method').value=input.method;
+    }
+  }else if(e.data.type==='plugin:theme'&&e.data.data){
+    if(e.data.data.theme)document.documentElement.setAttribute('data-theme',e.data.data.theme);
+    if(e.data.data.locale){
+      document.documentElement.setAttribute('lang',e.data.data.locale);
+      refreshL10n();
+    }
+  }
+});
+applyStaticL10n();
+setStatus('neutral',L('空闲'));
+</script>
+</body>
+</html>

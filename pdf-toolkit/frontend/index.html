@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>PDF 工具箱</title>
+<style>
+*{-webkit-box-sizing:border-box;box-sizing:border-box}
+.p-app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+.p-header{padding:var(--sp-3);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:var(--sp-2)}
+.p-header h1{font-size:var(--fs-lg);font-weight:var(--fw-semibold);margin:0}
+.p-body{flex:1;display:flex;overflow:hidden}
+.p-sidebar{width:200px;flex:0 0 200px;border-right:1px solid var(--border);overflow-y:auto}
+.p-main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.p-tabs{display:flex;gap:var(--sp-1);padding:var(--sp-2) var(--sp-3);border-bottom:1px solid var(--border);flex-wrap:wrap}
+.p-tab{padding:6px 12px;border-radius:var(--radius);cursor:pointer;font-size:var(--fs-sm);color:var(--text-secondary);border:1px solid transparent;transition:all 150ms}
+.p-tab:hover{background:var(--bg-secondary)}
+.p-tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.p-content{flex:1;overflow-y:auto;padding:var(--sp-3)}
+.p-section{margin-bottom:var(--sp-4)}
+.p-section h3{font-size:var(--fs-sm);font-weight:var(--fw-semibold);color:var(--text-muted);margin:0 0 var(--sp-2) 0;text-transform:uppercase;letter-spacing:.5px}
+.p-field{display:flex;flex-direction:column;gap:6px;margin-bottom:var(--sp-2)}
+.p-label{font-size:var(--fs-xs);font-weight:var(--fw-medium);color:var(--text-muted)}
+.p-input{padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-secondary);color:var(--text-primary);font-size:var(--fs-sm);outline:none;transition:border-color 150ms}
+.p-input:focus{border-color:var(--accent)}
+.p-input.wide{width:100%}
+.p-btn{padding:8px 16px;border:none;border-radius:var(--radius);background:var(--accent);color:#fff;font-size:var(--fs-sm);cursor:pointer;transition:opacity 150ms}
+.p-btn:hover{opacity:.9}
+.p-btn:disabled{opacity:.5;cursor:not-allowed}
+.p-btn.secondary{background:var(--bg-secondary);color:var(--text-primary)}
+.p-btn.danger{background:var(--danger)}
+.p-file-drop{border:2px dashed var(--border);border-radius:var(--radius-lg);padding:var(--sp-4);text-align:center;cursor:pointer;transition:all 150ms}
+.p-file-drop:hover,.p-file-drop.dragover{border-color:var(--accent);background:var(--bg-secondary)}
+.p-file-drop .icon{font-size:24px;margin-bottom:var(--sp-2)}
+.p-file-list{margin-top:var(--sp-2)}
+.p-file-item{display:flex;align-items:center;gap:var(--sp-2);padding:6px 8px;border-radius:var(--radius);background:var(--bg-secondary);margin-bottom:4px;font-size:var(--fs-sm)}
+.p-file-item .name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.p-file-item .remove{cursor:pointer;color:var(--text-muted);padding:2px 6px}
+.p-file-item .remove:hover{color:var(--danger)}
+.p-result{padding:var(--sp-3);background:var(--bg-secondary);border-radius:var(--radius);margin-top:var(--sp-2)}
+.p-result pre{font-family:var(--font-mono);font-size:var(--fs-xs);white-space:pre-wrap;word-break:break-all;margin:0;color:var(--text-primary)}
+.p-status{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-2);border-radius:var(--radius);font-size:var(--fs-sm)}
+.p-status.success{background:rgba(34,197,94,.1);color:var(--success)}
+.p-status.error{background:rgba(239,68,68,.1);color:var(--danger)}
+.p-status.info{background:rgba(74,158,255,.1);color:var(--accent)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2)}
+.p-hint{font-size:var(--fs-xs);color:var(--text-placeholder);margin-top:4px}
+</style>
+</head>
+<body>
+<div class="p-app">
+  <div class="p-header">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+    <h1>PDF 工具箱</h1>
+  </div>
+  <div class="p-body">
+    <div class="p-sidebar">
+      <div style="padding:var(--sp-2)">
+        <div class="p-tab active" data-tab="merge" style="width:100%;text-align:left;margin-bottom:4px">合并 PDF</div>
+        <div class="p-tab" data-tab="split" style="width:100%;text-align:left;margin-bottom:4px">拆分 PDF</div>
+        <div class="p-tab" data-tab="compress" style="width:100%;text-align:left;margin-bottom:4px">压缩 PDF</div>
+        <div class="p-tab" data-tab="watermark" style="width:100%;text-align:left;margin-bottom:4px">添加水印</div>
+        <div class="p-tab" data-tab="extract" style="width:100%;text-align:left;margin-bottom:4px">提取图片</div>
+        <div class="p-tab" data-tab="info" style="width:100%;text-align:left">PDF 信息</div>
+      </div>
+    </div>
+    <div class="p-main">
+      <div id="tab-merge" class="tab-content p-content">
+        <div class="p-section">
+          <h3>合并 PDF</h3>
+          <div class="p-file-drop" id="merge-drop">
+            <div class="icon">📄</div>
+            <div>点击选择或拖拽 PDF 文件</div>
+            <div class="p-hint">支持多选，可一次选择多个 PDF（至少 2 个）</div>
+          </div>
+          <div class="p-file-list" id="merge-files"></div>
+          <div class="p-field" style="margin-top:var(--sp-2)">
+            <label class="p-label">输出目录</label>
+            <div style="display:flex;gap:8px">
+              <input type="text" class="p-input wide" id="merge-output" placeholder="输出目录...">
+              <button class="p-btn secondary" id="merge-output-btn">选择目录</button>
+            </div>
+            <div class="p-hint">合并后的文件将自动命名为 合并文件_时间.pdf</div>
+          </div>
+          <button class="p-btn" id="merge-btn">开始合并</button>
+        </div>
+        <div id="merge-result" class="p-result" style="display:none"></div>
+      </div>
+      <div id="tab-split" class="tab-content p-content" style="display:none">
+        <div class="p-section">
+          <h3>拆分 PDF</h3>
+          <div class="p-field">
+            <label class="p-label">输入文件</label>
+            <div style="display:flex;gap:8px">
+              <input type="text" class="p-input wide" id="split-input" placeholder="PDF 文件路径...">
+              <button class="p-btn secondary" id="split-input-btn">选择文件</button>
+            </div>
+          </div>
+          <div class="p-field">
+            <label class="p-label">输出目录</label>
+            <div style="display:flex;gap:8px">
+              <input type="text" class="p-input wide" id="split-output" placeholder="输出目录...">
+              <button class="p-btn secondary" id="split-output-btn">选择目录</button>
+            </div>
+          </div>
+          <div class="p-field">
+            <label class="p-label">页码范围</label>
+            <input type="text" class="p-input wide" id="split-pages" placeholder="例如: 1-3,5,8-10 或 all">
+            <div class="p-hint">输入 all 表示拆分为单页 PDF</div>
+          </div>
+          <button class="p-btn" id="split-btn">开始拆分</button>
+        </div>
+        <div id="split-result" class="p-result" style="display:none"></div>
+      </div>
+      <div id="tab-compress" class="tab-content p-content" style="display:none">
+        <div class="p-section">
+          <h3>压缩 PDF</h3>
+          <div class="p-field">
+            <label class="p-label">输入文件</label>
+            <div style="display:flex;gap:8px">
+              <input type="text" class="p-input wide" id="compress-input" placeholder="PDF 文件路径...">
+              <button class="p-btn secondary" id="compress-input-btn">选择文件</button>
+            </div>
+          </div>
+          <div class="p-field">
+            <label class="p-label">输出目录</label>
+            <div style="display:flex;gap:8px">
+              <input type="text" class="p-input wide" id="compress-output" placeholder="输出目录...">
+              <button class="p-btn secondary" id="compress-output-btn">选择目录</button>
+            </div>
+            <div class="p-hint">压缩后的文件将自动命名为 compressed.pdf</div>
+          </div>
+          <button class="p-btn" id="compress-btn">开始压缩</button>
+        </div>
+        <div id="compress-result" class="p-result" style="display:none"></div>
+      </div>
+      <div id="tab-watermark" class="tab-content p-content" style="display:none">
+        <div class="p-section">
+          <h3>添加水印</h3>
+          <div class="p-field">
+            <label class="p-label">输入文件</label>
+            <div style="display:flex;gap:8px">
+              <input type="text" class="p-input wide" id="watermark-input" placeholder="PDF 文件路径...">
+              <button class="p-btn secondary" id="watermark-input-btn">选择文件</button>
+            </div>
+          </div>
+          <div class="p-field">
+            <label class="p-label">输出目录</label>
+            <div style="display:flex;gap:8px">
+              <input type="text" class="p-input wide" id="watermark-output" placeholder="输出目录...">
+              <button class="p-btn secondary" id="watermark-output-btn">选择目录</button>
+            </div>
+            <div class="p-hint">水印后的文件将自动命名为 watermarked.pdf</div>
+          </div>
+          <div class="p-field">
+            <label class="p-label">水印文字</label>
+            <input type="text" class="p-input wide" id="watermark-text" placeholder="水印内容..." value="水印">
+          </div>
+          <div class="grid2">
+            <div class="p-field">
+              <label class="p-label">透明度 (0-1)</label>
+              <input type="number" class="p-input" id="watermark-opacity" step="0.1" min="0" max="1" value="0.3">
+            </div>
+            <div class="p-field">
+              <label class="p-label">字体大小</label>
+              <input type="number" class="p-input" id="watermark-size" value="48">
+            </div>
+          </div>
+          <button class="p-btn" id="watermark-btn">添加水印</button>
+        </div>
+        <div id="watermark-result" class="p-result" style="display:none"></div>
+      </div>
+      <div id="tab-extract" class="tab-content p-content" style="display:none">
+        <div class="p-section">
+          <h3>提取图片</h3>
+          <div class="p-field">
+            <label class="p-label">输入文件</label>
+            <div style="display:flex;gap:8px">
+              <input type="text" class="p-input wide" id="extract-input" placeholder="PDF 文件路径...">
+              <button class="p-btn secondary" id="extract-input-btn">选择文件</button>
+            </div>
+          </div>
+          <div class="p-field">
+            <label class="p-label">输出目录</label>
+            <div style="display:flex;gap:8px">
+              <input type="text" class="p-input wide" id="extract-output" placeholder="输出目录...">
+              <button class="p-btn secondary" id="extract-output-btn">选择目录</button>
+            </div>
+          </div>
+          <button class="p-btn" id="extract-btn">提取图片</button>
+        </div>
+        <div id="extract-result" class="p-result" style="display:none"></div>
+      </div>
+      <div id="tab-info" class="tab-content p-content" style="display:none">
+        <div class="p-section">
+          <h3>PDF 信息</h3>
+          <div class="p-field">
+            <label class="p-label">PDF 文件</label>
+            <div style="display:flex;gap:8px">
+              <input type="text" class="p-input wide" id="info-input" placeholder="PDF 文件路径...">
+              <button class="p-btn secondary" id="info-input-btn">选择文件</button>
+            </div>
+          </div>
+          <button class="p-btn" id="info-btn">获取信息</button>
+        </div>
+        <div id="info-result" class="p-result" style="display:none">
+          <pre id="info-content"></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==================== 页面 i18n（样板） ====================
+// 宿主已注入 <html lang="locale">，并通过 plugin:theme{theme,locale} 消息热更新语言。
+// 本实现自包含（不依赖宿主版本）；主程序重建后会注入 window.QD.i18n 标准版，
+// 届时可将下方 L 替换为 QD.i18n({...}) — 语言包结构与这里一致。
+const L10N = {
+  'en-US': {
+    'PDF 工具箱': 'PDF Toolkit',
+    '合并 PDF': 'Merge PDFs',
+    '拆分 PDF': 'Split PDF',
+    '压缩 PDF': 'Compress PDF',
+    '添加水印': 'Add Watermark',
+    '提取图片': 'Extract Images',
+    'PDF 信息': 'PDF Info',
+    '输入文件': 'Input File',
+    '输出目录': 'Output Directory',
+    '页码范围': 'Page Range',
+    '水印文字': 'Watermark Text',
+    '透明度 (0-1)': 'Opacity (0-1)',
+    '字体大小': 'Font Size',
+    '图片格式': 'Image Format',
+    '分辨率 (DPI)': 'Resolution (DPI)',
+    'PDF 文件': 'PDF File',
+    '选择文件': 'Select File',
+    '选择目录': 'Select Folder',
+    '开始合并': 'Merge',
+    '开始拆分': 'Split',
+    '开始压缩': 'Compress',
+    '获取信息': 'Get Info',
+    '点击选择或拖拽 PDF 文件': 'Click or drag PDF files here',
+    '支持多选，可一次选择多个 PDF（至少 2 个）': 'Multi-select supported (at least 2 files)',
+    '至少需要 2 个文件': 'At least 2 files required',
+    '合并后的文件将自动命名为 合并文件_时间.pdf': 'Output is auto-named in the selected folder',
+    '压缩后的文件将自动命名为 compressed.pdf': 'Output is auto-named compressed.pdf',
+    '水印后的文件将自动命名为 watermarked.pdf': 'Output is auto-named watermarked.pdf',
+    '输入 all 表示拆分为单页 PDF': 'Enter "all" to split into single-page PDFs',
+    'PDF 文件路径...': 'PDF file path...',
+    '输出目录...': 'Output directory...',
+    '输出路径...': 'Output path...',
+    '例如: 1-3,5,8-10 或 all': 'e.g. 1-3,5,8-10 or all',
+    '水印内容...': 'Watermark text...',
+    '水印': 'Watermark',
+    '请至少选择 2 个 PDF 文件': 'Please select at least 2 PDF files',
+    '请选择输出目录': 'Please choose an output directory',
+    '请填写输入和输出目录': 'Please fill in the input and output directory',
+    '请输入 PDF 文件路径': 'Please enter a PDF file path',
+    '正在合并 PDF': 'Merging PDFs...',
+    '正在拆分 PDF': 'Splitting PDF...',
+    '正在压缩 PDF': 'Compressing PDF...',
+    '正在添加水印': 'Adding watermark...',
+    '正在提取图片': 'Extracting images...',
+    '正在获取信息...': 'Fetching PDF info...',
+    '（已在后台执行，可切换标签继续操作）': ' (running in background, you can switch tabs)',
+    '成功合并 {n} 个 PDF': 'Successfully merged {n} PDFs',
+    '成功拆分 {n} 个文件': 'Split into {n} files',
+    '压缩完成，节省 {s}': 'Compressed, saved {s}',
+    '水印添加成功': 'Watermark added successfully',
+    '成功提取 {n} 张图片': 'Extracted {n} images',
+    '任务状态查询失败': 'Failed to query task status',
+    '任务超时（超过 {n} 分钟），请检查 PDF 文件是否过大': 'Task timed out (over {n} minutes). Check if the PDF is too large',
+    '任务处理失败': 'Task failed',
+  }
+};
+
+// L(key, params): 按 <html lang> 取翻译，params 以 {name} 占位替换
+function L(key, params) {
+  const loc = (document.documentElement.getAttribute('lang') || 'zh-CN');
+  const map = L10N[loc] || L10N[loc.split('-')[0]] || {};
+  let s = (map && map[key] !== undefined) ? map[key] : key;
+  if (params) for (const k in params) s = s.replace('{' + k + '}', String(params[k]));
+  return s;
+}
+
+// 静态文本应用：用原始文本(缓存于 data-orig)查翻译，避免重复翻译已替换文本
+function applyStaticL10n() {
+  document.querySelectorAll('h1, h3, .p-tab, .p-label, .p-btn, .p-hint, .p-file-drop div').forEach((el) => {
+    let src = el.getAttribute('data-orig');
+    if (!src) { src = el.textContent.trim(); el.setAttribute('data-orig', src); }
+    if (src) el.textContent = L(src);
+  });
+  document.querySelectorAll('input[placeholder]').forEach((el) => {
+    let ph = el.getAttribute('data-orig-ph');
+    if (!ph) { ph = el.getAttribute('placeholder') || ''; el.setAttribute('data-orig-ph', ph); }
+    if (ph) el.setAttribute('placeholder', L(ph));
+  });
+  const wt = document.getElementById('watermark-text');
+  if (wt && wt.getAttribute('value') === '水印' && L('水印') !== '水印') wt.value = 'Watermark';
+}
+
+// 宿主切语言（plugin:theme 消息含 locale）→ 热更新 lang + 重渲染静态文本
+window.addEventListener('message', (e) => {
+  const d = e.data;
+  if (d && d.type === 'plugin:theme' && d.data && d.data.locale) {
+    document.documentElement.setAttribute('lang', d.data.locale);
+    applyStaticL10n();
+  }
+});
+applyStaticL10n();
+
+// Bridge to host
+let _msgId = 0;
+const bridge = {
+  send(cmd, input = {}) {
+    return new Promise((resolve, reject) => {
+      const id = ++_msgId;
+      window.parent.postMessage({
+        type: 'plugin:execute',
+        id: id,
+        command: cmd,
+        input: input
+      }, '*');
+
+      const handler = (e) => {
+        if (e.data?.type === 'plugin:result' && e.data.id === id) {
+          window.removeEventListener('message', handler);
+          if (e.data.error) {
+            reject(new Error(e.data.error));
+          } else {
+            resolve(e.data.data);
+          }
+        }
+      };
+      window.addEventListener('message', handler);
+
+      setTimeout(() => {
+        window.removeEventListener('message', handler);
+        reject(new Error('Timeout'));
+      }, 30000);
+    });
+  },
+
+  async filePicker(options = {}) {
+    const r = await this.send('host.dialog.open', {
+      title: options.title || '选择 PDF 文件',
+      multiple: options.multiple || false,
+      filters: [{ name: 'PDF 文件', pattern: '*.pdf' }]
+    });
+    if (r?.canceled) return [];
+    if (r?.multiple) return r.paths || [];
+    return [r?.path].filter(Boolean);
+  },
+
+  async savePicker(options = {}) {
+    const r = await this.send('host.dialog.save', {
+      title: options.title || '保存文件',
+      defaultName: options.defaultName || '',
+      filters: options.filters || [{ name: 'PDF 文件', pattern: '*.pdf' }]
+    });
+    return r?.canceled ? null : (r?.path || null);
+  },
+
+  async folderPicker(title = '选择输出目录') {
+    // 调用插件命令 pickFolder，弹出「目录」选择框（区别于文件选择）
+    const r = await this.send('pickFolder', { title });
+    return r?.canceled ? null : (r?.path || null);
+  },
+
+  // 长任务轮询：后端 pdfcpu 操作已改为异步（立即返回 taskId，后台 goroutine 执行）。
+  // 这里周期查询 task-status，直到 done 返回结果 / error 抛出 / 超时。
+  async waitTask(taskId, { interval = 800, timeout = 900000 } = {}) {
+    const deadline = Date.now() + timeout;
+    while (Date.now() < deadline) {
+      const st = await this.send('task-status', { taskId });
+      if (!st || !st.status) {
+        throw new Error(st?.error || L('任务状态查询失败'));
+      }
+      if (st.status === 'done') return st.result || { ok: true };
+      if (st.status === 'error') throw new Error(st.error || L('任务处理失败'));
+      await new Promise((r) => setTimeout(r, interval));
+    }
+    throw new Error(L('任务超时（超过 {n} 分钟），请检查 PDF 文件是否过大', { n: Math.round(timeout / 60000) }));
+  }
+};
+
+// UI Controller
+class PDFToolkit {
+  constructor() {
+    this.currentTab = 'merge';
+    this.mergeFiles = [];
+    this.init();
+  }
+  
+  init() {
+    this.bindTabs();
+    this.bindMerge();
+    this.bindSplit();
+    this.bindCompress();
+    this.bindWatermark();
+    this.bindExtract();
+    this.bindInfo();
+  }
+  
+  bindTabs() {
+    document.querySelectorAll('.p-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        const tabName = tab.dataset.tab;
+        this.switchTab(tabName);
+      });
+    });
+  }
+  
+  switchTab(tabName) {
+    this.currentTab = tabName;
+    document.querySelectorAll('.p-tab').forEach(t => t.classList.remove('active'));
+    document.querySelector(`.p-tab[data-tab="${tabName}"]`).classList.add('active');
+    document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+    document.getElementById(`tab-${tabName}`).style.display = 'block';
+  }
+  
+  async bindMerge() {
+    const drop = document.getElementById('merge-drop');
+    const filesList = document.getElementById('merge-files');
+    const output = document.getElementById('merge-output');
+    const btn = document.getElementById('merge-btn');
+    const result = document.getElementById('merge-result');
+
+    document.getElementById('merge-output-btn').addEventListener('click', async () => {
+      const path = await bridge.folderPicker('选择合并输出目录');
+      if (path) output.value = path;
+    });
+
+    drop.addEventListener('click', async () => {
+      const paths = await bridge.filePicker({ multiple: true });
+      if (paths && paths.length > 0) {
+        this.mergeFiles = [...this.mergeFiles, ...paths];
+        this.renderMergeFiles();
+      }
+    });
+    
+    // Drag and drop
+    drop.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      drop.classList.add('dragover');
+    });
+    drop.addEventListener('dragleave', () => {
+      drop.classList.remove('dragover');
+    });
+    drop.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      drop.classList.remove('dragover');
+      const files = Array.from(e.dataTransfer.files);
+      const paths = files.map(f => f.path || f.name);
+      this.mergeFiles = [...this.mergeFiles, ...paths];
+      this.renderMergeFiles();
+    });
+    
+      btn.addEventListener('click', async () => {
+        if (this.mergeFiles.length < 2) {
+          this.showResult(result, 'error', L('请至少选择 2 个 PDF 文件'));
+          return;
+        }
+        if (!output.value) {
+          this.showResult(result, 'error', L('请选择输出目录'));
+          return;
+        }
+        
+        btn.disabled = true;
+        this.showResult(result, 'info', L('正在合并 PDF'));
+        
+        try {
+          const res = await this.runPdfTask(result, '正在合并 PDF', 'merge', {
+            files: this.mergeFiles,
+            outputDir: output.value
+          });
+          this.showResult(result, 'success', L('成功合并 {n} 个 PDF', { n: res.count }) + (res.output ? ' → ' + res.output : ''));
+        } catch (err) {
+          this.showResult(result, 'error', err.message);
+        } finally {
+          btn.disabled = false;
+        }
+      });
+  }
+  
+  renderMergeFiles() {
+    const container = document.getElementById('merge-files');
+    container.innerHTML = this.mergeFiles.map((f, i) => `
+      <div class="p-file-item">
+        <span class="name">${f}</span>
+        <span class="remove" data-i="${i}">×</span>
+      </div>
+    `).join('');
+    
+    container.querySelectorAll('.remove').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const i = parseInt(btn.dataset.i);
+        this.mergeFiles.splice(i, 1);
+        this.renderMergeFiles();
+      });
+    });
+  }
+  
+  // 通用长任务执行：提交任务 → 若后端返回 async+taskId 则轮询到完成，返回最终结果。
+  async runPdfTask(resultEl, statusMsg, cmd, input) {
+    this.showResult(resultEl, 'info', L(statusMsg));
+    const res = await bridge.send(cmd, input);
+    if (res && res.async && res.taskId) {
+      this.showResult(resultEl, 'info', L(statusMsg) + L('（已在后台执行，可切换标签继续操作）'));
+      return await bridge.waitTask(res.taskId);
+    }
+    return res;
+  }
+
+  async bindSplit() {
+    const btn = document.getElementById('split-btn');
+    const result = document.getElementById('split-result');
+    const inputField = document.getElementById('split-input');
+    const outputField = document.getElementById('split-output');
+
+    document.getElementById('split-input-btn').addEventListener('click', async () => {
+      const paths = await bridge.filePicker();
+      if (paths && paths.length > 0) inputField.value = paths[0];
+    });
+
+    document.getElementById('split-output-btn').addEventListener('click', async () => {
+      const path = await bridge.folderPicker();
+      if (path) outputField.value = path;
+    });
+
+    btn.addEventListener('click', async () => {
+      const input = inputField.value;
+      const outputDir = outputField.value;
+      const pages = document.getElementById('split-pages').value;
+
+      if (!input || !outputDir) {
+        this.showResult(result, 'error', L('请填写输入和输出目录'));
+        return;
+      }
+      
+      btn.disabled = true;
+      this.showResult(result, 'info', L('正在拆分 PDF'));
+      
+      try {
+        const res = await this.runPdfTask(result, '正在拆分 PDF', 'split', {
+          input,
+          outputDir,
+          pages: pages === 'all' ? ['all'] : pages.split(',').map(p => p.trim())
+        });
+        this.showResult(result, 'success', L('成功拆分 {n} 个文件', { n: res.count }));
+      } catch (err) {
+        this.showResult(result, 'error', err.message);
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  }
+  
+  async bindCompress() {
+    const btn = document.getElementById('compress-btn');
+    const result = document.getElementById('compress-result');
+    const inputField = document.getElementById('compress-input');
+    const outputField = document.getElementById('compress-output');
+
+    document.getElementById('compress-input-btn').addEventListener('click', async () => {
+      const paths = await bridge.filePicker();
+      if (paths && paths.length > 0) inputField.value = paths[0];
+    });
+
+    document.getElementById('compress-output-btn').addEventListener('click', async () => {
+      const path = await bridge.folderPicker('选择压缩输出目录');
+      if (path) outputField.value = path;
+    });
+
+    btn.addEventListener('click', async () => {
+      const input = inputField.value;
+      const output = outputField.value;
+
+      if (!input || !output) {
+        this.showResult(result, 'error', L('请填写输入和输出目录'));
+        return;
+      }
+      
+      btn.disabled = true;
+      this.showResult(result, 'info', L('正在压缩 PDF'));
+      
+      try {
+        const res = await this.runPdfTask(result, '正在压缩 PDF', 'compress', { input, outputDir: output });
+        this.showResult(result, 'success', L('压缩完成，节省 {s}', { s: res.saved }));
+      } catch (err) {
+        this.showResult(result, 'error', err.message);
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  }
+  
+  async bindWatermark() {
+    const btn = document.getElementById('watermark-btn');
+    const result = document.getElementById('watermark-result');
+    const inputField = document.getElementById('watermark-input');
+    const outputField = document.getElementById('watermark-output');
+
+    document.getElementById('watermark-input-btn').addEventListener('click', async () => {
+      const paths = await bridge.filePicker();
+      if (paths && paths.length > 0) inputField.value = paths[0];
+    });
+
+    document.getElementById('watermark-output-btn').addEventListener('click', async () => {
+      const path = await bridge.folderPicker('选择水印输出目录');
+      if (path) outputField.value = path;
+    });
+
+    btn.addEventListener('click', async () => {
+      const input = inputField.value;
+      const output = outputField.value;
+      const text = document.getElementById('watermark-text').value;
+      const opacity = parseFloat(document.getElementById('watermark-opacity').value);
+      const size = parseInt(document.getElementById('watermark-size').value);
+
+      if (!input || !output) {
+        this.showResult(result, 'error', L('请填写输入和输出目录'));
+        return;
+      }
+      
+      btn.disabled = true;
+      this.showResult(result, 'info', L('正在添加水印'));
+      
+      try {
+        const res = await this.runPdfTask(result, '正在添加水印', 'watermark', { input, outputDir: output, text, opacity, size });
+        this.showResult(result, 'success', L('水印添加成功') + (res.output ? ' → ' + res.output : ''));
+      } catch (err) {
+        this.showResult(result, 'error', err.message);
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  }
+  
+  async bindExtract() {
+    const btn = document.getElementById('extract-btn');
+    const result = document.getElementById('extract-result');
+    const inputField = document.getElementById('extract-input');
+    const outputField = document.getElementById('extract-output');
+
+    document.getElementById('extract-input-btn').addEventListener('click', async () => {
+      const paths = await bridge.filePicker();
+      if (paths && paths.length > 0) inputField.value = paths[0];
+    });
+
+    document.getElementById('extract-output-btn').addEventListener('click', async () => {
+      const path = await bridge.folderPicker();
+      if (path) outputField.value = path;
+    });
+
+    btn.addEventListener('click', async () => {
+      const input = inputField.value;
+      const output = outputField.value;
+
+      if (!input || !output) {
+        this.showResult(result, 'error', L('请填写输入和输出目录'));
+        return;
+      }
+      
+      btn.disabled = true;
+      this.showResult(result, 'info', L('正在提取图片'));
+      
+      try {
+        const res = await this.runPdfTask(result, '正在提取图片', 'extract-img', { input, outputDir: output });
+        this.showResult(result, 'success', L('成功提取 {n} 张图片', { n: res.count }));
+      } catch (err) {
+        this.showResult(result, 'error', err.message);
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  }
+  
+  async bindInfo() {
+    const btn = document.getElementById('info-btn');
+    const result = document.getElementById('info-result');
+    const inputField = document.getElementById('info-input');
+    const content = document.getElementById('info-content');
+
+    document.getElementById('info-input-btn').addEventListener('click', async () => {
+      const paths = await bridge.filePicker();
+      if (paths && paths.length > 0) inputField.value = paths[0];
+    });
+
+    btn.addEventListener('click', async () => {
+      const input = inputField.value;
+      if (!input) {
+        this.showResult(result, 'error', L('请输入 PDF 文件路径'));
+        return;
+      }
+      
+      btn.disabled = true;
+      this.showResult(result, 'info', L('正在获取信息...'));
+      
+      try {
+        const res = await bridge.send('info', { input });
+        content.textContent = JSON.stringify(res.info, null, 2);
+        result.style.display = 'block';
+        result.className = 'p-result';
+      } catch (err) {
+        this.showResult(result, 'error', err.message);
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  }
+  
+  showResult(el, type, msg) {
+    el.style.display = 'block';
+    el.className = `p-result p-status ${type}`;
+    el.innerHTML = msg;
+  }
+}
+
+// Init
+window.addEventListener('DOMContentLoaded', () => {
+  new PDFToolkit();
+});
+</script>
+</body>
+</html>

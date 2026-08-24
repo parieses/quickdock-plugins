@@ -1,0 +1,87 @@
+{
+  "id": "io.github.parieses.color-converter",
+  "name": "颜色工具",
+  "version": "0.3.1",
+  "description": "颜色格式互转（HEX / RGB / HSL）+ 屏幕取色，支持常见英文色名识别",
+  "author": "QuickDock",
+  "category": "开发者日常",
+  "platforms": [
+    "windows"
+  ],
+  "icon": "icon.svg",
+  "backend": {
+    "runtime": "native",
+    "entry": "color-converter",
+    "args": []
+  },
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 520,
+    "height": 620
+  },
+  "commands": [
+    {
+      "id": "color-convert",
+      "title": "颜色转换",
+      "keywords": [
+        "color",
+        "colour",
+        "hex",
+        "rgb",
+        "hsl",
+        "颜色",
+        "色值"
+      ],
+      "aliases": [
+        "颜色转换",
+        "色值转换",
+        "yszh"
+      ],
+      "prefix": "/color",
+      "acceptsInput": true,
+      "matchPattern": "^(#[0-9a-fA-F]{3,8}|rgb[a]?\\([^)]*\\)|hsl[a]?\\([^)]*\\)|[a-zA-Z]+)$",
+      "title_i18n": {
+        "zh-CN": "颜色转换",
+        "en-US": "Color Converter"
+      }
+    },
+    {
+      "id": "screen-pick",
+      "title": "屏幕取色",
+      "keywords": [
+        "pick",
+        "picker",
+        "screen",
+        "取色",
+        "吸管",
+        "拾色",
+        "颜色"
+      ],
+      "aliases": [
+        "屏幕取色",
+        "取色器",
+        "quse"
+      ],
+      "title_i18n": {
+        "zh-CN": "屏幕取色",
+        "en-US": "Screen Color Picker"
+      }
+    }
+  ],
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "permissions": {
+    "clipboard": true
+  },
+  "name_i18n": {
+    "zh-CN": "颜色工具",
+    "en-US": "Color Tools"
+  },
+  "description_i18n": {
+    "zh-CN": "颜色格式互转（HEX / RGB / HSL）+ 屏幕取色，支持常见英文色名识别",
+    "en-US": "Convert between color formats (HEX/RGB/HSL) and pick colors from the screen, with common English color name recognition."
+  }
+}

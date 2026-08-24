@@ -1,0 +1,68 @@
+{
+  "id": "io.github.parieses.pdf-toolkit",
+  "name": "PDF 工具箱",
+  "name_i18n": {
+    "zh-CN": "PDF 工具箱",
+    "en-US": "PDF Toolkit"
+  },
+  "version": "0.1.4",
+  "description": "PDF 处理工具箱：合并/拆分/压缩/加水印/提取图片，无需安装 Adobe Acrobat",
+  "description_i18n": {
+    "zh-CN": "PDF 处理工具箱：合并/拆分/压缩/加水印/提取图片，无需安装 Adobe Acrobat",
+    "en-US": "PDF toolkit: merge/split/compress/watermark/extract images — no Adobe Acrobat required"
+  },
+  "author": "QuickDock",
+  "icon": "icon.svg",
+  "category": "办公效率",
+  "platforms": [
+    "windows",
+    "darwin",
+    "linux"
+  ],
+  "backend": {
+    "runtime": "native",
+    "entry": "pdf-toolkit",
+    "args": []
+  },
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 900,
+    "height": 650
+  },
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "permissions": {
+    "filesystem": true,
+    "clipboard": true
+  },
+  "commands": [
+    {
+      "id": "pdf-open",
+      "title": "打开 PDF 工具箱",
+      "title_i18n": {
+        "zh-CN": "打开 PDF 工具箱",
+        "en-US": "Open PDF Toolkit"
+      },
+      "keywords": [
+        "pdf",
+        "PDF",
+        "合并",
+        "拆分",
+        "压缩",
+        "水印",
+        "图片",
+        "工具",
+        "处理"
+      ],
+      "aliases": [
+        "PDF 处理",
+        "PDF 工具箱",
+        "PDF 合并",
+        "PDF 拆分"
+      ]
+    }
+  ]
+}

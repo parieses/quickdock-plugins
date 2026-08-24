@@ -196,8 +196,10 @@ def build_index(plugins: list) -> dict:
         items.append({
             "id": mf["id"],
             "name": mf.get("name", mf["id"]),
+            "name_i18n": mf.get("name_i18n"),
             "version": mf.get("version", "0.0.0"),
             "description": mf.get("description", ""),
+            "description_i18n": mf.get("description_i18n"),
             "author": mf.get("author", ""),
             "category": mf.get("category", ""),
             "icon": icon_url,

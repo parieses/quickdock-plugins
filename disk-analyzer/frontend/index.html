@@ -3,7 +3,6 @@
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>磁盘分析器</title>
-<link rel="stylesheet" href="../common.css">
 <style>
 *{-webkit-box-sizing:border-box;box-sizing:border-box}
 html,body{margin:0;height:100%;background:var(--bg-primary);color:var(--text-primary);font-family:var(--font-sans,system-ui,sans-serif)}
@@ -75,44 +74,101 @@ html,body{margin:0;height:100%;background:var(--bg-primary);color:var(--text-pri
 <body>
 <div class="p-app">
   <div class="p-head">
-    <span class="p-head-title">📊 磁盘分析器</span>
+    <span class="p-head-title" data-orig="📊 磁盘分析器">📊 磁盘分析器</span>
     <span class="p-spacer"></span>
-    <label style="font-size:12px;color:var(--text-muted)">深度</label>
-    <select class="p-select" id="selDepth" title="后台全量扫描的深度（层数越多树越深、扫描越久）">
-      <option value="1">1 层</option>
-      <option value="2">2 层</option>
-      <option value="3" selected>3 层</option>
-      <option value="4">4 层</option>
+    <label style="font-size:12px;color:var(--text-muted)" data-orig="深度">深度</label>
+    <select class="p-select" id="selDepth" data-orig-title="后台全量扫描的深度（层数越多树越深、扫描越久）" title="后台全量扫描的深度（层数越多树越深、扫描越久）">
+      <option value="1" data-orig="1 层">1 层</option>
+      <option value="2" data-orig="2 层">2 层</option>
+      <option value="3" selected data-orig="3 层">3 层</option>
+      <option value="4" data-orig="4 层">4 层</option>
     </select>
-    <button class="p-btn" id="btnView" title="切换列表 / 方块图（SpaceSniffer 模式）">🔲 方块图</button>
-    <button class="p-btn" id="btnDrives" title="选择要扫描的盘符">⚙ 盘符</button>
-    <button class="p-btn" id="btnStop" title="停止当前扫描" style="display:none">⏹ 停止</button>
-    <button class="p-btn p-btn-primary" id="btnRoot">🏠 此电脑</button>
+    <button class="p-btn" id="btnView" data-orig="🔲 方块图" data-orig-title="切换列表 / 方块图（SpaceSniffer 模式）" title="切换列表 / 方块图（SpaceSniffer 模式）">🔲 方块图</button>
+    <button class="p-btn" id="btnDrives" data-orig="⚙ 盘符" data-orig-title="选择要扫描的盘符" title="选择要扫描的盘符">⚙ 盘符</button>
+    <button class="p-btn" id="btnStop" data-orig="⏹ 停止" data-orig-title="停止当前扫描" title="停止当前扫描" style="display:none">⏹ 停止</button>
+    <button class="p-btn p-btn-primary" id="btnRoot" data-orig="🏠 此电脑">🏠 此电脑</button>
   </div>
   <div class="p-drives" id="drivePanel">
-    <div class="p-drive-hint">勾选要显示/扫描的盘符（取消勾选的盘符不会出现在下方列表中）：</div>
+    <div class="p-drive-hint" data-orig="勾选要显示/扫描的盘符（取消勾选的盘符不会出现在下方列表中）：">勾选要显示/扫描的盘符（取消勾选的盘符不会出现在下方列表中）：</div>
   </div>
   <div class="p-progress" id="progress">
-    <span class="p-progress-text" id="progText">扫描中...</span>
+    <span class="p-progress-text" id="progText" data-orig="扫描中...">扫描中...</span>
     <div class="p-progress-bar"><i id="progBar"></i></div>
   </div>
   <div class="p-stats" id="stats">
-    <span><span class="p-stat-label">总空间:</span> <span class="p-stat-value" id="statTotal">-</span></span>
-    <span><span class="p-stat-label">已用:</span> <span class="p-stat-value" id="statUsed">-</span></span>
-    <span><span class="p-stat-label">可用:</span> <span class="p-stat-value" id="statFree">-</span></span>
-    <span><span class="p-stat-label">使用率:</span> <span class="p-stat-value" id="statUsage">-</span></span>
-    <span><span class="p-stat-label">耗时:</span> <span class="p-stat-value" id="statElapsed">-</span></span>
+    <span><span class="p-stat-label" data-orig="总空间:">总空间:</span> <span class="p-stat-value" id="statTotal">-</span></span>
+    <span><span class="p-stat-label" data-orig="已用:">已用:</span> <span class="p-stat-value" id="statUsed">-</span></span>
+    <span><span class="p-stat-label" data-orig="可用:">可用:</span> <span class="p-stat-value" id="statFree">-</span></span>
+    <span><span class="p-stat-label" data-orig="使用率:">使用率:</span> <span class="p-stat-value" id="statUsage">-</span></span>
+    <span><span class="p-stat-label" data-orig="耗时:">耗时:</span> <span class="p-stat-value" id="statElapsed">-</span></span>
   </div>
   <div class="p-warn" id="warn"></div>
   <div class="p-crumb" id="crumb"></div>
   <div class="p-content">
-    <div class="p-tree" id="tree"><div class="p-loading">点击"此电脑"选择盘符开始扫描</div></div>
+    <div class="p-tree" id="tree"><div class="p-loading" data-orig='点击"此电脑"选择盘符开始扫描'>点击"此电脑"选择盘符开始扫描</div></div>
     <div class="p-treemap-wrap" id="mapWrap"><canvas id="treemap"></canvas><div class="p-tooltip" id="tooltip"></div></div>
     <div class="p-toast" id="toast"></div>
   </div>
 </div>
 <script>
 var SEL_KEY='qdDiskAnalyzerDrives';
+// ===== 自包含页面 i18n（样板同 pdf-toolkit，key=中文原文，经 <html lang> 判定语言）=====
+var L10N={'en-US':{
+  '磁盘分析器':'Disk Analyzer',
+  '📊 磁盘分析器':'📊 Disk Analyzer',
+  '深度':'Depth',
+  '1 层':'1 level','2 层':'2 levels','3 层':'3 levels','4 层':'4 levels',
+  '后台全量扫描的深度（层数越多树越深、扫描越久）':'Depth for the background full scan (more levels = deeper tree, longer scan)',
+  '🔲 方块图':'🔲 Treemap',
+  '切换列表 / 方块图（SpaceSniffer 模式）':'Switch list / treemap (SpaceSniffer mode)',
+  '⚙ 盘符':'⚙ Drives',
+  '选择要扫描的盘符':'Choose drives to scan',
+  '⏹ 停止':'⏹ Stop',
+  '停止当前扫描':'Stop the current scan',
+  '🏠 此电脑':'🏠 This PC',
+  '勾选要显示/扫描的盘符（取消勾选的盘符不会出现在下方列表中）：':'Check the drives to show/scan (unchecked drives will not appear below):',
+  '扫描中...':'Scanning…',
+  '总空间:':'Total:',
+  '已用:':'Used:',
+  '可用:':'Free:',
+  '使用率:':'Usage:',
+  '耗时:':'Elapsed:',
+  '点击"此电脑"选择盘符开始扫描':'Click "This PC" to pick a drive and start scanning',
+  '该节点没有可打开的路径':'This node has no openable path',
+  '已在文件管理器中打开: ':'Opened in file manager: ',
+  '打开失败: ':'Failed to open: ',
+  '响应超时':'Response timed out',
+  '启动扫描失败':'Failed to start scan',
+  '正在启动扫描...':'Starting scan…',
+  '扫描失败: ':'Scan failed: ',
+  '⚠ 部分统计：有目录体积因达上限/超时未完整统计，带 ⚠ 标记的数值偏小（可继续下钻逐层查看）。':'⚠ Partial stats: some directories hit size/time limits and were not fully measured; values marked ⚠ are underestimates (drill down for per-level detail).',
+  '扫描完成':'Scan complete',
+  '扫描中':'Scanning',
+  '正在启动扫描':'Starting scan…',
+  ' · 已扫描 ':' · ',
+  ' 个目录 · 节点 ':' dirs scanned · snapshot ',
+  '扫描进行中，等待该层结果...':'Scan in progress, waiting for this level...',
+  '该目录为空或无权限访问':'This folder is empty or access denied',
+  '盘符 · ':'Drive · ',
+  '（体积因超时被截断，数值偏小）':' (size truncated due to timeout, value underestimated)',
+  '扫描中…':'Scanning…',
+  '体积统计中…':'Measuring…',
+  ' · 文件':' · File',
+  ' · 文件夹':' · Folder',
+  '没有可选的盘符，点"⚙ 盘符"勾选':'No drives available. Click "⚙ Drives" to check some',
+  ' 已用':' used',
+  '枚举盘符中...':'Enumerating drives…',
+  '📋 列表':'📋 List'
+}};
+function isEn(){return (document.documentElement.getAttribute('lang')||'').toLowerCase().indexOf('en')===0}
+function L(s){if(!isEn())return s;var t=L10N['en-US'];return t[s]!==undefined?t[s]:s}
+function applyStaticL10n(){
+  var els=document.querySelectorAll('[data-orig]'),i;
+  for(i=0;i<els.length;i++)els[i].textContent=L(els[i].getAttribute('data-orig'));
+  els=document.querySelectorAll('[data-orig-title]');
+  for(i=0;i<els.length;i++)els[i].title=L(els[i].getAttribute('data-orig-title'));
+  document.title=L('磁盘分析器');
+}
 function $(id){return document.getElementById(id)}
 function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 function showToast(msg){
@@ -124,10 +180,10 @@ function showToast(msg){
 }
 // 在系统文件管理器中打开节点（右键触发）：文件夹直接打开，文件在父目录中选中
 function openInExplorer(node){
-  if(!node||!node.path){showToast('该节点没有可打开的路径');return}
+  if(!node||!node.path){showToast(L('该节点没有可打开的路径'));return}
   pluginExec('disk-open',{path:node.path,isFile:!!node.isFile}).then(function(){
-    showToast('已在文件管理器中打开: '+node.name);
-  }).catch(function(e){showToast('打开失败: '+e.message)});
+    showToast(L('已在文件管理器中打开: ')+node.name);
+  }).catch(function(e){showToast(L('打开失败: ')+e.message)});
 }
 
 // ---- 插件 RPC（与后端 JSON-RPC 对齐）----
@@ -143,7 +199,7 @@ function nextCmd(){
   var timer=setTimeout(function(){
     window.removeEventListener('message',handler);
     cmdRunning=false;
-    task.reject(new Error('响应超时'));
+    task.reject(new Error(L('响应超时')));
   },30000);
   window.parent.postMessage({type:'plugin:execute',id:Date.now(),command:task.cmd,input:{text:JSON.stringify(task.data)}},'*');
   var handler=function(e){
@@ -248,7 +304,7 @@ function startScan(path){
       state.activeScan={path:path,timer:null};
       poll();
     }else{
-      showError('启动扫描失败');
+      showError(L('启动扫描失败'));
     }
   }).catch(function(e){showError(e.message)});
 }
@@ -298,12 +354,12 @@ function render(){
   updateStats(state.current);
   showWarn(state.current);
 }
-function showLoading(){$('mapWrap').classList.remove('show');$('tree').style.display='block';$('tree').innerHTML='<div class="p-loading">扫描中...</div>';$('progress').classList.add('show');$('btnStop').style.display='inline-block';$('progText').textContent='正在启动扫描...';}
-function showError(msg){$('tree').innerHTML='<div class="p-empty">扫描失败: '+escapeHtml(msg)+'</div>';$('mapWrap').classList.remove('show');$('progress').classList.remove('show');$('btnStop').style.display='none';}
+function showLoading(){$('mapWrap').classList.remove('show');$('tree').style.display='block';$('tree').innerHTML='<div class="p-loading">'+L('扫描中...')+'</div>';$('progress').classList.add('show');$('btnStop').style.display='inline-block';$('progText').textContent=L('正在启动扫描...');}
+function showError(msg){$('tree').innerHTML='<div class="p-empty">'+L('扫描失败: ')+escapeHtml(msg)+'</div>';$('mapWrap').classList.remove('show');$('progress').classList.remove('show');$('btnStop').style.display='none';}
 
 function renderCrumb(){
   var c=$('crumb');c.innerHTML='';
-  var home=document.createElement('a');home.textContent='🏠 此电脑';
+  var home=document.createElement('a');home.textContent=L('🏠 此电脑');
   home.addEventListener('click',function(){scanRoot()});
   c.appendChild(home);
   state.drillPath.forEach(function(name,i){
@@ -333,7 +389,7 @@ function updateStats(node){
 function showWarn(node){
   var w=$('warn');
   if(node&&node.truncated){
-    w.textContent='⚠ 部分统计：有目录体积因达上限/超时未完整统计，带 ⚠ 标记的数值偏小（可继续下钻逐层查看）。';
+    w.textContent=L('⚠ 部分统计：有目录体积因达上限/超时未完整统计，带 ⚠ 标记的数值偏小（可继续下钻逐层查看）。');
     w.classList.add('show');
   }else{w.classList.remove('show')}
 }
@@ -341,7 +397,7 @@ function updateProgress(d){
   $('progress').classList.add('show');
   $('btnStop').style.display='inline-block';
   var pct=0;
-  $('progText').textContent=(d.done?'扫描完成':(state.root?'扫描中':'正在启动扫描'))+' · 已扫描 '+d.scannedDirs+' 个目录 · 节点 '+d.version;
+  $('progText').textContent=(d.done?L('扫描完成'):(state.root?L('扫描中'):L('正在启动扫描')))+(isEn()?' · ':' · 已扫描 ')+d.scannedDirs+L(' 个目录 · 节点 ')+d.version;
   // version 仅作相对进度指示
   pct=Math.min(100,Math.round(d.version%100));
   if(d.done)pct=100;
@@ -354,7 +410,7 @@ function renderTree(node){
   parentEl.innerHTML='';
   parentEl.style.display='block';
   if(!node||!node.children||node.children.length===0){
-    parentEl.innerHTML='<div class="p-empty">'+(state.activeScan?'扫描进行中，等待该层结果...':'该目录为空或无权限访问')+'</div>';return;
+    parentEl.innerHTML='<div class="p-empty">'+(state.activeScan?L('扫描进行中，等待该层结果...'):L('该目录为空或无权限访问'))+'</div>';return;
   }
   var parentSize=node.size||0;
   node.children.forEach(function(child){
@@ -370,7 +426,7 @@ function renderTree(node){
     header.appendChild(arrow);header.appendChild(icon);header.appendChild(name);header.appendChild(size);header.appendChild(pct);
     div.appendChild(header);
     var bar=document.createElement('div');bar.className='p-bar';var fill=document.createElement('i');fill.style.width=formatPct(pctVal);bar.appendChild(fill);div.appendChild(bar);
-    header.title=(isDrive?'盘符 · ':'')+child.name+(child.truncated?'（体积因超时被截断，数值偏小）':'');
+    header.title=(isDrive?L('盘符 · '):'')+child.name+(child.truncated?L('（体积因超时被截断，数值偏小）'):'');
     parentEl.appendChild(div);
     if(!child.isFile){
       var childrenDiv=document.createElement('div');childrenDiv.className='p-children';div.appendChild(childrenDiv);
@@ -425,7 +481,7 @@ function renderTreemap(){
   if(!node||!node.children||node.children.length===0){
     $('mapWrap').classList.remove('show');
     $('tree').style.display='block';
-    $('tree').innerHTML='<div class="p-empty">'+(state.activeScan?'扫描进行中，等待该层结果...':'该目录为空或无权限访问')+'</div>';
+    $('tree').innerHTML='<div class="p-empty">'+(state.activeScan?L('扫描进行中，等待该层结果...'):L('该目录为空或无权限访问'))+'</div>';
     return;
   }
   $('mapWrap').classList.add('show');
@@ -468,7 +524,7 @@ function paintTreemap(hi){
       if(r.h>30){
         ctx.fillStyle='rgba(255,255,255,0.8)';
         ctx.font='10px sans-serif';
-        ctx.fillText((n.scanning?'扫描中…':((n.truncated?'⚠ ':'')+formatSize(n.size))),r.x+3,r.y+28);
+        ctx.fillText((n.scanning?L('扫描中…'):((n.truncated?'⚠ ':'')+formatSize(n.size))),r.x+3,r.y+28);
       }
     }
     // hover 高亮：白描边
@@ -510,9 +566,9 @@ $('treemap').addEventListener('mousemove',function(e){
     var n=treemapRects[idx].node;
     var pct=(state.current&&state.current.size>0)?(n.size/state.current.size*100):0;
     tip.innerHTML='<div class="tt-name">'+escapeHtml(n.name)+(n.truncated?' ⚠':'')+'</div>'+
-      '<div class="tt-meta">'+(n.scanning?'体积统计中…':formatSize(n.size))+
-      (pct>0&&!n.scanning?(' · 占当前 '+formatPct(pct)):'')+
-      (n.isFile?' · 文件':' · 文件夹')+'</div>'+
+      '<div class="tt-meta">'+(n.scanning?L('体积统计中…'):formatSize(n.size))+
+      (pct>0&&!n.scanning?(isEn()?(' · '+formatPct(pct)+' of current'):(' · 占当前 '+formatPct(pct))):'')+
+      (n.isFile?L(' · 文件'):L(' · 文件夹'))+'</div>'+
       (n.path?'<div class="tt-meta">'+escapeHtml(n.path)+'</div>':'');
     tip.style.display='block';
     var tw=tip.offsetWidth,th=tip.offsetHeight;
@@ -563,20 +619,20 @@ function renderDrivePicker(data){
   var tree=$('tree');tree.style.display='block';$('mapWrap').classList.remove('show');
   tree.innerHTML='';
   var drives=(data&&data.children||[]).filter(function(d){return isSelected(d.path)});
-  if(drives.length===0){tree.innerHTML='<div class="p-empty">没有可选的盘符，点"⚙ 盘符"勾选</div>';return}
+  if(drives.length===0){tree.innerHTML='<div class="p-empty">'+L('没有可选的盘符，点"⚙ 盘符"勾选')+'</div>';return}
   drives.forEach(function(d){
     var card=document.createElement('div');card.className='p-drive-card';
     var pct=d.usagePct||0;
     card.innerHTML='<div style="min-width:60px"><div class="p-dc-name">'+escapeHtml(d.name)+'</div><div class="p-dc-sub">'+formatSize(d.size)+' / '+formatSize(d.total||0)+'</div></div>'+
       '<div class="p-dc-bar"><i style="width:'+formatPct(pct)+'"></i></div>'+
-      '<div class="p-dc-sub">'+formatPct(pct)+' 已用</div>';
+      '<div class="p-dc-sub">'+formatPct(pct)+L(' 已用')+'</div>';
     card.addEventListener('click',function(){startScan(d.path)});
     tree.appendChild(card);
   });
 }
 function scanRoot(){
   stopScan();
-  $('tree').innerHTML='<div class="p-loading">枚举盘符中...</div>';
+  $('tree').innerHTML='<div class="p-loading">'+L('枚举盘符中...')+'</div>';
   pluginExec('disk-scan-root',{}).then(function(data){
     state.lastRoot=data;
     buildDrivePanel(data.children);
@@ -591,11 +647,18 @@ $('btnDrives').addEventListener('click',function(){$('drivePanel').classList.tog
 $('selDepth').addEventListener('change',function(){state.depth=parseInt(this.value,10)||3});
 $('btnView').addEventListener('click',function(){
   state.view=(state.view==='map')?'list':'map';
-  $('btnView').textContent=(state.view==='map')?'📋 列表':'🔲 方块图';
+  $('btnView').textContent=(state.view==='map')?L('🔲 方块图'):L('📋 列表');
   render();
 });
 
 // ---- 初始化 ----
+function refreshL10n(){
+  applyStaticL10n();
+  $('btnView').textContent=(state.view==='map')?L('🔲 方块图'):L('📋 列表');
+  if(state.root||state.current){render()}
+  else{$('tree').innerHTML='<div class="p-loading">'+L('点击"此电脑"选择盘符开始扫描')+'</div>'}
+}
+applyStaticL10n();
 window.addEventListener('message',function(e){
   if(!e.data||!e.data.type)return;
   if(e.data.type==='plugin:init'){
@@ -605,6 +668,10 @@ window.addEventListener('message',function(e){
     else{scanRoot()}
   }else if(e.data.type==='plugin:theme'&&e.data.data&&e.data.data.theme){
     document.documentElement.setAttribute('data-theme',e.data.data.theme);
+    if(e.data.data.locale){
+      document.documentElement.setAttribute('lang',e.data.data.locale);
+      refreshL10n();
+    }
   }
 });
 </script>

@@ -61,6 +61,20 @@ jobs:
           echo "changed_plugins=$plugins"
           echo "changed_plugins=$plugins" >> "$GITHUB_OUTPUT"
 
+      - name: Build pdfcpu for pdf-toolkit
+        if: contains(steps.changed.outputs.changed_plugins, 'pdf-toolkit')
+        shell: bash
+        run: |
+          # pdf-toolkit 运行时依赖 sibling 的 pdfcpu.exe（merge/split/optimize/watermark/images）。
+          # .gitignore 排除 *.exe，仓库里没有这个文件，CI 必须现场从源码交叉编译，
+          # 否则打出的市场 zip 缺 pdfcpu.exe → 插件所有 PDF 处理功能不可用。
+          # 版本锁定 v0.15.0：main.go 的 CLI 调用语法按该版本编写（optimize/merge 输出在前等）。
+          git clone --depth 1 --branch v0.15.0 https://github.com/pdfcpu/pdfcpu.git /tmp/pdfcpu-src
+          cd /tmp/pdfcpu-src
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath \
+            -o "$GITHUB_WORKSPACE/pdf-toolkit/pdfcpu.exe" ./cmd/pdfcpu
+          ls -lh "$GITHUB_WORKSPACE/pdf-toolkit/pdfcpu.exe"
+
       - name: Package plugins (windows)
         shell: bash
         run: |
@@ -87,15 +101,10 @@ jobs:
             echo "has_zip=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Delete previous 'latest' release
-        if: steps.zips.outputs.has_zip == 'true'
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release delete latest --cleanup-tag -y || true
-
-      - name: Create 'latest' release with zips
+      # 注意：不删除旧 release。增量打包 + 删除重建会让 latest 只剩本次变更插件的 zip，
+      # 其他插件的市场下载链接（releases/latest/download/<id>-windows.zip）全部 404。
+      # action-gh-release 对已存在的 tag 是追加/覆盖同名资产，未变更插件的历史 zip 得以保留。
+      - name: Publish zips to 'latest' release
         if: steps.zips.outputs.has_zip == 'true'
         uses: softprops/action-gh-release@v2
         with:

@@ -1,12 +1,146 @@
 {
   "name": "QuickDock 插件中心",
-  "updated": "2026-08-21T13:24:16Z",
+  "updated": "2026-08-24T06:20:05Z",
   "plugins": [
+    {
+      "id": "io.github.parieses.api-loadtest",
+      "name": "接口压测",
+      "name_i18n": {
+        "zh-CN": "接口压测",
+        "en-US": "API Load Tester"
+      },
+      "version": "0.1.1",
+      "description": "功能丰富的 HTTP 接口压测工具：支持并发/时长双模式、自定义 Header 与 Body、实时 QPS 与延迟分布(p50/p90/p95/p99)、状态码分布、错误率统计与结果一键导出",
+      "description_i18n": {
+        "zh-CN": "功能丰富的 HTTP 接口压测工具：支持并发/时长双模式、自定义 Header 与 Body、实时 QPS 与延迟分布(p50/p90/p95/p99)、状态码分布、错误率统计与结果一键导出",
+        "en-US": "Feature-rich HTTP load testing: concurrency/duration modes, custom headers/body, live QPS and latency p50/p90/p95/p99, status code distribution, error rate and one-click export."
+      },
+      "author": "QuickDock",
+      "category": "开发工具",
+      "icon": "https://github.com/parieses/quickdock-plugins/raw/HEAD/api-loadtest/icon.svg",
+      "platforms": [
+        "windows"
+      ],
+      "permissions": {
+        "network": true,
+        "clipboard": true
+      },
+      "capabilities": [
+        "command",
+        "frontend"
+      ],
+      "downloads": {
+        "windows": "https://github.com/parieses/quickdock-plugins/releases/latest/download/io-github-parieses-api-loadtest-windows.zip"
+      }
+    },
+    {
+      "id": "io.github.parieses.color-converter",
+      "name": "颜色工具",
+      "name_i18n": {
+        "zh-CN": "颜色工具",
+        "en-US": "Color Tools"
+      },
+      "version": "0.3.0",
+      "description": "颜色格式互转（HEX / RGB / HSL）+ 屏幕取色，支持常见英文色名识别",
+      "description_i18n": {
+        "zh-CN": "颜色格式互转（HEX / RGB / HSL）+ 屏幕取色，支持常见英文色名识别",
+        "en-US": "Convert between color formats (HEX/RGB/HSL) and pick colors from the screen, with common English color name recognition."
+      },
+      "author": "QuickDock",
+      "category": "开发者日常",
+      "icon": "https://github.com/parieses/quickdock-plugins/raw/HEAD/color-converter/icon.svg",
+      "platforms": [
+        "windows"
+      ],
+      "permissions": {
+        "clipboard": true
+      },
+      "capabilities": [
+        "command",
+        "frontend"
+      ],
+      "downloads": {
+        "windows": "https://github.com/parieses/quickdock-plugins/releases/latest/download/io-github-parieses-color-converter-windows.zip"
+      }
+    },
+    {
+      "id": "io.github.parieses.compare",
+      "name": "对比工具",
+      "name_i18n": {
+        "zh-CN": "对比工具",
+        "en-US": "Compare Tool"
+      },
+      "version": "0.2.1",
+      "description": "文件/图片对比（元数据 + 图片预览 + 文本内容差异）与文本块逐行 Diff 合二为一",
+      "description_i18n": {
+        "zh-CN": "文件/图片对比（元数据 + 图片预览 + 文本内容差异）与文本块逐行 Diff 合二为一",
+        "en-US": "File/image comparison (metadata + preview + text diff) plus line-by-line text diff in one tool."
+      },
+      "author": "QuickDock",
+      "category": "开发者日常",
+      "icon": "https://github.com/parieses/quickdock-plugins/raw/HEAD/compare/icon.svg",
+      "platforms": [
+        "windows",
+        "darwin",
+        "linux"
+      ],
+      "permissions": {
+        "clipboard": true,
+        "filesystem": true
+      },
+      "capabilities": [
+        "command",
+        "frontend"
+      ],
+      "downloads": {
+        "windows": "https://github.com/parieses/quickdock-plugins/releases/latest/download/io-github-parieses-compare-windows.zip"
+      }
+    },
+    {
+      "id": "io.github.parieses.cron-explainer",
+      "name": "Crontab 解释器",
+      "name_i18n": {
+        "zh-CN": "Crontab 解释器",
+        "en-US": "Cron Explainer"
+      },
+      "version": "0.2.1",
+      "description": "解析 cron 表达式，显示人类可读描述、下次执行时间和可视化时间表",
+      "description_i18n": {
+        "zh-CN": "解析 cron 表达式，显示人类可读描述、下次执行时间和可视化时间表",
+        "en-US": "Parse cron expressions, show human-readable description, next run time and a visual schedule."
+      },
+      "author": "QuickDock",
+      "category": "开发者日常",
+      "icon": "https://github.com/parieses/quickdock-plugins/raw/HEAD/cron-explainer/icon.svg",
+      "platforms": [
+        "windows",
+        "darwin",
+        "linux"
+      ],
+      "permissions": {
+        "clipboard": true
+      },
+      "capabilities": [
+        "command",
+        "frontend"
+      ],
+      "downloads": {
+        "windows": "https://github.com/parieses/quickdock-plugins/releases/latest/download/io-github-parieses-cron-explainer-windows.zip"
+      }
+    },
     {
       "id": "io.github.parieses.disk-analyzer",
       "name": "磁盘分析器",
-      "version": "0.1.0",
+      "name_i18n": {
+        "zh-CN": "磁盘分析器",
+        "en-US": "Disk Analyzer"
+      },
+      "version": "0.1.1",
       "description": "可视化磁盘空间占用分析工具，类似 SpaceSniffer，支持树图展示目录结构",
+      "description_i18n": {
+        "zh-CN": "可视化磁盘空间占用分析工具，类似 SpaceSniffer，支持树图展示目录结构",
+        "en-US": "Visualize disk space usage like SpaceSniffer with a treemap of directory structure."
+      },
       "author": "QuickDock",
       "category": "系统工具",
       "icon": "https://github.com/parieses/quickdock-plugins/raw/HEAD/disk-analyzer/icon.svg",
@@ -24,6 +158,73 @@
       ],
       "downloads": {
         "windows": "https://github.com/parieses/quickdock-plugins/releases/latest/download/io-github-parieses-disk-analyzer-windows.zip"
+      }
+    },
+    {
+      "id": "io.github.parieses.http-status",
+      "name": "HTTP 状态码速查",
+      "name_i18n": {
+        "zh-CN": "HTTP 状态码速查",
+        "en-US": "HTTP Status Codes"
+      },
+      "version": "0.2.1",
+      "description": "查询 HTTP 状态码含义、描述和常见场景",
+      "description_i18n": {
+        "zh-CN": "查询 HTTP 状态码含义、描述和常见场景",
+        "en-US": "Look up meaning, description and common scenarios of HTTP status codes."
+      },
+      "author": "QuickDock",
+      "category": "开发者日常",
+      "icon": "https://github.com/parieses/quickdock-plugins/raw/HEAD/http-status/icon.svg",
+      "platforms": [
+        "windows",
+        "darwin",
+        "linux"
+      ],
+      "permissions": {
+        "network": false,
+        "filesystem": false,
+        "clipboard": true
+      },
+      "capabilities": [
+        "command",
+        "frontend"
+      ],
+      "downloads": {
+        "windows": "https://github.com/parieses/quickdock-plugins/releases/latest/download/io-github-parieses-http-status-windows.zip"
+      }
+    },
+    {
+      "id": "io.github.parieses.pdf-toolkit",
+      "name": "PDF 工具箱",
+      "name_i18n": {
+        "zh-CN": "PDF 工具箱",
+        "en-US": "PDF Toolkit"
+      },
+      "version": "0.1.2",
+      "description": "PDF 处理工具箱：合并/拆分/压缩/加水印/提取图片/PDF 转图片，无需安装 Adobe Acrobat",
+      "description_i18n": {
+        "zh-CN": "PDF 处理工具箱：合并/拆分/压缩/加水印/提取图片/PDF 转图片，无需安装 Adobe Acrobat",
+        "en-US": "PDF toolkit: merge/split/compress/watermark/extract images — no Adobe Acrobat required"
+      },
+      "author": "QuickDock",
+      "category": "办公效率",
+      "icon": "https://github.com/parieses/quickdock-plugins/raw/HEAD/pdf-toolkit/icon.svg",
+      "platforms": [
+        "windows",
+        "darwin",
+        "linux"
+      ],
+      "permissions": {
+        "filesystem": true,
+        "clipboard": true
+      },
+      "capabilities": [
+        "command",
+        "frontend"
+      ],
+      "downloads": {
+        "windows": "https://github.com/parieses/quickdock-plugins/releases/latest/download/io-github-parieses-pdf-toolkit-windows.zip"
       }
     }
   ]
