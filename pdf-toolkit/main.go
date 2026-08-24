@@ -474,13 +474,22 @@ func handleOpenFolder(id int64, input map[string]interface{}) {
 
 // handlePickFolder 弹出目录选择对话框，返回选中的目录路径。
 // 与 host.dialog.open（文件选择）区分：本命令专用于「选择目录」。
+//
+// ⚠️ 必须走异步任务模式：对话框是模态阻塞的（用户挑目录可能耗时数分钟），
+// 若在主循环同步等待，宿主健康检查 ping 连续 3 轮（约 90s）超时，
+// 插件会被标记 unresponsive 并强杀重启——表现为"选着选着目录框自己消失了"。
 func handlePickFolder(id int64, input map[string]interface{}) {
 	title := strFrom(input, "title", "选择输出目录")
-	path, canceled := pickFolderDialog(title)
-	respond(id, map[string]interface{}{
-		"canceled": canceled,
-		"path":     path,
-	})
+	t := startPDFTask()
+	go func() {
+		path, canceled := pickFolderDialog(title)
+		if canceled {
+			finishPDFTask(t, map[string]interface{}{"canceled": true}, nil)
+			return
+		}
+		finishPDFTask(t, map[string]interface{}{"canceled": false, "path": path}, nil)
+	}()
+	respond(id, map[string]interface{}{"ok": true, "async": true, "taskId": t.ID})
 }
 
 // handleTaskStatus 查询后台任务状态（前端轮询用）。

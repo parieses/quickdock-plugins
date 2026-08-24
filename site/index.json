@@ -1,6 +1,6 @@
 {
   "name": "QuickDock 插件中心",
-  "updated": "2026-08-24T06:20:05Z",
+  "updated": "2026-08-24T08:22:09Z",
   "plugins": [
     {
       "id": "io.github.parieses.api-loadtest",
@@ -40,7 +40,7 @@
         "zh-CN": "颜色工具",
         "en-US": "Color Tools"
       },
-      "version": "0.3.0",
+      "version": "0.3.1",
       "description": "颜色格式互转（HEX / RGB / HSL）+ 屏幕取色，支持常见英文色名识别",
       "description_i18n": {
         "zh-CN": "颜色格式互转（HEX / RGB / HSL）+ 屏幕取色，支持常见英文色名识别",
@@ -201,10 +201,10 @@
         "zh-CN": "PDF 工具箱",
         "en-US": "PDF Toolkit"
       },
-      "version": "0.1.2",
-      "description": "PDF 处理工具箱：合并/拆分/压缩/加水印/提取图片/PDF 转图片，无需安装 Adobe Acrobat",
+      "version": "0.1.5",
+      "description": "PDF 处理工具箱：合并/拆分/压缩/加水印/提取图片，无需安装 Adobe Acrobat",
       "description_i18n": {
-        "zh-CN": "PDF 处理工具箱：合并/拆分/压缩/加水印/提取图片/PDF 转图片，无需安装 Adobe Acrobat",
+        "zh-CN": "PDF 处理工具箱：合并/拆分/压缩/加水印/提取图片，无需安装 Adobe Acrobat",
         "en-US": "PDF toolkit: merge/split/compress/watermark/extract images — no Adobe Acrobat required"
       },
       "author": "QuickDock",

@@ -362,8 +362,12 @@ const bridge = {
   },
 
   async folderPicker(title = '选择输出目录') {
-    // 调用插件命令 pickFolder，弹出「目录」选择框（区别于文件选择）
-    const r = await this.send('pickFolder', { title });
+    // 调用插件命令 pickFolder，弹出「目录」选择框（区别于文件选择）。
+    // 后端为异步任务模式：对话框在 goroutine 中弹出（模态阻塞可达数分钟），
+    // 立即返回 taskId，此处轮询 task-status 直到用户选完/取消。
+    const r0 = await this.send('pickFolder', { title });
+    if (!r0 || !r0.taskId) return null;
+    const r = await this.waitTask(r0.taskId);
     return r?.canceled ? null : (r?.path || null);
   },
 
