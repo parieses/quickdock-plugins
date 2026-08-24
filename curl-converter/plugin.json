@@ -1,0 +1,29 @@
+{
+  "id": "io.github.parieses.curl-converter",
+  "name": "cURL 转代码",
+  "version": "0.1.0",
+  "description": "把 curl 命令解析成 Python / Go / JavaScript / PHP 请求代码，也支持把 fetch、requests 代码反向转回 curl",
+  "author": "QuickDock",
+  "icon": "icon.svg",
+  "category": "开发工具",
+  "platforms": ["windows", "darwin", "linux"],
+  "capabilities": ["frontend"],
+  "permissions": {
+    "clipboard": true
+  },
+  "backend": {
+    "runtime": "none"
+  },
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html"
+  },
+  "name_i18n": {
+    "zh-CN": "cURL 转代码",
+    "en-US": "cURL Converter"
+  },
+  "description_i18n": {
+    "zh-CN": "把 curl 命令解析成 Python / Go / JavaScript / PHP 请求代码，也支持把 fetch、requests 代码反向转回 curl",
+    "en-US": "Convert curl commands into Python / Go / JavaScript / PHP code, and convert fetch or requests snippets back to curl."
+  }
+}

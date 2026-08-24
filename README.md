@@ -8,11 +8,26 @@
 |------|----|------|------|
 | [磁盘分析器](./disk-analyzer/) | `io.github.parieses.disk-analyzer` | 0.1.1 | 可视化磁盘空间占用分析，类似 SpaceSniffer，树图展示目录结构（Windows / macOS / Linux 三平台） |
 | [接口压测](./api-loadtest/) | `io.github.parieses.api-loadtest` | 0.1.1 | 功能丰富的 HTTP 接口压测工具：并发/时长双模式、自定义 Header 与 Body、实时 QPS 与延迟分布(p50/p90/p95/p99)、状态码分布、错误率统计与结果一键导出 |
-| [PDF 工具箱](./pdf-toolkit/) | `io.github.parieses.pdf-toolkit` | 0.1.5 | PDF 合并/拆分/压缩/加水印/提取图片，无需 Adobe Acrobat |
+| [PDF 工具箱](./pdf-toolkit/) | `io.github.parieses.pdf-toolkit` | 0.1.6 | PDF 合并/拆分/压缩/加水印/提取图片，无需 Adobe Acrobat |
 | [颜色工具](./color-converter/) | `io.github.parieses.color-converter` | 0.3.1 | 颜色格式互转（HEX/RGB/HSL + 常见英文色名识别）+ 屏幕取色（F8 取色 / ESC 取消） |
 | [对比工具](./compare/) | `io.github.parieses.compare` | 0.2.1 | 文件/图片对比（元数据 + 预览 + 文本差异）与文本块逐行 Diff |
 | [Crontab 解释器](./cron-explainer/) | `io.github.parieses.cron-explainer` | 0.2.1 | 解析 cron 表达式，显示可读描述、下次执行时间与可视化时间表 |
 | [HTTP 状态码速查](./http-status/) | `io.github.parieses.http-status` | 0.2.1 | 查询 HTTP 状态码含义、描述和常见场景 |
+| [cURL 转代码](./curl-converter/) | `io.github.parieses.curl-converter` | 0.1.0 | 把 curl 命令解析成 Python / Go / JavaScript / PHP 请求代码，也支持把 fetch、requests 代码反向转回 curl |
+| [计算稿纸](./calcsheet/) | `io.github.parieses.calcsheet` | 0.2.0 | 兼具草稿纸自由度与电子表格智能的多行计算工具，支持行号引用、变量定义、函数计算（自内置插件迁移） |
+| [Emoji 搜索](./emoji-search/) | `io.github.parieses.emoji-search` | 0.2.0 | 搜索 Emoji 并一键复制到剪贴板（自内置插件迁移） |
+| [代码格式化](./formatter/) | `io.github.parieses.formatter` | 0.2.0 | 通用代码压缩/美化（JS / CSS / HTML 自动检测）与 SQL 格式化合二为一（自内置插件迁移） |
+| [Markdown 渲染](./markdown-preview/) | `io.github.parieses.markdown-preview` | 0.2.0 | 实时渲染 Markdown，支持代码高亮，复制为 HTML（自内置插件迁移） |
+| [二维码工具](./qrcode/) | `io.github.parieses.qrcode` | 0.2.0 | 文本/URL 生成二维码，支持保存 PNG；从图片识别二维码内容（自内置插件迁移） |
+| [正则提取工具](./regex-extractor/) | `io.github.parieses.regex-extractor` | 0.2.0 | 输入文本和正则表达式，一键提取所有匹配项，支持分组捕获、高亮显示、导出结果（自内置插件迁移） |
+| [文本工具箱](./text-encoder/) | `io.github.parieses.text-encoder` | 0.2.0 | Base64 / URL / HTML 编解码，MD5 / SHA256 哈希，Base64 图片识别预览（自内置插件迁移） |
+| [时间转换](./time-converter/) | `io.github.parieses.time-converter` | 0.2.0 | 支持 Unix 时间戳、ISO 8601、相对时间等多种格式互转（自内置插件迁移） |
+| [JSON 工具箱](./json-toolbox/) | `io.github.parieses.json-toolbox` | 0.2.0 | JSON 编辑器（格式化/折叠/编辑）、JSON → TypeScript / Go、JSON ↔ YAML / TOML / XML 互转（自内置插件迁移） |
+| [JWT 解码器](./jwt-decoder/) | `io.github.parieses.jwt-decoder` | 0.2.0 | 解码 JWT Token，查看 Header/Payload，验证过期时间（自内置插件迁移） |
+| [Hosts 管理器](./hosts-manager/) | `io.github.parieses.hosts-manager` | 0.2.0 | 管理系统 hosts 文件条目，一键启用/禁用/新增（自内置插件迁移，自带 system-tools.exe） |
+| [端口检查器](./port-scanner/) | `io.github.parieses.port-scanner` | 0.2.0 | 检查端口占用，显示进程名和 PID（自内置插件迁移，自带 system-tools.exe） |
+| [WiFi 管理器](./wifi-manager/) | `io.github.parieses.wifi-manager` | 0.2.0 | 查看网络列表、WiFi 密码、连接状态（自内置插件迁移，自带 system-tools.exe） |
+| [MD 表格转换器](./md-table-converter/) | `io.github.parieses.md-table` | 0.1.0 | Markdown 表格与 CSV / JSON / HTML 四种格式互转，自动识别输入格式 |
 
 ## 安装方法
 

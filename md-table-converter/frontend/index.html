@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MD 表格转换器</title>
+<link rel="stylesheet" href="qd-theme.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+.p-app{display:flex;flex-direction:column;height:100vh}
+.p-toolbar{display:flex;align-items:center;gap:6px;padding:8px 10px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap}
+.cc-badge{font-size:11px;color:var(--text-muted);background:var(--bg-tertiary);border:1px solid var(--border);border-radius:999px;padding:4px 10px;white-space:nowrap}
+.cc-sep{display:none;align-items:center;gap:4px;font-size:11.5px;color:var(--text-muted)}
+.cc-sep.show{display:inline-flex}
+.cc-sep select{height:26px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-primary);color:var(--text-primary);font-size:12px;outline:none}
+.cc-split{flex:1;display:flex;flex-direction:column;min-height:0;padding:8px 10px;gap:8px}
+.cc-pane{flex:1;display:flex;flex-direction:column;min-height:0}
+.cc-label{font-size:11px;color:var(--text-muted);margin-bottom:4px}
+.cc-io{flex:1;width:100%;resize:none;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-primary);color:var(--text-primary);font:12.5px/1.6 var(--font-mono);padding:10px 12px;outline:none;white-space:pre;overflow:auto}
+.cc-io:focus{border-color:var(--accent)}
+.cc-status{flex-shrink:0;padding:5px 10px;font-size:11.5px;color:var(--text-muted);border-top:1px solid var(--border);background:var(--bg-secondary)}
+.cc-status.err{color:#ef4444}
+</style>
+</head>
+<body>
+<div class="p-app">
+  <div class="p-toolbar">
+    <span class="cc-badge" id="srcBadge">输入格式：自动识别</span>
+    <div class="p-tabs" id="outTabs">
+      <button class="p-tab p-tab-active" data-fmt="md">Markdown</button>
+      <button class="p-tab" data-fmt="csv">CSV</button>
+      <button class="p-tab" data-fmt="json">JSON</button>
+      <button class="p-tab" data-fmt="html">HTML</button>
+    </div>
+    <span class="cc-sep" id="sepWrap">分隔符
+      <select id="sepSel">
+        <option value=",">, 逗号</option>
+        <option value=";">; 分号</option>
+        <option value="\t">Tab</option>
+        <option value="|">| 竖线</option>
+      </select>
+    </span>
+    <div style="flex:1"></div>
+    <button class="p-tab" id="copyBtn" onclick="copyOut()">📋 复制</button>
+  </div>
+  <div class="cc-split">
+    <div class="cc-pane">
+      <div class="cc-label">粘贴 Markdown / CSV / JSON / HTML 表格，自动识别</div>
+      <textarea id="in" class="cc-io" spellcheck="false" placeholder="| 名称 | 数量 |
+| --- | --- |
+| 苹果 | 3 |
+| 香蕉 | 5 |
+
+也支持直接粘 CSV、JSON 数组或 &lt;table&gt; HTML"></textarea>
+    </div>
+    <div class="cc-pane">
+      <div class="cc-label">输出 · Markdown</div>
+      <pre id="out" class="cc-io cc-out"></pre>
+    </div>
+  </div>
+  <div class="cc-status" id="status"></div>
+</div>
+<script>
+// ==================== 页面 i18n ====================
+var L10N = {
+  'en-US': {
+    '输入格式：自动识别': 'Input: auto-detect',
+    '复制': 'Copy', '已复制到剪贴板': 'Copied to clipboard',
+    '输出 · Markdown': 'Output · Markdown', '输出 · CSV': 'Output · CSV', '输出 · JSON': 'Output · JSON', '输出 · HTML': 'Output · HTML',
+    '请先输入内容': 'Nothing to convert yet'
+  }
+};
+function isEn(){ var l = document.documentElement.getAttribute('lang') || ''; return l.indexOf('en') === 0 }
+function L(s){ return isEn() ? ((L10N['en-US'] && L10N['en-US'][s]) || s) : s }
+
+var cur = { fmt: 'md' };
+var lastOut = '', lastTable = null;
+var FMT_LABEL = { md:'Markdown', csv:'CSV', json:'JSON', html:'HTML' };
+
+function $(id){ return document.getElementById(id) }
+function status(msg, err){ var el = $('status'); el.textContent = msg; el.className = 'cc-status' + (err ? ' err' : '') }
+function copyOut(){
+  if (!lastOut) return;
+  var done = function(){ status(L('已复制到剪贴板')); };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(lastOut).then(done, fb);
+  else fb();
+  function fb(){
+    var ta = document.createElement('textarea');
+    ta.value = lastOut; ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); done(); } catch(e){}
+    document.body.removeChild(ta);
+  }
+}
+
+// ==================== 解析：通用 ====================
+function normalize(headers, rows, forceHeader){
+  var colN = (headers ? headers.length : 0);
+  rows.forEach(function(r){ if (r.length > colN) colN = r.length; });
+  function pad(r){ while (r.length < colN) r.push(''); return r; }
+  if (!headers){
+    if (forceHeader && rows.length){ headers = pad(rows.shift()); }
+    else { headers = []; for (var i = 0; i < colN; i++) headers.push('col_' + (i + 1)); }
+  }
+  pad(headers);
+  rows.forEach(pad);
+  return { headers: headers, rows: rows };
+}
+
+// ==================== 解析：Markdown ====================
+function splitMDRow(line){
+  var s = line.trim();
+  if (s.charAt(0) === '|') s = s.slice(1);
+  if (s.charAt(s.length - 1) === '|' && s.slice(-2) !== '\\|') s = s.slice(0, -1);
+  var out = [], cur = '', i = 0;
+  while (i < s.length){
+    var c = s[i];
+    if (c === '\\' && s[i+1] === '|'){ cur += '|'; i += 2; continue; }
+    if (c === '|'){ out.push(cur.trim()); cur = ''; i++; continue; }
+    cur += c; i++;
+  }
+  out.push(cur.trim());
+  return out;
+}
+function parseMD(text){
+  var lines = text.replace(/\r\n?/g, '\n').split('\n').filter(function(l){ return l.trim() !== '' });
+  if (!lines.length || lines[0].indexOf('|') < 0) throw new Error('no markdown table found');
+  var sepIdx = -1;
+  for (var i = 1; i < lines.length; i++){
+    if (/^\s*\|?[\s:|-]*-[\s:|-]*\|?\s*$/.test(lines[i]) && lines[i].indexOf('|') > -1){ sepIdx = i; break; }
+  }
+  var rows = lines.map(splitMDRow).filter(function(r){ return !(r.length === 1 && r[0] === '') });
+  if (sepIdx > 0){
+    var headers = rows[sepIdx - 1];
+    return normalize(headers, rows.slice(sepIdx + 1));
+  }
+  return normalize(null, rows, true);
+}
+
+// ==================== 解析：CSV ====================
+function parseDelimited(text, delim){
+  var rows = [], row = [], cell = '', i = 0, q = false;
+  text = text.replace(/\r\n?/g, '\n');
+  while (i < text.length){
+    var c = text[i];
+    if (q){
+      if (c === '"'){ if (text[i+1] === '"'){ cell += '"'; i += 2; } else { q = false; i++; } }
+      else { cell += c; i++; }
+    } else {
+      if (c === '"'){ q = true; i++; }
+      else if (c === delim){ row.push(cell); cell = ''; i++; }
+      else if (c === '\n'){ row.push(cell); rows.push(row); row = []; cell = ''; i++; }
+      else { cell += c; i++; }
+    }
+  }
+  row.push(cell); rows.push(row);
+  while (rows.length && rows[rows.length - 1].join('') === '') rows.pop();
+  return rows;
+}
+function detectDelim(line){
+  var best = ',', bestN = -1;
+  [',', ';', '\t', '|'].forEach(function(d){
+    var n = line.split(d).length - 1;
+    if (n > bestN){ bestN = n; best = d; }
+  });
+  return best;
+}
+function parseCSV(text){
+  var firstLine = text.replace(/\r\n?/g, '\n').split('\n').filter(function(l){ return l.trim() !== '' })[0] || '';
+  var delim = detectDelim(firstLine);
+  var rows = parseDelimited(text, delim);
+  if (!rows.length) throw new Error('empty table');
+  return normalize(null, rows, true);
+}
+
+// ==================== 解析：JSON ====================
+function parseJSONTable(text){
+  var d = JSON.parse(text);
+  if (!Array.isArray(d)) throw new Error('JSON 需要是数组（对象数组或二维数组）');
+  if (!d.length) throw new Error('空数组');
+  if (typeof d[0] === 'object' && d[0] !== null && !Array.isArray(d[0])){
+    var headers = [];
+    d.forEach(function(o){ Object.keys(o).forEach(function(k){ if (headers.indexOf(k) < 0) headers.push(k); }); });
+    var rows = d.map(function(o){
+      return headers.map(function(k){
+        var v = o[k];
+        if (v === undefined || v === null) return '';
+        return (typeof v === 'object') ? JSON.stringify(v) : String(v);
+      });
+    });
+    return normalize(headers, rows);
+  }
+  var arr = d.map(function(r){
+    return (Array.isArray(r) ? r : [r]).map(function(v){
+      if (v === null || v === undefined) return '';
+      return (typeof v === 'object') ? JSON.stringify(v) : String(v);
+    });
+  });
+  return normalize(null, arr, true);
+}
+
+// ==================== 解析：HTML ====================
+function parseHTML(text){
+  var doc = new DOMParser().parseFromString(text, 'text/html');
+  var table = doc.querySelector('table');
+  if (!table) throw new Error('未找到 <table>');
+  var trs = Array.prototype.slice.call(table.querySelectorAll('tr'));
+  var allRows = trs.map(function(tr){
+    return Array.prototype.slice.call(tr.querySelectorAll('th,td')).map(function(c){ return c.textContent.trim(); });
+  }).filter(function(r){ return r.length; });
+  if (!allRows.length) throw new Error('表格为空');
+  var hasTh = !!table.querySelector('th');
+  var theadCells = table.querySelector('thead th');
+  if (theadCells){
+    var hCount = table.querySelectorAll('thead th').length;
+    var headers = allRows[0];
+    return normalize(headers, allRows.slice(1));
+  }
+  if (hasTh){
+    var firstTh = allRows[0], restOk = trs[0] && trs[0].querySelector('th');
+    return normalize(firstTh, allRows.slice(restOk ? 1 : 0));
+  }
+  return normalize(null, allRows, true);
+}
+
+// ==================== 渲染 ====================
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+function renderMD(t){
+  var widths = t.headers.map(function(h, i){
+    var w = String(h).length;
+    t.rows.forEach(function(r){ if (String(r[i]).length > w) w = String(r[i]).length; });
+    return w;
+  });
+  function line(cells){
+    return '| ' + cells.map(function(c, i){ return String(c) + new Array(widths[i] - String(c).length + 1).join(' '); }).join(' | ') + ' |';
+  }
+  var out = [line(t.headers)];
+  out.push('| ' + widths.map(function(w){ return new Array(w + 1).join('-'); }).join(' | ') + ' |');
+  t.rows.forEach(function(r){ out.push(line(r)); });
+  return out.join('\n');
+}
+function renderCSV(t, delim){
+  function cell(v){
+    v = String(v);
+    if (v.indexOf('"') > -1) v = '"' + v.replace(/"/g, '""') + '"';
+    else if (v.indexOf(delim) > -1 || v.indexOf('\n') > -1) v = '"' + v + '"';
+    return v;
+  }
+  var lines = [t.headers.map(cell).join(delim)];
+  t.rows.forEach(function(r){ lines.push(r.map(cell).join(delim)); });
+  return lines.join('\n');
+}
+function renderJSON(t){
+  var arr = t.rows.map(function(r){
+    var o = {};
+    t.headers.forEach(function(h, i){ o[h] = r[i]; });
+    return o;
+  });
+  return JSON.stringify(arr, null, 2);
+}
+function renderHTML(t){
+  var out = ['<table>', '  <thead>', '    <tr>'];
+  t.headers.forEach(function(h){ out.push('      <th>' + esc(h) + '</th>'); });
+  out.push('    </tr>', '  </thead>', '  <tbody>');
+  t.rows.forEach(function(r){
+    out.push('    <tr>');
+    r.forEach(function(c){ out.push('      <td>' + esc(c) + '</td>'); });
+    out.push('    </tr>');
+  });
+  out.push('  </tbody>', '</table>');
+  return out.join('\n');
+}
+
+// ==================== 主流程 ====================
+function detectFormat(text){
+  var t = text.trim();
+  try { JSON.parse(t); return 'json'; } catch(e){}
+  if (/<table[\s>]/i.test(t)) return 'html';
+  var l2 = (t.split('\n').find(function(l){ return l.trim() !== '' }) || '');
+  if (l2.charAt(0) === '|' || /\|\s*[-:]/.test(t)) return 'md';
+  return 'csv';
+}
+var SRC_LABEL = { md:'Markdown', csv:'CSV', json:'JSON', html:'HTML' };
+function convert(){
+  var src = $('in').value;
+  $('out').textContent = ''; lastOut = ''; lastTable = null;
+  $('sepWrap').classList.toggle('show', cur.fmt === 'csv');
+  if (!src.trim()){ status(L('请先输入内容')); updateLabels(); return; }
+  try {
+    var fmt = detectFormat(src);
+    var t;
+    if (fmt === 'json') t = parseJSONTable(src);
+    else if (fmt === 'html') t = parseHTML(src);
+    else if (fmt === 'md') t = parseMD(src);
+    else t = parseCSV(src);
+    lastTable = t;
+    if (cur.fmt === fmt){
+      status(isEn() ? ('Input is already ' + FMT_LABEL[fmt]) : ('输入已是 ' + FMT_LABEL[fmt] + '，换一个输出格式看看'));
+      updateLabels(); return;
+    }
+    var delim = $('sepSel').value.replace('\\t', '\t');
+    lastOut = cur.fmt === 'md' ? renderMD(t) : cur.fmt === 'csv' ? renderCSV(t, delim)
+            : cur.fmt === 'json' ? renderJSON(t) : renderHTML(t);
+    $('out').textContent = lastOut;
+    status((isEn() ? 'Detected ' : '识别 ') + FMT_LABEL[fmt] + ' · ' +
+           (isEn() ? (t.rows.length + ' rows x ' + t.headers.length + ' cols -> ') : (t.rows.length + ' 行 × ' + t.headers.length + ' 列 → ')) +
+           FMT_LABEL[cur.fmt]);
+  } catch(e){
+    status((isEn() ? 'Parse failed: ' : '解析失败：') + (e.message || e), true);
+  }
+  updateLabels();
+}
+function updateLabels(){
+  $('outLabelText') ;
+  var lbl = document.querySelector('.cc-pane:last-child .cc-label');
+  if (lbl) lbl.textContent = (isEn() ? 'Output · ' : '输出 · ') + FMT_LABEL[cur.fmt];
+  $('copyBtn').textContent = L('📋 复制');
+  $('srcBadge').textContent = L('输入格式：自动识别');
+}
+
+// ==================== 交互绑定 ====================
+document.querySelectorAll('#outTabs .p-tab').forEach(function(b){
+  b.addEventListener('click', function(){
+    document.querySelectorAll('#outTabs .p-tab').forEach(function(x){ x.classList.remove('p-tab-active'); });
+    b.classList.add('p-tab-active');
+    cur.fmt = b.dataset.fmt;
+    convert();
+  });
+});
+$('sepSel').addEventListener('change', convert);
+var debounceTimer = null;
+$('in').addEventListener('input', function(){
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(convert, 200);
+});
+window.addEventListener('message', function(e){
+  var d = e.data;
+  if (d && d.type === 'plugin:theme' && d.data){
+    if (d.data.locale) document.documentElement.setAttribute('lang', d.data.locale);
+    updateLabels();
+    convert();
+  }
+});
+updateLabels();
+status(L('请先输入内容'));
+</script>
+</body>
+</html>

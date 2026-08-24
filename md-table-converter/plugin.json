@@ -1,0 +1,29 @@
+{
+  "id": "io.github.parieses.md-table",
+  "name": "MD 表格转换器",
+  "version": "0.1.0",
+  "description": "Markdown 表格与 CSV / JSON / HTML 四种格式互转，自动识别输入格式，写文档、导数据的顺手小工具",
+  "author": "QuickDock",
+  "icon": "icon.svg",
+  "category": "办公效率",
+  "platforms": ["windows", "darwin", "linux"],
+  "capabilities": ["frontend"],
+  "permissions": {
+    "clipboard": true
+  },
+  "backend": {
+    "runtime": "none"
+  },
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html"
+  },
+  "name_i18n": {
+    "zh-CN": "MD 表格转换器",
+    "en-US": "MD Table Converter"
+  },
+  "description_i18n": {
+    "zh-CN": "Markdown 表格与 CSV / JSON / HTML 四种格式互转，自动识别输入格式，写文档、导数据的顺手小工具",
+    "en-US": "Convert Markdown tables between CSV, JSON and HTML. Auto-detects the input format."
+  }
+}

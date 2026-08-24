@@ -559,9 +559,9 @@ window.addEventListener('message', (e) => {
 
 ---
 
-## 内置插件参考（避免重复造轮子）
+## 插件参考（避免重复造轮子）
 
-开发新插件前，先确认系统是否已自带同类能力。当前内置插件（位于 `plugins/builtin/`）：
+以下能力均已有现成外部插件（位于 `plugins/external/`，ID 为 `io.github.parieses.*`），开发新插件前先确认是否已覆盖。2026-08-24 起**内置插件已全部外置**，`plugins/builtin/` 仅保留 `common.css` / `common.js` 骨架（宿主向后兼容注入用）：
 
 **Goja 插件（有后端逻辑）**
 
@@ -582,16 +582,21 @@ window.addEventListener('message', (e) => {
 | jwt-decoder | JWT 解码 |
 | markdown-preview | Markdown 预览 |
 | qrcode | 二维码生成/识别 |
-| hosts-manager | hosts 文件管理（system-tools.exe） |
-| port-scanner | 端口扫描（system-tools.exe） |
-| wifi-manager | WiFi 管理（system-tools.exe） |
 
-**已外置插件的参考**：`color-converter`、`compare`、`cron-explainer`、`http-status` 四个原内置插件已迁至 `plugins/external/`（ID 改为 `io.github.parieses.*`），代码可直接复用——它们演示了 goja 插件「零宿主依赖、纯 JS 自包含」的外部化样板（目录结构、`plugin.json`、`build.py` 打包）。完整 goja 模板见上文「完整示例」。
+**Native 插件（自带 Go 源码 + system-tools.exe）**
 
-> 共享资源：内置插件统一使用 `plugins/builtin/common.css` / `common.js`（主题变量、`.p-*` 布局类、挂载到 `window.QD` 的 `escapeHtml`/`copyText` 等），外部插件的前端也会由宿主自动注入这两份文件，无需自带。
+| 插件 ID | 功能 |
+|---|---|
+| hosts-manager | hosts 文件管理（system-tools.exe，源码已 vendor 进插件目录） |
+| port-scanner | 端口扫描（同上） |
+| wifi-manager | WiFi 管理（同上） |
+
+> 原内置插件已全部迁至 `plugins/external/`（ID 改为 `io.github.parieses.*`），代码可直接复用——goja/none 插件演示「零宿主依赖、纯 JS 自包含」的外部化样板；native 三件套演示「Go 源码 vendor + 自编译 entry exe」模式（`build.py` 直接在插件目录 `go build`）。完整 goja 模板见上文「完整示例」。
+
+> 样式自包含（2026-08-24 约定）：外部插件的 `frontend/` 下必须自带 `qd-theme.css`（即 `common.css` 的副本，改名以绕开宿主对 `common.css` 后缀的拦截改写），页面用 `<link rel="stylesheet" href="qd-theme.css">` 引用——zip 解压到任何环境都有完整样式，不依赖宿主注入。宿主仍会向页面注入 `PluginsDir/builtin/common.css/js` 以兼容历史已安装的旧版插件，但新插件不得依赖该注入。
 
 ## 完整示例
 
 参见 `plugins/templates/goja/` 目录下的 Goja 模板项目。
-以及 `plugins/builtin/calcsheet/` 目录下的内置计算稿纸插件（`none` runtime）。
-**外部 native 插件完整范例**：`plugins/external/pdf-toolkit/` —— 含合并/拆分/压缩/水印/提取图片/PDF 信息，演示了「多选文件选择 + 目录输出 + 自带 pdfcpu.exe + pickFolder 后端命令」全套实战模式。
+以及 `plugins/external/calcsheet/` 目录下的计算稿纸插件（`none` runtime）。
+**外部 native 插件完整范例**：`plugins/external/pdf-toolkit/` —— 含合并/拆分/压缩/水印/提取图片/PDF 信息，演示了「多选文件选择 + 目录输出 + 自带 pdfcpu.exe + pickFolder 后端命令」全套实战模式；`plugins/external/hosts-manager/` —— 演示 native 插件「vendor Go 源码 + build.py 自动编译 entry exe」模式。

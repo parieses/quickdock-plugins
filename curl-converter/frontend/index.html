@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>cURL 转代码</title>
+<link rel="stylesheet" href="qd-theme.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+.p-app{display:flex;flex-direction:column;height:100vh}
+.p-toolbar{display:flex;align-items:center;gap:6px;padding:8px 10px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap}
+.cc-seg{display:flex;gap:2px;background:var(--bg-tertiary);border-radius:var(--radius);padding:2px}
+.cc-split{flex:1;display:flex;flex-direction:column;min-height:0;padding:8px 10px;gap:8px}
+.cc-pane{flex:1;display:flex;flex-direction:column;min-height:0}
+.cc-label{font-size:11px;color:var(--text-muted);margin-bottom:4px;display:flex;justify-content:space-between;align-items:center}
+.cc-io{flex:1;width:100%;resize:none;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-primary);color:var(--text-primary);font:12.5px/1.6 var(--font-mono);padding:10px 12px;outline:none;white-space:pre;overflow:auto}
+.cc-io:focus{border-color:var(--accent)}
+.cc-status{flex-shrink:0;padding:5px 10px;font-size:11.5px;color:var(--text-muted);border-top:1px solid var(--border);background:var(--bg-secondary)}
+.cc-status.err{color:#ef4444}
+.cc-hint{color:var(--text-placeholder)}
+</style>
+</head>
+<body>
+<div class="p-app">
+  <div class="p-toolbar">
+    <div class="cc-seg" id="dirSeg">
+      <button class="p-tab p-tab-active" data-dir="toCode">cURL → 代码</button>
+      <button class="p-tab" data-dir="toCurl">代码 → cURL</button>
+    </div>
+    <div class="p-tabs" id="langTabs">
+      <button class="p-tab p-tab-active" data-lang="python">Python</button>
+      <button class="p-tab" data-lang="go">Go</button>
+      <button class="p-tab" data-lang="js">JavaScript</button>
+      <button class="p-tab" data-lang="php">PHP</button>
+    </div>
+    <div style="flex:1"></div>
+    <button class="p-tab" id="copyBtn" onclick="copyOut()">📋 复制</button>
+  </div>
+  <div class="cc-split">
+    <div class="cc-pane">
+      <div class="cc-label"><span id="inLabel">粘贴 curl 命令</span><span class="cc-hint">支持 \ 续行、单双引号、$'' 转义</span></div>
+      <textarea id="in" class="cc-io" spellcheck="false" placeholder="curl -X POST 'https://api.example.com/users' -H 'Content-Type: application/json' -d '{&quot;name&quot;:&quot;tom&quot;}"></textarea>
+    </div>
+    <div class="cc-pane">
+      <div class="cc-label"><span id="outLabel">转换结果 · Python · requests</span></div>
+      <pre id="out" class="cc-io cc-out"></pre>
+    </div>
+  </div>
+  <div class="cc-status" id="status"></div>
+</div>
+<script>
+// ==================== 页面 i18n ====================
+var L10N = {
+  'en-US': {
+    'cURL → 代码': 'cURL → Code',
+    '代码 → cURL': 'Code → cURL',
+    '粘贴 curl 命令': 'Paste a curl command',
+    '粘贴 fetch 或 requests 代码片段': 'Paste a fetch or requests snippet',
+    '📋 复制': '📋 Copy',
+    '已复制到剪贴板': 'Copied to clipboard',
+    '请先输入内容': 'Nothing to convert yet'
+  }
+};
+function isEn(){ var l = document.documentElement.getAttribute('lang') || ''; return l.indexOf('en') === 0 }
+function L(s){ return isEn() ? ((L10N['en-US'] && L10N['en-US'][s]) || s) : s }
+
+// ==================== 状态 ====================
+var cur = { dir: 'toCode', lang: 'python' };
+var lastOut = '';
+var LANG_LABEL = { python:'Python · requests', go:'Go · net/http', js:'JavaScript · fetch', php:'PHP · cURL' };
+
+// ==================== 工具 ====================
+function $(id){ return document.getElementById(id) }
+function b64(s){ return btoa(unescape(encodeURIComponent(s))) }
+function status(msg, err){ var el = $('status'); el.textContent = msg; el.className = 'cc-status' + (err ? ' err' : '') }
+function copyOut(){
+  if (!lastOut) return;
+  var done = function(){ status(L('已复制到剪贴板')); };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(lastOut).then(done, fb);
+  else fb();
+  function fb(){
+    var ta = document.createElement('textarea');
+    ta.value = lastOut; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); done(); } catch(e){}
+    document.body.removeChild(ta);
+  }
+}
+
+// ==================== shell 词法切词 ====================
+function tokenize(input){
+  var s = String(input).replace(/\\\r?\n/g, ' ').trim();
+  var toks = [], i = 0, buf = '', has = false;
+  function push(){ if (has){ toks.push(buf); buf = ''; has = false; } }
+  while (i < s.length){
+    var c = s[i];
+    if (c === '\\' && i + 1 < s.length){ buf += s[i+1]; i += 2; has = true; continue; }
+    if (c === "'"){ i++; while (i < s.length && s[i] !== "'") buf += s[i++]; i++; has = true; continue; }
+    if (c === '$' && s[i+1] === "'"){
+      i += 2;
+      while (i < s.length && s[i] !== "'"){
+        if (s[i] === '\\'){
+          var n = s[i+1];
+          buf += ({ n:'\n', t:'\t', r:'\r' })[n] || n;
+          i += 2;
+        } else buf += s[i++];
+      }
+      i++; has = true; continue;
+    }
+    if (c === '"'){
+      i++;
+      while (i < s.length && s[i] !== '"'){
+        if (s[i] === '\\' && i+1 < s.length){
+          if (s[i+1] !== '\n') buf += s[i+1];
+          i += 2;
+        } else buf += s[i++];
+      }
+      i++; has = true; continue;
+    }
+    if (/\s/.test(c)){ push(); i++; continue; }
+    buf += c; i++; has = true;
+  }
+  push();
+  return toks;
+}
+
+// ==================== curl 解析 ====================
+var SKIP_VALUE_FLAGS = { '--max-time':1, '-m':1, '--connect-timeout':1, '--retry':1, '-o':1, '--output':1,
+  '--cacert':1, '--capath':1, '--cert':1, '--key':1, '--resolve':1, '--noproxy':1, '-x':1, '--proxy':1 };
+
+function parseCurl(toks){
+  if (!toks.length || !/^curl(\.exe)?$/i.test(toks[0])) throw new Error(isEn() ? 'Not a curl command' : '这不是以 curl 开头的命令');
+  var req = { method:'', url:'', headers:[], dataParts:[], formParts:[], user:'', getFlag:false, head:false };
+  var i = 1;
+  function nextVal(flag){ i++; if (i >= toks.length) throw new Error((isEn() ? 'missing value for ' : '参数缺少值: ') + flag); return toks[i]; }
+  for (; i < toks.length; i++){
+    var t = toks[i];
+    if (t === '-X' || t === '--request') req.method = nextVal(t).toUpperCase();
+    else if (t === '--url') req.url = nextVal(t);
+    else if (t === '-H' || t === '--header') req.headers.push(nextVal(t));
+    else if (t === '-A' || t === '--user-agent') req.headers.push('User-Agent: ' + nextVal(t));
+    else if (t === '-e' || t === '--referer') req.headers.push('Referer: ' + nextVal(t));
+    else if (t === '-b' || t === '--cookie') req.headers.push('Cookie: ' + nextVal(t));
+    else if (t === '-u' || t === '--user') req.user = nextVal(t);
+    else if (t === '-d' || t === '--data' || t === '--data-raw' || t === '--data-binary') req.dataParts.push(nextVal(t));
+    else if (t === '--data-urlencode') req.dataParts.push(encodeURIComponent(nextVal(t)));
+    else if (t === '-F' || t === '--form' || t === '--form-string') req.formParts.push(nextVal(t));
+    else if (t === '-G' || t === '--get') req.getFlag = true;
+    else if (t === '-I' || t === '--head') req.head = true;
+    else if (t.charAt(0) === '-'){ if (SKIP_VALUE_FLAGS[t]) i++; }
+    else if (!req.url && /^[a-z][a-z0-9+.-]*:\/\//i.test(t)) req.url = t;
+  }
+  if (req.user) req.headers.push('Authorization: Basic ' + b64(req.user));
+  if (!req.method){
+    if (req.head) req.method = 'HEAD';
+    else if (req.dataParts.length || req.formParts.length) req.method = 'POST';
+    else req.method = 'GET';
+  }
+  var body = req.formParts.length ? '' : req.dataParts.join('&');
+  if (req.getFlag && body){
+    req.url += (req.url.indexOf('?') > -1 ? '&' : '?') + body;
+    body = ''; req.dataParts = [];
+  }
+  var isJson = false, jsonObj = null;
+  if (body){ try { jsonObj = JSON.parse(body); isJson = true; } catch(e){} }
+  var ct = '';
+  req.headers.forEach(function(h){
+    var m = h.match(/^([^:]+):\s*(.*)$/);
+    if (m && m[1].toLowerCase() === 'content-type') ct = m[2];
+  });
+  return { method:req.method, url:req.url, headers:req.headers, body:body,
+           isJson:isJson, jsonObj:jsonObj, multipart:req.formParts.length > 0,
+           formParts:req.formParts, contentType:ct };
+}
+function headerPairs(req){
+  var out = [];
+  req.headers.forEach(function(h){
+    var m = h.match(/^([^:]+):\s*(.*)$/);
+    if (m) out.push([m[1], m[2]]);
+  });
+  return out;
+}
+
+// ==================== 字符串转义 ====================
+function pyStr(s){ return '"' + s.replace(/\\/g,'\\\\').replace(/"/g,'\\"').replace(/\n/g,'\\n').replace(/\r/g,'') + '"' }
+function goStr(s){ return '"' + s.replace(/\\/g,'\\\\').replace(/"/g,'\\"').replace(/\n/g,'\\n').replace(/\r/g,'') + '"' }
+function jsStr(s){ return '"' + s.replace(/\\/g,'\\\\').replace(/"/g,'\\"').replace(/\n/g,'\\n').replace(/\r/g,'') + '"' }
+function phpStr(s){ return "'" + s.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,'\\n') + "'" }
+function shStr(s){ return "'" + s.replace(/'/g, "'\\''") + "'" }
+
+function pyVal(v, indent){
+  var pad = new Array(indent + 1).join(' ');
+  if (v === null) return 'None';
+  if (typeof v === 'boolean') return v ? 'True' : 'False';
+  if (typeof v === 'number') return String(v);
+  if (typeof v === 'string') return pyStr(v);
+  if (Array.isArray(v)){
+    if (!v.length) return '[]';
+    var items = v.map(function(x){ return pad + '    ' + pyVal(x, indent + 4); });
+    return '[\n' + items.join(',\n') + '\n' + pad + ']';
+  }
+  var keys = Object.keys(v);
+  if (!keys.length) return '{}';
+  var kv = keys.map(function(k){ return pad + '    ' + pyStr(k) + ': ' + pyVal(v[k], indent + 4); });
+  return '{\n' + kv.join(',\n') + '\n' + pad + '}';
+}
+
+// ==================== 生成器：Python ====================
+function genPython(req){
+  var Ls = ['import requests', '', 'url = ' + pyStr(req.url)];
+  var hp = headerPairs(req);
+  if (hp.length){
+    Ls.push('', 'headers = {');
+    hp.forEach(function(p){ Ls.push('    ' + pyStr(p[0]) + ': ' + pyStr(p[1]) + ','); });
+    Ls.push('}');
+  }
+  var args = ['url'];
+  if (hp.length) args.push('headers=headers');
+  if (req.multipart){
+    Ls.push('', 'files = [');
+    req.formParts.forEach(function(f){
+      var mm = f.match(/^([^=]+)=(.*)$/);
+      if (!mm) return;
+      var name = mm[1], val = mm[2];
+      if (val.charAt(0) === '@') Ls.push('    (' + pyStr(name) + ', open(' + pyStr(val.slice(1)) + ', "rb")),');
+      else Ls.push('    (' + pyStr(name) + ', (None, ' + pyStr(val) + ')),');
+    });
+    Ls.push(']');
+    args.push('files=files');
+  } else if (req.isJson){
+    Ls.push('', 'payload = ' + pyVal(req.jsonObj, 0));
+    args.push('json=payload');
+  } else if (req.body){
+    Ls.push('', 'payload = ' + pyStr(req.body));
+    args.push('data=payload');
+  }
+  Ls.push('');
+  Ls.push('resp = requests.' + req.method.toLowerCase() + '(' + args.join(', ') + ')');
+  Ls.push('print(resp.status_code)');
+  Ls.push('print(resp.text)');
+  return Ls.join('\n');
+}
+
+// ==================== 生成器：Go ====================
+function genGo(req){
+  var hasBody = !!req.body, mp = req.multipart;
+  var imports = ['\t"fmt"', '\t"io"', '\t"net/http"'];
+  var pre = [], mid = [], newReqArgs;
+  if (mp){
+    imports.splice(2, 0, '\t"bytes"', '\t"mime/multipart"', '\t"os"', '\t"path/filepath"');
+    pre.push('\tvar buf bytes.Buffer');
+    pre.push('\tw := multipart.NewWriter(&buf)');
+    req.formParts.forEach(function(f){
+      var mm = f.match(/^([^=]+)=(.*)$/);
+      if (!mm) return;
+      if (mm[2].charAt(0) === '@'){
+        pre.push('\tfw, _ := w.CreateFormFile(' + goStr(mm[1]) + ', filepath.Base(' + goStr(mm[2].slice(1)) + '))');
+        pre.push('\tf, _ := os.Open(' + goStr(mm[2].slice(1)) + ')');
+        pre.push('\tio.Copy(fw, f)');
+        pre.push('\tf.Close()');
+      } else {
+        pre.push('\tw.WriteField(' + goStr(mm[1]) + ', ' + goStr(mm[2]) + ')');
+      }
+    });
+    pre.push('\tw.Close()');
+    newReqArgs = 'http.NewRequest(' + goStr(req.method) + ', ' + goStr(req.url) + ', &buf)';
+    mid.push('\treq.Header.Set("Content-Type", w.FormDataContentType())');
+  } else if (hasBody){
+    imports.splice(3, 0, '\t"strings"');
+    newReqArgs = 'http.NewRequest(' + goStr(req.method) + ', ' + goStr(req.url) + ', strings.NewReader(' + goStr(req.body) + '))';
+  } else {
+    newReqArgs = 'http.NewRequest(' + goStr(req.method) + ', ' + goStr(req.url) + ', nil)';
+  }
+  var out = ['package main', '', 'import ('];
+  imports.forEach(function(im){ out.push(im); });
+  out.push(')', '', 'func main() {');
+  pre.forEach(function(l){ out.push(l); });
+  out.push('\treq, err := ' + newReqArgs);
+  out.push('\tif err != nil {');
+  out.push('\t\tpanic(err)');
+  out.push('\t}');
+  headerPairs(req).forEach(function(p){ out.push('\treq.Header.Set(' + goStr(p[0]) + ', ' + goStr(p[1]) + ')'); });
+  mid.forEach(function(l){ out.push(l); });
+  out.push('\tresp, err := http.DefaultClient.Do(req)');
+  out.push('\tif err != nil {');
+  out.push('\t\tpanic(err)');
+  out.push('\t}');
+  out.push('\tdefer resp.Body.Close()');
+  out.push('\tdata, _ := io.ReadAll(resp.Body)');
+  out.push('\tfmt.Println(resp.Status)');
+  out.push('\tfmt.Println(string(data))');
+  out.push('}');
+  return out.join('\n');
+}
+
+// ==================== 生成器：JavaScript ====================
+function genJs(req){
+  var hp = headerPairs(req);
+  var opts = [];
+  if (!(req.method === 'GET')) opts.push('method: ' + jsStr(req.method));
+  if (hp.length){
+    opts.push('headers: {');
+    hp.forEach(function(p){ opts.push('    ' + jsStr(p[0]) + ': ' + jsStr(p[1])); });
+    opts.push('}');
+  }
+  if (req.multipart){
+    opts.push('body: (() => {');
+    opts.push('    const fd = new FormData();');
+    req.formParts.forEach(function(f){
+      var mm = f.match(/^([^=]+)=(.*)$/);
+      if (!mm) return;
+      if (mm[2].charAt(0) === '@') opts.push('    fd.append(' + jsStr(mm[1]) + ', new File([], ' + jsStr(mm[2].slice(1)) + '));');
+      else opts.push('    fd.append(' + jsStr(mm[1]) + ', ' + jsStr(mm[2]) + ');');
+    });
+    opts.push('    return fd;');
+    opts.push('})()');
+  } else if (req.isJson){
+    opts.push('body: JSON.stringify(' + JSON.stringify(req.jsonObj, null, 2).split('\n').join('\n') + ')');
+  } else if (req.body){
+    opts.push('body: ' + jsStr(req.body));
+  }
+  var lines = ['(async () => {'];
+  if (!opts.length){
+    lines.push('    const resp = await fetch(' + jsStr(req.url) + ');');
+  } else {
+    lines.push('    const resp = await fetch(' + jsStr(req.url) + ', {');
+    opts.forEach(function(o){
+      lines.push('        ' + o.split('\n').join('\n        ') + ',');
+    });
+    lines.push('    });');
+  }
+  lines.push('    console.log(resp.status, await resp.text());');
+  lines.push('})();');
+  return lines.join('\n');
+}
+
+// ==================== 生成器：PHP ====================
+function phpArrFromJson(obj){
+  var keys = Object.keys(obj || {});
+  if (!keys.length) return '[]';
+  var rows = keys.map(function(k){
+    var v = obj[k];
+    var vs = (typeof v === 'string') ? phpStr(v) : JSON.stringify(v).replace(/"/g, "'");
+    return "        '" + k + "' => " + vs + ",";
+  });
+  return '[\n' + rows.join('\n') + '\n    ]';
+}
+function genPhp(req){
+  var hp = headerPairs(req);
+  var opts = ['CURLOPT_URL => ' + phpStr(req.url), 'CURLOPT_RETURNTRANSFER => true'];
+  if (req.method !== 'GET') opts.push('CURLOPT_CUSTOMREQUEST => ' + phpStr(req.method));
+  if (req.head) opts.push('CURLOPT_NOBODY => true');
+  var headerOpt = null;
+  if (req.multipart){
+    var parts = [];
+    req.formParts.forEach(function(f){
+      var mm = f.match(/^([^=]+)=(.*)$/);
+      if (!mm) return;
+      if (mm[2].charAt(0) === '@') parts.push("        '" + mm[1] + "' => new CURLFile(" + phpStr(mm[2].slice(1)) + "),");
+      else parts.push("        '" + mm[1] + "' => " + phpStr(mm[2]) + ",");
+    });
+    opts.push('CURLOPT_POSTFIELDS => [');
+    parts.forEach(function(p){ opts.push(p); });
+    opts.push(']');
+  } else if (req.isJson){
+    var hs = hp.map(function(p){ return phpStr(p[0] + ': ' + p[1]); }).concat(['"Content-Type: application/json"']).join(', ');
+    opts.push('CURLOPT_HTTPHEADER => [' + hs + ']');
+    opts.push('CURLOPT_POSTFIELDS => json_encode(' + phpArrFromJson(req.jsonObj) + ')');
+  } else {
+    if (hp.length){
+      var hs2 = hp.map(function(p){ return phpStr(p[0] + ': ' + p[1]); }).join(', ');
+      opts.push('CURLOPT_HTTPHEADER => [' + hs2 + ']');
+    }
+    if (req.body) opts.push('CURLOPT_POSTFIELDS => ' + phpStr(req.body));
+  }
+  return '<?php\n\n$ch = curl_init();\ncurl_setopt_array($ch, [\n' + opts.map(function(o){ return '    ' + o; }).join(',\n') + ',\n]);\n\n$response = curl_exec($ch);\ncurl_close($ch);\necho $response;\n';
+}
+
+// ==================== 反向：代码 → curl ====================
+var BQ = String.fromCharCode(96);
+function scanBraces(s, start){
+  var depth = 0, inS = null;
+  for (var i = start; i < s.length; i++){
+    var c = s[i];
+    if (inS){ if (c === inS && s[i-1] !== '\\\\') inS = null; }
+    else if (c === '"' || c === "'" || c === BQ) inS = c;
+    else if (c === '{') depth++;
+    else if (c === '}'){ depth--; if (depth === 0) return i; }
+  }
+  return -1;
+}
+function dictPairs(block){
+  var out = [], re = /['"]?([\w.-]+)['"]?\s*[:=]\s*['"]([^'"]*)['"]/g, m;
+  while ((m = re.exec(block))) out.push([m[1], m[2]]);
+  return out;
+}
+function findBlock(src, re){
+  var m = src.match(re);
+  if (!m) return null;
+  var bo = src.indexOf('{', m.index + m[0].length - 1);
+  if (bo < 0) return null;
+  var bc = scanBraces(src, bo);
+  return bc < 0 ? null : src.slice(bo + 1, bc);
+}
+function fromPython(src){
+  var mc = src.match(/requests\.(get|post|put|patch|delete|head|options|request)\s*\(/i);
+  if (!mc) throw new Error(isEn() ? 'No requests.* call found' : '未找到 requests 调用');
+  var method = mc[1].toUpperCase();
+  if (mc[1].toLowerCase() === 'request'){
+    var mm = src.slice(mc.index).match(/request\s*\(\s*['"](\\w+)['"]/i);
+    if (mm) method = mm[1].toUpperCase();
+  }
+  var urlm = src.match(/['"](https?:\/\/[^'"]+)['"]/);
+  var req = { method:method, url:urlm ? urlm[1] : '', headers:[], body:'' };
+  var hb = findBlock(src, /headers\s*[:=]\s*\{/);
+  if (hb) dictPairs(hb).forEach(function(p){ req.headers.push(p[0] + ': ' + p[1]); });
+  var jb = findBlock(src, /\bjson\s*[:=]\s*\{/);
+  if (jb) req.body = '{' + jb + '}';
+  else {
+    var dm = src.match(/\bdata\s*[:=]\s*['"]([^'"]*)['"]/);
+    if (dm) req.body = dm[1];
+  }
+  var am = src.match(/HTTPBasicAuth\(\s*['"]([^'"]*)['"]\s*,\s*['"]([^'"]*)['"]/);
+  if (am) req.headers.push('Authorization: Basic ' + b64(am[1] + ':' + am[2]));
+  return req;
+}
+function fromJs(src){
+  var fi = src.indexOf('fetch(');
+  if (fi < 0) throw new Error(isEn() ? 'No fetch() call found' : '未找到 fetch() 调用');
+  var rest = src.slice(fi + 6), k = 0;
+  while (k < rest.length && /\s/.test(rest[k])) k++;
+  var q = rest.charAt(k);
+  if (q !== '"' && q !== "'" && q !== BQ) throw new Error(isEn() ? 'Cannot read fetch URL' : '无法解析 fetch URL');
+  var e = rest.indexOf(q, k + 1);
+  var req = { method:'GET', url:rest.slice(k + 1, e), headers:[], body:'' };
+  var ob = rest.indexOf('{', e);
+  if (ob >= 0){
+    var oe = scanBraces(rest, ob);
+    if (oe > ob){
+      var blk = rest.slice(ob + 1, oe);
+      var mm = blk.match(/method\s*:\s*['"](\\w+)['"]/i);
+      if (mm) req.method = mm[1].toUpperCase();
+      var hb = findBlock(blk, /headers\s*:\s*\{/);
+      if (hb) dictPairs(hb).forEach(function(p){ req.headers.push(p[0] + ': ' + p[1]); });
+      var bm = blk.indexOf('JSON.stringify(');
+      if (bm > -1){
+        var bo = blk.indexOf('{', bm);
+        var bc = scanBraces(blk, bo);
+        req.body = '{' + blk.slice(bo + 1, bc) + '}';
+      } else {
+        var bm2 = blk.match(/body\s*:\s*['"]([^'"]*)['"]/);
+        if (bm2) req.body = bm2[1];
+      }
+    }
+  }
+  return req;
+}
+function buildCurl(req){
+  var parts = ['curl'];
+  if (req.method && req.method !== 'GET') parts.push('-X ' + req.method);
+  parts.push(shStr(req.url));
+  req.headers.forEach(function(h){
+    if (/^content-type:\s*application\/json/i.test(h) && req.body) return;
+    parts.push('-H ' + shStr(h));
+  });
+  if (req.body) parts.push('--data-raw ' + shStr(req.body));
+  return parts.join(' \\\n  ');
+}
+
+// ==================== 主流程 ====================
+function convert(){
+  var src = $('in').value.trim();
+  $('out').textContent = '';
+  lastOut = '';
+  if (!src){ status(L('请先输入内容')); updateOutLabel(); return; }
+  try {
+    if (cur.dir === 'toCode'){
+      var req = parseCurl(tokenize(src));
+      var fn = { python:genPython, go:genGo, js:genJs, php:genPhp }[cur.lang];
+      lastOut = fn(req);
+      status(req.method + ' ' + req.url + ' · ' + req.headers.length + ' headers' +
+             (req.body ? ' · body ' + req.body.length + 'B' : '') + (req.isJson ? ' · JSON' : ''));
+    } else {
+      var req2 = /requests\s*\./.test(src) ? fromPython(src) : fromJs(src);
+      lastOut = buildCurl(req2);
+      status(req2.method + ' ' + req2.url);
+    }
+    $('out').textContent = lastOut;
+  } catch(e){
+    status(e.message || String(e), true);
+  }
+  updateOutLabel();
+}
+function updateOutLabel(){
+  if (cur.dir === 'toCode'){
+    $('outLabel').textContent = (isEn() ? 'Output · ' : '转换结果 · ') + LANG_LABEL[cur.lang];
+  } else {
+    $('outLabel').textContent = isEn() ? 'Output · cURL' : '转换结果 · cURL';
+  }
+}
+
+// ==================== 交互绑定 ====================
+document.querySelectorAll('#dirSeg .p-tab').forEach(function(b){
+  b.addEventListener('click', function(){
+    document.querySelectorAll('#dirSeg .p-tab').forEach(function(x){ x.classList.remove('p-tab-active'); });
+    b.classList.add('p-tab-active');
+    cur.dir = b.dataset.dir;
+    $('langTabs').style.display = cur.dir === 'toCode' ? '' : 'none';
+    applyLangTexts();
+    convert();
+  });
+});
+document.querySelectorAll('#langTabs .p-tab').forEach(function(b){
+  b.addEventListener('click', function(){
+    document.querySelectorAll('#langTabs .p-tab').forEach(function(x){ x.classList.remove('p-tab-active'); });
+    b.classList.add('p-tab-active');
+    cur.lang = b.dataset.lang;
+    convert();
+  });
+});
+var debounceTimer = null;
+$('in').addEventListener('input', function(){
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(convert, 150);
+});
+function applyLangTexts(){
+  var dirMap = { toCode:L('cURL → 代码'), toCurl:L('代码 → cURL') };
+  document.querySelectorAll('#dirSeg .p-tab').forEach(function(b){ b.textContent = dirMap[b.dataset.dir]; });
+  $('copyBtn').textContent = L('📋 复制');
+  $('inLabel').textContent = cur.dir === 'toCurl' ? L('粘贴 fetch 或 requests 代码片段') : L('粘贴 curl 命令');
+  updateOutLabel();
+}
+
+// ==================== 宿主主题/语言桥接 ====================
+window.addEventListener('message', function(e){
+  var d = e.data;
+  if (d && d.type === 'plugin:theme' && d.data){
+    if (d.data.locale) document.documentElement.setAttribute('lang', d.data.locale);
+    applyLangTexts();
+    convert();
+  }
+});
+applyLangTexts();
+status(L('请先输入内容'));
+</script>
+</body>
+</html>

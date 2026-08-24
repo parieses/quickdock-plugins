@@ -137,6 +137,7 @@ func exeSuffix() string {
 
 func main() {
 	reader := bufio.NewReader(os.Stdin)
+	var wg sync.WaitGroup
 	for {
 		line, err := reader.ReadString('\n')
 		if err != nil {
@@ -146,11 +147,20 @@ func main() {
 		if data == "" {
 			continue
 		}
-		// 同步处理：handler 都设计为快速返回（长任务在 handler 内部再起 goroutine 异步执行）。
-		// 若这里用 go dispatch，stdin 关闭（宿主停止/升级插件）时主循环立即 break 退出，
-		// 在途请求的响应会随进程消失——表现为"插件不回话"，干扰排障。
-		dispatch(data)
+		// 每个请求独立 goroutine：任何 handler（含同步慢操作：info 最长 15s、剪贴板
+		// PowerShell、打开目录）都不阻塞 stdin 读循环，host.ping 永远秒回——
+		// 杜绝「同步 handler 卡住 → 健康检查连续 3 轮 ping 超时 → 标记 unresponsive
+		// → 第 6 轮强杀重启」的整类死法（2026-08-24 v0.1.6 结构根治）。
+		// EOF（宿主停止/升级杀进程）后 wg.Wait() 等在途响应写完再退出，
+		// 避免"插件不回话"的表象——此前为规避该表象改成同步 dispatch，
+		// 反而引入任意 handler 卡死即被误杀的风险。
+		wg.Add(1)
+		go func(raw string) {
+			defer wg.Done()
+			dispatch(raw)
+		}(data)
 	}
+	wg.Wait()
 }
 
 func dispatch(data string) {
@@ -821,9 +831,13 @@ func findPDFCPU() (string, error) {
 func copyToClipboard(text string) (bool, error) {
 	switch gOS {
 	case "windows":
-		// PowerShell
+		// 剪贴板被其他进程（Word/Excel/浏览器大块复制）锁定时 Set-Clipboard 可能
+		// 无限期阻塞，必须限时强杀——goroutine dispatch 虽已不阻塞 ping，但
+		// 限时能让前端在宿主 20s 超时前拿到明确错误而非干等。
 		escaped := strings.ReplaceAll(text, "'", "''")
-		cmd := exec.Command("powershell", "-NoProfile", "-Command", fmt.Sprintf("Set-Clipboard -Value '%s'", escaped))
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		cmd := exec.CommandContext(ctx, "powershell", "-NoProfile", "-Command", fmt.Sprintf("Set-Clipboard -Value '%s'", escaped))
 		return true, cmd.Run()
 	case "darwin":
 		// pbcopy
