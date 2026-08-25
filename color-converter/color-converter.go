@@ -107,7 +107,7 @@ func handleRequest(req rpcRequest) {
 	switch req.Method {
 	case "initialize":
 		respond(req.ID, map[string]interface{}{"status": "ready", "name": "QuickDock Color Tools"})
-	case "host.ping", "ping":
+	case "host.ping":
 		respond(req.ID, map[string]interface{}{"pong": true})
 	case "plugin.execute":
 		var p executeParams

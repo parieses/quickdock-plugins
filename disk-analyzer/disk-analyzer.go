@@ -187,7 +187,7 @@ func handleRequest(req rpcRequest) {
 			"status": "ready",
 			"name":   "QuickDock Disk Analyzer",
 		})
-	case "host.ping", "ping":
+	case "host.ping":
 		respond(req.ID, map[string]interface{}{"pong": true})
 	case "plugin.execute":
 		handleExecute(req)

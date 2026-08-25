@@ -21,6 +21,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
@@ -133,9 +134,65 @@ func exeSuffix() string {
 	return ""
 }
 
-// ---- main ----
+// ---- 诊断日志（v0.1.7）----
+// 写入插件目录下 pdf-toolkit.log（打开失败静默降级，不干扰主流程）。
+// 用途：宿主弹「连续 N 次无响应」时，本文件可还原插件侧时间轴——
+// 收到哪些请求、ping 是否处理、哪个 handler 慢、Flush 是否卡、有无 panic。
+var (
+	diagLogFile *os.File
+	diagMu      sync.Mutex
+)
+
+func diagLogf(format string, args ...interface{}) {
+	diagMu.Lock()
+	defer diagMu.Unlock()
+	if diagLogFile == nil {
+		return
+	}
+	fmt.Fprintf(diagLogFile, "%s %s\n", time.Now().Format("2006-01-02 15:04:05.000"), fmt.Sprintf(format, args...))
+	_ = diagLogFile.Sync()
+}
+
+func setupDiagLog() {
+	f, err := os.OpenFile(filepath.Join(filepath.Dir(os.Args[0]), "pdf-toolkit.log"),
+		os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		return // 只读目录/权限问题：静默降级
+	}
+	diagLogFile = f
+}
+
+// dispatchWithDiag 带诊断的 dispatch：记录收包、panic（防崩溃+留证）、慢处理
+func dispatchWithDiag(raw string) {
+	defer func() {
+		if r := recover(); r != nil {
+			diagLogf("PANIC %v\n%s", r, debug.Stack())
+		}
+	}()
+	method := ""
+	var probe struct {
+		Method string `json:"method"`
+	}
+	if len(raw) > 0 && raw[0] == '{' {
+		if err := json.Unmarshal([]byte(raw), &probe); err == nil && probe.Method != "" {
+			method = probe.Method
+		}
+	}
+	diagLogf("recv method=%s len=%d", method, len(raw))
+	start := time.Now()
+	dispatch(raw)
+	if el := time.Since(start); el > 3*time.Second {
+		diagLogf("SLOW method=%s 耗时 %.2fs", method, el.Seconds())
+	} else if method == "host.ping" && el > 500*time.Millisecond {
+		// ping 都慢？说明 respond 链路上有停顿（写锁/Flush 阻塞）
+		diagLogf("PING 偏慢 %.2fs", el.Seconds())
+	}
+}
 
 func main() {
+	setupDiagLog()
+	diagLogf("进程启动 pid=%d", os.Getpid())
+	defer diagLogf("进程退出")
 	reader := bufio.NewReader(os.Stdin)
 	var wg sync.WaitGroup
 	for {
@@ -157,7 +214,7 @@ func main() {
 		wg.Add(1)
 		go func(raw string) {
 			defer wg.Done()
-			dispatch(raw)
+			dispatchWithDiag(raw)
 		}(data)
 	}
 	wg.Wait()
@@ -176,10 +233,10 @@ func handleRequest(req rpcRequest) {
 	switch req.Method {
 	case "initialize":
 		respond(req.ID, map[string]interface{}{"status": "ready", "name": "QuickDock PDF Toolkit"})
-	case "host.ping", "ping":
-		// 注意：宿主健康检查（manager.pingOne）发送的 method 是 "host.ping"，
-		// 必须同时接受两种写法，否则每轮 ping 都回 -32601 被计失败，
-		// 90s 后插件会被误标为 unresponsive（即使从未被使用）。
+	case "host.ping":
+		// 协议统一为 host.ping（宿主 manager.pingOne 固定发送此方法）。
+		// 若版本混杂导致回 unknown method，每轮 ping 都 -32601 → 90s 后被误标 unresponsive。
+		diagLogf("ping id=%d", req.ID)
 		respond(req.ID, map[string]interface{}{"pong": true})
 	case "plugin.execute":
 		handleExecute(req)
@@ -942,9 +999,14 @@ func writeResponse(resp rpcResponse) {
 	}
 	writeMu.Lock()
 	defer writeMu.Unlock()
+	start := time.Now()
 	stdout.Write(data)
 	stdout.WriteByte('\n')
 	stdout.Flush()
+	if el := time.Since(start); el > 500*time.Millisecond {
+		// stdout 管道满（宿主不消费）或磁盘/控制台问题 → 响应阻塞，宿主 ping 必然超时
+		diagLogf("FLUSH 阻塞 %.2fs id=%d", el.Seconds(), resp.ID)
+	}
 }
 
 // io 占位
