@@ -10,7 +10,7 @@
 | [接口压测](./api-loadtest/) | `io.github.parieses.api-loadtest` | 0.1.1 | 功能丰富的 HTTP 接口压测工具：并发/时长双模式、自定义 Header 与 Body、实时 QPS 与延迟分布(p50/p90/p95/p99)、状态码分布、错误率统计与结果一键导出 |
 | [PDF 工具箱](./pdf-toolkit/) | `io.github.parieses.pdf-toolkit` | 0.1.7 | PDF 合并/拆分/压缩/加水印/提取图片，无需 Adobe Acrobat |
 | [颜色工具](./color-converter/) | `io.github.parieses.color-converter` | 0.3.1 | 颜色格式互转（HEX/RGB/HSL + 常见英文色名识别）+ 屏幕取色（F8 取色 / ESC 取消） |
-| [对比工具](./compare/) | `io.github.parieses.compare` | 0.2.1 | 文件/图片对比（元数据 + 预览 + 文本差异）与文本块逐行 Diff |
+| [对比工具](./compare/) | `io.github.parieses.compare` | 0.2.2 | 文件/图片对比（元数据 + 预览 + 文本差异）与文本块逐行 Diff（点选改走原生对话框，拖拽保留） |
 | [Crontab 解释器](./cron-explainer/) | `io.github.parieses.cron-explainer` | 0.2.1 | 解析 cron 表达式，显示可读描述、下次执行时间与可视化时间表 |
 | [HTTP 状态码速查](./http-status/) | `io.github.parieses.http-status` | 0.2.1 | 查询 HTTP 状态码含义、描述和常见场景 |
 | [cURL 转代码](./curl-converter/) | `io.github.parieses.curl-converter` | 0.1.0 | 把 curl 命令解析成 Python / Go / JavaScript / PHP 请求代码，也支持把 fetch、requests 代码反向转回 curl |
@@ -18,11 +18,11 @@
 | [Emoji 搜索](./emoji-search/) | `io.github.parieses.emoji-search` | 0.2.0 | 搜索 Emoji 并一键复制到剪贴板（自内置插件迁移） |
 | [代码格式化](./formatter/) | `io.github.parieses.formatter` | 0.2.0 | 通用代码压缩/美化（JS / CSS / HTML 自动检测）与 SQL 格式化合二为一（自内置插件迁移） |
 | [Markdown 渲染](./markdown-preview/) | `io.github.parieses.markdown-preview` | 0.2.0 | 实时渲染 Markdown，支持代码高亮，复制为 HTML（自内置插件迁移） |
-| [二维码工具](./qrcode/) | `io.github.parieses.qrcode` | 0.2.0 | 文本/URL 生成二维码，支持保存 PNG；从图片识别二维码内容（自内置插件迁移） |
+| [二维码工具](./qrcode/) | `io.github.parieses.qrcode` | 0.2.1 | 文本/URL 生成二维码，支持保存 PNG；从图片识别二维码内容（自内置插件迁移，选图改走原生对话框） |
 | [正则提取工具](./regex-extractor/) | `io.github.parieses.regex-extractor` | 0.2.0 | 输入文本和正则表达式，一键提取所有匹配项，支持分组捕获、高亮显示、导出结果（自内置插件迁移） |
 | [文本工具箱](./text-encoder/) | `io.github.parieses.text-encoder` | 0.2.0 | Base64 / URL / HTML 编解码，MD5 / SHA256 哈希，Base64 图片识别预览（自内置插件迁移） |
 | [时间转换](./time-converter/) | `io.github.parieses.time-converter` | 0.2.0 | 支持 Unix 时间戳、ISO 8601、相对时间等多种格式互转（自内置插件迁移） |
-| [JSON 工具箱](./json-toolbox/) | `io.github.parieses.json-toolbox` | 0.2.0 | JSON 编辑器（格式化/折叠/编辑）、JSON → TypeScript / Go、JSON ↔ YAML / TOML / XML 互转（自内置插件迁移） |
+| [JSON 工具箱](./json-toolbox/) | `io.github.parieses.json-toolbox` | 0.2.1 | JSON 编辑器（格式化/折叠/编辑）、JSON → TypeScript / Go、JSON ↔ YAML / TOML / XML 互转（自内置插件迁移，打开文件改走原生对话框） |
 | [JWT 解码器](./jwt-decoder/) | `io.github.parieses.jwt-decoder` | 0.2.0 | 解码 JWT Token，查看 Header/Payload，验证过期时间（自内置插件迁移） |
 | [Hosts 管理器](./hosts-manager/) | `io.github.parieses.hosts-manager` | 0.2.0 | 管理系统 hosts 文件条目，一键启用/禁用/新增（自内置插件迁移，自带 system-tools.exe） |
 | [端口检查器](./port-scanner/) | `io.github.parieses.port-scanner` | 0.2.0 | 检查端口占用，显示进程名和 PID（自内置插件迁移，自带 system-tools.exe） |
@@ -252,6 +252,20 @@ JS 侧注册方法（参考主仓库内置插件 json-toolbox 等的实现方式
 |------|------|
 | `plugin:execute` | 调用后端 `{id, command, input}`（native 走 plugin.execute） |
 | `plugin:copy` | 复制文本 `{id, text}` → 宿主回 `plugin:copy-result {id, ok}` |
+| `plugin:pickfile` | 原生文件选择 `{id, title?, filter?, pattern?}` → 宿主回 `plugin:pickfile-result {id, path|null}` |
+| `plugin:readfile` | 读取选中文件 `{id, path}` → 宿主回 `plugin:readfile-result {id, payload|null}`，`payload = {type:'text'|'dataurl', content}` |
+
+### 宿主桥接脚本（自动注入）
+
+宿主会向每个前端页面注入一段桥接脚本，页面可直接调用以下全局 API（无需自己 postMessage）：
+
+| API | 说明 |
+|------|------|
+| `window.qdConfirm(msg)` / `window.qdAlert(msg)` | 宿主 toast 确认 / 提示 |
+| `window.qdPickFile(opts?)` → `Promise<string|null>` | 原生文件选择；`opts={title?, filter?, pattern?}`，取消/失败返回 `null` |
+| `window.qdReadFile(path)` → `Promise<{type,content}|null>` | 读取 `qdPickFile` 选中的文件；文本→`{type:'text',content}`，图片/二进制→`{type:'dataurl',content}`；配合 `qdPickFile` 使用 |
+
+> **选文件一律用 `qdPickFile`**：iframe 沙箱内的 `<input type=file>` 会触发宿主窗口失焦问题，且脚本无法精确控制。示例：`const p = await window.qdPickFile({filter:'JSON', pattern:'*.json'}); const res = p && await window.qdReadFile(p);`
 
 ### 样式约定
 

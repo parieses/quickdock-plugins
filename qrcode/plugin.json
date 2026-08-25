@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.qrcode",
   "name": "二维码工具",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "文本/URL 生成二维码，支持保存 PNG；从图片识别二维码内容",
   "author": "QuickDock",
   "category": "开发者日常",

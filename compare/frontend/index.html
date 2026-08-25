@@ -266,8 +266,8 @@
     inp.addEventListener('change',function(e){if(e.target.files.length>0)handleFile(side,e.target.files[0])})
     document.body.appendChild(inp);fileInputs[side]=inp
   })
-  fcZoneLeft.addEventListener('click',function(){fileInputs.left.click()})
-  fcZoneRight.addEventListener('click',function(){fileInputs.right.click()})
+  fcZoneLeft.addEventListener('click',function(){openNative('left')})
+  fcZoneRight.addEventListener('click',function(){openNative('right')})
   ;['left','right'].forEach(function(side){var z=side==='left'?fcZoneLeft:fcZoneRight
     z.addEventListener('dragover',function(e){e.preventDefault();z.classList.add('drag-over')})
     z.addEventListener('dragleave',function(){z.classList.remove('drag-over')})
@@ -277,6 +277,29 @@
     var b=document.createElement('button');b.className='fc-clear-btn';b.textContent='✕';b.title=L('移除文件')
     b.addEventListener('click',function(e){e.stopPropagation();clearFile(side)});z.appendChild(b)
   })
+    var fcNative={left:null,right:null}
+  function openNative(side){
+    if(!window.qdPickFile||!window.qdReadFile){if(fileInputs[side])fileInputs[side].click();return}
+    window.qdPickFile({title:L('选择文件'),filter:L('所有文件'),pattern:'*.*'}).then(function(path){
+      if(!path)return
+      window.qdReadFile(path).then(function(res){
+        if(!res||res.error)return
+        fcNative[side]={path:path,res:res}
+        handleFile(side,makePseudoFile(path,res))
+      },function(){})
+    })
+  }
+  function makePseudoFile(path,res){
+    var a=path.split('/'),n=a[a.length-1]
+    var segs=path.split('\');if(segs.length>1)n=segs[segs.length-1]
+    var isData=res.type==='dataurl'
+    var bytes=isData?Math.floor((res.content.length-res.content.indexOf(',')-1)*0.75):res.content.length
+    var ext=getExtension(n)
+    var type=isData?(res.content.slice(5).split(';')[0]||'application/octet-stream'):({json:'application/json',md:'text/markdown',txt:'text/plain',csv:'text/csv',log:'text/plain',go:'text/plain',js:'text/plain',html:'text/html',yaml:'text/plain',xml:'text/plain'}[ext]||'text/plain')
+    var f={name:n,size:bytes,type:type,lastModified:0}
+    if(res.type==='text')f._text=res.content;else f._dataUrl=res.content
+    return f
+  }
   function handleFile(side,file){
     if(side==='left'){fcFile.left=file;renderFileInfo(file,fcInfoLeft,fcHintLeft,fcZoneLeft)}
     else{fcFile.right=file;renderFileInfo(file,fcInfoRight,fcHintRight,fcZoneRight)}
@@ -295,6 +318,7 @@
       +'<div class="fc-file-row"><span class="fc-file-label">'+L('大小')+'</span><span class="fc-file-value">'+sizeStr+'</span></div>'
       +'<div class="fc-file-row"><span class="fc-file-label">'+L('类型')+'</span><span class="fc-file-value">'+escapeHtml(typeStr)+'</span></div>'
       +'<div class="fc-file-row"><span class="fc-file-label">'+L('修改日期')+'</span><span class="fc-file-value">'+escapeHtml(dateStr)+'</span></div>'
+    if(file._dataUrl){infoEl.innerHTML=html+'<img class="fc-img" src="'+file._dataUrl+'" alt="preview">';return}
     if(file.type&&file.type.indexOf('image/')===0){
       var r=new FileReader();r.onload=function(e){infoEl.innerHTML=html+'<img class="fc-img" src="'+e.target.result+'" alt="preview">'};r.readAsDataURL(file);return
     }
@@ -315,7 +339,7 @@
     rows.push(compareRow(L('类型'),tl,tr))
     var el=getExtension(fa.name),er=getExtension(fb.name)
     if(el&&er)rows.push(compareRow(L('扩展名'),el,er))
-    rows.push(compareRow(L('修改时间'),new Date(fa.lastModified).toLocaleString(loc),new Date(fb.lastModified).toLocaleString(loc),fa.lastModified!==fb.lastModified))
+    rows.push(compareRow(L('修改时间'),fa.lastModified?new Date(fa.lastModified).toLocaleString(loc):'-',fb.lastModified?new Date(fb.lastModified).toLocaleString(loc):'-',(fa.lastModified||0)!==(fb.lastModified||0)))
     fcMetaBody.innerHTML=rows.join('')
     fcResult.style.display='';fcEmpty.style.display='none'
     if(isLikelyText(fa)&&isLikelyText(fb)){
@@ -329,7 +353,7 @@
   }
   function readBothText(fa,fb,cb){
     var done=0,res={l:null,r:null}
-    function read(f,key){var r=new FileReader();r.onload=function(e){res[key]=e.target.result;if(++done===2)cb(res.l,res.r)};r.onerror=function(){res[key]=null;if(++done===2)cb(res.l,res.r)};r.readAsText(f)}
+    function read(f,key){if(f&&f._text!==undefined){res[key]=f._text;if(++done===2)cb(res.l,res.r);return}if(f&&f._dataUrl){res[key]=null;if(++done===2)cb(res.l,res.r);return}var r=new FileReader();r.onload=function(e){res[key]=e.target.result;if(++done===2)cb(res.l,res.r)};r.onerror=function(){res[key]=null;if(++done===2)cb(res.l,res.r)};r.readAsText(f)}
     read(fa,'l');read(fb,'r')
   }
 

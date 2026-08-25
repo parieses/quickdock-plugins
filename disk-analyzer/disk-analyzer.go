@@ -1,7 +1,7 @@
 // Disk Analyzer - 磁盘空间分析工具
 // JSON-RPC 2.0 over stdin/stdout
 //
-// 协议对齐 QuickDock 宿主约定（参考 tools/system-tools/main.go）：
+// 协议对齐 QuickDock 宿主约定（参考外部插件的 system-tools 源码）：
 //   - initialize      宿主启动插件后的握手，必须响应，否则 15s 超时判定加载失败
 //   - host.ping       健康检查
 //   - plugin.execute  唯一的业务入口，params = {command, input}

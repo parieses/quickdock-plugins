@@ -39,11 +39,7 @@
 
   <div class="p-content" id="scanPane" style="display:none">
     <div class="p-field">
-      <label for="qrFile" class="p-btn p-btn-primary" style="cursor:pointer">
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-        选择图片
-      </label>
-      <input type="file" id="qrFile" accept="image/*" style="display:none">
+      <button class="p-btn p-btn-primary" id="btnScanPick">选择图片</button>
       <span class="p-muted">选择包含二维码的图片（PNG/JPG/WebP）</span>
     </div>
     <div class="p-actions">
@@ -97,39 +93,35 @@ function savePNG() {
 }
 
 // ---- 识别 ----
-function scanQR(file) {
-  if (!file) return
-  var reader = new FileReader()
-  reader.onload = function (e) {
-    var img = $('scanPreview')
-    img.src = e.target.result
-    img.style.display = 'block'
-    $('scanLoading').style.display = 'block'
-    $('scanResult').textContent = '识别中…'
-    $('btnCopy').disabled = true; $('btnOpenResult').disabled = true
-    img.onload = function () {
-      try {
-        var canvas = document.createElement('canvas')
-        canvas.width = img.naturalWidth; canvas.height = img.naturalHeight
-        var ctx = canvas.getContext('2d')
-        ctx.drawImage(img, 0, 0)
-        var data = ctx.getImageData(0, 0, canvas.width, canvas.height)
-        var code = jsQR(data.data, data.width, data.height)
-        if (code && code.data) {
-          $('scanResult').textContent = code.data
-          $('btnCopy').disabled = false
-          if (/^https?:\/\//i.test(code.data)) $('btnOpenResult').disabled = false
-        } else {
-          $('scanResult').textContent = '未识别到二维码，请换一张清晰的图片试试'
-        }
-      } catch (err) {
-        $('scanResult').textContent = '识别失败: ' + err.message
-      } finally {
-        $('scanLoading').style.display = 'none'
+function scanFromDataURL(dataUrl) {
+  if (!dataUrl) return
+  var img = $('scanPreview')
+  img.src = dataUrl
+  img.style.display = 'block'
+  $('scanLoading').style.display = 'block'
+  $('scanResult').textContent = '识别中…'
+  $('btnCopy').disabled = true; $('btnOpenResult').disabled = true
+  img.onload = function () {
+    try {
+      var canvas = document.createElement('canvas')
+      canvas.width = img.naturalWidth; canvas.height = img.naturalHeight
+      var ctx = canvas.getContext('2d')
+      ctx.drawImage(img, 0, 0)
+      var data = ctx.getImageData(0, 0, canvas.width, canvas.height)
+      var code = jsQR(data.data, data.width, data.height)
+      if (code && code.data) {
+        $('scanResult').textContent = code.data
+        $('btnCopy').disabled = false
+        if (/^https?:\/\//i.test(code.data)) $('btnOpenResult').disabled = false
+      } else {
+        $('scanResult').textContent = '未识别到二维码，请换一张清晰的图片试试'
       }
+    } catch (err) {
+      $('scanResult').textContent = '识别失败: ' + err.message
+    } finally {
+      $('scanLoading').style.display = 'none'
     }
   }
-  reader.readAsDataURL(file)
 }
 
 function copyResult() {
@@ -158,7 +150,23 @@ $('tabScan').addEventListener('click', function () { $('tabScan').classList.add(
 $('btnGen').addEventListener('click', genQR)
 $('btnSave').addEventListener('click', savePNG)
 $('qrText').addEventListener('keydown', function (e) { if (e.key === 'Enter') genQR() })
-$('qrFile').addEventListener('change', function () { scanQR(this.files && this.files[0]) })
+$('btnScanPick').addEventListener('click', function () {
+  if (!window.qdPickFile || !window.qdReadFile) { $('scanResult').textContent = '当前宿主不支持原生选文件'; return }
+  $('scanLoading').style.display = 'block'; $('scanResult').textContent = '读取中…'
+  $('btnCopy').disabled = true; $('btnOpenResult').disabled = true
+  window.qdPickFile({ title: '选择二维码图片', filter: '图片', pattern: '*.png;*.jpg;*.jpeg;*.gif;*.webp;*.bmp' }).then(function (path) {
+    if (!path) { $('scanLoading').style.display = 'none'; return }
+    window.qdReadFile(path).then(function (res) {
+      if (!res || res.error || res.type !== 'dataurl') {
+        $('scanLoading').style.display = 'none'
+        $('scanResult').textContent = '读取失败，请选择图片文件'
+        $('scanPreview').style.display = 'none'
+        return
+      }
+      scanFromDataURL(res.content)
+    }, function () { $('scanLoading').style.display = 'none'; $('scanResult').textContent = '读取失败' })
+  })
+})
 $('btnCopy').addEventListener('click', copyResult)
 $('btnOpenResult').addEventListener('click', openResult)
 

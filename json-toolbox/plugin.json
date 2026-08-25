@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.json-toolbox",
   "name": "JSON 工具箱",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "JSON 编辑器（格式化/折叠/编辑）、JSON → TypeScript / Go、JSON ↔ YAML / TOML / XML 互转",
   "author": "QuickDock",
   "icon": "icon.svg",

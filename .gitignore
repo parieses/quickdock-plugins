@@ -13,6 +13,9 @@
 node_modules/
 dist/
 
+# 插件中心自动生成产物（gen_site.py 在 CI 里重新生成并部署，不入库）
+site/
+
 # macOS
 .DS_Store
 

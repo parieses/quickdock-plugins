@@ -87,7 +87,6 @@
         <button class="p-btn" id="jeBtnOpen">打开文件</button>
         <button class="p-btn" id="jeBtnCopy">复制</button>
         <button class="p-btn" id="jeBtnDownload">下载</button>
-        <input type="file" id="jeFileInput" accept=".json,application/json,application/jsonlines" hidden>
       </div>
       <div class="je-body">
         <div class="je-pane-editor">
@@ -293,7 +292,6 @@
   var jeStatusText = document.getElementById('jeStatusText')
   var jeErrorBar = document.getElementById('jeErrorBar')
   var jeEditorMeta = document.getElementById('jeEditorMeta')
-  var jeFileInput = document.getElementById('jeFileInput')
 
   var state = { parsed: null, error: null, indent: 2, sortKeys: false, text: '', foldRanges: [], folded: new Set() }
 
@@ -398,14 +396,20 @@
     if (collapsed) { for (var i = 0; i < state.foldRanges.length; i++) state.folded.add(state.foldRanges[i].startLine) } else { state.folded.clear() }
     renderGutter(); applyFold()
   }
-  function openFile() { jeFileInput.click() }
-  jeFileInput.addEventListener('change', function () {
-    var f = jeFileInput.files && jeFileInput.files[0]; if (!f) return
-    var reader = new FileReader()
-    reader.onload = function () { var text = String(reader.result || ''); var fmt = tryFormat(text); renderEditor(fmt != null ? fmt : text); parseNow(); flashStatus('已打开：' + f.name + '（' + formatBytes(f.size) + '）') }
-    reader.onerror = function () { flashStatus('文件读取失败', 'bad') }
-    reader.readAsText(f); jeFileInput.value = ''
-  })
+  function openFile() {
+    if (!window.qdPickFile || !window.qdReadFile) { flashStatus('当前宿主不支持原生选文件', 'bad'); return }
+    window.qdPickFile({ title: '打开 JSON 文件', filter: 'JSON', pattern: '*.json;*.jsonl;*.ndjson' }).then(function (path) {
+      if (!path) return
+      window.qdReadFile(path).then(function (res) {
+        if (!res || res.error) { flashStatus('文件读取失败' + (res && res.error ? '：' + res.error : ''), 'bad'); return }
+        if (res.type !== 'text') { flashStatus('不是文本文件，请选择 JSON 文件', 'bad'); return }
+        var text = res.content
+        var fmt = tryFormat(text); renderEditor(fmt != null ? fmt : text); parseNow()
+        var name = path.replace(/\\/g, '/').split('/').pop()
+        flashStatus('已打开：' + name)
+      }, function () { flashStatus('文件读取失败', 'bad') })
+    })
+  }
   function currentText() { if (state.parsed !== null && !state.error) return sortedStringify(state.parsed, state.indent); return readText() }
   function doCopy() { window.jtCopy(currentText()).then(function (ok) { flashStatus(ok ? '已复制到剪贴板' : '复制失败', ok ? 'ok' : 'bad') }) }
   function doDownload() {

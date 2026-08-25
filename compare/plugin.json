@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.compare",
   "name": "对比工具",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "文件/图片对比（元数据 + 图片预览 + 文本内容差异）与文本块逐行 Diff 合二为一",
   "author": "QuickDock",
   "icon": "icon.svg",
