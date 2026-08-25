@@ -66,14 +66,40 @@ function parseTime(text) {
 
 function pad2(n) { return n < 10 ? '0' + n : '' + n }
 
+function getTzOffset() {
+  var sel = document.getElementById('tzSelect')
+  if (!sel) return 8
+  var v = sel.value
+  if (v === 'custom') {
+    var inp = document.getElementById('tzCustom')
+    var n = parseFloat(inp ? inp.value : '')
+    if (isNaN(n)) return 8
+    if (n < -12) n = -12
+    if (n > 14) n = 14
+    return n
+  }
+  return parseFloat(v)
+}
+function fmtTzOffset(o) {
+  var sign = o >= 0 ? '+' : '-'
+  var a = Math.abs(o)
+  var h = Math.floor(a)
+  var m = Math.round((a - h) * 60)
+  return sign + pad2(h) + ':' + pad2(m)
+}
+function tzLabel(o) {
+  return 'UTC' + (o >= 0 ? '+' : '') + o
+}
+
 function formatAll(d) {
   var y = d.getFullYear(), mo = d.getMonth() + 1, da = d.getDate()
   var h = d.getHours(), mi = d.getMinutes(), s = d.getSeconds()
   var unixSec = Math.floor(d.getTime() / 1000)
   var unixMs = d.getTime()
   var isoUTC = d.toISOString().replace(/\.\d+Z$/, 'Z')
-  var cn = new Date(d.getTime() + 8 * 3600000)
-  var cnStr = cn.getFullYear() + '-' + pad2(cn.getMonth()+1) + '-' + pad2(cn.getDate()) + 'T' + pad2(cn.getHours()) + ':' + pad2(cn.getMinutes()) + ':' + pad2(cn.getSeconds()) + '+08:00'
+  var tz = getTzOffset()
+  var td = new Date(d.getTime() + tz * 3600000)
+  var tdStr = td.getUTCFullYear() + '-' + pad2(td.getUTCMonth()+1) + '-' + pad2(td.getUTCDate()) + 'T' + pad2(td.getUTCHours()) + ':' + pad2(td.getUTCMinutes()) + ':' + pad2(td.getUTCSeconds()) + fmtTzOffset(tz)
 
   var now = Date.now(), diff = d.getTime() - now
   var absSec = Math.floor(Math.abs(diff) / 1000)
@@ -88,9 +114,9 @@ function formatAll(d) {
   return [
     ['Unix 时间戳 (秒)', '' + unixSec],
     ['Unix 时间戳 (毫秒)', '' + unixMs],
-    ['ISO 8601 (本地)', y + '-' + pad2(mo) + '-' + pad2(da) + 'T' + pad2(h) + ':' + pad2(mi) + ':' + pad2(s)],
+    ['ISO 8601 (' + tzLabel(tz) + ')', tdStr],
     ['ISO 8601 (UTC)', isoUTC],
-    ['ISO 8601 (中国时区)', cnStr],
+    ['ISO 8601 (本地)', y + '-' + pad2(mo) + '-' + pad2(da) + 'T' + pad2(h) + ':' + pad2(mi) + ':' + pad2(s)],
     ['日期 (中文)', y + '年' + mo + '月' + da + '日'],
     ['星期', '星期' + WEEKDAY[d.getDay()]],
     ['相对时间', rel],
@@ -122,4 +148,19 @@ function doConvert(text) {
 
 $('#btnConvert').addEventListener('click', function() { doConvert($('#timeInput').value) })
 $('#timeInput').addEventListener('keydown', function(e) { if (e.key === 'Enter') doConvert(this.value) })
+
+// 时区选择：自定义偏移输入显示 + 变更后重算
+var tzSel = document.getElementById('tzSelect')
+if (tzSel) tzSel.addEventListener('change', function() {
+  var c = document.getElementById('tzCustom')
+  if (c) c.style.display = (this.value === 'custom') ? '' : 'none'
+  var t = $('#timeInput').value
+  if (t) doConvert(t)
+})
+var tzCst = document.getElementById('tzCustom')
+if (tzCst) tzCst.addEventListener('change', function() {
+  var t = $('#timeInput').value
+  if (t) doConvert(t)
+})
+
 $('#timeInput').focus()

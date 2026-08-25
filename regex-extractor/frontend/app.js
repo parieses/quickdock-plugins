@@ -14,6 +14,14 @@
   var resultArea = document.getElementById('resultArea')
   var matchResults = document.getElementById('matchResults')
   var matchStats = document.getElementById('matchStats')
+  var replacementInput = document.getElementById('replacementInput')
+  var replaceRow = document.getElementById('replaceRow')
+  var replaceArea = document.getElementById('replaceArea')
+  var replaceBody = document.getElementById('replaceBody')
+  var replaceStats = document.getElementById('replaceStats')
+  var modeExtract = document.getElementById('modeExtract')
+  var modeReplace = document.getElementById('modeReplace')
+  var mode = 'extract'
 
   // 快捷键
   document.addEventListener('keydown', function(e) {
@@ -21,15 +29,31 @@
     if (e.key === 'Escape') { textInput.focus() }
   })
 
-  btnExtract.addEventListener('click', doExtract)
+  btnExtract.addEventListener('click', doProcess)
   btnClear.addEventListener('click', function() {
     patternInput.value = ''
     flagsInput.value = 'g'
+    replacementInput.value = ''
     textInput.value = ''
     resultArea.style.display = 'none'
+    replaceArea.style.display = 'none'
     matchResults.innerHTML = ''
+    replaceBody.innerHTML = ''
     patternInput.focus()
   })
+
+  // 模式切换：提取 / 替换
+  modeExtract.addEventListener('click', function() { setMode('extract') })
+  modeReplace.addEventListener('click', function() { setMode('replace') })
+  function setMode(m) {
+    mode = m
+    modeExtract.classList.toggle('active', m === 'extract')
+    modeReplace.classList.toggle('active', m === 'replace')
+    replaceRow.style.display = (m === 'replace') ? '' : 'none'
+    resultArea.style.display = 'none'
+    replaceArea.style.display = 'none'
+    if (patternInput.value.trim() && textInput.value.trim()) doProcess()
+  }
 
   // 自动提取（输入变化后延迟触发）
   var autoTimer = null
@@ -40,8 +64,13 @@
   function scheduleAuto() {
     if (autoTimer) clearTimeout(autoTimer)
     if (patternInput.value.trim() && textInput.value.trim()) {
-      autoTimer = setTimeout(doExtract, 400)
+      autoTimer = setTimeout(doProcess, 400)
     }
+  }
+
+  function doProcess() {
+    if (mode === 'replace') doReplace()
+    else doExtract()
   }
 
   function doExtract() {
@@ -115,9 +144,44 @@
     highlightText(text, textMatches)
   }
 
+  function doReplace() {
+    var pattern = patternInput.value.trim()
+    var flags = flagsInput.value.trim() || 'g'
+    var text = textInput.value
+    var replacement = replacementInput.value
+
+    if (!pattern) {
+      replaceArea.style.display = 'none'
+      resultArea.style.display = 'none'
+      return
+    }
+
+    var re
+    try {
+      re = new RegExp(pattern, flags)
+    } catch (e) {
+      resultArea.style.display = 'none'
+      replaceArea.style.display = ''
+      replaceStats.textContent = '错误'
+      replaceBody.innerHTML = '<div class="re-error">正则语法错误: ' + escapeHtml(e.message) + '</div>'
+      return
+    }
+
+    // 统计替换处数（即使 flags 无 g 也统计全部匹配）
+    var cntRe = new RegExp(pattern, flags.indexOf('g') >= 0 ? flags : flags + 'g')
+    cntRe.lastIndex = 0
+    var count = 0, mm
+    while ((mm = cntRe.exec(text)) !== null) { count++; if (mm.index === cntRe.lastIndex) cntRe.lastIndex++ }
+
+    var out = text.replace(re, replacement)
+    replaceStats.textContent = count + ' 处替换'
+    replaceBody.innerHTML = '<div class="re-replace-out">' + escapeHtml(out) + '</div>'
+    replaceArea.style.display = 'flex'
+    resultArea.style.display = 'none'
+  }
+
   function highlightText(text, matches) {
     if (matches.length === 0) return
-
     var html = '<div class="re-highlight-text">'
     var lastEnd = 0
 
@@ -155,6 +219,12 @@
       // 尝试 Clipboard API
       try { navigator.clipboard.writeText(copyText) } catch (e) { fallbackCopy(copyText) }
     }
+  })
+
+  // 复制替换结果
+  document.getElementById('btnCopyReplace').addEventListener('click', function() {
+    var out = replaceBody.textContent
+    if (out) { try { navigator.clipboard.writeText(out) } catch (e) {} }
   })
 
   // 聚焦入口

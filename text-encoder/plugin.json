@@ -1,8 +1,8 @@
 {
   "id": "io.github.parieses.text-encoder",
   "name": "文本工具箱",
-  "version": "0.2.0",
-  "description": "Base64 / URL / HTML 编解码，MD5 / SHA256 哈希，Base64 图片识别预览",
+  "version": "0.3.0",
+  "description": "Base64 / URL / HTML 编解码，MD5 / SHA1 / SHA256 / SHA512 哈希与 HMAC 签名，Base64 图片识别预览",
   "author": "QuickDock",
   "icon": "icon.svg",
   "category": "开发者日常",
@@ -158,6 +158,24 @@
       }
     },
     {
+      "id": "sha512-hash",
+      "title": "SHA512 哈希",
+      "keywords": [
+        "sha512",
+        "hash"
+      ],
+      "aliases": [
+        "sha512加密"
+      ],
+      "prefix": "/sha512",
+      "acceptsInput": true,
+      "matchPattern": "[\\s\\S]+",
+      "title_i18n": {
+        "zh-CN": "SHA512 哈希",
+        "en-US": "SHA512 Hash"
+      }
+    },
+    {
       "id": "convert-case",
       "title": "变量命名转换",
       "keywords": [
@@ -196,7 +214,7 @@
     "en-US": "Text Toolbox"
   },
   "description_i18n": {
-    "zh-CN": "Base64 / URL / HTML 编解码，MD5 / SHA256 哈希，Base64 图片识别预览",
-    "en-US": "Base64/URL/HTML encode-decode, MD5/SHA256 hashes, Base64 image preview."
+    "zh-CN": "Base64 / URL / HTML 编解码，MD5 / SHA1 / SHA256 / SHA512 哈希与 HMAC，Base64 图片预览",
+    "en-US": "Base64/URL/HTML codec, MD5/SHA1/SHA256/SHA512 hashes & HMAC, Base64 image preview."
   }
 }

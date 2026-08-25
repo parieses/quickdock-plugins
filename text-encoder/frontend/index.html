@@ -68,7 +68,16 @@
         <option value="html-decode">HTML 解码</option>
         <option value="md5-hash">MD5 哈希</option>
         <option value="sha256-hash">SHA256 哈希</option>
+        <option value="sha1-hash">SHA1 哈希</option>
+        <option value="sha512-hash">SHA512 哈希</option>
+        <option value="hmac-md5">HMAC-MD5</option>
+        <option value="hmac-sha1">HMAC-SHA1</option>
+        <option value="hmac-sha256">HMAC-SHA256</option>
+        <option value="hmac-sha512">HMAC-SHA512</option>
       </select>
+      <span id="keyWrap" style="display:none;align-items:center;gap:4px">
+        <input id="keyInput" class="p-input" placeholder="HMAC 密钥" style="width:110px;height:28px;padding:0 8px" spellcheck="false">
+      </span>
       <button class="p-btn p-btn-primary" id="btnProcess">▶ 执行</button>
       <button class="p-btn" id="btnCopy">📋 复制</button>
       <span class="p-spacer"></span>
@@ -132,6 +141,7 @@
   var imagePreview=document.getElementById('imagePreview'),previewImg=document.getElementById('previewImg')
   var imageInfo=document.getElementById('imageInfo'),btnDownload=document.getElementById('btnDownload')
   var btnCopyDataUri=document.getElementById('btnCopyDataUri')
+  var keyWrap=document.getElementById('keyWrap'),keyInput=document.getElementById('keyInput')
   var currentMime='',currentDataUri=''
 
   var reqSeq=0
@@ -257,7 +267,12 @@
   btnClear.addEventListener('click',function(){inputArea.value='';outputArea.value='';hideImagePreview();statusText.textContent='等待输入…';inputArea.focus()})
   document.addEventListener('keydown',function(e){if(e.ctrlKey&&e.key==='Enter'){e.preventDefault();process()};if(e.key==='Escape'&&!paneCodec.hidden)inputArea.focus()})
   var autoTimer;inputArea.addEventListener('input',function(){if(autoTimer)clearTimeout(autoTimer);if(inputArea.value.trim())autoTimer=setTimeout(process,500);else{outputArea.value='';hideImagePreview();statusText.textContent='等待输入…'}})
-  opSelect.addEventListener('change',function(){hideImagePreview();if(inputArea.value.trim())process()})
+  opSelect.addEventListener('change',function(){
+    hideImagePreview()
+    var isHmac=opSelect.value.indexOf('hmac-')===0
+    if(keyWrap) keyWrap.style.display=isHmac?'':'none'
+    if(inputArea.value.trim())process()
+  })
 
   window.addEventListener('message',function(e){
     var d=e&&e.data
@@ -267,6 +282,7 @@
       for(var i=0;i<opSelect.options.length;i++){
         if(opSelect.options[i].value===pd.command){opSelect.selectedIndex=i;break}
       }
+      if(keyWrap) keyWrap.style.display=(pd.command.indexOf('hmac-')===0)?'':'none'
       if(window.showTextTab)window.showTextTab(pd.command==='convert-case'?'case':'codec')
     }
     if(pd.text){
@@ -293,7 +309,7 @@
 
     hideImagePreview()
     statusText.textContent='计算中…'
-    pluginExec(op, {text:text}).then(function(res){
+    pluginExec(op, {text:text, key:(keyInput?keyInput.value:'')}).then(function(res){
       var r = (res && typeof res==='object' && res.text!==undefined) ? res.text : (typeof res==='string'?res:'')
       outputArea.value=r
       statusText.textContent='✅ '+(opSelect.options[opSelect.selectedIndex].text)+' | '+r.length+' 字符'

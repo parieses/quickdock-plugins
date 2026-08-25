@@ -28,6 +28,22 @@
       <input id="timeInput" class="p-input p-input-mono" style="flex:1" placeholder="输入时间 / 时间戳 / now ..." spellcheck="false" />
       <button id="btnConvert" class="p-btn p-btn-primary">转换</button>
     </div>
+    <div class="p-toolbar" style="border:none;padding:0;gap:8px;background:transparent">
+      <select id="tzSelect" class="p-select">
+        <option value="0">UTC+0 (伦敦)</option>
+        <option value="1">UTC+1 (巴黎)</option>
+        <option value="3">UTC+3 (莫斯科)</option>
+        <option value="5.5">UTC+5.5 (新德里)</option>
+        <option value="8" selected>UTC+8 (中国)</option>
+        <option value="9">UTC+9 (东京)</option>
+        <option value="10">UTC+10 (悉尼)</option>
+        <option value="-4">UTC-4 (纽约)</option>
+        <option value="-7">UTC-7 (洛杉矶)</option>
+        <option value="custom">自定义偏移…</option>
+      </select>
+      <input id="tzCustom" class="p-input" type="number" min="-12" max="14" step="0.5" placeholder="偏移小时 (-12 ~ +14)" style="display:none;width:150px" spellcheck="false" />
+      <span class="p-muted">输出时区</span>
+    </div>
     <div id="results" class="p-list" style="display:flex;flex-direction:column;gap:2px"></div>
   </div>
   <div class="p-statusbar">

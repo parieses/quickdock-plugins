@@ -9,6 +9,12 @@
 </head>
 <body>
 <div class="re-app">
+  <!-- 模式切换 -->
+  <div class="re-mode">
+    <button class="re-mode-btn active" id="modeExtract">🔍 提取</button>
+    <button class="re-mode-btn" id="modeReplace">🔁 替换</button>
+  </div>
+
   <!-- 输入区 -->
   <div class="re-input-area">
     <div class="re-row">
@@ -22,8 +28,16 @@
         </div>
       </div>
       <div class="re-field re-field-actions">
-        <button class="re-btn re-btn-primary" id="btnExtract">▶ 提取</button>
+        <button class="re-btn re-btn-primary" id="btnExtract">▶ 执行</button>
         <button class="re-btn" id="btnClear">✕ 清空</button>
+      </div>
+    </div>
+    <div class="re-row" id="replaceRow" style="display:none">
+      <div class="re-field re-field-full">
+        <label class="re-label">替换为</label>
+        <div class="re-replace-wrap">
+          <input type="text" id="replacementInput" class="re-input re-replacement" placeholder="替换模板，支持 $1 / $2 反向引用" spellcheck="false">
+        </div>
       </div>
     </div>
     <div class="re-row">
@@ -43,6 +57,17 @@
       <button class="re-btn re-btn-sm" id="btnCopyResult">复制</button>
     </div>
     <div class="re-result-body" id="matchResults"></div>
+  </div>
+
+  <!-- 替换结果 -->
+  <div class="re-result-area" id="replaceArea" style="display:none">
+    <div class="re-result-header">
+      <span>替换结果</span>
+      <span class="re-result-stats" id="replaceStats"></span>
+      <span class="re-spacer"></span>
+      <button class="re-btn re-btn-sm" id="btnCopyReplace">复制</button>
+    </div>
+    <div class="re-result-body" id="replaceBody"></div>
   </div>
 </div>
 

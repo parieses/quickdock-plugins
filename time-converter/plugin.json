@@ -1,8 +1,8 @@
 {
   "id": "io.github.parieses.time-converter",
   "name": "时间转换",
-  "version": "0.2.0",
-  "description": "支持 Unix 时间戳、ISO 8601、相对时间等多种格式互转",
+  "version": "0.3.0",
+  "description": "Unix 时间戳 / ISO 8601 / 中文日期 / 相对时间互转，支持任意时区偏移输出",
   "author": "QuickDock",
   "icon": "icon.svg",
   "category": "开发者日常",
@@ -67,7 +67,7 @@
     "en-US": "Time Converter"
   },
   "description_i18n": {
-    "zh-CN": "支持 Unix 时间戳、ISO 8601、相对时间等多种格式互转",
-    "en-US": "Convert between Unix timestamp, ISO 8601, relative time and more."
+    "zh-CN": "Unix 时间戳 / ISO 8601 / 中文日期 / 相对时间互转，支持任意时区偏移输出",
+    "en-US": "Convert Unix timestamp / ISO 8601 / Chinese date / relative time, with arbitrary timezone offset output."
   }
 }

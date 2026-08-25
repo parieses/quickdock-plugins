@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Windows 垃圾清理</title>
+<link rel="stylesheet" href="qd-theme.css">
+<style>
+*{-webkit-box-sizing:border-box;box-sizing:border-box}
+.p-app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+.summary{display:flex;gap:var(--sp-4);flex-wrap:wrap}
+.summary .stat{display:flex;flex-direction:column;gap:2px}
+.summary .stat .v{font-size:var(--fs-2xl);font-weight:var(--fw-semibold);color:var(--text-primary)}
+.summary .stat .v.accent{color:var(--accent)}
+.summary .stat .k{font-size:var(--fs-xs);color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px}
+.cat-row{display:flex;align-items:flex-start;gap:var(--sp-3);padding:10px 12px;border-bottom:1px solid var(--border)}
+.cat-row:hover{background:var(--bg-hover)}
+.cat-check{flex:0 0 auto;margin-top:3px;width:16px;height:16px;accent-color:var(--accent);cursor:pointer}
+.cat-main{flex:1;min-width:0}
+.cat-name{font-size:var(--fs-md);color:var(--text-primary);display:flex;align-items:center;gap:var(--sp-2)}
+.cat-desc{font-size:var(--fs-xs);color:var(--text-muted);margin-top:3px;line-height:1.5}
+.cat-size{flex:0 0 auto;text-align:right;font-size:var(--fs-sm)}
+.cat-size .sz{color:var(--accent);font-weight:var(--fw-semibold)}
+.cat-size .cnt{color:var(--text-muted);font-size:var(--fs-xs);margin-top:2px}
+.cat-size .zero{color:var(--text-disabled)}
+.progress{height:6px;border-radius:var(--radius-pill);background:var(--bg-tertiary);overflow:hidden;flex:0 0 auto}
+.progress > i{display:block;height:100%;width:0;background:var(--accent);transition:width 200ms}
+.bar-row{display:flex;align-items:center;gap:var(--sp-3)}
+.bar-row .msg{font-size:var(--fs-sm);color:var(--text-secondary);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.result-list{display:flex;flex-direction:column;gap:6px}
+.result-item{display:flex;justify-content:space-between;font-size:var(--fs-sm);padding:6px 10px;background:var(--bg-tertiary);border-radius:var(--radius)}
+.result-item .nm{color:var(--text-primary)}
+.result-item .v{color:var(--success)}
+.hint{font-size:var(--fs-xs);color:var(--text-muted);line-height:1.6}
+.warn-box{padding:10px 12px;border:1px solid var(--warning-soft);background:var(--warning-soft);border-radius:var(--radius);color:var(--warning);font-size:var(--fs-sm);line-height:1.6}
+.group-head{padding:5px 12px;font-size:var(--fs-xs);font-weight:var(--fw-semibold);color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;background:var(--bg-tertiary);position:sticky;top:0;z-index:1}
+.group-head.danger{color:var(--danger)}
+.cat-row.danger .cat-name{color:var(--danger)}
+.danger-badge{font-size:var(--fs-xs);background:var(--danger-soft);color:var(--danger);padding:1px 6px;border-radius:var(--radius-pill);margin-left:6px;font-weight:var(--fw-medium)}
+/* 确认弹窗（QuickDock 风格 modal，替代原生 confirm/alert） */
+.qc-modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.5);z-index:100;padding:24px}
+.qc-modal.show{display:flex}
+.qc-modal-box{width:min(420px,92vw);background:var(--bg-secondary);border:1px solid var(--border-strong);border-radius:var(--radius-lg);box-shadow:var(--shadow-2);overflow:hidden;animation:qc-pop 120ms ease-out}
+@keyframes qc-pop{from{transform:scale(.96);opacity:0}to{transform:scale(1);opacity:1}}
+.qc-modal-body{padding:var(--sp-5) var(--sp-5) var(--sp-4)}
+.qc-modal-title{font-size:var(--fs-lg);font-weight:var(--fw-semibold);color:var(--text-primary);margin-bottom:var(--sp-2)}
+.qc-modal-msg{font-size:var(--fs-md);color:var(--text-secondary);line-height:1.6;white-space:pre-wrap}
+.qc-modal-warn{margin-top:var(--sp-3);padding:var(--sp-2) var(--sp-3);border:1px solid var(--danger-soft);background:var(--danger-soft);border-radius:var(--radius);color:var(--danger);font-size:var(--fs-sm);line-height:1.6}
+.qc-modal-foot{display:flex;gap:var(--sp-2);justify-content:flex-end;padding:var(--sp-3) var(--sp-5);border-top:1px solid var(--border)}
+</style>
+</head>
+<body>
+<div class="p-app">
+  <div class="p-head">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+    <span class="p-head-title">Windows 垃圾清理</span>
+    <div class="p-head-actions">
+      <button class="p-btn" id="btn-scan">扫描</button>
+      <button class="p-btn p-btn-danger" id="btn-clean" disabled>清理选中</button>
+    </div>
+  </div>
+
+  <div class="p-content">
+    <div class="warn-box" id="safe-note">
+      仅清理系统垃圾目录（临时文件 / 更新缓存 / 缩略图 / 预读取 / 崩溃转储等），不触碰任何用户文档。
+      删除前请确认勾选项，被占用的文件会自动跳过。日志 / 浏览器缓存 / 回收站 等高风险项默认不勾选。
+    </div>
+
+    <div class="p-section">
+      <div class="summary">
+        <div class="stat"><span class="v accent" id="sum-size">—</span><span class="k">可清理总量</span></div>
+        <div class="stat"><span class="v" id="sum-files">—</span><span class="k">文件数</span></div>
+        <div class="stat"><span class="v" id="sum-selected">0</span><span class="k">已选分类</span></div>
+      </div>
+    </div>
+
+    <div class="p-section" style="flex:1;min-height:0;display:flex;flex-direction:column">
+      <div class="p-section-label">清理分类 <span class="p-spacer"></span><span class="p-muted" id="scan-hint">点击「扫描」计算各类占用</span></div>
+      <div class="p-list" id="cat-list">
+        <div class="p-empty">尚未扫描</div>
+      </div>
+    </div>
+
+    <div id="progress-wrap" class="p-section" style="display:none">
+      <div class="bar-row">
+        <div class="progress" style="flex:1"><i id="prog-bar"></i></div>
+      </div>
+      <div class="bar-row"><span class="msg" id="prog-msg"></span></div>
+    </div>
+
+    <div id="result-wrap" class="p-section" style="display:none">
+      <div class="p-section-label">清理结果</div>
+      <div class="result-list" id="result-list"></div>
+    </div>
+  </div>
+</div>
+
+<div class="qc-modal" id="qcModal">
+  <div class="qc-modal-box">
+    <div class="qc-modal-body">
+      <div class="qc-modal-title" id="qcTitle"></div>
+      <div class="qc-modal-msg" id="qcMsg"></div>
+      <div class="qc-modal-warn" id="qcWarn" style="display:none"></div>
+    </div>
+    <div class="qc-modal-foot">
+      <button class="p-btn" id="qcCancel">取消</button>
+      <button class="p-btn p-btn-primary" id="qcOk">确认</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---- i18n（轻量，仅覆盖页面文案）----
+const L10N = {
+  'en-US': {
+    'Windows 垃圾清理': 'Windows Junk Cleaner',
+    '扫描': 'Scan', '清理选中': 'Clean Selected',
+    '可清理总量': 'Recoverable', '文件数': 'Files', '已选分类': 'Selected',
+    '清理分类': 'Categories', '点击「扫描」计算各类占用': 'Click Scan to measure each category',
+    '尚未扫描': 'Not scanned yet',
+    '清理结果': 'Cleanup Result',
+    '清理完成': 'Cleanup complete',
+    '共释放 {n} 个文件，节省 {s}': 'Freed {n} files, saved {s}',
+    '请先扫描': 'Scan first',
+    '请至少选择一个分类': 'Select at least one category',
+    '确认清理选中的 {n} 类垃圾文件？此操作将永久删除这些文件。': 'Clean {n} selected categories? This permanently deletes the files.',
+    '选中的分类包含高危项（如回收站），删除不可逆，确认继续？': 'Selected categories include danger zone items (e.g. Recycle Bin). Deletion is irreversible. Continue?',
+    '缓存文件': 'Cache Files', '系统文件': 'System Files', '临时文件': 'Temp Files', '高危操作（默认不勾选）': 'Danger Zone (off by default)',
+    '扫描失败': 'Scan failed', '清理失败': 'Cleanup failed',
+    '提示': 'Notice', '确定': 'OK',
+    '确认清理': 'Confirm Cleanup', '取消': 'Cancel',
+    '此操作不可逆，请确认选中的文件均可安全删除': 'This is irreversible. Make sure all selected files are safe to delete.',
+  }
+};
+function L(key, params) {
+  const loc = (document.documentElement.getAttribute('lang') || 'zh-CN');
+  const map = L10N[loc] || L10N[loc.split('-')[0]] || {};
+  let s = (map && map[key] !== undefined) ? map[key] : key;
+  if (params) for (const k in params) s = s.replace('{' + k + '}', String(params[k]));
+  return s;
+}
+
+// 跟随宿主主题/语言
+window.addEventListener('message', (e) => {
+  if (e.data && e.data.type === 'plugin:theme' && e.data.data && e.data.data.locale) {
+    document.documentElement.setAttribute('lang', e.data.data.locale);
+    renderAll();
+  }
+});
+
+// ---- 宿主桥接（修复版：超时定时器在收包后立即清除）----
+const bridge = {
+  _seq: 0,
+  send(command, input = {}) {
+    return new Promise((resolve, reject) => {
+      const id = ++this._seq;
+      let settled = false;
+      const timer = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        window.removeEventListener('message', handler);
+        reject(new Error('timeout'));
+      }, 120000);
+      const handler = (e) => {
+        const d = e.data;
+        if (d && d.type === 'plugin:result' && d.id === id) {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          window.removeEventListener('message', handler);
+          if (d.error) { reject(new Error(d.error.message || d.error)); return; }
+          resolve(d.data || {});
+        }
+      };
+      window.addEventListener('message', handler);
+      window.parent.postMessage({ type: 'plugin:execute', id, command, input }, '*');
+    });
+  },
+  async waitTask(taskId) {
+    while (true) {
+      const r = await this.send('task-status', { taskId });
+      if (r.status === 'done') return r.result;
+      if (r.status === 'error') throw new Error(r.error || '任务失败');
+      if (r.message && window.onProgress) window.onProgress(r.message);
+      await new Promise(res => setTimeout(res, 300));
+    }
+  }
+};
+
+// ---- 工具 ----
+function fmtSize(bytes) {
+  if (!bytes && bytes !== 0) return '—';
+  const b = Number(bytes) || 0;
+  if (b < 1024) return b + ' B';
+  if (b < 1024 * 1024) return (b / 1024).toFixed(1) + ' KB';
+  if (b < 1024 * 1024 * 1024) return (b / 1024 / 1024).toFixed(1) + ' MB';
+  return (b / 1024 / 1024 / 1024).toFixed(2) + ' GB';
+}
+
+const state = {
+  categories: [],   // 元信息 + 扫描结果
+  selected: new Set(),
+  scanning: false,
+  cleaning: false,
+};
+
+function renderAll() {
+  document.querySelector('.p-head-title').textContent = L('Windows 垃圾清理');
+  document.getElementById('btn-scan').textContent = L('扫描');
+  document.getElementById('btn-clean').textContent = L('清理选中');
+  document.getElementById('scan-hint').textContent = state.categories.length
+    ? '' : L('点击「扫描」计算各类占用');
+  renderList();
+  renderSummary();
+}
+
+const GROUP_ORDER = ['cache', 'system', 'temp', 'danger'];
+const GROUP_LABEL = {
+  cache: '缓存文件', system: '系统文件', temp: '临时文件', danger: '高危操作（默认不勾选）'
+};
+
+function renderList() {
+  const list = document.getElementById('cat-list');
+  if (!state.categories.length) {
+    list.innerHTML = '<div class="p-empty">' + L('尚未扫描') + '</div>';
+    return;
+  }
+  list.innerHTML = '';
+  GROUP_ORDER.forEach(g => {
+    const items = state.categories.filter(c => (c.group || 'temp') === g);
+    if (!items.length) return;
+    const head = document.createElement('div');
+    head.className = 'group-head' + (g === 'danger' ? ' danger' : '');
+    head.textContent = L(GROUP_LABEL[g]);
+    list.appendChild(head);
+    items.forEach(c => list.appendChild(renderCatRow(c)));
+  });
+}
+
+function renderCatRow(c) {
+  const row = document.createElement('label');
+  row.className = 'cat-row' + (c.dangerous ? ' danger' : '');
+  const checked = state.selected.has(c.key) ? 'checked' : '';
+  const sizeHtml = (c.sizeBytes > 0)
+    ? '<div class="sz">' + fmtSize(c.sizeBytes) + '</div><div class="cnt">' + (c.fileCount || 0) + ' 个文件</div>'
+    : '<div class="zero">无</div>';
+  const badge = c.dangerous ? '<span class="danger-badge">高危</span>' : '';
+  row.innerHTML =
+    '<input type="checkbox" class="cat-check" data-key="' + c.key + '" ' + checked + '>' +
+    '<div class="cat-main">' +
+      '<div class="cat-name">' + c.name + badge + '</div>' +
+      '<div class="cat-desc">' + c.desc + '</div>' +
+    '</div>' +
+    '<div class="cat-size">' + sizeHtml + '</div>';
+  row.querySelector('.cat-check').addEventListener('change', (e) => {
+    if (e.target.checked) state.selected.add(c.key);
+    else state.selected.delete(c.key);
+    renderSummary();
+  });
+  return row;
+}
+
+function renderSummary() {
+  let totalSize = 0, totalFiles = 0;
+  state.categories.forEach(c => { totalSize += (c.sizeBytes || 0); totalFiles += (c.fileCount || 0); });
+  document.getElementById('sum-size').textContent = fmtSize(totalSize);
+  document.getElementById('sum-files').textContent = totalFiles;
+  document.getElementById('sum-selected').textContent = state.selected.size;
+}
+
+async function loadCategories() {
+  // 后端可能尚未就绪，重试几次避免首次加载静默失败导致后续扫描无法回显
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const r = await bridge.send('categories', {});
+      if (r && r.categories) {
+        // 不覆盖已通过扫描填充的列表，避免清空已计算的大小
+        if (!state.categories.length) {
+          state.categories = r.categories;
+          state.selected = new Set(state.categories.filter(c => c.defaultOn).map(c => c.key));
+        }
+        renderAll();
+        return;
+      }
+    } catch (e) {
+      console.error('loadCategories failed (attempt ' + (attempt + 1) + ')', e);
+    }
+    await new Promise(res => setTimeout(res, 600));
+  }
+  // 失败也无妨：doScan 会用扫描结果补全分类元信息
+}
+
+async function doScan() {
+  if (state.scanning || state.cleaning) return;
+  state.scanning = true;
+  const btn = document.getElementById('btn-scan');
+  btn.disabled = true; btn.textContent = L('扫描中...');
+
+  const wrap = document.getElementById('progress-wrap');
+  wrap.style.display = 'block';
+  document.getElementById('prog-msg').textContent = L('正在扫描...');
+  setProgress(0.1);
+
+  try {
+    const r = await bridge.send('scan', {});
+    const result = await bridge.waitTask(r.taskId);
+    const byKey = {};
+    (result.categories || []).forEach(c => { byKey[c.key] = c; });
+    // 若初始 categories 加载失败（后端未就绪），用扫描结果补全元信息（后端已附带 group/defaultOn/dangerous）
+    if (!state.categories.length && result.categories) {
+      state.categories = result.categories.map(c => Object.assign({}, c));
+    }
+    // 合并扫描结果到元信息
+    state.categories.forEach(c => {
+      const sc = byKey[c.key];
+      if (sc) { c.sizeBytes = sc.sizeBytes; c.fileCount = sc.fileCount; }
+    });
+    // 确保选中项仍在（默认勾选项）
+    state.selected = new Set(state.categories.filter(c => c.defaultOn && (c.sizeBytes || 0) > 0).map(c => c.key));
+    document.getElementById('result-wrap').style.display = 'none';
+    setProgress(1);
+    renderAll();
+  } catch (e) {
+    document.getElementById('prog-msg').textContent = L('扫描失败') + ': ' + e.message;
+  } finally {
+    state.scanning = false;
+    btn.disabled = false; btn.textContent = L('扫描');
+    document.getElementById('btn-clean').disabled = state.cleaning || state.categories.length === 0;
+    setTimeout(() => { wrap.style.display = 'none'; setProgress(0); }, 800);
+  }
+}
+
+async function doClean() {
+  if (state.cleaning || state.scanning) return;
+  if (!state.categories.length) { await showAlert(L('请先扫描')); return; }
+  const keys = [...state.selected];
+  if (!keys.length) { await showAlert(L('请至少选择一个分类')); return; }
+  const hasDanger = state.categories.some(c => state.selected.has(c.key) && c.dangerous);
+  const ok = await showConfirm({
+    title: L('确认清理'),
+    message: L('确认清理选中的 {n} 类垃圾文件？此操作将永久删除这些文件。', { n: keys.length }),
+    danger: hasDanger,
+    confirmText: L('确认清理'),
+    cancelText: L('取消'),
+  });
+  if (!ok) return;
+
+  state.cleaning = true;
+  document.getElementById('btn-clean').disabled = true;
+  document.getElementById('btn-scan').disabled = true;
+  const wrap = document.getElementById('progress-wrap');
+  wrap.style.display = 'block';
+  setProgress(0.05);
+  window.onProgress = (msg) => {
+    document.getElementById('prog-msg').textContent = msg;
+    setProgress(0.5);
+  };
+
+  try {
+    const r = await bridge.send('clean', { categories: keys });
+    const result = await bridge.waitTask(r.taskId);
+    showResult(result);
+    // 清理后重新扫描刷新数据
+    await doScanSilent();
+  } catch (e) {
+    document.getElementById('prog-msg').textContent = L('清理失败') + ': ' + e.message;
+  } finally {
+    state.cleaning = false;
+    window.onProgress = null;
+    document.getElementById('btn-scan').disabled = false;
+    document.getElementById('btn-clean').disabled = false;
+    setProgress(1);
+    setTimeout(() => { wrap.style.display = 'none'; setProgress(0); }, 1200);
+  }
+}
+
+async function doScanSilent() {
+  try {
+    const r = await bridge.send('scan', {});
+    const result = await bridge.waitTask(r.taskId);
+    const byKey = {};
+    (result.categories || []).forEach(c => { byKey[c.key] = c; });
+    state.categories.forEach(c => {
+      const sc = byKey[c.key];
+      if (sc) { c.sizeBytes = sc.sizeBytes; c.fileCount = sc.fileCount; }
+    });
+    // 保留用户当前勾选；清理后已删的会显示 0
+    renderAll();
+  } catch (e) { /* 静默 */ }
+}
+
+function showResult(result) {
+  const wrap = document.getElementById('result-wrap');
+  const list = document.getElementById('result-list');
+  wrap.style.display = 'block';
+  list.innerHTML = '';
+  let totalFreed = 0, totalDel = 0;
+  (result.results || []).forEach(c => {
+    totalFreed += (c.freed || 0); totalDel += (c.deleted || 0);
+    const skip = c.skipped ? '（跳过 ' + c.skipped + ' 个锁定文件）' : '';
+    const item = document.createElement('div');
+    item.className = 'result-item';
+    item.innerHTML = '<span class="nm">' + c.name + skip + '</span>' +
+                     '<span class="v">−' + fmtSize(c.freed) + ' · ' + (c.deleted || 0) + ' 文件</span>';
+    list.appendChild(item);
+  });
+  const head = document.querySelector('#result-wrap .p-section-label');
+  head.textContent = L('清理结果') + ' — ' + L('共释放 {n} 个文件，节省 {s}', { n: totalDel, s: fmtSize(totalFreed) });
+}
+
+function setProgress(p) {
+  document.getElementById('prog-bar').style.width = Math.round(p * 100) + '%';
+}
+
+document.getElementById('btn-scan').addEventListener('click', doScan);
+document.getElementById('btn-clean').addEventListener('click', doClean);
+
+// ---- QuickDock 风格确认弹窗（替代原生 confirm/alert）----
+let qcResolve = null;
+function showConfirm({ title, message, danger = false, confirmText = '确认', cancelText = '取消' }) {
+  return new Promise(resolve => {
+    qcResolve = resolve;
+    document.getElementById('qcTitle').textContent = title;
+    document.getElementById('qcMsg').textContent = message;
+    const warnEl = document.getElementById('qcWarn');
+    const okBtn = document.getElementById('qcOk');
+    const cancelBtn = document.getElementById('qcCancel');
+    if (danger) {
+      warnEl.style.display = 'block';
+      warnEl.textContent = L('此操作不可逆，请确认选中的文件均可安全删除');
+      okBtn.className = 'p-btn p-btn-danger';
+    } else {
+      warnEl.style.display = 'none';
+      okBtn.className = 'p-btn p-btn-primary';
+    }
+    okBtn.textContent = confirmText;
+    if (cancelText) { cancelBtn.style.display = ''; cancelBtn.textContent = cancelText; }
+    else { cancelBtn.style.display = 'none'; }
+    document.getElementById('qcModal').classList.add('show');
+  });
+}
+function showAlert(message) {
+  return showConfirm({ title: L('提示'), message, confirmText: L('确定'), cancelText: null });
+}
+function closeConfirm(val) {
+  const m = document.getElementById('qcModal');
+  if (!m.classList.contains('show')) return;
+  m.classList.remove('show');
+  if (qcResolve) { const r = qcResolve; qcResolve = null; r(val); }
+}
+document.getElementById('qcOk').addEventListener('click', () => closeConfirm(true));
+document.getElementById('qcCancel').addEventListener('click', () => closeConfirm(false));
+document.getElementById('qcModal').addEventListener('click', (e) => { if (e.target.id === 'qcModal') closeConfirm(false); });
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && document.getElementById('qcModal').classList.contains('show')) closeConfirm(false);
+});
+
+loadCategories();
+</script>
+</body>
+</html>

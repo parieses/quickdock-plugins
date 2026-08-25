@@ -170,6 +170,7 @@ function handleExecute(params) {
 - 无需安装 Node.js，内嵌 Goja 引擎（纯 Go，无 CGO）
 - 支持 ES5.1 + 大部分 ES6 特性
 - 通过 `api.log()` 输出日志
+- 无宿主 `api.crypto`：md5/sha/base64/url/html 等需在插件内纯 JS 自实现（参考 text-encoder 的 main.js 自带 crypto 库）
 - 导出 `handleInitialize()` 和 `handleExecute()` 函数供主程序调用
 
 ---

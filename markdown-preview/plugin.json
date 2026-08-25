@@ -1,8 +1,8 @@
 {
   "id": "io.github.parieses.markdown-preview",
   "name": "Markdown 渲染",
-  "version": "0.2.0",
-  "description": "实时渲染 Markdown，支持代码高亮，复制为 HTML",
+  "version": "0.3.0",
+  "description": "实时渲染 Markdown（GFM：标题/列表/表格/任务列表/引用）+ 代码高亮，一键复制为 HTML",
   "author": "QuickDock",
   "category": "开发者日常",
   "platforms": [
@@ -29,7 +29,7 @@
     "en-US": "Markdown Renderer"
   },
   "description_i18n": {
-    "zh-CN": "实时渲染 Markdown，支持代码高亮，复制为 HTML",
-    "en-US": "Live Markdown rendering with syntax highlight; copy output as HTML."
+    "zh-CN": "实时渲染 Markdown（GFM：标题/列表/表格/任务列表/引用）+ 代码高亮，复制为 HTML",
+    "en-US": "Live Markdown rendering (GFM headings/lists/tables/task-lists/quotes) with code highlight; copy as HTML."
   }
 }

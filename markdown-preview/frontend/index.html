@@ -4,6 +4,7 @@
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Markdown 渲染</title>
 <link rel="stylesheet" href="qd-theme.css">
+<link rel="stylesheet" href="highlight-theme.css">
 <style>
 .md-body{display:flex;flex:1;min-height:0;gap:1px}
 .md-pane{display:flex;flex-direction:column;flex:1;min-width:0;background:var(--bg-secondary)}
@@ -47,26 +48,34 @@
     </div>
   </div>
 </div>
+<script src="marked.min.js"></script>
+<script src="highlight.min.js"></script>
 <script>
 var mdInput=document.getElementById('mdInput'),mdPreview=document.getElementById('mdPreview')
+function escapeHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+if(window.marked){
+  marked.use({renderer:{code:function(code,infostring){
+    var lang=(infostring||'').split(/\s+/)[0]
+    var html=null
+    if(lang&&window.hljs&&hljs.getLanguage(lang)){try{html=hljs.highlight(code,{language:lang}).value}catch(e){}}
+    if(!html&&window.hljs){try{html=hljs.highlightAuto(code).value}catch(e){}}
+    if(!html)html=escapeHtml(code)
+    return '<pre><code class="hljs">'+html+'</code></pre>'
+  }}})
+  marked.setOptions({gfm:true,breaks:true})
+}
 mdInput.addEventListener('input',render)
-document.getElementById('btnCopy').addEventListener('click',function(){var html=mdPreview.innerHTML;if(html&&html!=='<p style="color:var(--text-muted);font-size:13px">编辑 Markdown 查看实时预览</p>'){navigator.clipboard.writeText('<div class="md-preview">'+html+'</div>').then(function(){})}})
+document.getElementById('btnCopy').addEventListener('click',function(){var html=mdPreview.innerHTML;if(html&&html.indexOf('编辑 Markdown 查看实时预览')<0){navigator.clipboard.writeText('<div class="md-preview">'+html+'</div>').then(function(){})}})
 document.getElementById('btnClear').addEventListener('click',function(){mdInput.value='';render()})
-function render(){var text=mdInput.value.trim();if(!text){mdPreview.innerHTML='<p style="color:var(--text-muted);font-size:13px">编辑 Markdown 查看实时预览</p>';return}
-var html=''
-var lines=text.split('\n'),inCode=false,codeBuf='',codeLang=''
-for(var i=0;i<lines.length;i++){var line=lines[i]
-if(inCode){if(line.startsWith('```')){html+='<pre><code>'+(codeLang?'<span style="color:var(--text-muted);font-size:11px">'+escapeHtml(codeLang)+'</span>\n':'')+escapeHtml(codeBuf)+'</code></pre>\n';codeBuf='';inCode=false}else{codeBuf+=line+'\n'};continue}
-if(line.startsWith('```')){inCode=true;codeLang=line.slice(3).trim();continue}
-if(line.startsWith('#')){var level=1;while(line[level]==='#')level++;html+='<h'+level+'>'+escapeHtml(line.slice(level).trim())+'</h'+level+'>\n';continue}
-if(line.startsWith('> ')){html+='<blockquote>'+escapeHtml(line.slice(2))+'</blockquote>\n';continue}
-if(line.startsWith('- ')||line.startsWith('* ')){html+='<li>'+escapeHtml(line.slice(2))+'</li>\n';continue}
-if(line.startsWith('|')){var cells=line.split('|').filter(Boolean);if(i+1<lines.length&&lines[i+1].match(/^[\s|:-]+$/)){i++;continue}else{if(cells.length){html+='<tr>'+cells.map(function(c){return'<td>'+escapeHtml(c.trim())+'</td>'}).join('')+'</tr>\n'}};continue}
-if(line===''){html+='<br>';continue}
-html+='<p>'+escapeHtml(line)+'</p>\n'}
-if(inCode)html+='<pre><code>'+escapeHtml(codeBuf)+'</code></pre>\n'
-mdPreview.innerHTML=html
-function escapeHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}}
+function render(){
+  var text=mdInput.value.trim()
+  if(!text){mdPreview.innerHTML='<p style="color:var(--text-muted);font-size:13px">编辑 Markdown 查看实时预览</p>';return}
+  if(window.marked){
+    mdPreview.innerHTML=marked.parse(text)
+  }else{
+    mdPreview.innerHTML='<p style="color:var(--text-muted);font-size:13px">Markdown 库未加载，请重装插件</p>'
+  }
+}
 render()
 window.addEventListener('message',function(e){if(e.data&&e.data.type==='plugin:init'&&e.data.data&&e.data.data.text){mdInput.value=e.data.data.text;render()}})
 </script>

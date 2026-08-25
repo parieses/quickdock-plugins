@@ -1,0 +1,62 @@
+{
+  "id": "io.github.parieses.junk-cleaner",
+  "name": "Windows 垃圾清理",
+  "version": "0.1.3",
+  "description": "扫描并清理系统垃圾文件：临时文件/更新缓存/缩略图缓存/预读取/崩溃转储等，安全只读扫描+确认后删除",
+  "author": "QuickDock",
+  "icon": "icon.svg",
+  "category": "系统工具",
+  "platforms": [
+    "windows"
+  ],
+  "backend": {
+    "runtime": "native",
+    "entry": "junk-cleaner",
+    "args": []
+  },
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 760,
+    "height": 600
+  },
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "permissions": {
+    "filesystem": true
+  },
+  "commands": [
+    {
+      "id": "junk-clean",
+      "title": "垃圾清理",
+      "keywords": [
+        "clean",
+        "junk",
+        "垃圾",
+        "清理",
+        "临时文件",
+        "缓存"
+      ],
+      "aliases": [
+        "垃圾清理",
+        "清理垃圾",
+        "系统清理",
+        "清理临时文件"
+      ],
+      "title_i18n": {
+        "zh-CN": "垃圾清理",
+        "en-US": "Junk Cleaner"
+      }
+    }
+  ],
+  "name_i18n": {
+    "zh-CN": "Windows 垃圾清理",
+    "en-US": "Windows Junk Cleaner"
+  },
+  "description_i18n": {
+    "zh-CN": "扫描并清理系统垃圾文件：临时文件/更新缓存/缩略图缓存/预读取/崩溃转储等，安全只读扫描+确认后删除",
+    "en-US": "Scan and clean system junk: temp files, update cache, thumbnail cache, prefetch, crash dumps. Read-only scan then confirm to delete."
+  }
+}
