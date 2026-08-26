@@ -216,15 +216,15 @@
     })
     if (lines.length > 0) {
       var copyText = lines.join('\n')
-      // 尝试 Clipboard API
-      try { navigator.clipboard.writeText(copyText) } catch (e) { fallbackCopy(copyText) }
+      // 走宿主 copy 桥接（sandbox 禁 navigator.clipboard）
+      window.copyViaHost(copyText, function(ok){ if(!ok) fallbackCopy(copyText) })
     }
   })
 
   // 复制替换结果
   document.getElementById('btnCopyReplace').addEventListener('click', function() {
     var out = replaceBody.textContent
-    if (out) { try { navigator.clipboard.writeText(out) } catch (e) {} }
+    if (out) { window.copyViaHost(out, function(){}) }
   })
 
   // 聚焦入口

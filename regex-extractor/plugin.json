@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.regex-extractor",
   "name": "正则提取工具",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "正则提取与替换：匹配高亮、分组捕获、反向引用替换（$1/$2）、一键复制结果",
   "author": "QuickDock",
   "icon": "icon.svg",

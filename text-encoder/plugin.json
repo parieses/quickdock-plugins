@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.text-encoder",
   "name": "文本工具箱",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Base64 / URL / HTML 编解码，MD5 / SHA1 / SHA256 / SHA512 哈希与 HMAC 签名，Base64 图片识别预览",
   "author": "QuickDock",
   "icon": "icon.svg",

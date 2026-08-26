@@ -254,8 +254,8 @@
     })
   }
   function fallbackCopy(text){
+    // 桥接超时后才走到这里：仅用 execCommand（sandbox iframe 禁 navigator.clipboard）
     return new Promise(function(resolve){
-      try{ if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(function(){resolve(true)}).catch(function(){resolve(execCopy(text))});return} }catch(e){}
       resolve(execCopy(text))
     })
   }

@@ -19,6 +19,12 @@
 .cc-status.err{color:#ef4444}
 .cc-hint{color:var(--text-placeholder)}
 </style>
+<script>
+/* QuickDock sandbox 剪贴板桥接：iframe 内 navigator.clipboard 被 Permissions-Policy 禁用 */
+window.__cpSeq=0;
+window.execCopyFallback=function(t){try{var a=document.createElement('textarea');a.value=t;a.style.position='fixed';a.style.opacity='0';a.style.top='0';document.body.appendChild(a);a.select();var ok=document.execCommand('copy');document.body.removeChild(a);return ok}catch(e){return false}};
+window.copyViaHost=function(t,cb){var id='cp_'+(++window.__cpSeq),done=false;function onMsg(e){var d=e&&e.data;if(d&&d.type==='plugin:copy-result'&&d.id===id){done=true;window.removeEventListener('message',onMsg);cb&&cb(!!d.ok)}}window.addEventListener('message',onMsg);parent.postMessage({type:'plugin:copy',id:id,text:t},'*');setTimeout(function(){if(!done){window.removeEventListener('message',onMsg);cb&&cb(window.execCopyFallback(t))}},300)};
+</script>
 </head>
 <body>
 <div class="p-app">
@@ -76,8 +82,7 @@ function status(msg, err){ var el = $('status'); el.textContent = msg; el.classN
 function copyOut(){
   if (!lastOut) return;
   var done = function(){ status(L('已复制到剪贴板')); };
-  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(lastOut).then(done, fb);
-  else fb();
+  window.copyViaHost(lastOut, function(ok){ if (ok) done(); else fb(); });
   function fb(){
     var ta = document.createElement('textarea');
     ta.value = lastOut; ta.style.position = 'fixed'; ta.style.opacity = '0';

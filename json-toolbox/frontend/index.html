@@ -60,6 +60,12 @@
 .p-stats{display:flex;align-items:center;gap:8px;padding:4px 10px;font-size:11px;color:var(--text-muted);background:var(--bg-secondary);border-top:1px solid var(--border);flex-shrink:0;min-height:24px}
 .p-error{display:flex;align-items:center;gap:6px;padding:8px 10px;color:#e24b4a;font-size:12px;background:rgba(226,75,74,0.08);border-top:1px solid var(--border);flex-shrink:0}
 </style>
+<script>
+/* QuickDock sandbox 剪贴板桥接：iframe 内 navigator.clipboard 被 Permissions-Policy 禁用 */
+window.__cpSeq=0;
+window.execCopyFallback=function(t){try{var a=document.createElement('textarea');a.value=t;a.style.position='fixed';a.style.opacity='0';a.style.top='0';document.body.appendChild(a);a.select();var ok=document.execCommand('copy');document.body.removeChild(a);return ok}catch(e){return false}};
+window.copyViaHost=function(t,cb){var id='cp_'+(++window.__cpSeq),done=false;function onMsg(e){var d=e&&e.data;if(d&&d.type==='plugin:copy-result'&&d.id===id){done=true;window.removeEventListener('message',onMsg);cb&&cb(!!d.ok)}}window.addEventListener('message',onMsg);parent.postMessage({type:'plugin:copy',id:id,text:t},'*');setTimeout(function(){if(!done){window.removeEventListener('message',onMsg);cb&&cb(window.execCopyFallback(t))}},300)};
+</script>
 </head>
 <body>
 <div class="jt-app">
@@ -212,13 +218,10 @@
   // 复制（→ 宿主 Go CopyText，WebView2 可靠）
   function jtFallbackCopy(text) {
     return new Promise(function (resolve) {
-      try {
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(text).then(function () { resolve(true) }).catch(function () { resolve(jtExecCopy(text)) })
-          return
-        }
-      } catch (e) {}
-      resolve(jtExecCopy(text))
+      // sandbox iframe 禁 navigator.clipboard，走宿主 copy 桥接，失败降级本地
+      window.copyViaHost(text, function (ok) {
+        resolve(ok ? true : jtExecCopy(text))
+      })
     })
   }
   function jtExecCopy(text) {

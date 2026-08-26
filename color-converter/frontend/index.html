@@ -33,6 +33,12 @@
 .cc-cancel{margin-left:auto;padding:4px 12px;background:transparent;border:1px solid var(--border);border-radius:var(--radius);color:var(--text-muted);font-size:var(--fs-sm);cursor:pointer;transition:border-color var(--transition),color var(--transition)}
 .cc-cancel:hover{border-color:var(--accent);color:var(--text-primary)}
 </style>
+<script>
+/* QuickDock sandbox 剪贴板桥接：iframe 内 navigator.clipboard 被 Permissions-Policy 禁用 */
+window.__cpSeq=0;
+window.execCopyFallback=function(t){try{var a=document.createElement('textarea');a.value=t;a.style.position='fixed';a.style.opacity='0';a.style.top='0';document.body.appendChild(a);a.select();var ok=document.execCommand('copy');document.body.removeChild(a);return ok}catch(e){return false}};
+window.copyViaHost=function(t,cb){var id='cp_'+(++window.__cpSeq),done=false;function onMsg(e){var d=e&&e.data;if(d&&d.type==='plugin:copy-result'&&d.id===id){done=true;window.removeEventListener('message',onMsg);cb&&cb(!!d.ok)}}window.addEventListener('message',onMsg);parent.postMessage({type:'plugin:copy',id:id,text:t},'*');setTimeout(function(){if(!done){window.removeEventListener('message',onMsg);cb&&cb(window.execCopyFallback(t))}},300)};
+</script>
 </head>
 <body>
 <div class="p-app">
@@ -271,14 +277,8 @@ bindHsl('lRange', 'lNum', 'l')
 
 // ---- 复制（优先走宿主桥接，失败降级本地）----
 function copyText(text) {
-  try {
-    if (window.parent && window.parent !== window) {
-      window.parent.postMessage({ type: 'plugin:copy', id: 'color' + Date.now(), text: text }, '*')
-      flash(L('已复制 ') + text)
-      return
-    }
-  } catch (e) {}
-  try { navigator.clipboard.writeText(text).then(function () { flash(L('已复制 ') + text) }) } catch (e) { alert(L('复制失败')) }
+  // 统一走宿主 plugin:copy 桥接（sandbox iframe 禁 navigator.clipboard），超时自动降级 execCommand
+  window.copyViaHost(text, function (ok) { flash(ok ? L('已复制 ') + text : L('复制失败')) })
 }
 function flash(msg) {
   var el = $('nameLabel')

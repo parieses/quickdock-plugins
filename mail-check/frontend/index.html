@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>邮箱足迹查询</title>
+<link rel="stylesheet" href="qd-theme.css">
+<style>
+.mc-app{display:flex;flex-direction:column;height:100vh;gap:8px;padding:10px}
+.mc-top{display:flex;align-items:center;gap:8px}
+.mc-title{font-size:13px;font-weight:600;color:var(--text-primary)}
+.mc-spacer{flex:1}
+.mc-btn{height:30px;padding:0 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-tertiary);color:var(--text-primary);font-size:12px;cursor:pointer;font-family:inherit;white-space:nowrap}
+.mc-btn:hover{background:var(--bg-hover)}
+.mc-btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.mc-btn-primary:hover{background:var(--accent-hover)}
+.mc-btn:disabled{opacity:.5;cursor:not-allowed}
+.mc-input-row{display:flex;gap:8px}
+.mc-input{flex:1;height:34px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-tertiary);color:var(--text-primary);font-family:var(--font-mono);font-size:13px;outline:none}
+.mc-input:focus{border-color:var(--accent)}
+.mc-hint{font-size:11px;color:var(--text-muted);min-height:16px}
+.mc-hint.err{color:var(--danger)}
+.mc-body{flex:1;overflow:auto;display:flex;flex-direction:column;gap:8px;min-height:0}
+.mc-card{border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-secondary);overflow:hidden}
+.mc-card-head{display:flex;align-items:center;gap:6px;padding:6px 10px;font-size:12px;font-weight:500;color:var(--text-secondary);background:var(--bg-tertiary);border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.3px}
+.mc-card-body{padding:8px 10px;font-size:12px;color:var(--text-primary);display:flex;flex-direction:column;gap:6px}
+.mc-vrows{display:flex;flex-wrap:wrap;gap:8px}
+.mc-vitem{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:4px 10px;background:var(--bg-tertiary);font-size:12px}
+.mc-vitem .k{color:var(--text-muted);font-size:11px}
+.mc-vitem .v{font-family:var(--font-mono);font-size:12px;color:var(--text-primary)}
+.mc-probe{display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid var(--border)}
+.mc-probe:last-child{border-bottom:none}
+.mc-probe .name{font-size:13px;color:var(--text-primary);min-width:120px}
+.mc-probe .cat{font-size:11px;color:var(--text-muted);min-width:64px}
+.mc-probe .detail{flex:1;font-size:12px;color:var(--text-secondary);word-break:break-all}
+.mc-probe a{font-size:11px;color:var(--accent);text-decoration:none}
+.mc-badge{font-size:11px;padding:2px 8px;border-radius:var(--radius-pill);white-space:nowrap;font-weight:500}
+.b-found{background:rgba(226,75,74,.16);color:var(--danger)}
+.b-not_found{background:rgba(52,211,153,.16);color:var(--success,#34d399)}
+.b-unknown{background:rgba(239,159,39,.16);color:var(--warning,#ef9f27)}
+.b-error{background:rgba(136,135,128,.18);color:var(--text-muted)}
+.b-ok{background:rgba(52,211,153,.16);color:var(--success,#34d399)}
+.b-skip{background:rgba(136,135,128,.18);color:var(--text-muted)}
+.mc-empty{display:flex;align-items:center;justify-content:center;flex:1;color:var(--text-muted);font-size:13px}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="mc-app">
+  <div class="mc-top">
+    <span class="mc-title">邮箱足迹查询</span>
+    <span class="mc-spacer"></span>
+    <button class="mc-btn" id="btnCopy">📋 复制摘要</button>
+    <button class="mc-btn" id="btnClear">✕ 清空</button>
+  </div>
+  <div class="mc-input-row">
+    <input id="emailInput" class="mc-input" placeholder="输入要查询的邮箱地址…" spellcheck="false" autofocus>
+    <button class="mc-btn mc-btn-primary" id="btnCheck">检测</button>
+  </div>
+  <div class="mc-hint" id="hint">检测邮箱是否注册过 Gravatar 等平台 + 语法 / MX / SMTP 有效性验证</div>
+  <div class="mc-body" id="body">
+    <div class="mc-empty" id="empty">输入邮箱后点击「检测」开始查询</div>
+
+    <div class="mc-card hidden" id="validityCard">
+      <div class="mc-card-head">邮箱有效性</div>
+      <div class="mc-card-body"><div class="mc-vrows" id="vrows"></div></div>
+    </div>
+
+    <div class="mc-card hidden" id="probeCard">
+      <div class="mc-card-head">平台足迹 <span id="probeStat" style="text-transform:none;letter-spacing:0;color:var(--text-muted);font-weight:400"></span>
+      <span class="mc-spacer"></span>
+      <button class="mc-btn" id="probeToggle" style="height:24px;padding:0 10px;font-size:11px">展开全部</button>
+      </div></div>
+      <div class="mc-card-body" id="probes"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict'
+  var input=document.getElementById('emailInput')
+  var btn=document.getElementById('btnCheck')
+  var hint=document.getElementById('hint')
+  var empty=document.getElementById('empty')
+  var validityCard=document.getElementById('validityCard')
+  var probeCard=document.getElementById('probeCard')
+  var vrows=document.getElementById('vrows')
+  var probes=document.getElementById('probes')
+  var probeStat=document.getElementById('probeStat')
+  var lastSummary=''
+
+  var EMAIL_RE=/^[A-Za-z0-9.!#$%&'*+\/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$/
+
+  // ---- 桥接 ----
+  var seq=0, pend={}
+  function send(command,input){
+    return new Promise(function(resolve,reject){
+      var id='mc_'+(++seq)
+      pend[id]={resolve:resolve,reject:reject}
+      parent.postMessage({type:'plugin:execute',id:id,command:command,input:input||{}},'*')
+    })
+  }
+  window.addEventListener('message',function(e){
+    var d=e.data
+    if(!d||d.type!=='plugin:result'||!d.id||!pend[d.id])return
+    var p=pend[d.id]; delete pend[d.id]
+    if(d.error)p.reject(new Error(d.error)); else p.resolve(d.data)
+  })
+
+  function waitTask(taskId,timeoutMs,onPartial){
+    var deadline=Date.now()+(timeoutMs||120000)
+    return new Promise(function(resolve,reject){
+      (function poll(){
+        send('task-status',{taskId:taskId}).then(function(r){
+          if(r.status==='done'){ resolve(r.result); return }
+          if(r.status==='error'){ reject(new Error(r.error||'检测失败')); return }
+          if(r.status==='missing'){ reject(new Error('任务已过期，请重试')); return }
+          // 增量回显：后端每完成一站即下发 partial，前端实时渲染
+          if(r.partial&&onPartial) onPartial(r.partial)
+          if(Date.now()>deadline){ reject(new Error('检测超时')); return }
+          setTimeout(poll,300)
+        }).catch(reject)
+      })()
+    })
+  }
+
+  // ---- 复制：走宿主 plugin:copy 桥接（sandbox iframe 禁 navigator.clipboard）----
+  var __cpSeq=0
+  function execCopyFallback(text){
+    try{
+      var ta=document.createElement('textarea'); ta.value=text
+      ta.style.position='fixed'; ta.style.opacity='0'; ta.style.top='0'
+      document.body.appendChild(ta); ta.select()
+      var ok=document.execCommand('copy'); document.body.removeChild(ta)
+      return ok
+    }catch(e){ return false }
+  }
+  function copyViaHost(text,cb){
+    var done=false
+    var id='cp_'+(++__cpSeq)
+    function onMsg(e){
+      var d=e&&e.data
+      if(d&&d.type==='plugin:copy-result'&&d.id===id){ done=true; window.removeEventListener('message',onMsg); cb(!!d.ok) }
+    }
+    window.addEventListener('message',onMsg)
+    parent.postMessage({type:'plugin:copy',id:id,text:text},'*')
+    setTimeout(function(){ if(!done){
+      window.removeEventListener('message',onMsg)
+      if(execCopyFallback(text)){ cb(true); return }
+      // execCommand 也被拒（WebView2 沙箱）→ 弹手动复制面板，保证可复制
+      showManualCopy(text)
+      cb(false)
+    } },300)
+  }
+  function showManualCopy(text){
+    var mm=document.getElementById('copyModal'), mt=document.getElementById('copyModalText')
+    if(!mm||!mt) return
+    mt.value=text
+    mm.style.display='flex'
+    setTimeout(function(){ mt.focus(); mt.select() },30)
+  }
+  function hideManualCopy(){ var mm=document.getElementById('copyModal'); if(mm) mm.style.display='none' }
+  var copyClose=document.getElementById('copyModalClose')
+  if(copyClose) copyClose.addEventListener('click',hideManualCopy)
+  var copyModalEl=document.getElementById('copyModal')
+  if(copyModalEl) copyModalEl.addEventListener('click',function(e){ if(e.target===copyModalEl) hideManualCopy() })
+
+  // ---- 渲染 ----
+  function badge(status){
+    var label={found:'已注册',not_found:'未发现',unknown:'无法判定',error:'探测失败'}[status]||status
+    return '<span class="mc-badge b-'+status+'">'+label+'</span>'
+  }
+  function renderValidity(v){
+    vrows.innerHTML=''
+    var items=[]
+    items.push(syntaxItem(v))
+    items.push(mxItem(v))
+    items.push(smtpItem(v))
+    vrows.innerHTML=items.join('')
+    validityCard.classList.remove('hidden')
+  }
+  function syntaxItem(v){
+    var ok=v.syntaxOk
+    return '<span class="mc-vitem"><span class="k">语法</span><span class="v" style="color:'+(ok?'var(--success,#34d399)':'var(--danger,#e24b4a)')+'">'+(ok?'✓ 正常':'✗ 格式异常')+'</span></span>'
+  }
+  function mxItem(v){
+    if(!v.mxHosts||!v.mxHosts.length) return '<span class="mc-vitem"><span class="k">MX</span><span class="v" style="color:var(--warning,#ef9f27)">未找到邮件服务器</span></span>'
+    return '<span class="mc-vitem"><span class="k">MX</span><span class="v">'+v.mxHosts.slice(0,3).join(', ')+(v.mxHosts.length>3?'…':'')+'</span></span>'
+  }
+  function smtpItem(v){
+    var map={ok:['有效','b-ok'],rejected:['被拒绝','b-error'],timeout:['无法验证','b-skip'],skipped:['未验证','b-skip']}
+    var m=map[v.smtp]||['未验证','b-skip']
+    var tip=v.smtpNote?' title="'+escAttr(v.smtpNote)+'"':''
+    return '<span class="mc-vitem"><span class="k">SMTP</span><span class="mc-badge '+m[1]+'"'+tip+'>'+m[0]+'</span></span>'
+  }
+  function renderProbes(list){
+    probes.innerHTML=''
+    if(!list||!list.length){
+      probes.innerHTML='<div style="color:var(--text-muted)">当前暂无可用探测站</div>'
+      probeCard.classList.remove('hidden')
+      probeStat.textContent=''
+      return
+    }
+    var found=list.filter(function(p){return p.status==='found'}).length
+    var notf=list.filter(function(p){return p.status==='not_found'}).length
+    var checked=list.filter(function(p){return p.status!=='skip'}).length
+    probeStat.textContent='· 有结论 '+(found+notf)+' 站 / 已探测 '+checked+' 站'+(found>0?'，其中 '+found+' 站注册':'')
+    var showAll=false
+    function render(){
+      probes.innerHTML=''
+      var shown=0
+      list.forEach(function(p){
+        if(p.status==='skip'&&!showAll)return
+        var row=document.createElement('div'); row.className='mc-probe'
+        row.innerHTML='<span class="name">'+esc(p.name||p.key)+'</span>'+
+          '<span class="cat">'+esc(p.category||'')+'</span>'+badge(p.status)+
+          '<span class="detail">'+esc(p.detail||'')+'</span>'+
+          (p.url?'<a href="'+escAttr(p.url)+'" target="_blank" rel="noopener">访问 ↗</a>':'')
+        probes.appendChild(row)
+        shown++
+      })
+      if(shown===0) probes.innerHTML='<div style="color:var(--text-muted);padding:4px 0">所有站点均已适配判定或被网络拦截</div>'
+      var t=document.getElementById('probeToggle')
+      if(t) t.textContent=showAll?('收起（显示 '+checked+' 站）'):('展开全部 '+list.length+' 站')
+    }
+    render()
+    var toggle=document.getElementById('probeToggle')
+    if(toggle) toggle.onclick=function(){ showAll=!showAll; render() }
+    probeCard.classList.remove('hidden')
+  }
+  function resetBody(){
+    empty.classList.add('hidden')
+    validityCard.classList.add('hidden')
+    probeCard.classList.add('hidden')
+  }
+
+  // ---- 主流程 ----
+  function doCheck(email){
+    email=email.trim()
+    if(!EMAIL_RE.test(email)){ hint.textContent='邮箱格式不对：'+email; hint.classList.add('err'); return }
+    hint.classList.remove('err')
+    hint.textContent='检测中…（DNS / SMTP / Gravatar）'
+    btn.disabled=true; btn.textContent='检测中…'
+    resetBody()
+    var email0=email
+    send('check',{email:email}).then(function(r){
+      return waitTask(r.taskId, 120000, function(partial){
+        // 逐站回显：已完成的站点立即渲染，不用等全部探测完
+        var total=partial.total||0, done=partial.done||0
+        if(total) hint.textContent='检测中… 已完成 '+done+'/'+total+' 站'
+        if(partial.validity) renderValidity(partial.validity)
+        if(partial.probes&&partial.probes.length) renderProbes(partial.probes)
+      })
+    }).then(function(res){
+      if(email0!==input.value.trim())return
+      lastSummary=res.summary||''
+      renderValidity(res.validity||{})
+      renderProbes(res.probes||[])
+      var slines=(res.summary||'').split('\n')
+      hint.textContent='检测完成 · '+(slines[2]||slines[0]||'')
+      btn.disabled=false; btn.textContent='检测'
+    }).catch(function(err){
+      hint.textContent='检测失败：'+(err&&err.message?err.message:err)
+      hint.classList.add('err')
+      btn.disabled=false; btn.textContent='检测'
+    })
+  }
+
+  btn.addEventListener('click',function(){ var v=input.value.trim(); if(v)doCheck(v) })
+  input.addEventListener('keydown',function(e){ if(e.key==='Enter'){ var v=this.value.trim(); if(v)doCheck(v) } })
+  input.addEventListener('input',function(){ hint.classList.remove('err'); if(this.value.trim()&&!EMAIL_RE.test(this.value.trim())){ hint.textContent='邮箱格式不正确，请检查'; hint.classList.add('err') } else if(!this.value.trim()){ hint.textContent='检测邮箱是否注册过 Gravatar 等平台 + 语法 / MX / SMTP 有效性验证'; hint.classList.remove('err') } })
+
+  document.getElementById('btnCopy').addEventListener('click',function(){
+    if(!lastSummary){ hint.textContent='暂无结果可复制'; return }
+    var bc=document.getElementById('btnCopy')
+    bc.disabled=true
+    copyViaHost(lastSummary, function(ok){
+      bc.textContent=ok?'✓ 已复制':'请按 Ctrl+C 复制'
+      hint.textContent=ok?'已复制查询摘要':'宿主剪贴板不可用，已弹出复制面板（Ctrl+C）'
+      setTimeout(function(){ if(!lastSummary)return; bc.disabled=false; bc.textContent='📋 复制摘要' },1500)
+    })
+  })
+  document.getElementById('btnClear').addEventListener('click',function(){
+    input.value=''; lastSummary=''
+    empty.classList.remove('hidden'); validityCard.classList.add('hidden'); probeCard.classList.add('hidden')
+    hint.classList.remove('err'); hint.textContent='检测邮箱是否注册过 Gravatar 等平台 + 语法 / MX / SMTP 有效性验证'
+    input.focus()
+  })
+
+  // 命令面板传入邮箱自动检测
+  window.addEventListener('message',function(e){
+    var d=e.data
+    if(d&&d.type==='plugin:init'&&d.data&&d.data.text){
+      var t=d.data.text.trim()
+      if(EMAIL_RE.test(t)){ input.value=t; doCheck(t) }
+    }
+  })
+
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') }
+  function escAttr(s){ return esc(s).replace(/'/g,'&#39;') }
+})()
+</script>
+<style>
+/* 手动复制面板：宿主剪贴板桥不可用时兜底，任何环境都能用 Ctrl+C 复制 */
+.mc-modal{position:fixed;inset:0;z-index:999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55)}
+.mc-modal-box{width:min(560px,90vw);max-height:80vh;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow-2);padding:16px;display:flex;flex-direction:column;gap:12px}
+.mc-modal-title{font-size:13px;font-weight:600}
+.mc-modal-text{width:100%;min-height:140px;max-height:50vh;resize:vertical;background:var(--bg-primary);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;padding:10px;font:12px/1.6 ui-monospace,Consolas,monospace;outline:none}
+.mc-modal-actions{display:flex;justify-content:flex-end}
+</style>
+<div class="mc-modal" id="copyModal" style="display:none">
+  <div class="mc-modal-box">
+    <div class="mc-modal-title">复制摘要 — 按 Ctrl+C 复制下面内容</div>
+    <textarea class="mc-modal-text" id="copyModalText" readonly spellcheck="false"></textarea>
+    <div class="mc-modal-actions">
+      <button class="mc-btn" id="copyModalClose">关闭</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>

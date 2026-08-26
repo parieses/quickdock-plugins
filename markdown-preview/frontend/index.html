@@ -28,6 +28,12 @@
 .md-preview hr{border:none;border-top:1px solid var(--border);margin:14px 0}
 .md-preview img{max-width:100%;border-radius:4px}
 </style>
+<script>
+/* QuickDock sandbox 剪贴板桥接：iframe 内 navigator.clipboard 被 Permissions-Policy 禁用 */
+window.__cpSeq=0;
+window.execCopyFallback=function(t){try{var a=document.createElement('textarea');a.value=t;a.style.position='fixed';a.style.opacity='0';a.style.top='0';document.body.appendChild(a);a.select();var ok=document.execCommand('copy');document.body.removeChild(a);return ok}catch(e){return false}};
+window.copyViaHost=function(t,cb){var id='cp_'+(++window.__cpSeq),done=false;function onMsg(e){var d=e&&e.data;if(d&&d.type==='plugin:copy-result'&&d.id===id){done=true;window.removeEventListener('message',onMsg);cb&&cb(!!d.ok)}}window.addEventListener('message',onMsg);parent.postMessage({type:'plugin:copy',id:id,text:t},'*');setTimeout(function(){if(!done){window.removeEventListener('message',onMsg);cb&&cb(window.execCopyFallback(t))}},300)};
+</script>
 </head>
 <body>
 <div class="p-app">
@@ -65,7 +71,7 @@ if(window.marked){
   marked.setOptions({gfm:true,breaks:true})
 }
 mdInput.addEventListener('input',render)
-document.getElementById('btnCopy').addEventListener('click',function(){var html=mdPreview.innerHTML;if(html&&html.indexOf('编辑 Markdown 查看实时预览')<0){navigator.clipboard.writeText('<div class="md-preview">'+html+'</div>').then(function(){})}})
+document.getElementById('btnCopy').addEventListener('click',function(){var html=mdPreview.innerHTML;if(html&&html.indexOf('编辑 Markdown 查看实时预览')<0){window.copyViaHost('<div class="md-preview">'+html+'</div>',function(){})}})
 document.getElementById('btnClear').addEventListener('click',function(){mdInput.value='';render()})
 function render(){
   var text=mdInput.value.trim()

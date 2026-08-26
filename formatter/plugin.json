@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.formatter",
   "name": "代码格式化",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "通用代码压缩/美化（JS / CSS / HTML 自动检测）与 SQL 格式化合二为一",
   "author": "QuickDock",
   "icon": "icon.svg",

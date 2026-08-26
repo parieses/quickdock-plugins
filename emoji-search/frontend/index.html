@@ -15,6 +15,12 @@
 .em-cat.active{border-color:var(--accent);color:var(--accent);background:rgba(74,158,255,.08)}
 .em-empty{display:flex;align-items:center;justify-content:center;flex:1;color:var(--text-muted);font-size:13px}
 </style>
+<script>
+/* QuickDock sandbox 剪贴板桥接：iframe 内 navigator.clipboard 被 Permissions-Policy 禁用 */
+window.__cpSeq=0;
+window.execCopyFallback=function(t){try{var a=document.createElement('textarea');a.value=t;a.style.position='fixed';a.style.opacity='0';a.style.top='0';document.body.appendChild(a);a.select();var ok=document.execCommand('copy');document.body.removeChild(a);return ok}catch(e){return false}};
+window.copyViaHost=function(t,cb){var id='cp_'+(++window.__cpSeq),done=false;function onMsg(e){var d=e&&e.data;if(d&&d.type==='plugin:copy-result'&&d.id===id){done=true;window.removeEventListener('message',onMsg);cb&&cb(!!d.ok)}}window.addEventListener('message',onMsg);parent.postMessage({type:'plugin:copy',id:id,text:t},'*');setTimeout(function(){if(!done){window.removeEventListener('message',onMsg);cb&&cb(window.execCopyFallback(t))}},300)};
+</script>
 </head>
 <body>
 <div class="p-app" style="padding:8px;gap:8px">
@@ -55,7 +61,7 @@ function renderEmojis(){var grid=document.getElementById('emojiGrid'),q=document
     grid.innerHTML=html||'<div class="em-empty">无 Emoji</div>';ct.textContent=html.split('</div>').length-1
   }
 }
-function copyEmoji(el){var cps=(el.getAttribute('data-cps')||'').split(',').map(Number);navigator.clipboard.writeText(eF.apply(null,cps)).then(function(){el.classList.add('copied');setTimeout(function(){el.classList.remove('copied')},800)})}
+function copyEmoji(el){var cps=(el.getAttribute('data-cps')||'').split(',').map(Number);window.copyViaHost(eF.apply(null,cps),function(ok){if(ok){el.classList.add('copied');setTimeout(function(){el.classList.remove('copied')},800)}})}
 document.getElementById('emojiGrid').addEventListener('click',function(e){var el=e.target.closest('.em-item');if(el)copyEmoji(el)})
 document.getElementById('searchInput').addEventListener('input',renderEmojis)
 document.getElementById('catBar').addEventListener('click',function(e){var btn=e.target.closest('.em-cat');if(!btn)return;activeCat=btn.dataset.cat;renderCats();renderEmojis()})

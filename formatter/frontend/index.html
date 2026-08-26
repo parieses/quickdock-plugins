@@ -30,6 +30,12 @@
 .p-textarea::placeholder{color:var(--text-placeholder)}.p-textarea-input:focus{background:var(--bg-tertiary)}.p-textarea-output{background:var(--bg-tertiary)}
 .p-statusbar{padding:4px 10px;font-size:11px;color:var(--text-muted);background:var(--bg-secondary);border-top:1px solid var(--border);flex-shrink:0;min-height:24px}
 </style>
+<script>
+/* QuickDock sandbox 剪贴板桥接：iframe 内 navigator.clipboard 被 Permissions-Policy 禁用 */
+window.__cpSeq=0;
+window.execCopyFallback=function(t){try{var a=document.createElement('textarea');a.value=t;a.style.position='fixed';a.style.opacity='0';a.style.top='0';document.body.appendChild(a);a.select();var ok=document.execCommand('copy');document.body.removeChild(a);return ok}catch(e){return false}};
+window.copyViaHost=function(t,cb){var id='cp_'+(++window.__cpSeq),done=false;function onMsg(e){var d=e&&e.data;if(d&&d.type==='plugin:copy-result'&&d.id===id){done=true;window.removeEventListener('message',onMsg);cb&&cb(!!d.ok)}}window.addEventListener('message',onMsg);parent.postMessage({type:'plugin:copy',id:id,text:t},'*');setTimeout(function(){if(!done){window.removeEventListener('message',onMsg);cb&&cb(window.execCopyFallback(t))}},300)};
+</script>
 </head>
 <body>
 <div class="cmp-app">
@@ -100,7 +106,7 @@
   cpMinify.addEventListener('click',function(){cpMode='minify';cpMinify.classList.add('active');cpPrettify.classList.remove('active');if(cpInput.value.trim())cpProcessCode()})
   cpPrettify.addEventListener('click',function(){cpMode='prettify';cpPrettify.classList.add('active');cpMinify.classList.remove('active');if(cpInput.value.trim())cpProcessCode()})
   cpProcess.addEventListener('click',cpProcessCode)
-  cpCopy.addEventListener('click',function(){if(cpOutput.value){try{navigator.clipboard.writeText(cpOutput.value);cpStatus.textContent='已复制！'}catch(e){}}})
+  cpCopy.addEventListener('click',function(){if(cpOutput.value){window.copyViaHost(cpOutput.value,function(){cpStatus.textContent='已复制！'})}})
   cpClear.addEventListener('click',function(){cpInput.value='';cpOutput.value='';cpStatus.textContent='等待输入…';cpInput.focus()})
   document.addEventListener('keydown',function(e){if(e.ctrlKey&&e.key==='Enter'){e.preventDefault();cpProcessCode()}if(e.key==='Escape'&&!paneCode.hidden)cpInput.focus()})
   var cpTimer;cpInput.addEventListener('input',function(){if(cpTimer)clearTimeout(cpTimer);if(cpInput.value.trim())cpTimer=setTimeout(cpProcessCode,500);else{cpOutput.value='';cpStatus.textContent='等待输入…'}})
@@ -144,7 +150,7 @@
   var spStatus=document.getElementById('spStatus')
   document.addEventListener('keydown',function(e){if(e.ctrlKey&&e.key==='Enter'&&!paneSql.hidden){e.preventDefault();spDoFormat()}if(e.key==='Escape'&&!paneSql.hidden)spInput.focus()})
   spFormat.addEventListener('click',spDoFormat)
-  spCopy.addEventListener('click',function(){if(spOutput.value){try{navigator.clipboard.writeText(spOutput.value);spStatus.textContent='已复制！'}catch(e){}}})
+  spCopy.addEventListener('click',function(){if(spOutput.value){window.copyViaHost(spOutput.value,function(){spStatus.textContent='已复制！'})}})
   spClear.addEventListener('click',function(){spInput.value='';spOutput.value='';spStatus.textContent='等待输入…';spInput.focus()})
   var spTimer;spInput.addEventListener('input',function(){if(spTimer)clearTimeout(spTimer);if(spInput.value.trim())spTimer=setTimeout(spDoFormat,600);else{spOutput.value='';spStatus.textContent='等待输入…'}})
   var SP_MAJOR_KW=['SELECT','FROM','WHERE','AND','OR','SET','INSERT INTO','VALUES','UPDATE','DELETE FROM','CREATE TABLE','ALTER TABLE','DROP TABLE','ORDER BY','GROUP BY','HAVING','LIMIT','OFFSET','JOIN','INNER JOIN','LEFT JOIN','RIGHT JOIN','FULL JOIN','CROSS JOIN','ON','USING','UNION','UNION ALL','IN','EXISTS','NOT','BETWEEN','LIKE','IS NULL','IS NOT NULL','AS','DISTINCT','CASE','WHEN','THEN','ELSE','END','WITH','RECURSIVE','RETURNING','BEGIN','COMMIT','ROLLBACK']

@@ -1,0 +1,2619 @@
+[
+ {
+  "key": "aboutme",
+  "name": "Aboutme",
+  "nameEn": "Aboutme",
+  "category": "企业",
+  "url": "https://aboutme.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "GET",
+  "probeUrl": "https://about.me/signup",
+  "rules": [],
+  "default": "unknown"
+ },
+ {
+  "key": "adobe",
+  "name": "Adobe",
+  "nameEn": "Adobe",
+  "category": "软件",
+  "url": "https://adobe.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://auth.services.adobe.com/signin/v2/challenges",
+  "rules": [
+   {
+    "ifStatusIn": [
+     409
+    ],
+    "result": "found"
+   }
+  ],
+  "default": "unknown",
+  "bodyType": "json",
+  "body": "{\"username\":\"{email}\",\"accountType\":\"individual\"}",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "application/json",
+   "X-IMS-CLIENTID": "adobedotcom2",
+   "Origin": "https://auth.services.adobe.com"
+  }
+ },
+ {
+  "key": "amazon",
+  "name": "Amazon",
+  "nameEn": "Amazon",
+  "category": "购物",
+  "url": "https://amazon.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "GET",
+  "probeUrl": "https://www.amazon.com/ap/signin/",
+  "rules": [],
+  "default": "unknown",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5"
+  }
+ },
+ {
+  "key": "amocrm",
+  "name": "Amocrm",
+  "nameEn": "Amocrm",
+  "category": "CRM",
+  "url": "https://amocrm.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://www.amocrm.com/account/check_login.php",
+  "rules": [
+   {
+    "ifJson": "status",
+    "jsonValue": "used",
+    "result": "found"
+   },
+   {
+    "ifJson": "status",
+    "jsonValue": "free",
+    "result": "not_found"
+   }
+  ],
+  "default": "unknown",
+  "bodyType": "form",
+  "body": "LOGIN={email}",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "X-Requested-With": "XMLHttpRequest",
+   "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+   "Origin": "https://www.amocrm.com"
+  }
+ },
+ {
+  "key": "anydo",
+  "name": "Anydo",
+  "nameEn": "Anydo",
+  "category": "效率工具",
+  "url": "https://anydo.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://sm-prod2.any.do/check_email",
+  "rules": [
+   {
+    "ifJson": "user_exists",
+    "jsonValue": true,
+    "result": "found"
+   },
+   {
+    "ifJson": "user_exists",
+    "jsonValue": false,
+    "result": "not_found"
+   }
+  ],
+  "default": "unknown",
+  "bodyType": "json",
+  "body": "{\"email\":\"{email}\"}",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "application/json; charset=UTF-8",
+   "X-Platform": "3",
+   "Origin": "https://desktop.any.do"
+  }
+ },
+ {
+  "key": "archive",
+  "name": "Archive",
+  "nameEn": "Archive",
+  "category": "软件",
+  "url": "https://archive.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://archive.org/account/signup",
+  "rules": [
+   {
+    "ifContains": "already",
+    "result": "found"
+   }
+  ],
+  "default": "unknown",
+  "bodyType": "form",
+  "body": "input_email={email}&input_name=tester&input_password=QuickDock123!&submit=Create+account",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "application/x-www-form-urlencoded",
+   "Origin": "https://archive.org"
+  }
+ },
+ {
+  "key": "armurerieauxerre",
+  "name": "Armurerieauxerre",
+  "nameEn": "Armurerieauxerre",
+  "category": "购物",
+  "url": "https://armurerieauxerre.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://www.armurerie-auxerre.com/customer/Email/email/",
+  "rules": [],
+  "default": "unknown",
+  "bodyType": "form",
+  "body": "mail={email}",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+   "X-Requested-With": "XMLHttpRequest",
+   "Origin": "https://www.armurerie-auxerre.com"
+  }
+ },
+ {
+  "key": "atlassian",
+  "name": "Atlassian",
+  "nameEn": "Atlassian",
+  "category": "内容管理",
+  "url": "https://atlassian.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "GET",
+  "probeUrl": "https://id.atlassian.com/login",
+  "rules": [],
+  "default": "unknown"
+ },
+ {
+  "key": "axonaut",
+  "name": "Axonaut",
+  "nameEn": "Axonaut",
+  "category": "CRM",
+  "url": "https://axonaut.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "GET",
+  "probeUrl": "https://axonaut.com/onboarding/?email={email}",
+  "rules": [],
+  "default": "unknown",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5"
+  }
+ },
+ {
+  "key": "babeshows",
+  "name": "Babeshows",
+  "nameEn": "Babeshows",
+  "category": "论坛",
+  "url": "https://babeshows.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "GET",
+  "probeUrl": "https://www.babeshows.co.uk/member.php",
+  "rules": [],
+  "default": "unknown"
+ },
+ {
+  "key": "badeggsonline",
+  "name": "Badeggsonline",
+  "nameEn": "Badeggsonline",
+  "category": "论坛",
+  "url": "https://badeggsonline.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "GET",
+  "probeUrl": "https://www.badeggsonline.com/beo2-forum/member.php",
+  "rules": [],
+  "default": "unknown"
+ },
+ {
+  "key": "biosmods",
+  "name": "Biosmods",
+  "nameEn": "Biosmods",
+  "category": "论坛",
+  "url": "https://biosmods.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "GET",
+  "probeUrl": "https://bios-mods.com/forum/member.php",
+  "rules": [],
+  "default": "unknown"
+ },
+ {
+  "key": "biotechnologyforums",
+  "name": "Biotechnologyforums",
+  "nameEn": "Biotechnologyforums",
+  "category": "论坛",
+  "url": "https://biotechnologyforums.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "GET",
+  "probeUrl": "https://biotechnologyforums.com/member.php",
+  "rules": [],
+  "default": "unknown"
+ },
+ {
+  "key": "bitmoji",
+  "name": "Bitmoji",
+  "nameEn": "Bitmoji",
+  "category": "社交媒体",
+  "url": "https://bitmoji.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "GET",
+  "probeUrl": "https://accounts.snapchat.com",
+  "rules": [],
+  "default": "unknown"
+ },
+ {
+  "key": "blablacar",
+  "name": "Blablacar",
+  "nameEn": "Blablacar",
+  "category": "交通",
+  "url": "https://blablacar.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://edge.blablacar.fr/auth/validation/email/",
+  "rules": [],
+  "default": "unknown",
+  "bodyType": "json",
+  "body": "{\"email\":\"{email}\"}",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "application/json",
+   "x-locale": "fr_FR",
+   "Origin": "https://www.blablacar.fr"
+  }
+ },
+ {
+  "key": "blackworldforum",
+  "name": "Blackworldforum",
+  "nameEn": "Blackworldforum",
+  "category": "论坛",
+  "url": "https://blackworldforum.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "GET",
+  "probeUrl": "http://blackworldforum.com/member.php",
+  "rules": [],
+  "default": "unknown"
+ },
+ {
+  "key": "blip",
+  "name": "Blip",
+  "nameEn": "Blip",
+  "category": "音乐",
+  "url": "https://blip.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://blip.fm/signup/save",
+  "rules": [],
+  "default": "unknown",
+  "bodyType": "form",
+  "body": "signup[emailAddress]={email}",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Origin": "https://blip.fm",
+   "Content-Type": "application/x-www-form-urlencoded"
+  }
+ },
+ {
+  "key": "blitzortung",
+  "name": "Blitzortung",
+  "nameEn": "Blitzortung",
+  "category": "论坛",
+  "url": "https://blitzortung.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "GET",
+  "probeUrl": "https://forum.blitzortung.org/member.php",
+  "rules": [],
+  "default": "unknown"
+ },
+ {
+  "key": "bluegrassrivals",
+  "name": "Bluegrassrivals",
+  "nameEn": "Bluegrassrivals",
+  "category": "论坛",
+  "url": "https://bluegrassrivals.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "GET",
+  "probeUrl": "http://bluegrassrivals.com/forum/member.php",
+  "rules": [],
+  "default": "unknown"
+ },
+ {
+  "key": "bodybuilding",
+  "name": "Bodybuilding",
+  "nameEn": "Bodybuilding",
+  "category": "体育",
+  "url": "https://bodybuilding.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://api.bodybuilding.com/profile/email/",
+  "default": "unknown",
+  "bodyType": "form",
+  "body": "email={email}",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Origin": "https://www.bodybuilding.com",
+   "Content-Type": "application/x-www-form-urlencoded"
+  }
+ },
+ {
+  "key": "buymeacoffee",
+  "name": "Buymeacoffee",
+  "nameEn": "Buymeacoffee",
+  "category": "众筹",
+  "url": "https://buymeacoffee.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "GET",
+  "probeUrl": "https://www.buymeacoffee.com/",
+  "rules": [],
+  "default": "unknown"
+ },
+ {
+  "key": "cambridgemt",
+  "name": "Cambridgemt",
+  "nameEn": "Cambridgemt",
+  "category": "论坛",
+  "url": "https://cambridgemt.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "GET",
+  "probeUrl": "https://discussion.cambridge-mt.com/member.php",
+  "rules": [],
+  "default": "unknown"
+ },
+ {
+  "key": "caringbridge",
+  "name": "Caringbridge",
+  "nameEn": "Caringbridge",
+  "category": "医疗",
+  "url": "https://caringbridge.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://www.caringbridge.org/signin",
+  "rules": [],
+  "default": "unknown",
+  "bodyType": "form",
+  "body": "email={email}",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "application/x-www-form-urlencoded",
+   "Origin": "https://www.caringbridge.org"
+  }
+ },
+ {
+  "key": "chinaphonearena",
+  "name": "Chinaphonearena",
+  "nameEn": "Chinaphonearena",
+  "category": "论坛",
+  "url": "https://chinaphonearena.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "GET",
+  "probeUrl": "https://www.chinaphonearena.com/forum/member.php",
+  "rules": [],
+  "default": "unknown"
+ },
+ {
+  "key": "clashfarmer",
+  "name": "Clashfarmer",
+  "nameEn": "Clashfarmer",
+  "category": "论坛",
+  "url": "https://clashfarmer.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "GET",
+  "probeUrl": "https://www.clashfarmer.com/forum/member.php",
+  "rules": [],
+  "default": "unknown"
+ },
+ {
+  "key": "codecademy",
+  "name": "Codecademy",
+  "nameEn": "Codecademy",
+  "category": "编程",
+  "url": "https://codecademy.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://www.codecademy.com/register/validate",
+  "rules": [
+   {
+    "ifContains": "already taken",
+    "result": "found"
+   }
+  ],
+  "default": "unknown",
+  "bodyType": "json",
+  "body": "{\"email\":\"{email}\"}",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "application/json",
+   "Origin": "https://www.codecademy.com"
+  }
+ },
+ {
+  "key": "codeigniter",
+  "name": "Codeigniter",
+  "nameEn": "Codeigniter",
+  "category": "论坛",
+  "url": "https://codeigniter.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "GET",
+  "probeUrl": "https://forum.codeigniter.com/member.php",
+  "rules": [],
+  "default": "unknown"
+ },
+ {
+  "key": "codepen",
+  "name": "Codepen",
+  "nameEn": "Codepen",
+  "category": "编程",
+  "url": "https://codepen.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://codepen.io/accounts/duplicate_check",
+  "rules": [
+   {
+    "ifContains": "already taken",
+    "result": "found"
+   }
+  ],
+  "default": "unknown",
+  "bodyType": "form",
+  "body": "attribute=email&value={email}&context=user",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+   "X-Requested-With": "XMLHttpRequest",
+   "Origin": "https://codepen.io"
+  }
+ },
+ {
+  "key": "coroflot",
+  "name": "Coroflot",
+  "nameEn": "Coroflot",
+  "category": "招聘",
+  "url": "https://coroflot.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://www.coroflot.com/home/signup_email_check",
+  "rules": [
+   {
+    "ifJson": "data",
+    "jsonValue": -2,
+    "result": "found"
+   }
+  ],
+  "default": "unknown",
+  "bodyType": "form",
+  "body": "email={email}",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "application/x-www-form-urlencoded",
+   "X-Requested-With": "XMLHttpRequest",
+   "Origin": "https://www.coroflot.com"
+  }
+ },
+ {
+  "key": "cpaelites",
+  "name": "Cpaelites",
+  "nameEn": "Cpaelites",
+  "category": "论坛",
+  "url": "https://cpaelites.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "GET",
+  "probeUrl": "https://www.cpaelites.com/member.php",
+  "rules": [],
+  "default": "unknown"
+ },
+ {
+  "key": "cpahero",
+  "name": "Cpahero",
+  "nameEn": "Cpahero",
+  "category": "论坛",
+  "url": "https://cpahero.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "GET",
+  "probeUrl": "https://www.cpahero.com/member.php",
+  "rules": [],
+  "default": "unknown"
+ },
+ {
+  "key": "cracked_to",
+  "name": "Cracked_to",
+  "nameEn": "Cracked_to",
+  "category": "论坛",
+  "url": "https://cracked_to.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "GET",
+  "probeUrl": "https://cracked.to/member.php",
+  "rules": [],
+  "default": "unknown"
+ },
+ {
+  "key": "crevado",
+  "name": "Crevado",
+  "nameEn": "Crevado",
+  "category": "社交媒体",
+  "url": "https://crevado.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "GET",
+  "probeUrl": "https://crevado.com",
+  "rules": [],
+  "default": "unknown"
+ },
+ {
+  "key": "deliveroo",
+  "name": "Deliveroo",
+  "nameEn": "Deliveroo",
+  "category": "购物",
+  "url": "https://deliveroo.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://consumer-ow-api.deliveroo.com/orderapp/v1/check-email",
+  "default": "unknown",
+  "bodyType": "json",
+  "body": "{\"email_address\":\"{email}\"}",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "application/json",
+   "X-Roo-Client": "orderweb-client",
+   "X-Roo-Country": "fr"
+  }
+ },
+ {
+  "key": "demonforums",
+  "name": "Demonforums",
+  "nameEn": "Demonforums",
+  "category": "论坛",
+  "url": "https://demonforums.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "GET",
+  "probeUrl": "https://demonforums.net/member.php",
+  "rules": [],
+  "default": "unknown"
+ },
+ {
+  "key": "devrant",
+  "name": "Devrant",
+  "nameEn": "Devrant",
+  "category": "编程",
+  "url": "https://devrant.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://devrant.com/api/users",
+  "rules": [
+   {
+    "ifContains": "already registered",
+    "result": "found"
+   }
+  ],
+  "default": "unknown",
+  "bodyType": "form",
+  "body": "app=3&type=1&email={email}",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+   "X-Requested-With": "XMLHttpRequest",
+   "Origin": "https://devrant.com"
+  }
+ },
+ {
+  "key": "diigo",
+  "name": "Diigo",
+  "nameEn": "Diigo",
+  "category": "学习",
+  "url": "https://diigo.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://www.diigo.com/user_mana2/check_email",
+  "rules": [],
+  "default": "unknown",
+  "bodyType": "form",
+  "body": "email={email}",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "application/x-www-form-urlencoded",
+   "X-Requested-With": "XMLHttpRequest",
+   "Referer": "https://www.diigo.com/sign-up?plan=free"
+  }
+ },
+ {
+  "key": "discord",
+  "name": "Discord",
+  "nameEn": "Discord",
+  "category": "社交媒体",
+  "url": "https://discord.com",
+  "desc": "即时通讯与社区平台",
+  "engine": "",
+  "status": "needs-review",
+  "method": "POST",
+  "probeUrl": "https://discord.com/api/v8/auth/register",
+  "bodyType": "json",
+  "body": "{\"fingerprint\":\"\",\"email\":\"{email}\",\"username\":\"{username}\",\"password\":\"{username}123Ab!\",\"invite\":null,\"consent\":true,\"date_of_birth\":\"2000-01-01\",\"gift_code_sku_id\":null,\"captcha_key\":null}",
+  "randomUser": true,
+  "rules": [],
+  "default": "unknown"
+ },
+ {
+  "key": "docker",
+  "name": "Docker Hub",
+  "nameEn": "Docker Hub",
+  "category": "编程",
+  "url": "https://hub.docker.com",
+  "desc": "容器镜像仓库（注册邮箱校验）",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://hub.docker.com/v2/users/signup/",
+  "bodyType": "json",
+  "body": "{\"email\":\"{email}\",\"password\":\"\",\"recaptcha_response\":\"\",\"redirect_value\":\"\",\"subscribe\":true,\"username\":\"\"}",
+  "rules": [
+   {
+    "ifContains": "This email is already in use.",
+    "result": "found"
+   }
+  ],
+  "default": "unknown"
+ },
+ {
+  "key": "dominosfr",
+  "name": "Dominosfr",
+  "nameEn": "Dominosfr",
+  "category": "购物",
+  "url": "https://dominosfr.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "GET",
+  "probeUrl": "https://commande.dominos.fr/eStore/fr/Signup",
+  "rules": [],
+  "default": "unknown"
+ },
+ {
+  "key": "duolingo",
+  "name": "Duolingo",
+  "nameEn": "Duolingo",
+  "category": "学习",
+  "url": "https://duolingo.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "GET",
+  "probeUrl": "https://www.duolingo.com/2017-06-30/users?email={email}",
+  "default": "unknown",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5"
+  },
+  "rules": [
+   {
+    "ifContains": "\"users\":[]",
+    "result": "not_found"
+   }
+  ]
+ },
+ {
+  "key": "ebay",
+  "name": "Ebay",
+  "nameEn": "Ebay",
+  "category": "购物",
+  "url": "https://ebay.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://signin.ebay.com/signin/srv/identifer",
+  "rules": [
+   {
+    "ifStatusIn": [
+     409
+    ],
+    "result": "found"
+   }
+  ],
+  "default": "unknown",
+  "bodyType": "form",
+  "body": "identifier={email}",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "application/x-www-form-urlencoded",
+   "Origin": "https://www.ebay.com"
+  }
+ },
+ {
+  "key": "ello",
+  "name": "Ello",
+  "nameEn": "Ello",
+  "category": "媒体",
+  "url": "https://ello.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://ello.co/api/v2/availability",
+  "rules": [],
+  "default": "unknown",
+  "bodyType": "json",
+  "body": "{\"email\":\"{email}\"}",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "application/json",
+   "Origin": "https://ello.co"
+  }
+ },
+ {
+  "key": "envato",
+  "name": "Envato",
+  "nameEn": "Envato",
+  "category": "购物",
+  "url": "https://envato.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://account.envato.com/api/validate_email",
+  "rules": [],
+  "default": "unknown",
+  "bodyType": "form",
+  "body": "email={email}",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "application/x-www-form-urlencoded",
+   "Origin": "https://account.envato.com"
+  }
+ },
+ {
+  "key": "eventbrite",
+  "name": "Eventbrite",
+  "nameEn": "Eventbrite",
+  "category": "商品",
+  "url": "https://eventbrite.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "GET",
+  "probeUrl": "https://www.eventbrite.com/signin/?referrer=%2F",
+  "rules": [],
+  "default": "unknown"
+ },
+ {
+  "key": "evernote",
+  "name": "Evernote",
+  "nameEn": "Evernote",
+  "category": "效率工具",
+  "url": "https://evernote.com",
+  "desc": "笔记应用（多令牌登录探测，needs-review）",
+  "status": "needs-review",
+  "method": "POST",
+  "probeUrl": "https://www.evernote.com/Login.action",
+  "bodyType": "form",
+  "body": "username={email}",
+  "rules": [
+   {
+    "ifContains": "usePasswordAuth",
+    "result": "found"
+   },
+   {
+    "ifContains": "displayMessage",
+    "result": "not_found"
+   }
+  ],
+  "default": "unknown"
+ },
+ {
+  "key": "facebook",
+  "name": "Facebook",
+  "nameEn": "Facebook",
+  "category": "社交媒体",
+  "url": "https://facebook.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "GET",
+  "probeUrl": "https://www.facebook.com/accounts/emailsignup/",
+  "rules": [
+   {
+    "ifContains": "email_is_taken",
+    "result": "found"
+   },
+   {
+    "ifContains": "not found",
+    "result": "not_found"
+   }
+  ],
+  "default": "unknown"
+ },
+ {
+  "key": "fanpop",
+  "name": "Fanpop",
+  "nameEn": "Fanpop",
+  "category": "社交媒体",
+  "url": "https://fanpop.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://www.fanpop.com/login/superlogin",
+  "rules": [
+   {
+    "ifContains": "already registered",
+    "result": "found"
+   }
+  ],
+  "default": "unknown",
+  "bodyType": "form",
+  "body": "user[email]={email}&submissiontype=register",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+   "X-Requested-With": "XMLHttpRequest",
+   "Origin": "https://www.fanpop.com"
+  }
+ },
+ {
+  "key": "firefox",
+  "name": "Firefox",
+  "nameEn": "Firefox",
+  "category": "软件",
+  "url": "https://firefox.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://api.accounts.firefox.com/v1/account/status",
+  "default": "unknown",
+  "bodyType": "json",
+  "body": "{\"email\":\"{email}\"}",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "application/json"
+  },
+  "rules": [
+   {
+    "ifJson": "exists",
+    "jsonValue": true,
+    "result": "found"
+   },
+   {
+    "ifJson": "exists",
+    "jsonValue": false,
+    "result": "not_found"
+   }
+  ]
+ },
+ {
+  "key": "flickr",
+  "name": "Flickr",
+  "nameEn": "Flickr",
+  "category": "媒体",
+  "url": "https://flickr.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://identity-api.flickr.com/migration",
+  "rules": [],
+  "default": "unknown",
+  "bodyType": "json",
+  "body": "{\"email\":\"{email}\"}",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "application/json",
+   "Origin": "https://identity.flickr.com"
+  }
+ },
+ {
+  "key": "freelancer",
+  "name": "Freelancer",
+  "nameEn": "Freelancer",
+  "category": "招聘",
+  "url": "https://freelancer.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://www.freelancer.com/api/users/0.1/users/check?compact=true&new_errors=true",
+  "rules": [
+   {
+    "ifStatusIn": [
+     409
+    ],
+    "result": "found"
+   },
+   {
+    "ifStatusIn": [
+     200
+    ],
+    "result": "not_found"
+   }
+  ],
+  "default": "unknown",
+  "bodyType": "json",
+  "body": "{\"email\":\"{email}\"}",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "application/json",
+   "Origin": "https://www.freelancer.com"
+  }
+ },
+ {
+  "key": "freiberg",
+  "name": "Freiberg",
+  "nameEn": "Freiberg",
+  "category": "论坛",
+  "url": "https://freiberg.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "GET",
+  "probeUrl": "https://drachenhort.user.stunet.tu-freiberg.de/member.php",
+  "rules": [],
+  "default": "unknown"
+ },
+ {
+  "key": "garmin",
+  "name": "Garmin",
+  "nameEn": "Garmin",
+  "category": "购物",
+  "url": "https://garmin.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://sso.garmin.com/sso/validateNewAccount",
+  "rules": [],
+  "default": "unknown",
+  "bodyType": "form",
+  "body": "email={email}",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "application/x-www-form-urlencoded",
+   "Origin": "https://sso.garmin.com"
+  }
+ },
+ {
+  "key": "github",
+  "name": "GitHub",
+  "nameEn": "GitHub",
+  "category": "编程",
+  "url": "https://github.com",
+  "desc": "全球最大代码托管平台（注册邮箱探测）",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://github.com/signup_check/email",
+  "bodyType": "form",
+  "body": "value={email}&authenticity_token={token}",
+  "warmup": {
+   "url": "https://github.com/join",
+   "regex": "<auto-check src=\"/signup_check/email[\\s\\S]*?value=\"([\\S]+)\""
+  },
+  "rules": [
+   {
+    "ifContains": "Your browser did something unexpected",
+    "result": "unknown"
+   },
+   {
+    "ifStatusIn": [
+     422
+    ],
+    "result": "found"
+   },
+   {
+    "ifStatusIn": [
+     200
+    ],
+    "result": "not_found"
+   }
+  ],
+  "default": "unknown"
+ },
+ {
+  "key": "google",
+  "name": "Google",
+  "nameEn": "Google",
+  "category": "邮箱",
+  "url": "https://google.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://accounts.google.com/_/signup/webusernameavailability",
+  "rules": [],
+  "default": "unknown",
+  "bodyType": "form",
+  "body": "continue=https%3A%2F%2Faccounts.google.com%2F&f.req=%5B%22%22%2C%22%22%2C%22%22%2C%22{email}%22%2Cfalse%5D&azt=&cookiesDisabled=false",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "application/x-www-form-urlencoded;charset=utf-8",
+   "X-Same-Domain": "1",
+   "Google-Accounts-XSRF": "1",
+   "Origin": "https://accounts.google.com"
+  }
+ },
+ {
+  "key": "gravatar",
+  "name": "Gravatar",
+  "nameEn": "Gravatar",
+  "category": "内容管理",
+  "url": "https://gravatar.com",
+  "desc": "Gravatar 全球头像服务（WordPress 生态通用）",
+  "engine": "gravatar",
+  "status": "adapted",
+  "rules": [],
+  "default": "unknown"
+ },
+ {
+  "key": "hubspot",
+  "name": "Hubspot",
+  "nameEn": "Hubspot",
+  "category": "CRM",
+  "url": "https://hubspot.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://api.hubspot.com/login-api/v1/login",
+  "rules": [
+   {
+    "ifJson": "status",
+    "jsonValue": "INVALID_PASSWORD",
+    "result": "found"
+   },
+   {
+    "ifJson": "status",
+    "jsonValue": "INVALID_USER",
+    "result": "not_found"
+   }
+  ],
+  "default": "unknown",
+  "bodyType": "json",
+  "body": "{\"email\":\"{email}\",\"password\":\"x\"}",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "application/json",
+   "Origin": "https://app.hubspot.com"
+  }
+ },
+ {
+  "key": "imgur",
+  "name": "Imgur",
+  "nameEn": "Imgur",
+  "category": "社交媒体",
+  "url": "https://imgur.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "GET",
+  "probeUrl": "https://imgur.com/register?redirect=%2Fuser",
+  "rules": [],
+  "default": "unknown"
+ },
+ {
+  "key": "insightly",
+  "name": "Insightly",
+  "nameEn": "Insightly",
+  "category": "CRM",
+  "url": "https://insightly.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://accounts.insightly.com/signup/isemailvalid",
+  "rules": [
+   {
+    "ifContains": "true",
+    "result": "not_found"
+   }
+  ],
+  "default": "unknown",
+  "bodyType": "form",
+  "body": "emailaddress={email}",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+   "X-Requested-With": "XMLHttpRequest",
+   "Origin": "https://accounts.insightly.com"
+  }
+ },
+ {
+  "key": "instagram",
+  "name": "Instagram",
+  "nameEn": "Instagram",
+  "category": "社交媒体",
+  "url": "https://www.instagram.com",
+  "desc": "Meta 旗下图片社交平台",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://www.instagram.com/api/v1/web/accounts/web_create_ajax/attempt/",
+  "bodyType": "form",
+  "body": "email={email}&username={username}&first_name=&opt_into_one_tap=false",
+  "randomUser": true,
+  "warmup": {
+   "url": "https://www.instagram.com/accounts/emailsignup/",
+   "regex": "csrf_token\\\":\\\"([^\\\"]+)"
+  },
+  "headers": {
+   "x-csrftoken": "{token}"
+  },
+  "rules": [
+   {
+    "ifContains": "email_is_taken",
+    "result": "found"
+   }
+  ],
+  "default": "unknown"
+ },
+ {
+  "key": "issuu",
+  "name": "Issuu",
+  "nameEn": "Issuu",
+  "category": "软件",
+  "url": "https://issuu.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://issuu.com/call/signup/check-email/",
+  "rules": [
+   {
+    "ifJson": "status",
+    "jsonValue": "unavailable",
+    "result": "found"
+   }
+  ],
+  "default": "unknown",
+  "bodyType": "form",
+  "body": "email={email}",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "application/x-www-form-urlencoded",
+   "Referer": "https://issuu.com/signup"
+  }
+ },
+ {
+  "key": "koditv",
+  "name": "Koditv",
+  "nameEn": "Koditv",
+  "category": "论坛",
+  "url": "https://koditv.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "GET",
+  "probeUrl": "https://forum.kodi.tv/member.php",
+  "rules": [],
+  "default": "unknown"
+ },
+ {
+  "key": "komoot",
+  "name": "Komoot",
+  "nameEn": "Komoot",
+  "category": "媒体",
+  "url": "https://komoot.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://account.komoot.com/v1/signin",
+  "rules": [],
+  "default": "unknown",
+  "bodyType": "json",
+  "body": "{\"email\":\"{email}\"}",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "application/json",
+   "Origin": "https://account.komoot.com"
+  }
+ },
+ {
+  "key": "laposte",
+  "name": "Laposte",
+  "nameEn": "Laposte",
+  "category": "邮箱",
+  "url": "https://laposte.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://www.laposte.fr/authentification",
+  "rules": [],
+  "default": "unknown",
+  "bodyType": "form",
+  "body": "email={email}",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "application/x-www-form-urlencoded",
+   "Origin": "https://www.laposte.fr"
+  }
+ },
+ {
+  "key": "lastfm",
+  "name": "Lastfm",
+  "nameEn": "Lastfm",
+  "category": "音乐",
+  "url": "https://lastfm.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "POST",
+  "probeUrl": "https://www.last.fm/join/partial/validate",
+  "rules": [
+   {
+    "ifContains": "already registered",
+    "result": "found"
+   }
+  ],
+  "default": "unknown"
+ },
+ {
+  "key": "lastpass",
+  "name": "Lastpass",
+  "nameEn": "Lastpass",
+  "category": "软件",
+  "url": "https://lastpass.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://lastpass.com/create_account.php",
+  "rules": [],
+  "default": "unknown",
+  "bodyType": "form",
+  "body": "email={email}",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "application/x-www-form-urlencoded",
+   "X-Requested-With": "XMLHttpRequest",
+   "Origin": "https://lastpass.com"
+  }
+ },
+ {
+  "key": "mail_ru",
+  "name": "Mail_ru",
+  "nameEn": "Mail_ru",
+  "category": "邮箱",
+  "url": "https://mail_ru.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://account.mail.ru/api/v1/user/password/restore",
+  "rules": [],
+  "default": "unknown",
+  "bodyType": "form",
+  "body": "email={email}",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+   "X-Requested-With": "XMLHttpRequest",
+   "Origin": "https://account.mail.ru"
+  }
+ },
+ {
+  "key": "mybb",
+  "name": "Mybb",
+  "nameEn": "Mybb",
+  "category": "论坛",
+  "url": "https://mybb.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "GET",
+  "probeUrl": "https://community.mybb.com/member.php",
+  "rules": [],
+  "default": "unknown"
+ },
+ {
+  "key": "myspace",
+  "name": "Myspace",
+  "nameEn": "Myspace",
+  "category": "社交媒体",
+  "url": "https://myspace.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "GET",
+  "probeUrl": "https://myspace.com/signup/email",
+  "rules": [],
+  "default": "unknown"
+ },
+ {
+  "key": "nattyornot",
+  "name": "Nattyornot",
+  "nameEn": "Nattyornot",
+  "category": "论坛",
+  "url": "https://nattyornot.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "GET",
+  "probeUrl": "https://nattyornotforum.nattyornot.com/member.php",
+  "rules": [],
+  "default": "unknown"
+ },
+ {
+  "key": "naturabuy",
+  "name": "Naturabuy",
+  "nameEn": "Naturabuy",
+  "category": "购物",
+  "url": "https://naturabuy.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://www.naturabuy.fr/includes/ajax/register.php",
+  "rules": [],
+  "default": "unknown",
+  "bodyType": "form",
+  "body": "email={email}",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "application/x-www-form-urlencoded",
+   "X-Requested-With": "XMLHttpRequest",
+   "Origin": "https://www.naturabuy.fr"
+  }
+ },
+ {
+  "key": "ndemiccreations",
+  "name": "Ndemiccreations",
+  "nameEn": "Ndemiccreations",
+  "category": "论坛",
+  "url": "https://ndemiccreations.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "GET",
+  "probeUrl": "https://forum.ndemiccreations.com/member.php",
+  "rules": [],
+  "default": "unknown"
+ },
+ {
+  "key": "nextpvr",
+  "name": "Nextpvr",
+  "nameEn": "Nextpvr",
+  "category": "论坛",
+  "url": "https://nextpvr.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "GET",
+  "probeUrl": "https://forums.nextpvr.com/member.php",
+  "rules": [],
+  "default": "unknown"
+ },
+ {
+  "key": "nike",
+  "name": "Nike",
+  "nameEn": "Nike",
+  "category": "商品",
+  "url": "https://nike.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://unite.nike.com/account/email/v1",
+  "rules": [
+   {
+    "ifStatusIn": [
+     409
+    ],
+    "result": "found"
+   },
+   {
+    "ifStatusIn": [
+     204
+    ],
+    "result": "not_found"
+   }
+  ],
+  "default": "unknown",
+  "body": "{email}",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "text/plain;charset=UTF-8",
+   "Origin": "https://www.nike.com"
+  }
+ },
+ {
+  "key": "nimble",
+  "name": "Nimble",
+  "nameEn": "Nimble",
+  "category": "CRM",
+  "url": "https://nimble.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "GET",
+  "probeUrl": "https://www.nimble.com/lib/register.php?email={email}",
+  "rules": [
+   {
+    "ifContains": "already registered",
+    "result": "found"
+   }
+  ],
+  "default": "unknown",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5"
+  }
+ },
+ {
+  "key": "nocrm",
+  "name": "Nocrm",
+  "nameEn": "Nocrm",
+  "category": "CRM",
+  "url": "https://nocrm.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "GET",
+  "probeUrl": "https://register.nocrm.io/register/check_trial_duplicate?email={email}",
+  "rules": [
+   {
+    "ifContains": "{\"account\":0}",
+    "result": "not_found"
+   }
+  ],
+  "default": "unknown",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5"
+  }
+ },
+ {
+  "key": "nutshell",
+  "name": "Nutshell",
+  "nameEn": "Nutshell",
+  "category": "CRM",
+  "url": "https://nutshell.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://app.nutshell.com/auth",
+  "rules": [],
+  "default": "unknown",
+  "bodyType": "form",
+  "body": "via=database&username={email}&password=a&invalidToken=false",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "application/x-www-form-urlencoded",
+   "Origin": "https://app.nutshell.com"
+  }
+ },
+ {
+  "key": "odnoklassniki",
+  "name": "Odnoklassniki",
+  "nameEn": "Odnoklassniki",
+  "category": "社交媒体",
+  "url": "https://odnoklassniki.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "GET",
+  "probeUrl": "https://www.ok.ru/dk?st.cmd=anonymMain&st.accRecovery=on",
+  "rules": [],
+  "default": "unknown",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5"
+  }
+ },
+ {
+  "key": "office365",
+  "name": "Office365",
+  "nameEn": "Office365",
+  "category": "软件",
+  "url": "https://office365.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "GET",
+  "probeUrl": "https://outlook.office365.com/autodiscover/autodiscover.json/v1.0/{email}?Protocol=Autodiscoverv1",
+  "rules": [
+   {
+    "ifStatusIn": [
+     200
+    ],
+    "result": "found"
+   },
+   {
+    "ifStatusIn": [
+     404,
+     450,
+     451
+    ],
+    "result": "not_found"
+   }
+  ],
+  "default": "unknown",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Accept": "application/json"
+  }
+ },
+ {
+  "key": "onlinesequencer",
+  "name": "Onlinesequencer",
+  "nameEn": "Onlinesequencer",
+  "category": "论坛",
+  "url": "https://onlinesequencer.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "GET",
+  "probeUrl": "https://onlinesequencer.net/forum/member.php",
+  "rules": [],
+  "default": "unknown"
+ },
+ {
+  "key": "parler",
+  "name": "Parler",
+  "nameEn": "Parler",
+  "category": "社交媒体",
+  "url": "https://parler.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://api.parler.com/v2/login/new",
+  "rules": [],
+  "default": "unknown",
+  "bodyType": "json",
+  "body": "{\"email\":\"{email}\",\"password\":\"x\"}",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "application/json",
+   "Origin": "https://parler.com"
+  }
+ },
+ {
+  "key": "patreon",
+  "name": "Patreon",
+  "nameEn": "Patreon",
+  "category": "社交媒体",
+  "url": "https://patreon.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://www.patreon.com/api/email/available",
+  "rules": [
+   {
+    "ifJson": "data.is_available",
+    "jsonValue": true,
+    "result": "not_found"
+   }
+  ],
+  "default": "unknown",
+  "bodyType": "json",
+  "body": "{\"data\":{\"type\":\"email_check\",\"attributes\":{\"email\":\"{email}\"}}}",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "application/vnd.api+json"
+  }
+ },
+ {
+  "key": "pinterest",
+  "name": "Pinterest",
+  "nameEn": "Pinterest",
+  "category": "社交媒体",
+  "url": "https://pinterest.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "GET",
+  "probeUrl": "https://www.pinterest.com/_ngjs/resource/EmailExistsResource/get/?source_url=%2F&data=%7B%22options%22%3A%7B%22email%22%3A%22{email}%22%7D%2C%22context%22%3A%7B%7D%7D&batch_id=1",
+  "rules": [
+   {
+    "ifJson": "email_exists",
+    "jsonValue": true,
+    "result": "found"
+   },
+   {
+    "ifJson": "email_exists",
+    "jsonValue": false,
+    "result": "not_found"
+   }
+  ],
+  "default": "unknown",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Referer": "https://www.pinterest.com/"
+  }
+ },
+ {
+  "key": "pipedrive",
+  "name": "Pipedrive",
+  "nameEn": "Pipedrive",
+  "category": "CRM",
+  "url": "https://pipedrive.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://app.pipedrive.com/signup-service/start",
+  "rules": [],
+  "default": "unknown",
+  "bodyType": "json",
+  "body": "{\"email\":\"{email}\"}",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "application/json",
+   "Origin": "https://app.pipedrive.com"
+  }
+ },
+ {
+  "key": "plurk",
+  "name": "Plurk",
+  "nameEn": "Plurk",
+  "category": "社交媒体",
+  "url": "https://plurk.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://www.plurk.com/Users/isEmailFound",
+  "rules": [
+   {
+    "ifContains": "True",
+    "result": "found"
+   },
+   {
+    "ifContains": "False",
+    "result": "not_found"
+   }
+  ],
+  "default": "unknown",
+  "bodyType": "form",
+  "body": "email={email}",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+   "X-Requested-With": "XMLHttpRequest",
+   "Origin": "https://www.plurk.com"
+  }
+ },
+ {
+  "key": "pornhub",
+  "name": "Pornhub",
+  "nameEn": "Pornhub",
+  "category": "成人",
+  "url": "https://pornhub.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "GET",
+  "probeUrl": "https://www.pornhub.com/signup",
+  "rules": [],
+  "default": "unknown"
+ },
+ {
+  "key": "protonmail",
+  "name": "ProtonMail",
+  "nameEn": "ProtonMail",
+  "category": "邮箱",
+  "url": "https://proton.me",
+  "desc": "加密邮箱（公钥目录查询）",
+  "engine": "",
+  "status": "adapted",
+  "method": "GET",
+  "probeUrl": "https://api.protonmail.ch/pks/lookup?op=index&search={email}",
+  "rules": [
+   {
+    "ifContains": "info:1:1",
+    "result": "found"
+   },
+   {
+    "ifContains": "info:1:0",
+    "result": "not_found"
+   }
+  ],
+  "default": "unknown"
+ },
+ {
+  "key": "quora",
+  "name": "Quora",
+  "nameEn": "Quora",
+  "category": "学习",
+  "url": "https://quora.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "GET",
+  "probeUrl": "https://fr.quora.com",
+  "rules": [],
+  "default": "unknown"
+ },
+ {
+  "key": "rambler",
+  "name": "Rambler",
+  "nameEn": "Rambler",
+  "category": "媒体",
+  "url": "https://rambler.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://id.rambler.ru/jsonrpc",
+  "rules": [
+   {
+    "ifJson": "result.exists",
+    "jsonValue": 0,
+    "result": "not_found"
+   }
+  ],
+  "default": "unknown",
+  "bodyType": "json",
+  "body": "{\"id\":\"1\",\"method\":\"auth.exists\",\"params\":[\"{email}\"]}",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "application/json",
+   "Origin": "https://id.rambler.ru"
+  }
+ },
+ {
+  "key": "redtube",
+  "name": "Redtube",
+  "nameEn": "Redtube",
+  "category": "成人",
+  "url": "https://redtube.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "GET",
+  "probeUrl": "https://redtube.com/register",
+  "rules": [],
+  "default": "unknown"
+ },
+ {
+  "key": "replit",
+  "name": "Replit",
+  "nameEn": "Replit",
+  "category": "编程",
+  "url": "https://replit.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://replit.com/data/user/exists",
+  "rules": [
+   {
+    "ifJson": "exists",
+    "jsonValue": true,
+    "result": "found"
+   },
+   {
+    "ifJson": "exists",
+    "jsonValue": false,
+    "result": "not_found"
+   }
+  ],
+  "default": "unknown",
+  "bodyType": "json",
+  "body": "{\"username\":\"{email}\"}",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "application/json",
+   "X-Requested-With": "XMLHttpRequest",
+   "Origin": "https://replit.com"
+  }
+ },
+ {
+  "key": "rocketreach",
+  "name": "Rocketreach",
+  "nameEn": "Rocketreach",
+  "category": "OSINT",
+  "url": "https://rocketreach.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "GET",
+  "probeUrl": "https://rocketreach.co/signup",
+  "rules": [],
+  "default": "unknown"
+ },
+ {
+  "key": "samsung",
+  "name": "Samsung",
+  "nameEn": "Samsung",
+  "category": "商品",
+  "url": "https://samsung.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "POST",
+  "probeUrl": "https://account.samsung.com/accounts/v1/DCGLIT/resetPasswordWithRecoveryProc",
+  "rules": [],
+  "default": "unknown"
+ },
+ {
+  "key": "seoclerks",
+  "name": "Seoclerks",
+  "nameEn": "Seoclerks",
+  "category": "招聘",
+  "url": "https://seoclerks.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://www.seoclerks.com/signup/check",
+  "rules": [
+   {
+    "ifContains": "already taken",
+    "result": "found"
+   }
+  ],
+  "default": "unknown",
+  "bodyType": "form",
+  "body": "user_email={email}&fsub=1",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+   "X-Requested-With": "XMLHttpRequest",
+   "Origin": "https://www.seoclerks.com"
+  }
+ },
+ {
+  "key": "sevencups",
+  "name": "Sevencups",
+  "nameEn": "Sevencups",
+  "category": "医疗",
+  "url": "https://sevencups.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://www.7cups.com/listener/CreateAccount.php",
+  "rules": [
+   {
+    "ifContains": "already exists",
+    "result": "found"
+   }
+  ],
+  "default": "unknown",
+  "bodyType": "form",
+  "body": "email={email}",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "application/x-www-form-urlencoded",
+   "X-Requested-With": "XMLHttpRequest",
+   "Origin": "https://www.7cups.com",
+   "Host": "www.7cups.com"
+  }
+ },
+ {
+  "key": "smule",
+  "name": "Smule",
+  "nameEn": "Smule",
+  "category": "音乐",
+  "url": "https://smule.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://www.smule.com/user/check_email",
+  "rules": [],
+  "default": "unknown",
+  "bodyType": "form",
+  "body": "email={email}",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "application/x-www-form-urlencoded",
+   "Origin": "https://www.smule.com"
+  }
+ },
+ {
+  "key": "snapchat",
+  "name": "Snapchat",
+  "nameEn": "Snapchat",
+  "category": "社交媒体",
+  "url": "https://snapchat.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "POST",
+  "probeUrl": "https://accounts.snapchat.com/accounts/signup/check_email",
+  "rules": [
+   {
+    "ifContains": "already exists",
+    "result": "found"
+   }
+  ],
+  "default": "unknown",
+  "bodyType": "form",
+  "body": "email={email}",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "application/x-www-form-urlencoded",
+   "Origin": "https://accounts.snapchat.com"
+  }
+ },
+ {
+  "key": "soundcloud",
+  "name": "Soundcloud",
+  "nameEn": "Soundcloud",
+  "category": "音乐",
+  "url": "https://soundcloud.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "GET",
+  "probeUrl": "https://api-v2.soundcloud.com/signup/check-email?email={email}&client_id=iZIs9mchVcX5lhVRyQGGAYlNPVldzAoX",
+  "rules": [
+   {
+    "ifJson": "is_valid",
+    "jsonValue": false,
+    "result": "found"
+   },
+   {
+    "ifJson": "is_valid",
+    "jsonValue": true,
+    "result": "not_found"
+   }
+  ],
+  "default": "unknown",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5"
+  }
+ },
+ {
+  "key": "sporcle",
+  "name": "Sporcle",
+  "nameEn": "Sporcle",
+  "category": "媒体",
+  "url": "https://sporcle.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://www.sporcle.com/auth/ajax/verify.php",
+  "rules": [
+   {
+    "ifContains": "already exists",
+    "result": "found"
+   },
+   {
+    "ifContains": "account already exists",
+    "result": "found"
+   }
+  ],
+  "default": "unknown",
+  "bodyType": "form",
+  "body": "email={email}",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+   "X-Requested-With": "XMLHttpRequest",
+   "Origin": "https://www.sporcle.com"
+  }
+ },
+ {
+  "key": "spotify",
+  "name": "Spotify",
+  "nameEn": "Spotify",
+  "category": "音乐",
+  "url": "https://open.spotify.com",
+  "desc": "流媒体音乐平台（注册校验接口）",
+  "engine": "",
+  "status": "adapted",
+  "method": "GET",
+  "probeUrl": "https://spclient.wg.spotify.com/signup/public/v1/account?validate=1&email={email}",
+  "rules": [
+   {
+    "ifContains": "\"status\":20",
+    "result": "found"
+   },
+   {
+    "ifContains": "\"status\":1",
+    "result": "not_found"
+   }
+  ],
+  "default": "unknown"
+ },
+ {
+  "key": "strava",
+  "name": "Strava",
+  "nameEn": "Strava",
+  "category": "社交媒体",
+  "url": "https://strava.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "GET",
+  "probeUrl": "https://www.strava.com/register/free?cta=sign-up&element=button&source=website_show",
+  "rules": [],
+  "default": "unknown"
+ },
+ {
+  "key": "taringa",
+  "name": "Taringa",
+  "nameEn": "Taringa",
+  "category": "社交媒体",
+  "url": "https://taringa.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://www.taringa.net/api/auth/availability/email",
+  "rules": [],
+  "default": "unknown",
+  "bodyType": "json",
+  "body": "{\"email\":\"{email}\"}",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "application/json; charset=utf-8",
+   "Origin": "https://www.taringa.net"
+  }
+ },
+ {
+  "key": "teamleader",
+  "name": "Teamleader",
+  "nameEn": "Teamleader",
+  "category": "CRM",
+  "url": "https://teamleader.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://focus.teamleader.eu/app/emails/availability",
+  "rules": [
+   {
+    "ifContains": "{\"available\":false}",
+    "result": "found"
+   },
+   {
+    "ifContains": "{\"available\":true}",
+    "result": "not_found"
+   }
+  ],
+  "default": "unknown",
+  "bodyType": "json",
+  "body": "{\"email\":\"{email}\"}",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "application/json",
+   "Origin": "https://signup.focus.teamleader.fr"
+  }
+ },
+ {
+  "key": "teamtreehouse",
+  "name": "Teamtreehouse",
+  "nameEn": "Teamtreehouse",
+  "category": "编程",
+  "url": "https://teamtreehouse.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://teamtreehouse.com/account/email_address",
+  "rules": [],
+  "default": "unknown",
+  "bodyType": "form",
+  "body": "email={email}",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "application/x-www-form-urlencoded",
+   "Referer": "https://teamtreehouse.com/subscribe/new?trial=yes",
+   "Origin": "https://teamtreehouse.com"
+  }
+ },
+ {
+  "key": "tellonym",
+  "name": "Tellonym",
+  "nameEn": "Tellonym",
+  "category": "社交媒体",
+  "url": "https://tellonym.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://api.tellonym.me/accounts/check",
+  "rules": [],
+  "default": "unknown",
+  "bodyType": "json",
+  "body": "{\"email\":\"{email}\"}",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "application/json;charset=utf-8",
+   "tellonym-client": "web:0.51.1",
+   "Origin": "https://tellonym.me"
+  }
+ },
+ {
+  "key": "thecardboard",
+  "name": "Thecardboard",
+  "nameEn": "Thecardboard",
+  "category": "论坛",
+  "url": "https://thecardboard.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "GET",
+  "probeUrl": "https://thecardboard.org/board/member.php",
+  "rules": [],
+  "default": "unknown"
+ },
+ {
+  "key": "therianguide",
+  "name": "Therianguide",
+  "nameEn": "Therianguide",
+  "category": "论坛",
+  "url": "https://therianguide.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "GET",
+  "probeUrl": "https://forums.therian-guide.com/member.php",
+  "rules": [],
+  "default": "unknown"
+ },
+ {
+  "key": "thevapingforum",
+  "name": "Thevapingforum",
+  "nameEn": "Thevapingforum",
+  "category": "论坛",
+  "url": "https://thevapingforum.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "GET",
+  "probeUrl": "http://www.thevapingforum.com/member.php",
+  "rules": [],
+  "default": "unknown"
+ },
+ {
+  "key": "tumblr",
+  "name": "Tumblr",
+  "nameEn": "Tumblr",
+  "category": "社交媒体",
+  "url": "https://tumblr.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "POST",
+  "probeUrl": "https://www.tumblr.com/api/v2/register/account/validate",
+  "rules": [
+   {
+    "ifContains": "already exists",
+    "result": "found"
+   }
+  ],
+  "default": "unknown"
+ },
+ {
+  "key": "tunefind",
+  "name": "Tunefind",
+  "nameEn": "Tunefind",
+  "category": "音乐",
+  "url": "https://tunefind.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "GET",
+  "probeUrl": "https://www.tunefind.com/user/join",
+  "rules": [
+   {
+    "ifContains": "already registered",
+    "result": "found"
+   }
+  ],
+  "default": "unknown"
+ },
+ {
+  "key": "twitter",
+  "name": "Twitter",
+  "nameEn": "Twitter",
+  "category": "社交媒体",
+  "url": "https://twitter.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "GET",
+  "probeUrl": "https://api.twitter.com/i/users/email_available.json?email={email}",
+  "rules": [
+   {
+    "ifContains": "\"reason\":\"taken\"",
+    "result": "found"
+   },
+   {
+    "ifContains": "\"valid\":true",
+    "result": "not_found"
+   }
+  ],
+  "default": "unknown",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5"
+  }
+ },
+ {
+  "key": "venmo",
+  "name": "Venmo",
+  "nameEn": "Venmo",
+  "category": "支付",
+  "url": "https://venmo.com",
+  "desc": "美国社交支付（依赖 cookie，needs-review）",
+  "status": "needs-review",
+  "method": "POST",
+  "probeUrl": "https://venmo.com/api/v5/users",
+  "bodyType": "json",
+  "body": "{\"last_name\":\"e\",\"first_name\":\"z\",\"email\":\"{email}\",\"password\":\"\",\"phone\":\"1\",\"client_id\":10}",
+  "rules": [
+   {
+    "ifContains": "That email is already registered in our system.",
+    "result": "found"
+   }
+  ],
+  "default": "unknown"
+ },
+ {
+  "key": "vivino",
+  "name": "Vivino",
+  "nameEn": "Vivino",
+  "category": "购物",
+  "url": "https://vivino.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "GET",
+  "probeUrl": "https://www.tunefind.com/user/join",
+  "rules": [
+   {
+    "ifContains": "does not exist",
+    "result": "not_found"
+   }
+  ],
+  "default": "unknown"
+ },
+ {
+  "key": "voxmedia",
+  "name": "Voxmedia",
+  "nameEn": "Voxmedia",
+  "category": "内容管理",
+  "url": "https://voxmedia.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://auth.voxmedia.com/chorus_auth/email_valid.json",
+  "rules": [],
+  "default": "unknown",
+  "bodyType": "form",
+  "body": "email={email}",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+   "Referer": "https://auth.voxmedia.com/login",
+   "Origin": "https://auth.voxmedia.com"
+  }
+ },
+ {
+  "key": "vrbo",
+  "name": "Vrbo",
+  "nameEn": "Vrbo",
+  "category": "房地产",
+  "url": "https://vrbo.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://www.vrbo.com/auth/aam/v3/status",
+  "rules": [
+   {
+    "ifJson": "authType.0",
+    "jsonValue": "LOGIN_UMS",
+    "result": "found"
+   },
+   {
+    "ifJson": "authType.0",
+    "jsonValue": "SIGNUP",
+    "result": "not_found"
+   }
+  ],
+  "default": "unknown",
+  "bodyType": "json",
+  "body": "{\"email\":\"{email}\"}",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "application/json",
+   "x-homeaway-site": "vrbo",
+   "Origin": "https://www.vrbo.com"
+  }
+ },
+ {
+  "key": "vsco",
+  "name": "Vsco",
+  "nameEn": "Vsco",
+  "category": "社交媒体",
+  "url": "https://vsco.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "GET",
+  "probeUrl": "https://api.vsco.co/2.0/users/email?email={email}",
+  "rules": [
+   {
+    "ifJson": "email_status",
+    "jsonValue": "has_account",
+    "result": "found"
+   },
+   {
+    "ifJson": "email_status",
+    "jsonValue": "no_account",
+    "result": "not_found"
+   }
+  ],
+  "default": "unknown",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Authorization": "Bearer 7356455548d0a1d886db010883388d08be84d0c9"
+  }
+ },
+ {
+  "key": "wattpad",
+  "name": "Wattpad",
+  "nameEn": "Wattpad",
+  "category": "社交媒体",
+  "url": "https://wattpad.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "GET",
+  "probeUrl": "https://www.wattpad.com",
+  "rules": [],
+  "default": "unknown"
+ },
+ {
+  "key": "wordpress",
+  "name": "Wordpress",
+  "nameEn": "Wordpress",
+  "category": "内容管理",
+  "url": "https://wordpress.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "GET",
+  "probeUrl": "https://public-api.wordpress.com/rest/v1.1/users/email/{email}/",
+  "rules": [
+   {
+    "ifStatusIn": [
+     200
+    ],
+    "result": "found"
+   },
+   {
+    "ifStatusIn": [
+     404
+    ],
+    "result": "not_found"
+   }
+  ],
+  "default": "unknown",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5"
+  }
+ },
+ {
+  "key": "xing",
+  "name": "Xing",
+  "nameEn": "Xing",
+  "category": "社交媒体",
+  "url": "https://xing.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "GET",
+  "probeUrl": "https://www.xing.com/start/signup?registration=1",
+  "rules": [],
+  "default": "unknown"
+ },
+ {
+  "key": "xnxx",
+  "name": "Xnxx",
+  "nameEn": "Xnxx",
+  "category": "成人",
+  "url": "https://xnxx.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "GET",
+  "probeUrl": "https://www.xnxx.com/account/checkemail?email={email}",
+  "rules": [],
+  "default": "unknown",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5"
+  }
+ },
+ {
+  "key": "xvideos",
+  "name": "Xvideos",
+  "nameEn": "Xvideos",
+  "category": "成人",
+  "url": "https://xvideos.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "adapted",
+  "method": "POST",
+  "probeUrl": "https://www.xvideos.com/account/checkemail",
+  "rules": [
+   {
+    "ifContains": "already in use",
+    "result": "found"
+   }
+  ],
+  "default": "unknown",
+  "bodyType": "form",
+  "body": "email={email}",
+  "headers": {
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+   "Accept-Language": "en,en-US;q=0.5",
+   "Content-Type": "application/x-www-form-urlencoded",
+   "X-Requested-With": "XMLHttpRequest",
+   "Referer": "https://www.xvideos.com/"
+  }
+ },
+ {
+  "key": "yahoo",
+  "name": "Yahoo",
+  "nameEn": "Yahoo",
+  "category": "邮箱",
+  "url": "https://yahoo.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "GET",
+  "probeUrl": "https://login.yahoo.com",
+  "rules": [],
+  "default": "unknown"
+ },
+ {
+  "key": "zoho",
+  "name": "Zoho",
+  "nameEn": "Zoho",
+  "category": "CRM",
+  "url": "https://zoho.com",
+  "desc": "参考 holehe 模块适配",
+  "engine": "",
+  "status": "needs-review",
+  "method": "GET",
+  "probeUrl": "https://accounts.zoho.com/register",
+  "rules": [],
+  "default": "unknown"
+ }
+]

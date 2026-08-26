@@ -11,6 +11,12 @@
 .p-qr-box svg{image-rendering:pixelated}
 .p-img-preview{max-width:180px;max-height:180px;border-radius:var(--radius);border:1px solid var(--border)}
 </style>
+<script>
+/* QuickDock sandbox 剪贴板桥接：iframe 内 navigator.clipboard 被 Permissions-Policy 禁用 */
+window.__cpSeq=0;
+window.execCopyFallback=function(t){try{var a=document.createElement('textarea');a.value=t;a.style.position='fixed';a.style.opacity='0';a.style.top='0';document.body.appendChild(a);a.select();var ok=document.execCommand('copy');document.body.removeChild(a);return ok}catch(e){return false}};
+window.copyViaHost=function(t,cb){var id='cp_'+(++window.__cpSeq),done=false;function onMsg(e){var d=e&&e.data;if(d&&d.type==='plugin:copy-result'&&d.id===id){done=true;window.removeEventListener('message',onMsg);cb&&cb(!!d.ok)}}window.addEventListener('message',onMsg);parent.postMessage({type:'plugin:copy',id:id,text:t},'*');setTimeout(function(){if(!done){window.removeEventListener('message',onMsg);cb&&cb(window.execCopyFallback(t))}},300)};
+</script>
 </head>
 <body>
 <div class="p-app">
@@ -127,15 +133,8 @@ function scanFromDataURL(dataUrl) {
 function copyResult() {
   var text = $('scanResult').textContent
   if (!text || text.indexOf('未识别') >= 0 || text.indexOf('识别中') >= 0) return
-  // 优先走宿主桥接（规避 WebView2 剪贴板限制），失败则本地降级
-  try {
-    if (window.parent && window.parent !== window) {
-      window.parent.postMessage({ type: 'plugin:copy', id: 'qr' + Date.now(), text: text }, '*')
-      alert('已复制到剪贴板')
-      return
-    }
-  } catch (e) {}
-  try { navigator.clipboard.writeText(text).then(function () { alert('已复制到剪贴板') }) } catch (e) { alert('复制失败') }
+  // 统一走宿主 plugin:copy 桥接（sandbox iframe 禁 navigator.clipboard），超时自动降级 execCommand
+  window.copyViaHost(text, function (ok) { alert(ok ? '已复制到剪贴板' : '复制失败') })
 }
 
 function openResult() {

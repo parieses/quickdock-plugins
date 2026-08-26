@@ -130,7 +130,7 @@ function renderResults(formats) {
       var row = document.createElement('div'); row.className = 'result-row'
       row.innerHTML = '<span class="rk">' + f[0] + '</span><span class="rv">' + f[1] + '</span><span class="copied-tip">已复制</span>'
       row.addEventListener('click', function() {
-        navigator.clipboard.writeText(f[1]).catch(function(){})
+        window.copyViaHost(f[1], function(){})
         var tip = row.querySelector('.copied-tip'); tip.classList.add('show')
         setTimeout(function(){ tip.classList.remove('show') }, 1200)
       })

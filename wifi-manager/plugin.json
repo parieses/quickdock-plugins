@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.wifi-manager",
   "name": "WiFi 管理器",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "查看网络列表、WiFi 密码、连接状态",
   "author": "QuickDock",
   "category": "效率工具",

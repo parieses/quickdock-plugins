@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.time-converter",
   "name": "时间转换",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Unix 时间戳 / ISO 8601 / 中文日期 / 相对时间互转，支持任意时区偏移输出",
   "author": "QuickDock",
   "icon": "icon.svg",
