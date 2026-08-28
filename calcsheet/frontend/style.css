@@ -34,3 +34,16 @@ html,body,#app { height: 100%; width: 100%; overflow: hidden; background: var(--
 .empty-hint { display: flex; align-items: center; justify-content: center; height: 100%; color: var(--text-disabled); font-size: 13px; cursor: text; }
 .footer { display: flex; align-items: center; gap: 12px; padding: 3px 10px; font-size: 10px; color: var(--text-disabled); background: var(--bg-secondary); border-top: 1px solid var(--border); flex-shrink: 0; flex-wrap: wrap; }
 .footer-hint { margin-left: auto; color: var(--text-secondary); }
+
+/* ===== 内联弹窗（新建 / 重命名稿纸） ===== */
+.cs-modal { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.45); z-index: 50; }
+.cs-modal[hidden] { display: none; }
+.cs-modal-box { width: 320px; max-width: 88%; background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; box-shadow: 0 12px 40px rgba(0,0,0,.45); }
+.cs-modal-title { font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 12px; }
+.cs-modal-input { width: 100%; box-sizing: border-box; padding: 9px 12px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-primary); font-size: 13px; font-family: var(--font); outline: none; }
+.cs-modal-input:focus { border-color: var(--accent); }
+.cs-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+.cs-modal-btn { padding: 7px 16px; border-radius: var(--radius); font-size: 13px; cursor: pointer; border: 1px solid var(--border); background: var(--bg-secondary); color: var(--text-primary); font-family: var(--font); }
+.cs-modal-btn:hover { background: var(--bg-hover); }
+.cs-modal-ok { background: var(--accent); color: #fff; border-color: var(--accent); }
+.cs-modal-ok:hover { opacity: .9; background: var(--accent); }

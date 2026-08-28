@@ -83,6 +83,29 @@ function splitComment(raw) {
 }
 function isVarDef(raw) { const m = raw.trim().match(/^([a-zA-Z_]\w*)\s*=\s*(.+)$/); return m ? { name:m[1], expr:m[2] } : null }
 
+// 内联输入弹窗（替代 window.prompt：沙箱 iframe 内 prompt 格式异常）
+function csPrompt(title, def, cb) {
+  const modal = $('#csModal'), input = $('#csModalInput'), titleEl = $('#csModalTitle')
+  titleEl.textContent = title || '请输入'
+  input.value = def || ''
+  modal.hidden = false
+  setTimeout(() => input.focus(), 0)
+  function cleanup() {
+    modal.hidden = true
+    $('#csModalCancel').onclick = null
+    $('#csModalOk').onclick = null
+    input.onkeydown = null
+    modal.onclick = null
+  }
+  $('#csModalCancel').onclick = () => { cleanup(); cb(null) }
+  $('#csModalOk').onclick = () => { const v = input.value.trim(); cleanup(); cb(v || null) }
+  input.onkeydown = (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); const v = input.value.trim(); cleanup(); cb(v || null) }
+    else if (e.key === 'Escape') { e.preventDefault(); cleanup(); cb(null) }
+  }
+  modal.onclick = (e) => { if (e.target === modal) { cleanup(); cb(null) } }
+}
+
 // ---- 稿纸数据模型 ----
 const STORAGE_KEY = 'calc_sheets_plugin'
 
@@ -225,8 +248,8 @@ class CalcSheetApp {
     // 输入区键盘
     $('#linesContainer').addEventListener('keydown', onEditKeydown)
     // 工具栏
-    $('#btnNew').addEventListener('click', () => { const n=prompt('稿纸名称:','新建稿纸'); if(n){commitEdit();self._create(n);renderAll(self)} })
-    $('#btnRename').addEventListener('click', () => { const s=self.activeSheet; if(!s) return; const n=prompt('新名称:',s.name); if(n&&n!==s.name){s.name=n;self._save();renderAll(self)}})
+    $('#btnNew').addEventListener('click', () => { csPrompt('新建稿纸', '新建稿纸', (n) => { if (n) { commitEdit(); self._create(n); renderAll(self) } }) })
+    $('#btnRename').addEventListener('click', () => { const s = self.activeSheet; if (!s) return; csPrompt('重命名稿纸', s.name, (n) => { if (n && n !== s.name) { s.name = n; self._save(); renderAll(self) } }) })
     $('#btnSave').addEventListener('click', () => { self._save(); const b=$('#btnSave'); b.innerHTML='✓ 已保存'; setTimeout(()=>{b.innerHTML='💾 保存'},1500) })
     $('#btnDel').addEventListener('click', async () => { const s=self.activeSheet; if(!s) return; if(!(await qdConfirm('删除稿纸"'+s.name+'"？'))) return; commitEdit(); self._delete(s.id) })
     $('#btnClear').addEventListener('click', async () => { if(!self.activeSheet||!self.activeSheet.lines.length) return; if(!(await qdConfirm('清空所有行？'))) return; commitEdit(); self._clear(); renderAll(self) })

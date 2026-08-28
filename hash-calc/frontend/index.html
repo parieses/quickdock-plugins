@@ -10,9 +10,6 @@
 .row{display:flex;gap:var(--sp-2);align-items:center}
 .btn{padding:9px 16px;background:var(--accent,#4a9eff);color:#fff;border:none;border-radius:var(--radius-md);cursor:pointer;font-size:13px;font-weight:600}
 .btn-ghost{padding:9px 14px;background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius-md);cursor:pointer;font-size:13px}
-.seg{display:flex;border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden}
-.seg button{padding:7px 14px;background:var(--bg-secondary);color:var(--text-secondary);border:none;cursor:pointer;font-size:12px}
-.seg button.active{background:var(--accent,#4a9eff);color:#fff}
 .hint{font-size:12px;color:var(--text-muted);min-height:16px}
 .pathbox{flex:1;padding:8px 10px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius-md);color:var(--text-secondary);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 textarea{width:100%;height:120px;resize:vertical;padding:9px 12px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius-md);color:var(--text-primary);font-size:13px;font-family:ui-monospace,Consolas,monospace;outline:none;box-sizing:border-box}
@@ -30,17 +27,10 @@ textarea:focus{border-color:var(--accent,#4a9eff)}
 </head>
 <body>
 <div class="app">
-  <div class="row">
-    <div class="seg" id="modeSeg">
-      <button data-mode="file" class="active">文件</button>
-      <button data-mode="text">文本</button>
-    </div>
-    <div id="fileRow" class="row" style="flex:1">
-      <div id="pathBox" class="pathbox">未选择文件</div>
-      <button id="btnPick" class="btn-ghost">选择文件</button>
-    </div>
+  <div class="row" style="flex:1">
+    <div id="pathBox" class="pathbox">未选择文件</div>
+    <button id="btnPick" class="btn-ghost">选择文件</button>
   </div>
-  <textarea id="textInput" class="hidden" placeholder="输入要计算哈希的文本…"></textarea>
   <div class="algos" id="algos">
     <label><input type="radio" name="algo" value="md5"> MD5</label>
     <label><input type="radio" name="algo" value="sha1"> SHA1</label>
@@ -56,11 +46,7 @@ textarea:focus{border-color:var(--accent,#4a9eff)}
 <script>
 (function(){
   'use strict'
-  var mode='file'
   var filePath=''
-  var modeSeg=document.getElementById('modeSeg')
-  var fileRow=document.getElementById('fileRow')
-  var textInput=document.getElementById('textInput')
   var pathBox=document.getElementById('pathBox')
   var result=document.getElementById('result')
   var hint=document.getElementById('hint')
@@ -87,14 +73,6 @@ textarea:focus{border-color:var(--accent,#4a9eff)}
     if(d.error)p.reject(new Error(d.error));else p.resolve(d.data)
   })
 
-  modeSeg.addEventListener('click',function(e){
-    var b=e.target.closest('button');if(!b)return
-    mode=b.getAttribute('data-mode')
-    Array.prototype.forEach.call(modeSeg.children,function(c){c.classList.toggle('active',c===b)})
-    fileRow.classList.toggle('hidden',mode!=='file')
-    textInput.classList.toggle('hidden',mode!=='text')
-  })
-
   document.getElementById('btnPick').addEventListener('click',function(){
     hint.textContent='打开文件选择框…'
     qdPickFile({title:'选择要计算哈希的文件'}).then(function(p){
@@ -105,11 +83,10 @@ textarea:focus{border-color:var(--accent,#4a9eff)}
 
   function doCalc(){
     var algo=document.querySelector('input[name=algo]:checked').value
-    if(mode==='file'&&!filePath){hint.textContent='请先选择文件';return}
-    if(mode==='text'&&!textInput.value){hint.textContent='请输入文本';return}
+    if(!filePath){hint.textContent='请先选择文件';return}
     hint.textContent='计算中…'
-    var input={algo:algo,mode:mode}
-    if(mode==='file')input.path=filePath; else input.text=textInput.value
+    var input={algo:algo}
+    input.path=filePath
     send('calc',input).then(function(r){
       result.classList.remove('hidden')
       result.innerHTML='<div class="res-line"><span class="res-algo">'+esc(r.algo.toUpperCase())+'</span>'+

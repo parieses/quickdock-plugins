@@ -1,7 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
   <rect width="64" height="64" rx="14" fill="#4a9eff"/>
-  <circle cx="20" cy="20" r="6" fill="none" stroke="#fff" stroke-width="3"/>
-  <circle cx="44" cy="30" r="6" fill="none" stroke="#fff" stroke-width="3"/>
-  <circle cx="26" cy="44" r="6" fill="none" stroke="#fff" stroke-width="3"/>
-  <path d="M25 22l13 6M38 34l-11 8M24 39l-3-13" fill="none" stroke="#fff" stroke-width="2.5"/>
+  <!-- 后层文档（半透明，体现"副本"） -->
+  <rect x="13" y="13" width="26" height="32" rx="4" fill="#ffffff" opacity="0.5"/>
+  <!-- 前层文档 -->
+  <rect x="25" y="19" width="26" height="32" rx="4" fill="#ffffff"/>
+  <!-- 前层文档内容行 -->
+  <rect x="31" y="27" width="14" height="2.6" rx="1.3" fill="#4a9eff"/>
+  <rect x="31" y="33" width="14" height="2.6" rx="1.3" fill="#4a9eff"/>
+  <rect x="31" y="39" width="9" height="2.6" rx="1.3" fill="#4a9eff"/>
 </svg>

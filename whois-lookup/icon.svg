@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <rect width="64" height="64" rx="14" fill="#4a9eff"/>
+  <!-- 放大镜镜身 -->
+  <circle cx="27" cy="27" r="15" fill="#ffffff"/>
+  <!-- 镜柄 -->
+  <line x1="38" y1="38" x2="51" y2="51" stroke="#ffffff" stroke-width="6" stroke-linecap="round"/>
+  <!-- @ 字形（域名查询语义） -->
+  <text x="27" y="34" font-family="Arial, 'Segoe UI', sans-serif" font-size="19" font-weight="700" fill="#4a9eff" text-anchor="middle">@</text>
+</svg>

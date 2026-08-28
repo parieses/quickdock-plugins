@@ -44,6 +44,19 @@
       <span class="footer-hint">点击结果复制</span>
     </div>
   </div>
+
+  <!-- 新建 / 重命名 内联弹窗（替代原生 prompt，沙箱 iframe 内 prompt 格式异常） -->
+  <div class="cs-modal" id="csModal" hidden>
+    <div class="cs-modal-box">
+      <div class="cs-modal-title" id="csModalTitle">新建稿纸</div>
+      <input class="cs-modal-input" id="csModalInput" type="text" placeholder="请输入名称" maxlength="40">
+      <div class="cs-modal-actions">
+        <button class="cs-modal-btn cs-modal-cancel" id="csModalCancel" type="button">取消</button>
+        <button class="cs-modal-btn cs-modal-ok" id="csModalOk" type="button">确定</button>
+      </div>
+    </div>
+  </div>
+
   <script src="app.js"></script>
 </body>
 </html>
