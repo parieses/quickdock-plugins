@@ -4,8 +4,10 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"sync"
@@ -13,6 +15,25 @@ import (
 	"github.com/rwcarlsen/goexif/exif"
 	"github.com/rwcarlsen/goexif/tiff"
 )
+
+// detectImageFormat 按文件头魔数判断图片格式，并在读取后把文件指针复位到开头，
+// 以便后续 exif.Decode 仍从起始位置解析。空串表示无法读取/非图片。
+func detectImageFormat(f *os.File) string {
+	var head [8]byte
+	if _, err := io.ReadFull(f, head[:]); err != nil {
+		return ""
+	}
+	if _, err := f.Seek(0, io.SeekStart); err != nil {
+		return ""
+	}
+	if bytes.HasPrefix(head[:3], []byte{0xFF, 0xD8, 0xFF}) { // JPEG: FF D8 FF
+		return "jpeg"
+	}
+	if bytes.Equal(head[:8], []byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1A, '\n'}) { // PNG
+		return "png"
+	}
+	return "other"
+}
 
 type rpcRequest struct {
 	JSONRPC string          `json:"jsonrpc"`
@@ -69,11 +90,40 @@ func handleRead(id int64, input map[string]interface{}) {
 	}
 	defer f.Close()
 
-	x, err := exif.Decode(f)
-	if err != nil {
+	// 先按魔数识别格式：PNG / 无 EXIF 的 JPEG 是极常见情况，
+	// 不能直接把 goexif 的底层错误 "failed to find exif intro marker" 丢给用户。
+	format := detectImageFormat(f)
+	switch format {
+	case "":
 		respond(id, map[string]interface{}{
 			"ok":    false,
-			"error": "无法解析 EXIF（可能无 EXIF 或非 JPEG）: " + err.Error(),
+			"level": "error",
+			"error": "无法读取文件，可能不是有效的图片文件",
+		})
+		return
+	case "other":
+		respond(id, map[string]interface{}{
+			"ok":    false,
+			"level": "info",
+			"error": "不支持的图片格式（当前仅支持 JPEG / PNG）",
+		})
+		return
+	case "png":
+		respond(id, map[string]interface{}{
+			"ok":    false,
+			"level": "info",
+			"error": "PNG 图片通常不包含 JPEG 标准 EXIF 信息（PNG 的 eXIf 块暂不支持）",
+		})
+		return
+	}
+
+	x, err := exif.Decode(f)
+	if err != nil {
+		// 绝大多数情况是 JPEG 本身就没有 EXIF 段，而非文件损坏
+		respond(id, map[string]interface{}{
+			"ok":    false,
+			"level": "info",
+			"error": "该 JPEG 图片未包含 EXIF 元数据",
 		})
 		return
 	}

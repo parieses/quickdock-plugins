@@ -78,8 +78,9 @@
     card.innerHTML=''
     send('read',{path:filePath}).then(function(r){
       if(!r||!r.ok){
-        hint.textContent='无法读取'
-        card.innerHTML='<div class="empty err">'+(r&&r.error?esc(r.error):'无 EXIF 数据')+'</div>'
+        var isInfo=r&&r.level==='info'
+        hint.textContent=isInfo?'无 EXIF 信息':'无法读取'
+        card.innerHTML='<div class="empty'+(isInfo?'':' err')+'">'+(r&&r.error?esc(r.error):'无 EXIF 数据')+'</div>'
         return
       }
       var html=''
