@@ -1,0 +1,60 @@
+{
+  "id": "io.github.parieses.exif-viewer",
+  "name": "EXIF 查看",
+  "version": "0.1.0",
+  "description": "选择图片（JPEG/PNG）查看拍摄时间、相机/镜头、参数与 GPS 经纬度等 EXIF 信息",
+  "author": "QuickDock",
+  "category": "文件工具",
+  "platforms": [
+    "windows"
+  ],
+  "icon": "icon.svg",
+  "backend": {
+    "runtime": "native",
+    "entry": "exif-viewer",
+    "args": []
+  },
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 640,
+    "height": 600
+  },
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "permissions": {
+    "filesystem": true
+  },
+  "commands": [
+    {
+      "id": "exif-view",
+      "title": "EXIF 查看",
+      "keywords": [
+        "exif",
+        "照片",
+        "元数据",
+        "拍摄信息",
+        "gps"
+      ],
+      "aliases": [
+        "查看 EXIF",
+        "图片信息",
+        "照片元数据"
+      ],
+      "title_i18n": {
+        "zh-CN": "EXIF 查看",
+        "en-US": "EXIF Viewer"
+      }
+    }
+  ],
+  "name_i18n": {
+    "zh-CN": "EXIF 查看",
+    "en-US": "EXIF Viewer"
+  },
+  "description_i18n": {
+    "zh-CN": "选择图片（JPEG/PNG）查看拍摄时间、相机/镜头、参数与 GPS 经纬度等 EXIF 信息",
+    "en-US": "View EXIF metadata (capture time, camera/lens, params, GPS) of a JPEG/PNG image."
+  }
+}

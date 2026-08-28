@@ -46,6 +46,8 @@
 .qc-modal-msg{font-size:var(--fs-md);color:var(--text-secondary);line-height:1.6;white-space:pre-wrap}
 .qc-modal-warn{margin-top:var(--sp-3);padding:var(--sp-2) var(--sp-3);border:1px solid var(--danger-soft);background:var(--danger-soft);border-radius:var(--radius);color:var(--danger);font-size:var(--fs-sm);line-height:1.6}
 .qc-modal-foot{display:flex;gap:var(--sp-2);justify-content:flex-end;padding:var(--sp-3) var(--sp-5);border-top:1px solid var(--border)}
+/* 清理分类 / 空目录列表过长时各自内部滚动，不撑爆整页（.p-content 已整体可滚） */
+.p-content .p-list{max-height:38vh;overflow:auto}
 </style>
 </head>
 <body>
@@ -73,7 +75,7 @@
       </div>
     </div>
 
-    <div class="p-section" style="flex:1;min-height:0;display:flex;flex-direction:column">
+    <div class="p-section" style="display:flex;flex-direction:column">
       <div class="p-section-label">清理分类 <span class="p-spacer"></span><span class="p-muted" id="scan-hint">点击「扫描」计算各类占用</span></div>
       <div class="p-list" id="cat-list">
         <div class="p-empty">尚未扫描</div>
@@ -90,6 +92,24 @@
     <div id="result-wrap" class="p-section" style="display:none">
       <div class="p-section-label">清理结果</div>
       <div class="result-list" id="result-list"></div>
+    </div>
+
+    <!-- 空目录 / 空文件 清理模块 -->
+    <div class="p-section" style="display:flex;flex-direction:column;border-top:1px solid var(--border);margin-top:var(--sp-4);padding-top:var(--sp-4)">
+      <div class="p-section-label">空目录 / 空文件清理 <span class="p-spacer"></span>
+        <button class="p-btn" id="empty-pick">选择目录</button>
+        <select id="empty-mode" style="padding:6px 8px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:var(--fs-sm)">
+          <option value="both">空目录 + 空文件</option>
+          <option value="dir">仅空目录</option>
+          <option value="file">仅空文件（0 字节）</option>
+        </select>
+        <button class="p-btn" id="empty-scan">扫描</button>
+        <button class="p-btn p-btn-danger" id="empty-clean" disabled>清理选中</button>
+      </div>
+      <div style="font-size:var(--fs-xs);color:var(--text-muted);margin:6px 0">
+        <span id="empty-path">未选择目录</span> <span id="empty-hint"></span>
+      </div>
+      <div class="p-list" id="empty-list"><div class="p-empty">选择目录后点击「扫描」</div></div>
     </div>
   </div>
 </div>
@@ -301,7 +321,8 @@ async function doScan() {
   setProgress(0.1);
 
   try {
-    const r = await bridge.send('scan', {});
+    const input = {};
+    const r = await bridge.send('scan', input);
     const result = await bridge.waitTask(r.taskId);
     const byKey = {};
     (result.categories || []).forEach(c => { byKey[c.key] = c; });
@@ -317,6 +338,12 @@ async function doScan() {
     // 确保选中项仍在（默认勾选项）
     state.selected = new Set(state.categories.filter(c => c.defaultOn && (c.sizeBytes || 0) > 0).map(c => c.key));
     document.getElementById('result-wrap').style.display = 'none';
+    // 主扫描一并扫描的空目录/空文件结果，渲染到下方「空目录/空文件清理」显示区域
+    if (result.emptyDirs || result.emptyFiles) {
+      emptyState.dirs = result.emptyDirs || [];
+      emptyState.files = result.emptyFiles || [];
+      renderEmpty();
+    }
     setProgress(1);
     renderAll();
   } catch (e) {
@@ -453,6 +480,62 @@ document.getElementById('qcModal').addEventListener('click', (e) => { if (e.targ
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && document.getElementById('qcModal').classList.contains('show')) closeConfirm(false);
 });
+
+// ---- 空目录 / 空文件 清理模块 ----
+const emptyState = { root: '', mode: 'both', dirs: [], files: [], scanning: false };
+function escAttr(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function emptyHint(t){document.getElementById('empty-hint').textContent=t}
+function setEmptyScanning(b){
+  emptyState.scanning=b;
+  document.getElementById('empty-scan').disabled=b;
+  document.getElementById('empty-clean').disabled=b;
+}
+async function emptyPick(){
+  try{
+    const p=await qdPickFolder({title:'选择要清理空目录/空文件的目录'});
+    if(!p)return;
+    emptyState.root=p;document.getElementById('empty-path').textContent=p;emptyHint('')
+  }catch(e){emptyHint('选择失败：'+(e.message||e))}
+}
+async function emptyScan(){
+  if(!emptyState.root){emptyHint('请先选择目录');return}
+  emptyState.mode=document.getElementById('empty-mode').value;
+  setEmptyScanning(true);
+  try{
+    const r=await bridge.send('scan-empty',{root:emptyState.root,mode:emptyState.mode});
+    const res=await bridge.waitTask(r.taskId);
+    emptyState.dirs=res.dirs||[];emptyState.files=res.files||[];
+    renderEmpty();
+  }catch(e){emptyHint('扫描失败：'+(e.message||e))}
+  finally{
+    setEmptyScanning(false);
+    document.getElementById('empty-clean').disabled=!(emptyState.dirs.length||emptyState.files.length);
+  }
+}
+function renderEmpty(){
+  const list=document.getElementById('empty-list');
+  const dirs=emptyState.dirs,files=emptyState.files;
+  emptyHint('空目录 '+dirs.length+' 个 · 空文件 '+files.length+' 个');
+  if(!dirs.length&&!files.length){list.innerHTML='<div class="p-empty">未发现空目录或空文件</div>';document.getElementById('empty-clean').disabled=true;return}
+  let html='';
+  dirs.forEach(d=>{html+='<label class="cat-row"><input type="checkbox" class="empty-check" data-kind="dir" data-path="'+escAttr(d)+'"><div class="cat-main"><div class="cat-name">空目录</div><div class="cat-desc">'+escAttr(d)+'</div></div></label>'});
+  files.forEach(f=>{html+='<label class="cat-row"><input type="checkbox" class="empty-check" data-kind="file" data-path="'+escAttr(f)+'"><div class="cat-main"><div class="cat-name">空文件</div><div class="cat-desc">'+escAttr(f)+'</div></div></label>'});
+  list.innerHTML=html;
+}
+async function emptyClean(){
+  const items=Array.from(document.querySelectorAll('.empty-check:checked')).map(c=>c.getAttribute('data-path'));
+  if(!items.length){await showAlert('请至少选择一项');return}
+  const ok=await showConfirm({title:'确认清理',message:'将删除选中的 '+items.length+' 个空目录/空文件，此操作不可逆，确认？',danger:true,confirmText:'确认清理',cancelText:'取消'});
+  if(!ok)return;
+  try{
+    const r=await bridge.send('clean-empty',{items:items});
+    emptyHint('已删除 '+r.deleted+' 个，跳过 '+r.skipped+' 个');
+    await emptyScan();
+  }catch(e){emptyHint('清理失败：'+(e.message||e))}
+}
+document.getElementById('empty-pick').addEventListener('click',emptyPick);
+document.getElementById('empty-scan').addEventListener('click',emptyScan);
+document.getElementById('empty-clean').addEventListener('click',emptyClean);
 
 loadCategories();
 </script>

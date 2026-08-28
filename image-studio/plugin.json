@@ -1,0 +1,65 @@
+{
+  "id": "io.github.parieses.image-studio",
+  "name": "图片工坊",
+  "version": "0.2.0",
+  "description": "仿 Squoosh 实时对比：左右预览对比，质量滑块、缩放(锁定比例/百分比/预设)、旋转/翻转、亮度/对比度/饱和度调整，实时预览文件大小与压缩率",
+  "author": "QuickDock",
+  "category": "文件工具",
+  "platforms": [
+    "windows",
+    "darwin",
+    "linux"
+  ],
+  "icon": "icon.svg",
+  "backend": {
+    "runtime": "native",
+    "entry": "image-studio",
+    "args": []
+  },
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 720,
+    "height": 640
+  },
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "permissions": {
+    "filesystem": true
+  },
+  "commands": [
+    {
+      "id": "process",
+      "title": "图片工坊",
+      "keywords": [
+        "image",
+        "compress",
+        "resize",
+        "图片",
+        "压缩",
+        "缩放",
+        "裁剪",
+        "格式转换"
+      ],
+      "aliases": [
+        "图片压缩",
+        "图片处理",
+        "压缩图片"
+      ],
+      "title_i18n": {
+        "zh-CN": "图片工坊",
+        "en-US": "Image Studio"
+      }
+    }
+  ],
+  "name_i18n": {
+    "zh-CN": "图片工坊",
+    "en-US": "Image Studio"
+  },
+  "description_i18n": {
+    "zh-CN": "仿 Squoosh 实时对比：左右预览对比，质量滑块、缩放(锁定比例/百分比/预设)、旋转/翻转、亮度/对比度/饱和度调整，实时预览文件大小与压缩率",
+    "en-US": "Squoosh-style live comparison: side-by-side preview, quality slider, resize (lock ratio/percent/presets), rotate/flip, brightness/contrast/saturation, with live size & compression ratio."
+  }
+}

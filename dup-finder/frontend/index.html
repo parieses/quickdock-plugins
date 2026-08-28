@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>重复文件查找</title>
+<link rel="stylesheet" href="qd-theme.css">
+<style>
+.app{display:flex;flex-direction:column;height:100%;padding:var(--sp-4);gap:var(--sp-3);box-sizing:border-box}
+.row{display:flex;gap:var(--sp-2);align-items:center}
+.btn{padding:9px 16px;background:var(--accent,#4a9eff);color:#fff;border:none;border-radius:var(--radius-md);cursor:pointer;font-size:13px;font-weight:600}
+.btn-ghost{padding:9px 14px;background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius-md);cursor:pointer;font-size:13px}
+.btn-sm{padding:4px 10px;font-size:11px;border-radius:var(--radius-sm);cursor:pointer;border:1px solid var(--border);background:var(--bg-primary);color:var(--text-secondary)}
+.btn-danger{background:var(--danger-soft,#2b1c1c);color:var(--danger,#e24b4a);border-color:var(--danger,#e24b4a)}
+.pathbox{flex:1;padding:8px 10px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius-md);color:var(--text-secondary);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hint{font-size:12px;color:var(--text-muted);min-height:16px}
+.opt{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary)}
+.body{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:var(--sp-3)}
+.grp{background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-lg);padding:var(--sp-3)}
+.grp-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-size:12px}
+.grp-hash{font-family:ui-monospace,Consolas,monospace;color:var(--text-muted)}
+.grp-meta{color:var(--accent,#4a9eff);font-weight:600}
+.file{display:flex;gap:8px;align-items:center;padding:3px 0;font-size:12px}
+.file-path{color:var(--text-primary);word-break:break-all;flex:1;font-family:ui-monospace,Consolas,monospace}
+.file.keep .file-path{color:var(--text-secondary)}
+.keep-tag{font-size:10px;padding:1px 6px;border-radius:var(--radius-pill);background:var(--success-soft,#1c2b24);color:var(--success,#34d399)}
+.empty{font-size:12px;color:var(--text-muted);padding:8px 0}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="row">
+    <div id="pathBox" class="pathbox">未选择目录</div>
+    <button id="btnPick" class="btn-ghost">选择目录</button>
+  </div>
+  <div class="row">
+    <label class="opt"><input type="checkbox" id="hiddenChk"> 包含隐藏文件</label>
+    <button id="btnScan" class="btn">开始扫描</button>
+    <span id="hint" class="hint"></span>
+  </div>
+  <div id="body" class="body"></div>
+</div>
+<script>
+(function(){
+  'use strict'
+  var scanPath=''
+  var pathBox=document.getElementById('pathBox')
+  var hint=document.getElementById('hint')
+  var body=document.getElementById('body')
+
+  function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+  function fmtSize(n){if(n>=1048576)return (n/1048576).toFixed(1)+' MB';if(n>=1024)return (n/1024).toFixed(1)+' KB';return n+' B'}
+  function fmtNum(n){n=Math.round(n||0);if(n>=1000000)return (n/1000000).toFixed(1)+'M';if(n>=1000)return (n/1000).toFixed(1)+'k';return ''+n}
+  function progressText(p){
+    p=p||{}
+    if(p.phase===1){
+      var h=p.hashed||0,t=p.toHash||0
+      var pct=t?Math.min(100,Math.round(h/t*100)):0
+      if(pct>=100) return '哈希计算完成，正在生成结果…'
+      return '计算哈希 '+fmtNum(h)+' / '+fmtNum(t)+' ('+pct+'%)'
+    }
+    return '遍历目录… 已扫描 '+fmtNum(p.files||0)+' 个文件'+(p.current?(' · '+esc(p.current)):'')
+  }
+  function showProgress(p){
+    var el=document.getElementById('scanProgress')
+    if(!el){el=document.createElement('div');el.id='scanProgress';el.className='grp';body.appendChild(el)}
+    el.innerHTML='<div class="grp-head"><span class="grp-meta">扫描进度</span></div>'+
+      '<div class="hint" style="margin-top:4px">'+esc(progressText(p))+'</div>'
+  }
+
+  var seq=0, pend={}
+  function send(command,input){
+    return new Promise(function(resolve,reject){
+      var id='dup_'+(++seq)
+      pend[id]={resolve:resolve,reject:reject}
+      parent.postMessage({type:'plugin:execute',id:id,command:command,input:input||{}},'*')
+    })
+  }
+  window.addEventListener('message',function(e){
+    var d=e.data
+    if(!d||d.type!=='plugin:result'||!d.id||!pend[d.id])return
+    var p=pend[d.id];delete pend[d.id]
+    if(d.error)p.reject(new Error(d.error));else p.resolve(d.data)
+  })
+
+  document.getElementById('btnPick').addEventListener('click',function(){
+    hint.textContent='打开目录选择框…'
+    qdPickFolder({title:'选择要扫描的目录'}).then(function(p){
+      if(!p){hint.textContent='已取消';return}
+      scanPath=p;pathBox.textContent=p;hint.textContent=''
+    }).catch(function(e){hint.textContent='选择失败：'+(e&&e.message?e.message:e)})
+  })
+
+  function startScan(){
+    if(!scanPath){hint.textContent='请先选择目录';return}
+    hint.textContent='扫描中…'
+    body.innerHTML=''
+    send('scan',{path:scanPath,hidden:document.getElementById('hiddenChk').checked}).then(function(r){
+      if(r.async)poll(r.taskId)
+    }).catch(function(e){hint.textContent='扫描失败：'+(e&&e.message?e.message:e)})
+  }
+
+  function poll(taskId){
+    send('task-status',{taskId:taskId}).then(function(r){
+      if(r.status==='running'){
+        hint.textContent=progressText(r.progress);showProgress(r.progress)
+        // 哈希阶段已到 100% 时缩短轮询间隔，尽快拿到结果，避免“卡在 100%”
+        var p=r.progress||{},fast=false
+        if(p.phase===1){var h=p.hashed||0,t=p.toHash||0;if(t&&h>=t)fast=true}
+        setTimeout(function(){poll(taskId)},fast?100:300)
+        return
+      }
+      if(r.status==='error'){hint.textContent='扫描失败：'+r.error;return}
+      renderGroups(r.result||{})
+    }).catch(function(e){hint.textContent='轮询失败：'+(e&&e.message?e.message:e)})
+  }
+
+  function renderGroups(res){
+    var groups=res.groups||[]
+    if(!groups.length){
+      hint.textContent='未发现重复文件'
+      body.innerHTML='<div class="empty">该目录下没有内容重复的（大小相同且哈希一致）文件</div>'
+      return
+    }
+    hint.textContent='发现 '+groups.length+' 组重复 · 共 '+res.totalFiles+' 个文件 · 可节省 '+fmtSize(res.wasted||0)
+    var html=''
+    groups.forEach(function(g,gi){
+      html+='<div class="grp" data-gi="'+gi+'">'
+      html+='<div class="grp-head"><span class="grp-hash">'+esc(g.hash.slice(0,16))+'…</span>'+
+        '<span class="grp-meta">'+g.count+' 个副本 · '+fmtSize(g.size)+'</span></div>'
+      g.files.forEach(function(f,i){
+        html+='<div class="file'+(i===0?' keep':'')+'"><span class="file-path">'+esc(f)+'</span>'+
+          (i===0?'<span class="keep-tag">保留</span>':'<button class="btn-sm btn-danger" data-del="'+esc(f)+'">删除</button>')+'</div>'
+      })
+      html+='<div style="margin-top:6px"><button class="btn-sm" data-delgroup="'+gi+'">删除本组冗余副本（保留首个）</button></div>'
+      html+='</div>'
+    })
+    body.innerHTML=html
+  }
+
+  body.addEventListener('click',function(e){
+    var del=e.target.getAttribute&&e.target.getAttribute('data-del')
+    if(del){
+      if(!confirm('确认删除：\n'+del))return
+      send('delete',{remove:[del]}).then(function(r){hint.textContent='已删除 '+r.deleted+' 个，跳过 '+r.skipped+' 个';e.target.closest('.file').remove()})
+      return
+    }
+    var gi=e.target.getAttribute&&e.target.getAttribute('data-delgroup')
+    if(gi!==null&&gi!==undefined){
+      var g=document.querySelector('.grp[data-gi="'+gi+'"]')
+      var files=Array.prototype.slice.call(g.querySelectorAll('.file')).slice(1).map(function(f){return f.querySelector('.file-path').textContent})
+      if(!files.length)return
+      if(!confirm('将删除该组 '+files.length+' 个冗余副本（保留首个），确认？'))return
+      send('delete',{remove:files}).then(function(r){
+        hint.textContent='已删除 '+r.deleted+' 个，跳过 '+r.skipped+' 个'
+        files.forEach(function(f){var el=Array.prototype.find.call(g.querySelectorAll('.file'),function(x){return x.querySelector('.file-path').textContent===f});if(el)el.remove()})
+        var btn=e.target;btn.textContent='已清理'
+      })
+    }
+  })
+
+  document.getElementById('btnScan').addEventListener('click',startScan)
+})()
+</script>
+</body>
+</html>

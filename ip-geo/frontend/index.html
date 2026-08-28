@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IP 地理查询</title>
+<link rel="stylesheet" href="qd-theme.css">
+<style>
+.app{display:flex;flex-direction:column;height:100%;padding:var(--sp-4);gap:var(--sp-3);box-sizing:border-box}
+.row{display:flex;gap:var(--sp-2)}
+.input{flex:1;padding:9px 12px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius-md);color:var(--text-primary);font-size:13px;outline:none}
+.input:focus{border-color:var(--accent,#4a9eff)}
+.btn{padding:9px 16px;background:var(--accent,#4a9eff);color:#fff;border:none;border-radius:var(--radius-md);cursor:pointer;font-size:13px;font-weight:600}
+.hint{font-size:12px;color:var(--text-muted);min-height:16px}
+.result{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:var(--sp-2)}
+.card{background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-lg);padding:var(--sp-3)}
+.field{display:flex;gap:10px;padding:5px 0;font-size:12px;border-bottom:1px dashed var(--border)}
+.field:last-child{border-bottom:none}
+.f-label{width:64px;color:var(--text-muted);flex-shrink:0}
+.f-value{color:var(--text-primary);word-break:break-all;flex:1}
+.map-link{display:inline-block;margin-top:6px;color:var(--accent,#4a9eff);font-size:12px;text-decoration:none}
+.map-link:hover{text-decoration:underline}
+.empty{font-size:12px;color:var(--text-muted);padding:8px 0}
+.err{color:var(--danger,#e24b4a)}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="row">
+    <input id="ip" class="input" placeholder="IP 地址，留空查询本机出口 IP（如 8.8.8.8）" spellcheck="false" autofocus>
+    <button id="btnQuery" class="btn">查询</button>
+  </div>
+  <div id="hint" class="hint"></div>
+  <div id="result" class="result"></div>
+</div>
+<script>
+(function(){
+  'use strict'
+  var ipInput=document.getElementById('ip')
+  var hint=document.getElementById('hint')
+  var result=document.getElementById('result')
+
+  function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+
+  var seq=0, pend={}
+  function send(command,input){
+    return new Promise(function(resolve,reject){
+      var id='ipgeo_'+(++seq)
+      pend[id]={resolve:resolve,reject:reject}
+      parent.postMessage({type:'plugin:execute',id:id,command:command,input:input||{}},'*')
+    })
+  }
+  window.addEventListener('message',function(e){
+    var d=e.data
+    if(!d||d.type!=='plugin:result'||!d.id||!pend[d.id])return
+    var p=pend[d.id];delete pend[d.id]
+    if(d.error)p.reject(new Error(d.error));else p.resolve(d.data)
+  })
+
+  function doQuery(){
+    var ip=ipInput.value.trim()
+    hint.textContent='查询中…'
+    result.innerHTML=''
+    send('lookup',{ip:ip}).then(function(r){
+      if(!r||!r.ok){hint.textContent='查询失败';result.innerHTML='<div class="empty err">'+esc(r&&r.error?r.error:'查询失败')+'</div>';return}
+      hint.textContent='查询 '+(r.query||'本机')+' · 共 '+(r.fields?r.fields.length:0)+' 项'
+      var html='<div class="card">'
+      ;(r.fields||[]).forEach(function(f){
+        if(!f.value)return
+        html+='<div class="field"><span class="f-label">'+esc(f.label)+'</span><span class="f-value">'+esc(f.value)+'</span></div>'
+      })
+      html+='</div>'
+      if(r.mapUrl){html+='<a class="map-link" href="'+esc(r.mapUrl)+'" target="_blank" rel="noopener">在 OpenStreetMap 中查看位置 →</a>'}
+      result.innerHTML=html
+    }).catch(function(e){ hint.textContent='查询失败'; result.innerHTML='<div class="empty err">'+esc(e&&e.message?e.message:e)+'</div>' })
+  }
+
+  document.getElementById('btnQuery').addEventListener('click',doQuery)
+  ipInput.addEventListener('keydown',function(e){if(e.key==='Enter')doQuery()})
+})()
+</script>
+</body>
+</html>

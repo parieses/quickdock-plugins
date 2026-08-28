@@ -254,9 +254,16 @@ native 插件在收到请求后，可以通过 stdout 向主程序发起回调�
 
 ### 文件与目录选择（native 插件）
 
-native 插件的前端（iframe）通过宿主桥接（`usePluginHost.ts`）完成文件/目录选择。**关键点：文件选择完全在前端桥接层完成，不进入后端子进程；只有目录选择需要后端命令。**
+> 🚫 **强制约束（2026-08-27 起）：文件/目录选择一律走宿主暴露的原生方法，禁止插件后端自行 spawn 子进程弹系统对话框。**
+>
+> - ✅ **允许**：`host.dialog.open` / `host.dialog.save`（文件/保存，宿主 Host API）、`qdPickFolder`（目录，宿主注入桥接）、`qdPickFile`（文件，宿主注入桥接）。这四类都是宿主抛出的原生方法，由插件前端直接调用。
+> - ❌ **禁止**：在插件后端用 `exec.Command("powershell"/"osascript"/"zenity", ...)` 弹 `FolderBrowserDialog` / ` NSOpenPanel` / ` gtk 文件选择器` 等。原因：慢（每次起子进程）、依赖运行环境（WinForms/AppleScript 可用性）、关闭后焦点不归还宿主（需 `user32` 兜底）、且子进程 stdout 易污染路径（PowerShell 会回吐 `True`）。旧插件 git-browser / pdf-toolkit 已统一迁移，新插件不得再写这套。
 
-#### 选择文件（前端桥接）
+native 插件的前端（iframe）通过宿主桥接（`usePluginHost.ts`）完成文件/目录选择。**关键点：文件选择完全在前端桥接层完成，不进入后端子进程；目录选择也只在前端调用 `qdPickFolder`，不再经过插件后端命令。**
+
+#### 选择文件（宿主 Host API，强制）
+
+> 🚫 文件选择**必须**走 `host.dialog.open` / `host.dialog.save`，由宿主拦截后调用 Wails `Dialogs.OpenFile()`。插件后端**不得**自行 spawn 文件对话框。
 
 前端直接把命令设为 `host.dialog.open` 即可，宿主拦截后调用 Wails `Dialogs.OpenFile()`：
 
@@ -285,48 +292,27 @@ const r = await this.send('host.dialog.open', {
 
 > ⚠️ **输出文件尚不存在时必须用 `host.dialog.save`**（保存对话框可命名新文件）。用 `host.dialog.open`（打开对话框）无法选中不存在的文件。
 
-#### 选择目录（后端命令）
+#### 选择目录（宿主原生对话框，强制）
 
-Wails v3 的 `Dialogs` **只有 `OpenFile` / `SaveFile`，没有目录选择 API**。需要用户选「输出文件夹」时，必须在后端实现自定义命令（如 `pickFolder`），由子进程弹系统目录框：
+> 🚫 目录选择**必须**走宿主注入的 `qdPickFolder`，**禁止**在插件后端用 `exec.Command` 弹 `FolderBrowserDialog` 等系统目录框。
 
-**前端**（注意是自定义命令，不是 host.dialog）：
+Wails v3 的 `Dialogs.OpenFile` **支持目录选择**：`CanChooseDirectories(true)` + `CanChooseFiles(false)` 即可弹出系统「选文件夹」对话框（Windows 走 `IFileDialog` 的 `FOS_PICKFOLDERS`，不是旧版树形 FolderBrowserDialog）。宿主已封装好桥接，插件**无需自己 spawn 子进程**，直接调注入的 `qdPickFolder` 即可，跨平台、主题一致、无焦点丢失。
+
+**前端**（直接调注入的 `qdPickFolder`，取消/失败返回 `null`）：
 
 ```javascript
-const r = await this.send('pickFolder', { title: '选择输出目录' })
-// { canceled:false, path:'D:/out' }   取消: { canceled:true, path:'' }
+const path = await qdPickFolder({ title: '选择输出目录' })
+if (!path) return            // 用户取消
+// path: 'D:/out'（绝对路径）
 ```
 
-**后端（Windows，PowerShell FolderBrowserDialog）**：
+**宿主侧（已就绪，插件不必实现）**：
+- 桥接脚本注入 `window.qdPickFolder(opts)` → `postMessage('plugin:pickfolder')`
+- `frontend/src/composables/usePluginHost.ts` 监听后调 Wails 绑定 `PickFolderPath(title)`
+- `services/plugin_install.go` 的 `PickFolderPath`：`a.app.Dialog.OpenFile().CanChooseDirectories(true).CanChooseFiles(false).SetTitle(title).PromptForSingleSelection()`
 
-```go
-func handlePickFolder(id int64, input map[string]interface{}) {
-    title := strFrom(input, "title", "选择目录")
-    path, canceled := pickFolderWindows(title)
-    respond(id, map[string]interface{}{"canceled": canceled, "path": path})
-}
-
-func pickFolderWindows(title string) (string, bool) {
-    safe := strings.ReplaceAll(title, "'", "''")
-    ps := fmt.Sprintf(
-        "Add-Type -AssemblyName System.Windows.Forms; "+
-            "$d=New-Object System.Windows.Forms.FolderBrowserDialog; "+
-            "$d.Description='%s'; [System.Windows.Forms.Application]::EnableVisualStyles() | Out-Null; "+
-            "if($d.ShowDialog()-eq [System.Windows.Forms.DialogResult]::OK){$d.SelectedPath}",
-        safe,
-    )
-    out, err := exec.Command("powershell", "-NoProfile", "-Command", ps).Output()
-    if err != nil {
-        return "", true
-    }
-    path := strings.TrimSpace(string(out))
-    if path == "" {
-        return "", true
-    }
-    return path, false
-}
-```
-
-> ⚠️ **窗口层级陷阱**：PowerShell 弹出的 `FolderBrowserDialog` 是独立模态窗口，关闭后焦点不会自动还给 QuickDock，主窗口会被甩到后台。后端弹系统对话框后，应通过 `user32.SetForegroundWindow` 把 QuickDock 主窗口重新拉回前台。
+> ✅ 与 `qdPickFile`（`PickFilePath`）同源，复用同一套原生对话框链路。
+> ⚠️ **不要**在插件后端用 `exec.Command("powershell", ...)` 弹 `FolderBrowserDialog` 选目录——慢、依赖 WinForms、关闭后焦点不归还宿主（需 `user32` 兜底），且 PowerShell 会把 `user32` 返回的 `True` 混进 stdout 污染路径。旧插件 git-browser / pdf-toolkit 已统一迁移到 `qdPickFolder`。
 
 ---
 

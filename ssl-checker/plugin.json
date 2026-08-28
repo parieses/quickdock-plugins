@@ -1,0 +1,61 @@
+{
+  "id": "io.github.parieses.ssl-checker",
+  "name": "SSL 证书检查",
+  "version": "0.1.0",
+  "description": "输入域名（或 host:port）检查 TLS 证书的颁发者、域名(SAN)、有效期与签发算法",
+  "author": "QuickDock",
+  "category": "网络工具",
+  "platforms": [
+    "windows"
+  ],
+  "icon": "icon.svg",
+  "backend": {
+    "runtime": "native",
+    "entry": "ssl-checker",
+    "args": []
+  },
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 680,
+    "height": 580
+  },
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "permissions": {
+    "filesystem": false
+  },
+  "commands": [
+    {
+      "id": "ssl-check",
+      "title": "SSL 证书检查",
+      "keywords": [
+        "ssl",
+        "tls",
+        "cert",
+        "证书",
+        "https",
+        "过期"
+      ],
+      "aliases": [
+        "证书检查",
+        "SSL 检查",
+        "TLS 证书"
+      ],
+      "title_i18n": {
+        "zh-CN": "SSL 证书检查",
+        "en-US": "SSL Certificate Checker"
+      }
+    }
+  ],
+  "name_i18n": {
+    "zh-CN": "SSL 证书检查",
+    "en-US": "SSL Certificate Checker"
+  },
+  "description_i18n": {
+    "zh-CN": "输入域名（或 host:port）检查 TLS 证书的颁发者、域名(SAN)、有效期与签发算法",
+    "en-US": "Check a TLS certificate's issuer, SAN, validity period and signature algorithm by domain or host:port."
+  }
+}

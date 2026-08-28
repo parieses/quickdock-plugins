@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DNS 查询</title>
+<link rel="stylesheet" href="qd-theme.css">
+<style>
+.app{display:flex;flex-direction:column;height:100%;padding:var(--sp-4);gap:var(--sp-3);box-sizing:border-box}
+.row{display:flex;gap:var(--sp-2)}
+.input{flex:1;padding:9px 12px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius-md);color:var(--text-primary);font-size:13px;outline:none}
+.input:focus{border-color:var(--accent,#4a9eff)}
+.btn{padding:9px 16px;background:var(--accent,#4a9eff);color:#fff;border:none;border-radius:var(--radius-md);cursor:pointer;font-size:13px;font-weight:600}
+.btn-ghost{padding:9px 14px;background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius-md);cursor:pointer;font-size:13px}
+.types{display:flex;flex-wrap:wrap;gap:10px;font-size:12px;color:var(--text-secondary)}
+.types label{display:flex;align-items:center;gap:4px;cursor:pointer;user-select:none}
+.hint{font-size:12px;color:var(--text-muted);min-height:16px}
+.result{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:var(--sp-2)}
+.grp{background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-lg);padding:var(--sp-3)}
+.grp-title{font-size:12px;font-weight:700;margin-bottom:6px;color:var(--accent,#4a9eff)}
+.rec{display:flex;gap:8px;align-items:baseline;padding:3px 0;font-size:12px}
+.rec-val{color:var(--text-primary);font-family:ui-monospace,Consolas,monospace;word-break:break-all;flex:1}
+.copy{font-size:11px;color:var(--text-muted);cursor:pointer;flex-shrink:0}
+.copy:hover{color:var(--accent,#4a9eff)}
+.empty{font-size:12px;color:var(--text-muted);padding:8px 0}
+.err{color:var(--danger,#e24b4a)}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="row">
+    <input id="domain" class="input" placeholder="域名，如 example.com" spellcheck="false" autofocus>
+    <button id="btnQuery" class="btn">查询</button>
+  </div>
+  <div class="types" id="types">
+    <label><input type="checkbox" value="A" checked> A</label>
+    <label><input type="checkbox" value="AAAA" checked> AAAA</label>
+    <label><input type="checkbox" value="MX" checked> MX</label>
+    <label><input type="checkbox" value="TXT" checked> TXT</label>
+    <label><input type="checkbox" value="CNAME" checked> CNAME</label>
+    <label><input type="checkbox" value="NS" checked> NS</label>
+  </div>
+  <div id="hint" class="hint"></div>
+  <div id="result" class="result"></div>
+</div>
+<script>
+(function(){
+  'use strict'
+  var domainInput=document.getElementById('domain')
+  var hint=document.getElementById('hint')
+  var result=document.getElementById('result')
+
+  function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+  function copyText(t){
+    try{ if(window.host&&window.host.clipboard&&window.host.clipboard.write){return window.host.clipboard.write(t)} }catch(e){}
+    if(navigator.clipboard&&navigator.clipboard.writeText){return navigator.clipboard.writeText(t)}
+    return new Promise(function(res){var ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();try{document.execCommand('copy')}catch(e){}ta.remove();res()})
+  }
+
+  var seq=0, pend={}
+  function send(command,input){
+    return new Promise(function(resolve,reject){
+      var id='dns_'+(++seq)
+      pend[id]={resolve:resolve,reject:reject}
+      parent.postMessage({type:'plugin:execute',id:id,command:command,input:input||{}},'*')
+    })
+  }
+  window.addEventListener('message',function(e){
+    var d=e.data
+    if(!d||d.type!=='plugin:result'||!d.id||!pend[d.id])return
+    var p=pend[d.id];delete pend[d.id]
+    if(d.error)p.reject(new Error(d.error));else p.resolve(d.data)
+  })
+
+  function doQuery(){
+    var domain=domainInput.value.trim()
+    if(!domain){hint.textContent='请输入域名';return}
+    var types=Array.prototype.slice.call(document.querySelectorAll('#types input:checked')).map(function(c){return c.value})
+    if(!types.length){hint.textContent='请至少选择一种记录类型';return}
+    hint.textContent='查询中…'
+    result.innerHTML=''
+    send('lookup',{domain:domain,types:types}).then(function(r){
+      if(!r||!r.records||!r.records.length){hint.textContent='无记录';result.innerHTML='<div class="empty">未查询到记录</div>';return}
+      hint.textContent='域名 '+r.domain+' · 共 '+r.records.length+' 条记录'
+      var groups={}
+      r.records.forEach(function(rec){ (groups[rec.type]=groups[rec.type]||[]).push(rec.value) })
+      var html=''
+      Object.keys(groups).forEach(function(t){
+        html+='<div class="grp"><div class="grp-title">'+esc(t)+'</div>'
+        groups[t].forEach(function(v){
+          html+='<div class="rec"><span class="rec-val">'+esc(v)+'</span>'+
+            '<span class="copy" data-v="'+esc(v)+'">复制</span></div>'
+        })
+        html+='</div>'
+      })
+      result.innerHTML=html
+    }).catch(function(e){ hint.textContent='查询失败'; result.innerHTML='<div class="empty err">'+esc(e&&e.message?e.message:e)+'</div>' })
+  }
+
+  result.addEventListener('click',function(e){
+    if(e.target.classList.contains('copy')){
+      copyText(e.target.getAttribute('data-v')).then(function(){var o=e.target.textContent;e.target.textContent='已复制';setTimeout(function(){e.target.textContent=o},1200)})
+    }
+  })
+
+  document.getElementById('btnQuery').addEventListener('click',doQuery)
+  domainInput.addEventListener('keydown',function(e){if(e.key==='Enter')doQuery()})
+})()
+</script>
+</body>
+</html>

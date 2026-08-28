@@ -362,13 +362,10 @@ const bridge = {
   },
 
   async folderPicker(title = '选择输出目录') {
-    // 调用插件命令 pickFolder，弹出「目录」选择框（区别于文件选择）。
-    // 后端为异步任务模式：对话框在 goroutine 中弹出（模态阻塞可达数分钟），
-    // 立即返回 taskId，此处轮询 task-status 直到用户选完/取消。
-    const r0 = await this.send('pickFolder', { title });
-    if (!r0 || !r0.taskId) return null;
-    const r = await this.waitTask(r0.taskId);
-    return r?.canceled ? null : (r?.path || null);
+    // 走宿主原生目录对话框（qdPickFolder → Wails Dialog 目录模式 CanChooseDirectories），
+    // 不再在插件后端 spawn PowerShell/AppleScript/zenity。返回所选路径，取消返回 null。
+    const path = await qdPickFolder({ title });
+    return path || null;
   },
 
   // 长任务轮询：后端 pdfcpu 操作已改为异步（立即返回 taskId，后台 goroutine 执行）。

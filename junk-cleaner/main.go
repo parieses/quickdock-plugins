@@ -480,6 +480,10 @@ func handleExecute(req rpcRequest) {
 		handleScan(req.ID, params.Input)
 	case "clean":
 		handleClean(req.ID, params.Input)
+	case "scan-empty":
+		handleScanEmpty(req.ID, params.Input)
+	case "clean-empty":
+		handleCleanEmpty(req.ID, params.Input)
 	case "task-status":
 		handleTaskStatus(req.ID, params.Input)
 	default:
@@ -504,7 +508,6 @@ func handleCategories(id int64) {
 }
 
 func handleScan(id int64, input map[string]interface{}) {
-	_ = input // 扫描全部分类，供前端勾选
 	t := startTask()
 	go func() {
 		results := make([]map[string]interface{}, 0, len(junkCategories))
@@ -528,9 +531,10 @@ func handleScan(id int64, input map[string]interface{}) {
 				"sizeBytes": size,
 				"fileCount": count,
 			})
-			totalSize += size
-			totalFiles += count
-		}
+		totalSize += size
+		totalFiles += count
+	}
+
 		finishTask(t, map[string]interface{}{
 			"categories": results,
 			"totalSize":  totalSize,
@@ -637,6 +641,109 @@ func handleClean(id int64, input map[string]interface{}) {
 		}, nil)
 	}()
 	respond(id, map[string]interface{}{"async": true, "taskId": t.ID})
+}
+
+// ---- 空目录 / 空文件 清理（用户自选目录）----
+// 与普通系统垃圾白名单不同：这里由用户在界面自选目录，扫描其中的空目录（无子项）
+// 与 0 字节空文件，可勾选后删除。删除时对路径按长度降序（深者优先）逐个移除。
+
+func emptyItemsFrom(input map[string]interface{}) []string {
+	if v, ok := input["items"].([]interface{}); ok {
+		out := []string{}
+		for _, x := range v {
+			if s, ok := x.(string); ok {
+				out = append(out, s)
+			}
+		}
+		return out
+	}
+	return nil
+}
+
+func findEmptyDirs(root string) []string {
+	var result []string
+	_ = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		if d.IsDir() {
+			if entries, e := os.ReadDir(path); e == nil && len(entries) == 0 {
+				result = append(result, path)
+			}
+		}
+		return nil
+	})
+	return result
+}
+
+func findEmptyFiles(root string) []string {
+	var result []string
+	_ = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		if !d.IsDir() {
+			if fi, e := d.Info(); e == nil && fi.Size() == 0 {
+				result = append(result, path)
+			}
+		}
+		return nil
+	})
+	return result
+}
+
+func handleScanEmpty(id int64, input map[string]interface{}) {
+	root := strings.TrimSpace(strFrom(input, "root"))
+	if root == "" {
+		respondError(id, -32602, "请选择目录")
+		return
+	}
+	if fi, err := os.Stat(root); err != nil || !fi.IsDir() {
+		respondError(id, -32602, "目录不存在或不是文件夹")
+		return
+	}
+	mode := strings.ToLower(strFrom(input, "mode"))
+	if mode == "" {
+		mode = "both"
+	}
+	t := startTask()
+	go func() {
+		var dirs, files []string
+		if mode == "dir" || mode == "both" {
+			dirs = findEmptyDirs(root)
+		}
+		if mode == "file" || mode == "both" {
+			files = findEmptyFiles(root)
+		}
+		finishTask(t, map[string]interface{}{
+			"dirs":      dirs,
+			"files":     files,
+			"dirCount":  len(dirs),
+			"fileCount": len(files),
+		}, nil)
+	}()
+	respond(id, map[string]interface{}{"async": true, "taskId": t.ID})
+}
+
+func handleCleanEmpty(id int64, input map[string]interface{}) {
+	items := emptyItemsFrom(input)
+	if len(items) == 0 {
+		respondError(id, -32602, "未选择要清理的项目")
+		return
+	}
+	// 深路径优先删除：父空目录需等子项先删
+	sort.Slice(items, func(i, j int) bool { return len(items[i]) > len(items[j]) })
+	var deleted, skipped int
+	var failed []string
+	for _, p := range items {
+		if err := os.Remove(p); err != nil {
+			skipped++
+			failed = append(failed, p)
+		} else {
+			deleted++
+		}
+	}
+	respond(id, map[string]interface{}{"deleted": deleted, "skipped": skipped, "failed": failed})
 }
 
 func handleTaskStatus(id int64, input map[string]interface{}) {

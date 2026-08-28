@@ -1,0 +1,46 @@
+{
+  "id": "io.github.parieses.package-check",
+  "name": "包版本速查",
+  "version": "0.1.0",
+  "description": "输入包名，并发查询 npm / PyPI / Composer / Go 四个仓库：是否存在、最新版本、描述、许可证、npm 周下载量",
+  "author": "QuickDock",
+  "category": "开发者日常",
+  "platforms": ["windows", "darwin", "linux"],
+  "icon": "icon.svg",
+  "backend": {
+    "runtime": "native",
+    "entry": "package-check",
+    "args": []
+  },
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 680,
+    "height": 600
+  },
+  "capabilities": ["command", "frontend"],
+  "permissions": {
+    "network": true,
+    "clipboard": true
+  },
+  "commands": [
+    {
+      "id": "query",
+      "title": "包版本速查",
+      "keywords": ["package", "npm", "pypi", "composer", "go", "包", "版本", "依赖"],
+      "aliases": ["包查询", "查版本", "包版本"],
+      "title_i18n": {
+        "zh-CN": "包版本速查",
+        "en-US": "Package Version Lookup"
+      }
+    }
+  ],
+  "name_i18n": {
+    "zh-CN": "包版本速查",
+    "en-US": "Package Version Lookup"
+  },
+  "description_i18n": {
+    "zh-CN": "输入包名，并发查询 npm / PyPI / Composer / Go 四个仓库：是否存在、最新版本、描述、许可证、npm 周下载量",
+    "en-US": "Query npm/PyPI/Composer/Go registries for a package: existence, latest version, description, license, and npm weekly downloads."
+  }
+}

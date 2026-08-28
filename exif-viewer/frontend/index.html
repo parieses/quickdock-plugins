@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EXIF 查看</title>
+<link rel="stylesheet" href="qd-theme.css">
+<style>
+.app{display:flex;flex-direction:column;height:100%;padding:var(--sp-4);gap:var(--sp-3);box-sizing:border-box}
+.row{display:flex;gap:var(--sp-2);align-items:center}
+.btn{padding:9px 16px;background:var(--accent,#4a9eff);color:#fff;border:none;border-radius:var(--radius-md);cursor:pointer;font-size:13px;font-weight:600}
+.btn-ghost{padding:9px 14px;background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius-md);cursor:pointer;font-size:13px}
+.pathbox{flex:1;padding:8px 10px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius-md);color:var(--text-secondary);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hint{font-size:12px;color:var(--text-muted);min-height:16px}
+.card{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:var(--sp-3)}
+.top{background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-lg);padding:var(--sp-3);display:flex;gap:var(--sp-4);flex-wrap:wrap}
+.top .big{font-size:13px}
+.top .sub{font-size:11px;color:var(--text-muted)}
+.gps{color:var(--accent,#4a9eff);cursor:pointer;text-decoration:underline}
+.tags{background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-lg);padding:var(--sp-3)}
+.tags-title{font-size:12px;font-weight:700;margin-bottom:6px;color:var(--accent,#4a9eff)}
+.tag{display:flex;gap:10px;padding:3px 0;border-bottom:1px solid var(--border);font-size:12px}
+.tag:last-child{border-bottom:none}
+.tag-k{width:150px;flex-shrink:0;color:var(--text-muted);word-break:break-all}
+.tag-v{color:var(--text-primary);word-break:break-all;flex:1;font-family:ui-monospace,Consolas,monospace}
+.empty{font-size:12px;color:var(--text-muted);padding:8px 0}
+.err{color:var(--danger,#e24b4a)}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="row">
+    <div id="pathBox" class="pathbox">未选择图片</div>
+    <button id="btnPick" class="btn-ghost">选择图片</button>
+  </div>
+  <div class="row">
+    <button id="btnRead" class="btn">读取 EXIF</button>
+    <span id="hint" class="hint"></span>
+  </div>
+  <div id="card" class="card"></div>
+</div>
+<script>
+(function(){
+  'use strict'
+  var filePath=''
+  var pathBox=document.getElementById('pathBox')
+  var hint=document.getElementById('hint')
+  var card=document.getElementById('card')
+
+  function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+
+  var seq=0, pend={}
+  function send(command,input){
+    return new Promise(function(resolve,reject){
+      var id='exif_'+(++seq)
+      pend[id]={resolve:resolve,reject:reject}
+      parent.postMessage({type:'plugin:execute',id:id,command:command,input:input||{}},'*')
+    })
+  }
+  window.addEventListener('message',function(e){
+    var d=e.data
+    if(!d||d.type!=='plugin:result'||!d.id||!pend[d.id])return
+    var p=pend[d.id];delete pend[d.id]
+    if(d.error)p.reject(new Error(d.error));else p.resolve(d.data)
+  })
+
+  document.getElementById('btnPick').addEventListener('click',function(){
+    hint.textContent='打开文件选择框…'
+    qdPickFile({title:'选择图片 (JPEG/PNG)', filter:'图片', pattern:'*.jpg;*.jpeg;*.png'}).then(function(p){
+      if(!p){hint.textContent='已取消';return}
+      filePath=p;pathBox.textContent=p;card.innerHTML='';hint.textContent=''
+    }).catch(function(e){hint.textContent='选择失败：'+(e&&e.message?e.message:e)})
+  })
+
+  function doRead(){
+    if(!filePath){hint.textContent='请先选择图片';return}
+    hint.textContent='读取中…'
+    card.innerHTML=''
+    send('read',{path:filePath}).then(function(r){
+      if(!r||!r.ok){
+        hint.textContent='无法读取'
+        card.innerHTML='<div class="empty err">'+(r&&r.error?esc(r.error):'无 EXIF 数据')+'</div>'
+        return
+      }
+      var html=''
+      if(r.datetime){
+        html+='<div class="top"><div><div class="big">'+esc(r.datetime)+'</div><div class="sub">拍摄时间</div></div>'
+        if(r.gps){
+          var lat=r.gps.lat,lng=r.gps.lng
+          var url='https://www.openstreetmap.org/?mlat='+lat+'&mlon='+lng+'#map=15/'+lat+'/'+lng
+          html+='<div><div class="big"><span class="gps" data-url="'+esc(url)+'">'+lat.toFixed(6)+', '+lng.toFixed(6)+'</span></div><div class="sub">GPS 经纬度（点击查看地图）</div></div>'
+        }
+        html+='</div>'
+      }
+      var tags=r.tags||{}
+      var keys=Object.keys(tags)
+      if(keys.length){
+        html+='<div class="tags"><div class="tags-title">全部标签（'+keys.length+'）</div>'
+        keys.sort()
+        keys.forEach(function(k){
+          html+='<div class="tag"><span class="tag-k">'+esc(k)+'</span><span class="tag-v">'+esc(tags[k])+'</span></div>'
+        })
+        html+='</div>'
+      }
+      if(!html)html='<div class="empty">未解析到 EXIF 信息</div>'
+      card.innerHTML=html
+      hint.textContent='读取完成'
+    }).catch(function(e){hint.textContent='读取失败：'+(e&&e.message?e.message:e)})
+  }
+
+  card.addEventListener('click',function(e){
+    if(e.target.classList.contains('gps')){
+      window.open(e.target.getAttribute('data-url'),'_blank')
+    }
+  })
+  document.getElementById('btnRead').addEventListener('click',doRead)
+})()
+</script>
+</body>
+</html>

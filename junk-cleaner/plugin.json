@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.junk-cleaner",
   "name": "Windows 垃圾清理",
-  "version": "0.1.3",
+  "version": "0.1.6",
   "description": "扫描并清理系统垃圾文件：临时文件/更新缓存/缩略图缓存/预读取/崩溃转储等，安全只读扫描+确认后删除",
   "author": "QuickDock",
   "icon": "icon.svg",

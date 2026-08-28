@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>文件哈希</title>
+<link rel="stylesheet" href="qd-theme.css">
+<style>
+.app{display:flex;flex-direction:column;height:100%;padding:var(--sp-4);gap:var(--sp-3);box-sizing:border-box}
+.row{display:flex;gap:var(--sp-2);align-items:center}
+.btn{padding:9px 16px;background:var(--accent,#4a9eff);color:#fff;border:none;border-radius:var(--radius-md);cursor:pointer;font-size:13px;font-weight:600}
+.btn-ghost{padding:9px 14px;background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius-md);cursor:pointer;font-size:13px}
+.seg{display:flex;border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden}
+.seg button{padding:7px 14px;background:var(--bg-secondary);color:var(--text-secondary);border:none;cursor:pointer;font-size:12px}
+.seg button.active{background:var(--accent,#4a9eff);color:#fff}
+.hint{font-size:12px;color:var(--text-muted);min-height:16px}
+.pathbox{flex:1;padding:8px 10px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius-md);color:var(--text-secondary);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+textarea{width:100%;height:120px;resize:vertical;padding:9px 12px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius-md);color:var(--text-primary);font-size:13px;font-family:ui-monospace,Consolas,monospace;outline:none;box-sizing:border-box}
+textarea:focus{border-color:var(--accent,#4a9eff)}
+.algos{display:flex;gap:14px;font-size:12px;color:var(--text-secondary)}
+.algos label{display:flex;align-items:center;gap:4px;cursor:pointer}
+.result{margin-top:auto;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-lg);padding:var(--sp-3);display:flex;flex-direction:column;gap:8px}
+.res-line{display:flex;gap:10px;align-items:center;font-size:12px}
+.res-algo{color:var(--accent,#4a9eff);font-weight:700;width:54px;flex-shrink:0}
+.res-hash{flex:1;font-family:ui-monospace,Consolas,monospace;color:var(--text-primary);word-break:break-all}
+.copy{font-size:11px;color:var(--text-muted);cursor:pointer;flex-shrink:0}
+.copy:hover{color:var(--accent,#4a9eff)}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="row">
+    <div class="seg" id="modeSeg">
+      <button data-mode="file" class="active">文件</button>
+      <button data-mode="text">文本</button>
+    </div>
+    <div id="fileRow" class="row" style="flex:1">
+      <div id="pathBox" class="pathbox">未选择文件</div>
+      <button id="btnPick" class="btn-ghost">选择文件</button>
+    </div>
+  </div>
+  <textarea id="textInput" class="hidden" placeholder="输入要计算哈希的文本…"></textarea>
+  <div class="algos" id="algos">
+    <label><input type="radio" name="algo" value="md5"> MD5</label>
+    <label><input type="radio" name="algo" value="sha1"> SHA1</label>
+    <label><input type="radio" name="algo" value="sha256" checked> SHA256</label>
+    <label><input type="radio" name="algo" value="sha512"> SHA512</label>
+  </div>
+  <div class="row">
+    <button id="btnCalc" class="btn">计算</button>
+    <span id="hint" class="hint"></span>
+  </div>
+  <div id="result" class="result hidden"></div>
+</div>
+<script>
+(function(){
+  'use strict'
+  var mode='file'
+  var filePath=''
+  var modeSeg=document.getElementById('modeSeg')
+  var fileRow=document.getElementById('fileRow')
+  var textInput=document.getElementById('textInput')
+  var pathBox=document.getElementById('pathBox')
+  var result=document.getElementById('result')
+  var hint=document.getElementById('hint')
+
+  function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+  function copyText(t){
+    try{ if(window.host&&window.host.clipboard&&window.host.clipboard.write){return window.host.clipboard.write(t)} }catch(e){}
+    if(navigator.clipboard&&navigator.clipboard.writeText){return navigator.clipboard.writeText(t)}
+    return new Promise(function(res){var ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();try{document.execCommand('copy')}catch(e){}ta.remove();res()})
+  }
+
+  var seq=0, pend={}
+  function send(command,input){
+    return new Promise(function(resolve,reject){
+      var id='hash_'+(++seq)
+      pend[id]={resolve:resolve,reject:reject}
+      parent.postMessage({type:'plugin:execute',id:id,command:command,input:input||{}},'*')
+    })
+  }
+  window.addEventListener('message',function(e){
+    var d=e.data
+    if(!d||d.type!=='plugin:result'||!d.id||!pend[d.id])return
+    var p=pend[d.id];delete pend[d.id]
+    if(d.error)p.reject(new Error(d.error));else p.resolve(d.data)
+  })
+
+  modeSeg.addEventListener('click',function(e){
+    var b=e.target.closest('button');if(!b)return
+    mode=b.getAttribute('data-mode')
+    Array.prototype.forEach.call(modeSeg.children,function(c){c.classList.toggle('active',c===b)})
+    fileRow.classList.toggle('hidden',mode!=='file')
+    textInput.classList.toggle('hidden',mode!=='text')
+  })
+
+  document.getElementById('btnPick').addEventListener('click',function(){
+    hint.textContent='打开文件选择框…'
+    qdPickFile({title:'选择要计算哈希的文件'}).then(function(p){
+      if(!p){hint.textContent='已取消';return}
+      filePath=p;pathBox.textContent=p;hint.textContent=''
+    }).catch(function(e){hint.textContent='选择失败：'+(e&&e.message?e.message:e)})
+  })
+
+  function doCalc(){
+    var algo=document.querySelector('input[name=algo]:checked').value
+    if(mode==='file'&&!filePath){hint.textContent='请先选择文件';return}
+    if(mode==='text'&&!textInput.value){hint.textContent='请输入文本';return}
+    hint.textContent='计算中…'
+    var input={algo:algo,mode:mode}
+    if(mode==='file')input.path=filePath; else input.text=textInput.value
+    send('calc',input).then(function(r){
+      result.classList.remove('hidden')
+      result.innerHTML='<div class="res-line"><span class="res-algo">'+esc(r.algo.toUpperCase())+'</span>'+
+        '<span class="res-hash">'+esc(r.hash)+'</span><span class="copy" data-v="'+esc(r.hash)+'">复制</span></div>'
+      hint.textContent='完成'
+    }).catch(function(e){hint.textContent='计算失败：'+(e&&e.message?e.message:e)})
+  }
+
+  result.addEventListener('click',function(e){
+    if(e.target.classList.contains('copy')){
+      copyText(e.target.getAttribute('data-v')).then(function(){var o=e.target.textContent;e.target.textContent='已复制';setTimeout(function(){e.target.textContent=o},1200)})
+    }
+  })
+  document.getElementById('btnCalc').addEventListener('click',doCalc)
+})()
+</script>
+</body>
+</html>

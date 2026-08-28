@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Git 仓库浏览器</title>
+<link rel="stylesheet" href="qd-theme.css">
+<style>
+.gb-app{display:flex;flex-direction:column;height:100%;padding:var(--sp-4);gap:var(--sp-3);box-sizing:border-box}
+.gb-row{display:flex;gap:var(--sp-2)}
+.gb-input{flex:1;padding:9px 12px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius-md);color:var(--text-primary);font-size:13px;outline:none}
+.gb-input:focus{border-color:var(--accent,#4a9eff)}
+.gb-btn{padding:9px 14px;background:var(--accent,#4a9eff);color:#fff;border:none;border-radius:var(--radius-md);cursor:pointer;font-size:13px;font-weight:600}
+.gb-btn-ghost{padding:9px 14px;background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius-md);cursor:pointer;font-size:13px}
+.gb-hint{font-size:12px;color:var(--text-muted)}
+.gb-body{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:var(--sp-3)}
+.gb-card{background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-lg);padding:var(--sp-3)}
+.gb-card-title{font-size:13px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.gb-badge{font-size:11px;padding:2px 8px;border-radius:var(--radius-pill);background:var(--accent-soft,#1d2b3a);color:var(--accent,#4a9eff);font-weight:600}
+.gb-commit{display:flex;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);align-items:baseline}
+.gb-commit:last-child{border-bottom:none}
+.gb-hash{font-family:ui-monospace,Consolas,monospace;font-size:12px;color:var(--accent,#4a9eff);flex-shrink:0}
+.gb-msg{font-size:12px;color:var(--text-primary);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gb-who{font-size:11px;color:var(--text-muted);flex-shrink:0}
+.gb-file{display:flex;gap:10px;padding:4px 0;font-size:12px}
+.gb-st{font-size:11px;padding:1px 7px;border-radius:var(--radius-pill);flex-shrink:0}
+.st-M{background:var(--warning-soft,#2b241c);color:var(--warning,#ef9f27)}
+.st-A{background:var(--success-soft,#1c2b24);color:var(--success,#34d399)}
+.st-D{background:var(--danger-soft,#2b1c1c);color:var(--danger,#e24b4a)}
+.st-U{background:var(--bg-primary);color:var(--text-muted)}
+.gb-filepath{color:var(--text-secondary);word-break:break-all}
+.gb-branch{display:inline-block;font-family:ui-monospace,Consolas,monospace;font-size:12px;padding:2px 8px;margin:3px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius-pill)}
+.gb-branch.active{background:var(--accent-soft,#1d2b3a);color:var(--accent,#4a9eff);border-color:var(--accent,#4a9eff)}
+</style>
+</head>
+<body>
+<div class="gb-app">
+  <div class="gb-row">
+    <input id="pathInput" class="gb-input" placeholder="本地仓库路径 或 owner/repo（如 D:\project\repo / parieses/quickdock-plugins）" spellcheck="false" autofocus>
+    <button id="btnBrowse" class="gb-btn-ghost">选目录</button>
+    <button id="btnOpen" class="gb-btn">打开</button>
+  </div>
+  <div id="hint" class="gb-hint">本地仓库或 owner/repo 远程仓库：HEAD 分支 · 提交 · 工作区改动 · 分支列表</div>
+  <div id="body" class="gb-body"></div>
+</div>
+<script>
+(function(){
+  'use strict'
+  var pathInput=document.getElementById('pathInput')
+  var hint=document.getElementById('hint')
+  var body=document.getElementById('body')
+
+  function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+
+  var seq=0, pend={}
+  function send(command,input){
+    return new Promise(function(resolve,reject){
+      var id='gb_'+(++seq)
+      pend[id]={resolve:resolve,reject:reject}
+      parent.postMessage({type:'plugin:execute',id:id,command:command,input:input||{}},'*')
+    })
+  }
+  window.addEventListener('message',function(e){
+    var d=e.data
+    if(!d||d.type!=='plugin:result'||!d.id||!pend[d.id])return
+    var p=pend[d.id]; delete pend[d.id]
+    if(d.error)p.reject(new Error(d.error)); else p.resolve(d.data)
+  })
+
+  function waitTask(taskId,timeoutMs){
+    var deadline=Date.now()+(timeoutMs||30000)
+    return new Promise(function(resolve,reject){
+      (function poll(){
+        send('task-status',{taskId:taskId}).then(function(r){
+          if(r.status==='done'){ resolve(r.result); return }
+          if(r.status==='error'){ reject(new Error(r.error||'操作失败')); return }
+          if(r.status==='missing'){ reject(new Error('任务已过期')); return }
+          if(Date.now()>deadline){ reject(new Error('超时')); return }
+          setTimeout(poll,300)
+        }).catch(reject)
+      })()
+    })
+  }
+
+  function stClass(s){
+    if(s==='已修改')return 'st-M'
+    if(s==='新增')return 'st-A'
+    if(s==='已删除')return 'st-D'
+    return 'st-U'
+  }
+
+  function render(r){
+    var html=''
+    if(r.remote){
+      // 远程公开仓库：描述 + star + 分支 + 提交 + 分支列表
+      html+='<div class="gb-card"><div class="gb-card-title">远程仓库 <span class="gb-badge">'+esc(r.repo||'')+'</span>'+
+        (r.stars?' <span style="font-size:11px;color:var(--text-muted);font-weight:400">★ '+r.stars+'</span>':'')+'</div>'+
+        (r.desc?'<div style="font-size:12px;color:var(--text-secondary)">'+esc(r.desc)+'</div>':'')+
+        '<div style="font-size:12px;color:var(--text-muted)">默认分支 '+(r.branch||'?')+'</div></div>'
+    }else{
+      html+='<div class="gb-card"><div class="gb-card-title">HEAD 分支 <span class="gb-badge">'+(r.branch||'?')+'</span> <span style="font-size:11px;color:var(--text-muted);font-weight:400">'+(r.headHash||'')+'</span></div></div>'
+    }
+
+    var cs=r.commits||[]
+    html+='<div class="gb-card"><div class="gb-card-title">最近提交（'+cs.length+'）</div>'
+    if(cs.length){
+      cs.forEach(function(c){
+        html+='<div class="gb-commit"><span class="gb-hash">'+esc(c.hash)+'</span><span class="gb-msg" title="'+esc(c.message)+'">'+esc(c.message)+'</span><span class="gb-who">'+esc(c.author)+' · '+esc(c.time)+'</span></div>'
+      })
+    }else{ html+='<div style="font-size:12px;color:var(--text-muted)">无提交记录</div>' }
+    html+='</div>'
+
+    if(!r.remote){
+      var st=r.status||[]
+      html+='<div class="gb-card"><div class="gb-card-title">工作区改动（'+st.length+'）</div>'
+      if(st.length){
+        st.forEach(function(f){
+          html+='<div class="gb-file"><span class="gb-st '+stClass(f.status)+'">'+esc(f.status)+'</span><span class="gb-filepath">'+esc(f.file)+'</span></div>'
+        })
+      }else{ html+='<div style="font-size:12px;color:var(--text-muted)">工作区干净</div>' }
+      html+='</div>'
+    }
+
+    var bs=r.branches||[]
+    html+='<div class="gb-card"><div class="gb-card-title">'+(r.remote?'分支':'本地分支')+'（'+bs.length+'）</div><div>'
+    bs.forEach(function(b){
+      html+='<span class="gb-branch'+(b===r.branch?' active':'')+'">'+esc(b)+'</span>'
+    })
+    html+='</div></div>'
+
+    body.innerHTML=html
+  }
+
+  function isRemote(p){
+    return p.indexOf('/')>0 && p.indexOf('\\')<0 && !/^[A-Za-z]:/.test(p)
+  }
+
+  function doOpen(){
+    var p=pathInput.value.trim()
+    if(!p){ hint.textContent='请输入本地路径或 owner/repo'; return }
+    var remote=isRemote(p)
+    hint.textContent=(remote?'正在查询远程仓库 ':'正在打开 ')+p+' …'
+    var cmd=remote?{command:'remote',input:{repo:p}}:{command:'open',input:{path:p}}
+    send(cmd.command,cmd.input).then(function(r){
+      render(r)
+      var extra=r.remote?(r.stars?' · ★ '+r.stars:''):(' · '+((r.status||[]).length)+' 个改动')
+      hint.textContent='已打开：'+(r.branch||'?')+' · '+((r.commits||[]).length)+' 条提交'+extra
+    }).catch(function(e){
+      hint.textContent='打开失败：'+(e&&e.message?e.message:e)
+      body.innerHTML=''
+    })
+  }
+
+  document.getElementById('btnOpen').addEventListener('click',doOpen)
+  pathInput.addEventListener('keydown',function(e){ if(e.key==='Enter')doOpen() })
+
+  document.getElementById('btnBrowse').addEventListener('click',function(){
+    hint.textContent='正在打开目录选择框…'
+    qdPickFolder({title:'选择 Git 仓库目录'}).then(function(p){
+      if(!p){ hint.textContent='已取消选择'; return }
+      pathInput.value=p
+      doOpen()
+    }).catch(function(e){
+      hint.textContent='选择目录失败：'+(e&&e.message?e.message:e)
+    })
+  })
+
+  // 命令面板传入路径自动打开
+  window.addEventListener('message',function(e){
+    var d=e.data
+    if(d&&d.type==='plugin:init'&&d.data&&d.data.text){
+      var t=d.data.text.trim()
+      if(t){ pathInput.value=t; doOpen() }
+    }
+  })
+})()
+</script>
+</body>
+</html>

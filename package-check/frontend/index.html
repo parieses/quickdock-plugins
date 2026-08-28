@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>包版本速查</title>
+<link rel="stylesheet" href="qd-theme.css">
+<script>
+/* QuickDock sandbox 剪贴板桥接：iframe 内 navigator.clipboard 被 Permissions-Policy 禁用 */
+window.__cpSeq=0;
+window.execCopyFallback=function(t){try{var a=document.createElement("textarea");a.value=t;a.style.position="fixed";a.style.opacity="0";a.style.top="0";document.body.appendChild(a);a.select();var ok=document.execCommand("copy");document.body.removeChild(a);return ok}catch(e){return false}};
+window.copyViaHost=function(t,cb){var id="cp_"+(++window.__cpSeq),done=false;function onMsg(e){var d=e&&e.data;if(d&&d.type==="plugin:copy-result"&&d.id===id){done=true;window.removeEventListener("message",onMsg);cb&&cb(!!d.ok)}}window.addEventListener("message",onMsg);parent.postMessage({type:"plugin:copy",id:id,text:t},"*");setTimeout(function(){if(!done){window.removeEventListener("message",onMsg);cb&&cb(window.execCopyFallback(t))}},300)};
+</script>
+<style>
+.pc-app{display:flex;flex-direction:column;height:100%;padding:var(--sp-4);gap:var(--sp-3);box-sizing:border-box}
+.pc-row{display:flex;gap:var(--sp-2)}
+.pc-input{flex:1;padding:9px 12px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius-md);color:var(--text-primary);font-size:13px;outline:none}
+.pc-input:focus{border-color:var(--accent,#4a9eff)}
+.pc-btn{padding:9px 16px;background:var(--accent,#4a9eff);color:#fff;border:none;border-radius:var(--radius-md);cursor:pointer;font-size:13px;font-weight:600}
+.pc-btn:disabled{opacity:.5;cursor:not-allowed}
+.pc-hint{font-size:12px;color:var(--text-muted)}
+.pc-cards{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-3);overflow-y:auto}
+.pc-card{background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-lg);padding:var(--sp-3);display:flex;flex-direction:column;gap:6px}
+.pc-card-head{display:flex;align-items:center;justify-content:space-between}
+.pc-name{font-weight:700;font-size:14px}
+.pc-badge{font-size:11px;padding:2px 8px;border-radius:var(--radius-pill);font-weight:600}
+.b-found{background:var(--success-soft,#1c2b24);color:var(--success,#34d399)}
+.b-missing{background:var(--danger-soft,#2b1c1c);color:var(--danger,#e24b4a)}
+.pc-ver{font-family:ui-monospace,Consolas,monospace;font-size:14px;color:var(--accent,#4a9eff);font-weight:700}
+.pc-desc{font-size:12px;color:var(--text-secondary);line-height:1.5}
+.pc-meta{font-size:11px;color:var(--text-muted);display:flex;gap:10px;flex-wrap:wrap}
+.pc-copy{font-size:11px;color:var(--accent,#4a9eff);cursor:pointer;background:none;border:none;padding:0}
+.pc-copy:hover{text-decoration:underline}
+@media(max-width:520px){.pc-cards{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="pc-app">
+  <div class="pc-row">
+    <input id="pkgInput" class="pc-input" placeholder="输入包名，如 express / requests / monolog/monolog / github.com/gin-gonic/gin" spellcheck="false" autofocus>
+    <button id="btnQuery" class="pc-btn">查询</button>
+  </div>
+  <div id="hint" class="pc-hint">同时查询 npm / PyPI / Composer / Go 四个仓库（Composer 需 vendor/package 形式）</div>
+  <div id="cards" class="pc-cards"></div>
+</div>
+<script>
+(function(){
+  'use strict'
+  var input=document.getElementById('pkgInput')
+  var btn=document.getElementById('btnQuery')
+  var hint=document.getElementById('hint')
+  var cards=document.getElementById('cards')
+
+  function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+  function fmtDownloads(n){
+    if(!n)return ''
+    if(n>=1e6)return (n/1e6).toFixed(1)+'M/周'
+    if(n>=1e3)return (n/1e3).toFixed(1)+'k/周'
+    return n+'/周'
+  }
+  var ORDER=[['npm','NPM'],['pypi','PyPI'],['composer','Composer'],['go','Go']]
+  var lastRes={}
+
+  function render(res){
+    cards.innerHTML=''
+    ORDER.forEach(function(pair){
+      var kind=pair[0], label=pair[1]
+      var info=res[kind]||{found:false}
+      var card=document.createElement('div'); card.className='pc-card'
+      var head='<div class="pc-card-head"><span class="pc-name">'+label+'</span>'+
+        (info.found?'<span class="pc-badge b-found">已发布</span>':'<span class="pc-badge b-missing">未找到</span>')+
+        '</div>'
+      if(info.found){
+        var meta=[]
+        if(info.latest) meta.push('最新 <span class="pc-ver">'+esc(info.latest)+'</span>')
+        if(info.license) meta.push('许可证 '+esc(info.license))
+        if(kind==='npm'&&info.downloads) meta.push(fmtDownloads(info.downloads))
+        if(info.modified) meta.push('更新 '+esc(String(info.modified).slice(0,10)))
+        card.innerHTML=head+
+          '<div class="pc-desc">'+(info.desc?esc(info.desc):'（无描述）')+'</div>'+
+          '<div class="pc-meta">'+meta.join(' · ')+'</div>'+
+          (info.latest?'<div><button class="pc-copy" data-ver="'+escAttr(info.latest)+'">复制版本</button></div>':'')
+      }else{
+        card.innerHTML=head+'<div class="pc-desc" style="color:var(--text-muted)">该仓库中未找到此包</div>'
+      }
+      cards.appendChild(card)
+    })
+    // 复制版本
+    cards.querySelectorAll('.pc-copy').forEach(function(b){
+      b.addEventListener('click',function(){
+        window.copyViaHost(b.getAttribute('data-ver'),function(ok){
+          b.textContent=ok?'✓ 已复制':'复制失败'
+          setTimeout(function(){b.textContent='复制版本'},1500)
+        })
+      })
+    })
+  }
+
+  function doQuery(){
+    var name=input.value.trim()
+    if(!name){ hint.textContent='请输入包名'; return }
+    btn.disabled=true; btn.textContent='查询中…'
+    hint.textContent='正在查询 '+name+' …'
+    send('query',{name:name}).then(function(res){
+      lastRes=res
+      render(res)
+      btn.disabled=false; btn.textContent='查询'
+      var found=ORDER.filter(function(p){return res[p[0]]&&res[p[0]].found}).map(function(p){return p[1]})
+      hint.textContent=found.length?'命中 '+found.join(' / '):'四个仓库均未找到该包'
+    }).catch(function(err){
+      hint.textContent='查询失败：'+(err&&err.message?err.message:err)
+      btn.disabled=false; btn.textContent='查询'
+    })
+  }
+
+  function send(command,params){
+    return new Promise(function(resolve,reject){
+      var id='pc_'+(++seq)
+      function onMsg(e){
+        var d=e&&e.data
+        if(d&&d.type==='plugin:result'&&d.id===id){
+          window.removeEventListener('message',onMsg)
+          if(d.error)reject(new Error(d.error)); else resolve(d.data)
+        }
+      }
+      window.addEventListener('message',onMsg)
+      parent.postMessage({type:'plugin:execute',id:id,command:command,input:params},'*')
+    })
+  }
+  var seq=0
+
+  btn.addEventListener('click',doQuery)
+  input.addEventListener('keydown',function(e){ if(e.key==='Enter')doQuery() })
+
+  function escAttr(s){return esc(s).replace(/'/g,'&#39;')}
+
+  // 命令面板传入包名自动查询
+  window.addEventListener('message',function(e){
+    var d=e.data
+    if(d&&d.type==='plugin:init'&&d.data&&d.data.text){
+      var t=d.data.text.trim()
+      if(t){ input.value=t; doQuery() }
+    }
+  })
+})()
+</script>
+</body>
+</html>

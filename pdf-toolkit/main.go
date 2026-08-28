@@ -272,8 +272,6 @@ func handleExecute(req rpcRequest) {
 		handleClipboard(req.ID, params.Input)
 	case "open-folder", "打开目录":
 		handleOpenFolder(req.ID, params.Input)
-	case "pickfolder", "选择目录", "选择文件夹":
-		handlePickFolder(req.ID, params.Input)
 	case "task-status", "任务状态":
 		handleTaskStatus(req.ID, params.Input)
 	default:
@@ -539,26 +537,6 @@ func handleOpenFolder(id int64, input map[string]interface{}) {
 	respond(id, map[string]interface{}{"ok": true})
 }
 
-// handlePickFolder 弹出目录选择对话框，返回选中的目录路径。
-// 与 host.dialog.open（文件选择）区分：本命令专用于「选择目录」。
-//
-// ⚠️ 必须走异步任务模式：对话框是模态阻塞的（用户挑目录可能耗时数分钟），
-// 若在主循环同步等待，宿主健康检查 ping 连续 3 轮（约 90s）超时，
-// 插件会被标记 unresponsive 并强杀重启——表现为"选着选着目录框自己消失了"。
-func handlePickFolder(id int64, input map[string]interface{}) {
-	title := strFrom(input, "title", "选择输出目录")
-	t := startPDFTask()
-	go func() {
-		path, canceled := pickFolderDialog(title)
-		if canceled {
-			finishPDFTask(t, map[string]interface{}{"canceled": true}, nil)
-			return
-		}
-		finishPDFTask(t, map[string]interface{}{"canceled": false, "path": path}, nil)
-	}()
-	respond(id, map[string]interface{}{"ok": true, "async": true, "taskId": t.ID})
-}
-
 // handleTaskStatus 查询后台任务状态（前端轮询用）。
 func handleTaskStatus(id int64, input map[string]interface{}) {
 	taskID := strFrom(input, "taskId")
@@ -586,111 +564,6 @@ func handleTaskStatus(id int64, input map[string]interface{}) {
 	respond(id, resp)
 }
 
-// pickFolderDialog 按平台弹出目录选择框。
-func pickFolderDialog(title string) (string, bool) {
-	switch gOS {
-	case "windows":
-		return pickFolderWindows(title)
-	case "darwin":
-		return pickFolderDarwin(title)
-	default:
-		return pickFolderLinux(title)
-	}
-}
-
-// pickFolderWindows 使用 .NET FolderBrowserDialog（PowerShell 调用）。
-// 关掉目录框后通过 user32 把焦点还给之前的顶层窗口（QuickDock），避免选完目录后窗口被甩到后台。
-//
-// ⚠️ PowerShell 会把所有未被丢弃的表达式输出到 stdout：user32 的 ShowWindow/
-// SetForegroundWindow 都返回 bool，若不 [void] 丢弃，会各打一行 "True" 混进
-// 输出，把 SelectedPath 污染成 "True\nTrue\nD:\..."（2026-08-24 线上 merge bug 根因）。
-// Go 侧另以 lastLineOf + 目录存在性校验做双保险。
-func pickFolderWindows(title string) (string, bool) {
-	safe := strings.ReplaceAll(title, "'", "''")
-	script := fmt.Sprintf(`
-Add-Type -AssemblyName System.Windows.Forms
-Add-Type @"
-using System;
-using System.Runtime.InteropServices;
-public class QDWinApi {
-  [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
-  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
-  [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
-}
-"@
-$prev = [QDWinApi]::GetForegroundWindow()
-$d = New-Object System.Windows.Forms.FolderBrowserDialog
-$d.Description = '%s'
-$result = ''
-if ($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { $result = $d.SelectedPath }
-if ($prev -ne [IntPtr]::Zero) {
-  [void][QDWinApi]::ShowWindow($prev, 9)
-  [void][QDWinApi]::SetForegroundWindow($prev)
-}
-if ($result -ne '') { $result }
-`, safe)
-	out, err := exec.Command("powershell", "-NoProfile", "-Command", script).Output()
-	if err != nil {
-		return "", true
-	}
-	path := lastLineOf(out)
-	if path == "" {
-		return "", true
-	}
-	// 防御：结果必须是真实存在的目录；否则一律按取消处理，
-	// 杜绝 "True\nTrue" 之类的残留输出被当成路径传给后续 pdfcpu 命令。
-	if st, err := os.Stat(path); err != nil || !st.IsDir() {
-		return "", true
-	}
-	return path, false
-}
-
-// pickFolderDarwin 使用 AppleScript 的 choose folder。
-func pickFolderDarwin(title string) (string, bool) {
-	script := fmt.Sprintf(
-		`tell application "System Events"`+"\n"+
-			`activate`+"\n"+
-			`set theFolder to choose folder with prompt "%s"`+"\n"+
-			`POSIX path of theFolder`+"\n"+
-			`end tell`,
-		strings.ReplaceAll(title, `"`, `\"`),
-	)
-	out, err := exec.Command("osascript", "-e", script).Output()
-	if err != nil {
-		return "", true
-	}
-	path := lastLineOf(out)
-	if path == "" {
-		return "", true
-	}
-	return path, false
-}
-
-// pickFolderLinux 使用 zenity 目录选择。
-func pickFolderLinux(title string) (string, bool) {
-	out, err := exec.Command("zenity", "--file-selection", "--directory", "--title="+title).Output()
-	if err != nil {
-		return "", true
-	}
-	path := lastLineOf(out)
-	if path == "" {
-		return "", true
-	}
-	return path, false
-}
-
-// lastLineOf 取命令输出中最后一个非空行。外部进程的 stdout 可能混入
-// 未丢弃的调用返回值（如 PowerShell 吐 user32 bool 的 "True" 行），
-// 而真正的结果（选中的路径）总是最后一行——只取它，防止路径被污染。
-func lastLineOf(out []byte) string {
-	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
-	for i := len(lines) - 1; i >= 0; i-- {
-		if s := strings.TrimSpace(lines[i]); s != "" {
-			return s
-		}
-	}
-	return ""
-}
 
 // ---- PDF 操作实现 ----
 

@@ -1,0 +1,61 @@
+{
+  "id": "io.github.parieses.hash-calc",
+  "name": "文件哈希",
+  "version": "0.1.0",
+  "description": "计算文件或文本的 MD5/SHA1/SHA256/SHA512 摘要，结果一键复制",
+  "author": "QuickDock",
+  "category": "开发者日常",
+  "platforms": [
+    "windows"
+  ],
+  "icon": "icon.svg",
+  "backend": {
+    "runtime": "native",
+    "entry": "hash-calc",
+    "args": []
+  },
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 640,
+    "height": 560
+  },
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "permissions": {
+    "filesystem": true
+  },
+  "commands": [
+    {
+      "id": "hash-calc",
+      "title": "文件哈希",
+      "keywords": [
+        "hash",
+        "md5",
+        "sha256",
+        "sha1",
+        "摘要",
+        "校验"
+      ],
+      "aliases": [
+        "哈希计算",
+        "文件校验",
+        "计算摘要"
+      ],
+      "title_i18n": {
+        "zh-CN": "文件哈希",
+        "en-US": "File Hash"
+      }
+    }
+  ],
+  "name_i18n": {
+    "zh-CN": "文件哈希",
+    "en-US": "File Hash"
+  },
+  "description_i18n": {
+    "zh-CN": "计算文件或文本的 MD5/SHA1/SHA256/SHA512 摘要，结果一键复制",
+    "en-US": "Compute MD5/SHA1/SHA256/SHA512 digest of a file or text, with one-click copy."
+  }
+}

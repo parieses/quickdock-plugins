@@ -1,0 +1,60 @@
+{
+  "id": "io.github.parieses.dup-finder",
+  "name": "重复文件查找",
+  "version": "0.1.2",
+  "description": "选择目录后按内容哈希查找重复文件，分组展示并支持一键删除冗余副本",
+  "author": "QuickDock",
+  "category": "文件工具",
+  "platforms": [
+    "windows"
+  ],
+  "icon": "icon.svg",
+  "backend": {
+    "runtime": "native",
+    "entry": "dup-finder",
+    "args": []
+  },
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 760,
+    "height": 640
+  },
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "permissions": {
+    "filesystem": true
+  },
+  "commands": [
+    {
+      "id": "dup-find",
+      "title": "重复文件查找",
+      "keywords": [
+        "dup",
+        "duplicate",
+        "重复",
+        "查找",
+        "相同文件"
+      ],
+      "aliases": [
+        "找重复",
+        "重复文件",
+        "文件去重"
+      ],
+      "title_i18n": {
+        "zh-CN": "重复文件查找",
+        "en-US": "Duplicate File Finder"
+      }
+    }
+  ],
+  "name_i18n": {
+    "zh-CN": "重复文件查找",
+    "en-US": "Duplicate File Finder"
+  },
+  "description_i18n": {
+    "zh-CN": "选择目录后按内容哈希查找重复文件，分组展示并支持一键删除冗余副本",
+    "en-US": "Find duplicate files by content hash in a chosen folder, grouped view with one-click redundant copy deletion."
+  }
+}

@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>图片工坊</title>
+<link rel="stylesheet" href="qd-theme.css">
+<script>
+/* QuickDock sandbox 剪贴板桥接 */
+window.__cpSeq=0;
+window.execCopyFallback=function(t){try{var a=document.createElement("textarea");a.value=t;a.style.position="fixed";a.style.opacity="0";a.style.top="0";document.body.appendChild(a);a.select();var ok=document.execCommand("copy");document.body.removeChild(a);return ok}catch(e){return false}};
+window.copyViaHost=function(t,cb){var id="cp_"+(++window.__cpSeq),done=false;function onMsg(e){var d=e&&e.data;if(d&&d.type==="plugin:copy-result"&&d.id===id){done=true;window.removeEventListener("message",onMsg);cb&&cb(!!d.ok)}}window.addEventListener("message",onMsg);parent.postMessage({type:"plugin:copy",id:id,text:t},"*");setTimeout(function(){if(!done){window.removeEventListener("message",onMsg);cb&&cb(window.execCopyFallback(t))}},300)};
+</script>
+<style>
+.is-app{display:flex;flex-direction:column;height:100%;padding:var(--sp-3);gap:var(--sp-3);box-sizing:border-box;overflow-y:auto}
+.is-top{display:flex;gap:var(--sp-2);align-items:center}
+.is-btn{padding:8px 14px;background:var(--accent,#4a9eff);color:#fff;border:none;border-radius:var(--radius-md);cursor:pointer;font-size:13px;font-weight:600;flex-shrink:0}
+.is-btn:disabled{opacity:.5;cursor:not-allowed}
+.is-btn-sm{padding:6px 10px;background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius-md);cursor:pointer;font-size:12px}
+.is-btn-sm.on{background:var(--accent-soft,#1d2b3a);color:var(--accent,#4a9eff);border-color:var(--accent,#4a9eff)}
+.is-path{flex:1;font-size:12px;color:var(--text-muted);word-break:break-all;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.is-compare{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2)}
+.is-pane{background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-lg);padding:var(--sp-2);display:flex;flex-direction:column;gap:6px;align-items:center;min-height:200px}
+.is-pane img{max-width:100%;max-height:300px;border-radius:var(--radius-md);object-fit:contain}
+.is-label{font-size:12px;font-weight:600;color:var(--text-secondary)}
+.is-meta{font-size:11px;color:var(--text-muted);text-align:center}
+.is-delta{font-size:12px;font-weight:700;color:var(--success,#34d399)}
+.is-panel{display:flex;flex-direction:column;gap:var(--sp-2)}
+.is-group{display:flex;flex-direction:column;gap:6px;padding:var(--sp-2);background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-lg)}
+.is-group-title{font-size:12px;font-weight:700;color:var(--text-secondary);display:flex;align-items:center;gap:8px}
+.is-row{display:flex;gap:var(--sp-2);align-items:center;flex-wrap:wrap}
+.is-field{display:flex;flex-direction:column;gap:3px}
+.is-field label{font-size:11px;color:var(--text-muted)}
+.is-field input[type=number]{width:80px;padding:6px 8px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius-md);color:var(--text-primary);font-size:12px;outline:none}
+.is-select{padding:6px 8px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius-md);color:var(--text-primary);font-size:12px;outline:none}
+.is-slider{display:flex;align-items:center;gap:8px;flex:1}
+.is-slider input[type=range]{flex:1}
+.is-slider .v{font-size:11px;color:var(--text-muted);min-width:32px;text-align:right;font-family:ui-monospace,monospace}
+.is-hint{font-size:12px;color:var(--text-muted)}
+.is-out{font-size:12px;color:var(--success,#34d399);word-break:break-all}
+.is-copy{font-size:11px;color:var(--accent,#4a9eff);cursor:pointer;background:none;border:none;padding:0}
+.is-copy:hover{text-decoration:underline}
+.is-check{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text-muted)}
+@media(max-width:600px){.is-compare{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="is-app">
+  <div class="is-top">
+    <button id="btnPick" class="is-btn">选择图片</button>
+    <span id="path" class="is-path">未选择图片（支持 PNG/JPG/GIF/WebP/BMP）</span>
+  </div>
+
+  <div id="compare" class="is-compare" style="display:none">
+    <div class="is-pane">
+      <span class="is-label">原图</span>
+      <img id="srcImg" alt="原图">
+      <span id="srcMeta" class="is-meta"></span>
+    </div>
+    <div class="is-pane">
+      <span class="is-label">处理后</span>
+      <img id="outImg" alt="处理后">
+      <span id="outMeta" class="is-meta"></span>
+      <span id="outDelta" class="is-delta"></span>
+    </div>
+  </div>
+
+  <div id="panel" class="is-panel" style="display:none">
+    <div class="is-group">
+      <div class="is-group-title">输出格式与质量</div>
+      <div class="is-row">
+        <select id="format" class="is-select">
+          <option value="jpeg">JPEG</option>
+          <option value="png">PNG</option>
+        </select>
+        <div class="is-slider" id="qualityWrap">
+          <label style="font-size:11px;color:var(--text-muted)">质量</label>
+          <input id="quality" type="range" min="1" max="100" value="80">
+          <span id="qualityVal" class="v">80</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="is-group">
+      <div class="is-group-title">调整大小 <label class="is-check"><input type="checkbox" id="lockRatio" checked> 锁定比例</label></div>
+      <div class="is-row">
+        <div class="is-field"><label>宽度 px</label><input id="width" type="number" placeholder="自动"></div>
+        <div class="is-field"><label>高度 px</label><input id="height" type="number" placeholder="自动"></div>
+        <div class="is-field"><label>百分比</label><input id="percent" type="number" placeholder="如 50"></div>
+        <span style="display:flex;gap:4px">
+          <button class="is-btn-sm" data-pct="50">50%</button>
+          <button class="is-btn-sm" data-pct="25">25%</button>
+          <button class="is-btn-sm" data-pct="10">10%</button>
+        </span>
+      </div>
+    </div>
+
+    <div class="is-group">
+      <div class="is-group-title">旋转与翻转</div>
+      <div class="is-row">
+        <button class="is-btn-sm" id="rotL">↺ 左转90°</button>
+        <button class="is-btn-sm" id="rotR">↻ 右转90°</button>
+        <button class="is-btn-sm" id="rot180">180°</button>
+        <button class="is-btn-sm" id="flipH">⇋ 水平翻转</button>
+        <button class="is-btn-sm" id="flipV">⇵ 垂直翻转</button>
+        <button class="is-btn-sm" id="reset">重置</button>
+      </div>
+    </div>
+
+    <div class="is-group">
+      <div class="is-group-title">调整</div>
+      <div class="is-slider"><label style="font-size:11px;color:var(--text-muted)">亮度</label><input id="brightness" type="range" min="-100" max="100" value="0"><span id="brightnessVal" class="v">0</span></div>
+      <div class="is-slider"><label style="font-size:11px;color:var(--text-muted)">对比度</label><input id="contrast" type="range" min="-100" max="100" value="0"><span id="contrastVal" class="v">0</span></div>
+      <div class="is-slider"><label style="font-size:11px;color:var(--text-muted)">饱和度</label><input id="saturation" type="range" min="-100" max="100" value="0"><span id="saturationVal" class="v">0</span></div>
+    </div>
+  </div>
+
+  <div class="is-top">
+    <button id="btnSave" class="is-btn" style="display:none">保存</button>
+    <span id="hint" class="is-hint"></span>
+  </div>
+  <div id="outLine" style="display:none">
+    <span id="outPath" class="is-out"></span>
+    <button id="btnCopyPath" class="is-copy">复制路径</button>
+  </div>
+</div>
+<script>
+(function(){
+  'use strict'
+  var el=function(id){return document.getElementById(id)}
+
+  function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+  function fmtSize(n){ if(!n)return '0 B'; if(n>=1048576)return (n/1048576).toFixed(2)+' MB'; if(n>=1024)return (n/1024).toFixed(1)+' KB'; return n+' B' }
+
+  var seq=0, pend={}
+  function send(command,input){
+    return new Promise(function(resolve,reject){
+      var id='is_'+(++seq)
+      pend[id]={resolve:resolve,reject:reject}
+      parent.postMessage({type:'plugin:execute',id:id,command:command,input:input||{}},'*')
+    })
+  }
+  window.addEventListener('message',function(e){
+    var d=e.data
+    if(!d||d.type!=='plugin:result'||!d.id||!pend[d.id])return
+    var p=pend[d.id]; delete pend[d.id]
+    if(d.error)p.reject(new Error(d.error)); else p.resolve(d.data)
+  })
+
+  var state={path:'',srcW:0,srcH:0,srcSize:0,format:'jpeg',quality:80,width:0,height:0,percent:0,rotate:0,flipH:false,flipV:false,brightness:0,contrast:0,saturation:0}
+  var timer=null
+
+  function params(save){
+    return {
+      path:state.path, format:state.format, quality:state.quality,
+      width:state.width, height:state.height, percent:state.percent,
+      rotate:state.rotate, flipH:state.flipH, flipV:state.flipV,
+      brightness:state.brightness, contrast:state.contrast, saturation:state.saturation,
+      save:save
+    }
+  }
+
+  function refresh(immediate){
+    if(!state.path)return
+    clearTimeout(timer)
+    timer=setTimeout(function(){ processPreview() }, immediate?0:300)
+  }
+
+  function processPreview(){
+    send('process',params(false)).then(function(r){
+      el('outImg').src=r.preview
+      el('outMeta').textContent=(r.outFormat||'').toUpperCase()+' · '+r.width+'×'+r.height+' · '+fmtSize(r.size)
+      var delta=state.srcSize>0?(1-r.size/state.srcSize)*100:0
+      el('outDelta').textContent=delta>0?('压缩 '+delta.toFixed(0)+'%'):''
+    }).catch(function(e){
+      el('hint').textContent='处理失败：'+(e&&e.message?e.message:e)
+    })
+  }
+
+  // 选择图片
+  el('btnPick').addEventListener('click',function(){
+    if(!window.qdPickFile){ el('hint').textContent='当前宿主不支持原生选文件'; return }
+    window.qdPickFile({title:'选择图片',filter:'图片',pattern:'*.png;*.jpg;*.jpeg;*.gif;*.webp;*.bmp'}).then(function(p){
+      if(!p)return
+      state.path=p
+      el('path').textContent=p
+      send('preview',{path:p}).then(function(r){
+        state.srcW=r.width; state.srcH=r.height; state.srcSize=r.size
+        state.width=0; state.height=0; state.percent=0; state.rotate=0; state.flipH=false; state.flipV=false
+        state.brightness=0; state.contrast=0; state.saturation=0
+        el('srcImg').src=r.preview
+        el('srcMeta').textContent=(r.format||'').toUpperCase()+' · '+r.width+'×'+r.height+' · '+fmtSize(r.size)
+        el('compare').style.display='grid'
+        el('panel').style.display='flex'
+        el('btnSave').style.display=''
+        el('outLine').style.display='none'
+        syncControls()
+        refresh(true)
+      }).catch(function(e){ el('hint').textContent='读取失败：'+e.message })
+    })
+  })
+
+  // 参数联动
+  el('format').addEventListener('change',function(){ state.format=this.value; el('qualityWrap').style.display=this.value==='jpeg'?'':'none'; refresh() })
+  el('quality').addEventListener('input',function(){ state.quality=+this.value; el('qualityVal').textContent=this.value; refresh() })
+  el('width').addEventListener('input',function(){ var v=+this.value||0; state.width=v; if(v&&el('lockRatio').checked&&state.srcW)state.height=Math.round(v/state.srcW*state.srcH),el('height').value=state.height; refresh() })
+  el('height').addEventListener('input',function(){ var v=+this.value||0; state.height=v; if(v&&el('lockRatio').checked&&state.srcH)state.width=Math.round(v/state.srcH*state.srcW),el('width').value=state.width; refresh() })
+  el('percent').addEventListener('input',function(){ state.percent=+this.value||0; refresh() })
+  document.querySelectorAll('[data-pct]').forEach(function(b){ b.addEventListener('click',function(){ state.percent=+b.getAttribute('data-pct'); state.width=0; state.height=0; el('percent').value=state.percent; el('width').value=''; el('height').value=''; refresh() }) })
+  el('rotL').addEventListener('click',function(){ state.rotate=(state.rotate+90)%360; refresh() })
+  el('rotR').addEventListener('click',function(){ state.rotate=(state.rotate+270)%360; refresh() })
+  el('rot180').addEventListener('click',function(){ state.rotate=(state.rotate+180)%360; refresh() })
+  el('flipH').addEventListener('click',function(){ state.flipH=!state.flipH; this.classList.toggle('on',state.flipH); refresh() })
+  el('flipV').addEventListener('click',function(){ state.flipV=!state.flipV; this.classList.toggle('on',state.flipV); refresh() })
+  el('brightness').addEventListener('input',function(){ state.brightness=+this.value; el('brightnessVal').textContent=this.value; refresh() })
+  el('contrast').addEventListener('input',function(){ state.contrast=+this.value; el('contrastVal').textContent=this.value; refresh() })
+  el('saturation').addEventListener('input',function(){ state.saturation=+this.value; el('saturationVal').textContent=this.value; refresh() })
+
+  el('reset').addEventListener('click',function(){
+    state.width=0; state.height=0; state.percent=0; state.rotate=0; state.flipH=false; state.flipV=false
+    state.brightness=0; state.contrast=0; state.saturation=0; state.quality=80
+    syncControls(); refresh()
+  })
+
+  function syncControls(){
+    el('width').value=''; el('height').value=''; el('percent').value=''
+    el('quality').value=state.quality; el('qualityVal').textContent=state.quality
+    el('brightness').value=0; el('brightnessVal').textContent=0
+    el('contrast').value=0; el('contrastVal').textContent=0
+    el('saturation').value=0; el('saturationVal').textContent=0
+    el('flipH').classList.remove('on'); el('flipV').classList.remove('on')
+  }
+
+  // 保存
+  el('btnSave').addEventListener('click',function(){
+    if(!state.path)return
+    el('btnSave').disabled=true
+    send('process',params(true)).then(function(r){
+      el('btnSave').disabled=false
+      el('outPath').textContent='已保存到：'+r.outPath
+      el('outLine').style.display=''
+      el('hint').textContent=''
+    }).catch(function(e){
+      el('btnSave').disabled=false
+      el('hint').textContent='保存失败：'+(e&&e.message?e.message:e)
+    })
+  })
+
+  el('btnCopyPath').addEventListener('click',function(){
+    var t=el('outPath').textContent.replace('已保存到：','')
+    window.copyViaHost(t,function(ok){ el('hint').textContent=ok?'已复制路径':'复制失败' })
+  })
+})()
+</script>
+</body>
+</html>

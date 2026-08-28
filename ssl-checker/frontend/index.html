@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SSL 证书检查</title>
+<link rel="stylesheet" href="qd-theme.css">
+<style>
+.app{display:flex;flex-direction:column;height:100%;padding:var(--sp-4);gap:var(--sp-3);box-sizing:border-box}
+.row{display:flex;gap:var(--sp-2)}
+.input{flex:1;padding:9px 12px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius-md);color:var(--text-primary);font-size:13px;outline:none}
+.input:focus{border-color:var(--accent,#4a9eff)}
+.input.sm{width:90px;flex:none}
+.btn{padding:9px 16px;background:var(--accent,#4a9eff);color:#fff;border:none;border-radius:var(--radius-md);cursor:pointer;font-size:13px;font-weight:600}
+.hint{font-size:12px;color:var(--text-muted);min-height:16px}
+.card{background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-lg);padding:var(--sp-3);flex:1;overflow-y:auto}
+.item{display:flex;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px}
+.item:last-child{border-bottom:none}
+.k{width:110px;flex-shrink:0;color:var(--text-muted)}
+.v{color:var(--text-primary);word-break:break-all;flex:1;font-family:ui-monospace,Consolas,monospace}
+.badge{font-size:11px;padding:2px 8px;border-radius:var(--radius-pill);font-weight:600}
+.ok{background:var(--success-soft,#1c2b24);color:var(--success,#34d399)}
+.warn{background:var(--warning-soft,#2b241c);color:var(--warning,#ef9f27)}
+.err{background:var(--danger-soft,#2b1c1c);color:var(--danger,#e24b4a)}
+.san{display:inline-block;font-size:11px;padding:1px 7px;margin:2px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius-pill);font-family:ui-monospace,Consolas,monospace}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="row">
+    <input id="host" class="input" placeholder="域名，如 github.com（或 host:port）" spellcheck="false" autofocus>
+    <input id="port" class="input sm" placeholder="443" value="443">
+    <button id="btnCheck" class="btn">检查</button>
+  </div>
+  <div id="hint" class="hint"></div>
+  <div id="card" class="card"></div>
+</div>
+<script>
+(function(){
+  'use strict'
+  var hostInput=document.getElementById('host')
+  var portInput=document.getElementById('port')
+  var hint=document.getElementById('hint')
+  var card=document.getElementById('card')
+
+  function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+
+  var seq=0, pend={}
+  function send(command,input){
+    return new Promise(function(resolve,reject){
+      var id='ssl_'+(++seq)
+      pend[id]={resolve:resolve,reject:reject}
+      parent.postMessage({type:'plugin:execute',id:id,command:command,input:input||{}},'*')
+    })
+  }
+  window.addEventListener('message',function(e){
+    var d=e.data
+    if(!d||d.type!=='plugin:result'||!d.id||!pend[d.id])return
+    var p=pend[d.id];delete pend[d.id]
+    if(d.error)p.reject(new Error(d.error));else p.resolve(d.data)
+  })
+
+  function item(k,v){return '<div class="item"><span class="k">'+esc(k)+'</span><span class="v">'+esc(v)+'</span></div>'}
+
+  function doCheck(){
+    var host=hostInput.value.trim()
+    if(!host){hint.textContent='请输入域名';return}
+    hint.textContent='连接中…'
+    card.innerHTML=''
+    send('check',{host:host,port:portInput.value.trim()}).then(function(r){
+      if(!r){hint.textContent='无结果';return}
+      var vstat = r.expired ? '<span class="badge err">已过期</span>' : (r.notYetValid ? '<span class="badge warn">未生效</span>' : '<span class="badge ok">有效期内</span>')
+      var vstat2 = r.verifyError ? '<span class="badge err">验证失败</span>' : '<span class="badge ok">链验证通过</span>'
+      var html=''
+      html+=item('主题 CN', r.subjectCN||'-')
+      html+=item('颁发者 CN', r.issuerCN||'-')
+      html+=item('主题', r.subject||'-')
+      html+=item('颁发者', r.issuer||'-')
+      html+='<div class="item"><span class="k">SAN</span><span class="v">'+(r.san&&r.san.length?(r.san.map(function(s){return '<span class="san">'+esc(s)+'</span>'}).join('')):'-')+'</span></div>'
+      html+=item('序列号', r.serial||'-')
+      html+=item('生效时间', r.notBefore||'-')
+      html+=item('到期时间', r.notAfter||'-')
+      html+='<div class="item"><span class="k">状态</span><span class="v">'+vstat+' 剩余 '+esc(r.daysLeft)+' 天 '+vstat2+'</span></div>'
+      html+=item('签名算法', r.sigAlgo||'-')
+      html+=item('公钥算法', r.pubAlgo||'-')
+      html+=item('版本', r.version||'-')
+      if(r.verifyError){html+='<div class="item"><span class="k">验证错误</span><span class="v">'+esc(r.verifyError)+'</span></div>'}
+      card.innerHTML=html
+      hint.textContent='证书检查完成'
+    }).catch(function(e){ hint.textContent='检查失败'; card.innerHTML='<div class="item"><span class="v err">'+esc(e&&e.message?e.message:e)+'</span></div>' })
+  }
+
+  document.getElementById('btnCheck').addEventListener('click',doCheck)
+  hostInput.addEventListener('keydown',function(e){if(e.key==='Enter')doCheck()})
+})()
+</script>
+</body>
+</html>

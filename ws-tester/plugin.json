@@ -1,0 +1,60 @@
+{
+  "id": "io.github.parieses.ws-tester",
+  "name": "WebSocket 测试",
+  "version": "0.1.0",
+  "description": "连接 ws/wss 服务，发送消息并实时查看返回的帧，支持多连接与历史",
+  "author": "QuickDock",
+  "category": "网络工具",
+  "platforms": [
+    "windows"
+  ],
+  "icon": "icon.svg",
+  "backend": {
+    "runtime": "native",
+    "entry": "ws-tester",
+    "args": []
+  },
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 720,
+    "height": 620
+  },
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "permissions": {
+    "filesystem": false
+  },
+  "commands": [
+    {
+      "id": "ws-test",
+      "title": "WebSocket 测试",
+      "keywords": [
+        "websocket",
+        "ws",
+        "wss",
+        "socket",
+        "实时"
+      ],
+      "aliases": [
+        "WS 测试",
+        "WebSocket 调试",
+        "socket 测试"
+      ],
+      "title_i18n": {
+        "zh-CN": "WebSocket 测试",
+        "en-US": "WebSocket Tester"
+      }
+    }
+  ],
+  "name_i18n": {
+    "zh-CN": "WebSocket 测试",
+    "en-US": "WebSocket Tester"
+  },
+  "description_i18n": {
+    "zh-CN": "连接 ws/wss 服务，发送消息并实时查看返回的帧，支持多连接与历史",
+    "en-US": "Connect to ws/wss, send messages and view returned frames in real time, with multi-connection support."
+  }
+}
