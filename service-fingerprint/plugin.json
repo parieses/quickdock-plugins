@@ -1,0 +1,65 @@
+{
+  "id": "io.github.parieses.service-fingerprint",
+  "name": "服务指纹识别",
+  "version": "0.1.0",
+  "description": "扫描端口并识别服务类型与版本：banner 抓取 + 多协议主动探针 + 内置指纹特征库，无需管理员权限",
+  "author": "QuickDock",
+  "category": "网络工具",
+  "platforms": [
+    "windows",
+    "darwin",
+    "linux"
+  ],
+  "icon": "icon.svg",
+  "backend": {
+    "runtime": "native",
+    "entry": "service-fingerprint",
+    "args": []
+  },
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 920,
+    "height": 660
+  },
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "permissions": {
+    "network": true
+  },
+  "commands": [
+    {
+      "id": "scan",
+      "title": "服务指纹识别",
+      "keywords": [
+        "fingerprint",
+        "指纹",
+        "服务识别",
+        "banner",
+        "nmap",
+        "端口服务",
+        "版本探测"
+      ],
+      "aliases": [
+        "服务指纹",
+        "指纹识别",
+        "识别服务",
+        "端口指纹"
+      ],
+      "title_i18n": {
+        "zh-CN": "服务指纹识别",
+        "en-US": "Service Fingerprint"
+      }
+    }
+  ],
+  "name_i18n": {
+    "zh-CN": "服务指纹识别",
+    "en-US": "Service Fingerprint"
+  },
+  "description_i18n": {
+    "zh-CN": "扫描端口并识别服务类型与版本：banner 抓取 + 多协议主动探针 + 内置指纹特征库，无需管理员权限",
+    "en-US": "Scan ports and identify services with versions: banner grabbing, protocol-specific probes and a built-in fingerprint database. No admin rights required."
+  }
+}

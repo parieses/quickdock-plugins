@@ -1,0 +1,66 @@
+{
+  "id": "io.github.parieses.subdomain-enum",
+  "name": "子域名枚举",
+  "version": "0.2.0",
+  "description": "被动收集域名子域名（证书透明日志 CertSpotter / crt.sh + HackerTarget + urlscan + rapiddns + AlienVault OTX），可选并发解析 A 记录筛选存活",
+  "author": "QuickDock",
+  "category": "网络工具",
+  "platforms": [
+    "windows",
+    "darwin",
+    "linux"
+  ],
+  "icon": "icon.svg",
+  "backend": {
+    "runtime": "native",
+    "entry": "subdomain-enum",
+    "args": []
+  },
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 820,
+    "height": 620
+  },
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "permissions": {
+    "network": true
+  },
+  "commands": [
+    {
+      "id": "enum",
+      "title": "子域名枚举",
+      "keywords": [
+        "subdomain",
+        "子域名",
+        "枚举",
+        "证书",
+        "ct",
+        "资产",
+        "收集",
+        "enum"
+      ],
+      "aliases": [
+        "子域名枚举",
+        "子域名收集",
+        "域名枚举",
+        "资产收集"
+      ],
+      "title_i18n": {
+        "zh-CN": "子域名枚举",
+        "en-US": "Subdomain Enumeration"
+      }
+    }
+  ],
+  "name_i18n": {
+    "zh-CN": "子域名枚举",
+    "en-US": "Subdomain Enumeration"
+  },
+  "description_i18n": {
+    "zh-CN": "被动收集域名子域名（证书透明日志 CertSpotter / crt.sh + HackerTarget + urlscan + rapiddns + AlienVault OTX），可选并发解析 A 记录筛选存活",
+    "en-US": "Passively enumerate subdomains via certificate transparency logs (CertSpotter / crt.sh), HackerTarget, urlscan, rapiddns and AlienVault OTX. Optionally resolve A records to filter live ones."
+  }
+}

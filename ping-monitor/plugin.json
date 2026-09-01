@@ -1,0 +1,63 @@
+{
+  "id": "io.github.parieses.ping-monitor",
+  "name": "Ping 监视器",
+  "version": "0.1.0",
+  "description": "持续 Ping 目标主机并实时绘制延迟曲线，统计丢包率、最小/平均/最大延迟（真实 ICMP，无需管理员权限）",
+  "author": "QuickDock",
+  "category": "网络工具",
+  "platforms": [
+    "windows"
+  ],
+  "icon": "icon.svg",
+  "backend": {
+    "runtime": "native",
+    "entry": "ping-monitor",
+    "args": []
+  },
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 760,
+    "height": 620
+  },
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "permissions": {
+    "network": true
+  },
+  "commands": [
+    {
+      "id": "ping",
+      "title": "Ping 延迟监视",
+      "keywords": [
+        "ping",
+        "延迟",
+        "丢包",
+        "icmp",
+        "网络",
+        "latency",
+        "monitor"
+      ],
+      "aliases": [
+        "ping监控",
+        "延迟监控",
+        "网络延迟",
+        "丢包率"
+      ],
+      "title_i18n": {
+        "zh-CN": "Ping 延迟监视",
+        "en-US": "Ping Monitor"
+      }
+    }
+  ],
+  "name_i18n": {
+    "zh-CN": "Ping 监视器",
+    "en-US": "Ping Monitor"
+  },
+  "description_i18n": {
+    "zh-CN": "持续 Ping 目标主机并实时绘制延迟曲线，统计丢包率、最小/平均/最大延迟（真实 ICMP，无需管理员权限）",
+    "en-US": "Continuously ping a host and plot latency in real time, with packet loss and min/avg/max stats. Real ICMP without admin rights."
+  }
+}

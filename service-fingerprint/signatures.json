@@ -1,0 +1,2376 @@
+[
+  {
+    "service": "SSH",
+    "category": "远程登录",
+    "pattern": "SSH-([\\d.]+)-([^\\s\\r\\n]+)",
+    "version_group": 2,
+    "confidence": 0.9,
+    "ports": [
+      22,
+      2200,
+      2222,
+      22222
+    ]
+  },
+  {
+    "service": "OpenSSH",
+    "category": "远程登录",
+    "pattern": "OpenSSH[_\\-]?([\\d][\\w.]*)",
+    "version_group": 1,
+    "confidence": 0.97,
+    "ports": [
+      22,
+      2200,
+      2222
+    ]
+  },
+  {
+    "service": "Dropbear SSH",
+    "category": "远程登录",
+    "pattern": "dropbear[_\\-]?([\\d.]+)",
+    "version_group": 1,
+    "confidence": 0.93,
+    "ports": [
+      22,
+      2222
+    ]
+  },
+  {
+    "service": "Telnet",
+    "category": "远程登录",
+    "pattern": "(?i)(login:|username:|user name|welcome|telnet)",
+    "version_group": 0,
+    "confidence": 0.7,
+    "ports": [
+      23,
+      992,
+      2323
+    ]
+  },
+  {
+    "service": "RDP",
+    "category": "远程登录",
+    "pattern": "^\\x03\\x00",
+    "version_group": 0,
+    "confidence": 0.8,
+    "ports": [
+      3389
+    ]
+  },
+  {
+    "service": "VNC",
+    "category": "远程登录",
+    "pattern": "^RFB ([\\d.]+)",
+    "version_group": 1,
+    "confidence": 0.95,
+    "ports": [
+      5900,
+      5901,
+      5902,
+      5903,
+      5904
+    ]
+  },
+  {
+    "service": "nginx",
+    "category": "Web 服务器",
+    "pattern": "(?i)nginx/?([\\d.]*)",
+    "version_group": 1,
+    "confidence": 0.95,
+    "ports": [
+      80,
+      443,
+      8080,
+      8443,
+      8888,
+      9000
+    ]
+  },
+  {
+    "service": "Apache httpd",
+    "category": "Web 服务器",
+    "pattern": "(?i)apache/?([\\d.]*)",
+    "version_group": 1,
+    "confidence": 0.9,
+    "ports": [
+      80,
+      443,
+      8000,
+      8080,
+      8888
+    ]
+  },
+  {
+    "service": "Microsoft IIS",
+    "category": "Web 服务器",
+    "pattern": "(?i)microsoft-iis/?([\\d.]*)",
+    "version_group": 1,
+    "confidence": 0.96,
+    "ports": [
+      80,
+      443,
+      8080,
+      8888
+    ]
+  },
+  {
+    "service": "Apache Tomcat",
+    "category": "Web 服务器",
+    "pattern": "(?i)(apache-coyote/?([\\d.]*)|tomcat/?([\\d.]*))",
+    "version_group": 2,
+    "confidence": 0.92,
+    "ports": [
+      8009,
+      8080,
+      8081,
+      8443
+    ]
+  },
+  {
+    "service": "OpenResty",
+    "category": "Web 服务器",
+    "pattern": "(?i)openresty/?([\\d.]*)",
+    "version_group": 1,
+    "confidence": 0.95,
+    "ports": [
+      80,
+      443,
+      8080,
+      8443
+    ]
+  },
+  {
+    "service": "Tengine",
+    "category": "Web 服务器",
+    "pattern": "(?i)tengine/?([\\d.]*)",
+    "version_group": 1,
+    "confidence": 0.94,
+    "ports": [
+      80,
+      443,
+      8080
+    ]
+  },
+  {
+    "service": "lighttpd",
+    "category": "Web 服务器",
+    "pattern": "(?i)lighttpd/?([\\d.]*)",
+    "version_group": 1,
+    "confidence": 0.94,
+    "ports": [
+      80,
+      443,
+      8080
+    ]
+  },
+  {
+    "service": "Caddy",
+    "category": "Web 服务器",
+    "pattern": "(?i)caddy",
+    "version_group": 0,
+    "confidence": 0.85,
+    "ports": [
+      80,
+      443,
+      2019,
+      8080
+    ]
+  },
+  {
+    "service": "Envoy",
+    "category": "Web 服务器",
+    "pattern": "(?i)envoy",
+    "version_group": 0,
+    "confidence": 0.88,
+    "ports": [
+      80,
+      443,
+      8000,
+      15000,
+      15001
+    ]
+  },
+  {
+    "service": "HAProxy",
+    "category": "Web 服务器",
+    "pattern": "(?i)haproxy",
+    "version_group": 0,
+    "confidence": 0.85,
+    "ports": [
+      80,
+      443,
+      8080,
+      8404,
+      9000
+    ]
+  },
+  {
+    "service": "Jetty",
+    "category": "Web 服务器",
+    "pattern": "(?i)jetty\\(?([\\d.]*)",
+    "version_group": 1,
+    "confidence": 0.92,
+    "ports": [
+      8080,
+      8443,
+      8983
+    ]
+  },
+  {
+    "service": "WebLogic",
+    "category": "Web 服务器",
+    "pattern": "(?i)weblogic",
+    "version_group": 0,
+    "confidence": 0.9,
+    "ports": [
+      7001,
+      7002,
+      7003
+    ]
+  },
+  {
+    "service": "WebSphere",
+    "category": "Web 服务器",
+    "pattern": "(?i)websphere",
+    "version_group": 0,
+    "confidence": 0.9,
+    "ports": [
+      9043,
+      9080,
+      9443
+    ]
+  },
+  {
+    "service": "PHP",
+    "category": "Web 框架",
+    "pattern": "(?i)php/?([\\d.]*)",
+    "version_group": 1,
+    "confidence": 0.8,
+    "ports": [
+      80,
+      443,
+      8000,
+      8080,
+      8888
+    ]
+  },
+  {
+    "service": "ASP.NET",
+    "category": "Web 框架",
+    "pattern": "(?i)(x-aspnet-version|asp\\.net)",
+    "version_group": 0,
+    "confidence": 0.85,
+    "ports": [
+      80,
+      443,
+      8080
+    ]
+  },
+  {
+    "service": "Express",
+    "category": "Web 框架",
+    "pattern": "(?i)express",
+    "version_group": 0,
+    "confidence": 0.78,
+    "ports": [
+      3000,
+      5000,
+      8080
+    ]
+  },
+  {
+    "service": "Next.js",
+    "category": "Web 框架",
+    "pattern": "(?i)next\\.js",
+    "version_group": 0,
+    "confidence": 0.8,
+    "ports": [
+      3000,
+      3001
+    ]
+  },
+  {
+    "service": "Spring Boot",
+    "category": "Web 框架",
+    "pattern": "(?i)(spring|whitelabel error page)",
+    "version_group": 0,
+    "confidence": 0.75,
+    "ports": [
+      8080,
+      8081,
+      8443
+    ]
+  },
+  {
+    "service": "Django",
+    "category": "Web 框架",
+    "pattern": "(?i)(django|csrftoken)",
+    "version_group": 0,
+    "confidence": 0.75,
+    "ports": [
+      8000,
+      8080
+    ]
+  },
+  {
+    "service": "Laravel",
+    "category": "Web 框架",
+    "pattern": "(?i)laravel",
+    "version_group": 0,
+    "confidence": 0.8,
+    "ports": [
+      80,
+      8000,
+      8080
+    ]
+  },
+  {
+    "service": "Grafana",
+    "category": "运维平台",
+    "pattern": "(?i)grafana",
+    "version_group": 0,
+    "confidence": 0.92,
+    "ports": [
+      3000,
+      3001
+    ]
+  },
+  {
+    "service": "Kibana",
+    "category": "运维平台",
+    "pattern": "(?i)kibana",
+    "version_group": 0,
+    "confidence": 0.9,
+    "ports": [
+      5601
+    ]
+  },
+  {
+    "service": "Jenkins",
+    "category": "运维平台",
+    "pattern": "(?i)(x-jenkins|jenkins)",
+    "version_group": 0,
+    "confidence": 0.93,
+    "ports": [
+      8080,
+      8081,
+      8443
+    ]
+  },
+  {
+    "service": "Zabbix",
+    "category": "运维平台",
+    "pattern": "(?i)zabbix",
+    "version_group": 0,
+    "confidence": 0.9,
+    "ports": [
+      80,
+      8443,
+      10050,
+      10051
+    ]
+  },
+  {
+    "service": "Prometheus",
+    "category": "运维平台",
+    "pattern": "(?i)prometheus",
+    "version_group": 0,
+    "confidence": 0.9,
+    "ports": [
+      9090
+    ]
+  },
+  {
+    "service": "SonarQube",
+    "category": "运维平台",
+    "pattern": "(?i)sonarqube",
+    "version_group": 0,
+    "confidence": 0.9,
+    "ports": [
+      9000,
+      9001
+    ]
+  },
+  {
+    "service": "GitLab",
+    "category": "运维平台",
+    "pattern": "(?i)gitlab",
+    "version_group": 0,
+    "confidence": 0.9,
+    "ports": [
+      80,
+      443,
+      8080,
+      8443
+    ]
+  },
+  {
+    "service": "Harbor",
+    "category": "运维平台",
+    "pattern": "(?i)harbor",
+    "version_group": 0,
+    "confidence": 0.85,
+    "ports": [
+      80,
+      443,
+      8443
+    ]
+  },
+  {
+    "service": "Nacos",
+    "category": "微服务",
+    "pattern": "(?i)nacos",
+    "version_group": 0,
+    "confidence": 0.88,
+    "ports": [
+      8848,
+      9848
+    ]
+  },
+  {
+    "service": "Consul",
+    "category": "微服务",
+    "pattern": "(?i)consul",
+    "version_group": 0,
+    "confidence": 0.88,
+    "ports": [
+      8300,
+      8500,
+      8600
+    ]
+  },
+  {
+    "service": "Eureka",
+    "category": "微服务",
+    "pattern": "(?i)eureka",
+    "version_group": 0,
+    "confidence": 0.85,
+    "ports": [
+      8761
+    ]
+  },
+  {
+    "service": "Kubernetes API",
+    "category": "容器编排",
+    "pattern": "(?i)(kubernetes|\"kind\":\\s*\"APIVersions\")",
+    "version_group": 0,
+    "confidence": 0.85,
+    "ports": [
+      6443,
+      8080,
+      8443,
+      10250
+    ]
+  },
+  {
+    "service": "Docker",
+    "category": "容器编排",
+    "pattern": "(?i)docker/?([\\d.]*)",
+    "version_group": 1,
+    "confidence": 0.88,
+    "ports": [
+      2375,
+      2376,
+      4243
+    ]
+  },
+  {
+    "service": "etcd",
+    "category": "容器编排",
+    "pattern": "(?i)etcd",
+    "version_group": 0,
+    "confidence": 0.88,
+    "ports": [
+      2379,
+      2380
+    ]
+  },
+  {
+    "service": "MySQL",
+    "category": "数据库",
+    "pattern": "(?i)([\\d.]+)-?mysql|mysql",
+    "version_group": 1,
+    "confidence": 0.88,
+    "ports": [
+      3306,
+      3307,
+      3308
+    ]
+  },
+  {
+    "service": "MariaDB",
+    "category": "数据库",
+    "pattern": "(?i)mariadb",
+    "version_group": 0,
+    "confidence": 0.92,
+    "ports": [
+      3306,
+      3307
+    ]
+  },
+  {
+    "service": "PostgreSQL",
+    "category": "数据库",
+    "pattern": "(?i)postgre?s?ql",
+    "version_group": 0,
+    "confidence": 0.92,
+    "ports": [
+      5432,
+      5433,
+      5434
+    ]
+  },
+  {
+    "service": "MongoDB",
+    "category": "数据库",
+    "pattern": "(?i)mongodb",
+    "version_group": 0,
+    "confidence": 0.93,
+    "ports": [
+      27017,
+      27018,
+      27019,
+      27020
+    ]
+  },
+  {
+    "service": "Redis",
+    "category": "缓存",
+    "pattern": "(?i)(redis_version:([\\d.]+)|\\+PONG|redis)",
+    "version_group": 2,
+    "confidence": 0.9,
+    "ports": [
+      6379,
+      6380,
+      6381
+    ]
+  },
+  {
+    "service": "Memcached",
+    "category": "缓存",
+    "pattern": "(?i)VERSION ([\\d.]+)",
+    "version_group": 1,
+    "confidence": 0.93,
+    "ports": [
+      11211,
+      11212
+    ]
+  },
+  {
+    "service": "Microsoft SQL Server",
+    "category": "数据库",
+    "pattern": "(?i)(microsoft sql server|mssql)",
+    "version_group": 0,
+    "confidence": 0.92,
+    "ports": [
+      1433,
+      1434
+    ]
+  },
+  {
+    "service": "Oracle DB",
+    "category": "数据库",
+    "pattern": "(?i)oracle",
+    "version_group": 0,
+    "confidence": 0.85,
+    "ports": [
+      1521,
+      1522,
+      1523
+    ]
+  },
+  {
+    "service": "Cassandra",
+    "category": "数据库",
+    "pattern": "(?i)cassandra",
+    "version_group": 0,
+    "confidence": 0.9,
+    "ports": [
+      7000,
+      7001,
+      9042,
+      9160
+    ]
+  },
+  {
+    "service": "CouchDB",
+    "category": "数据库",
+    "pattern": "(?i)(couchdb|\"couchdb\":\"welcome\")",
+    "version_group": 0,
+    "confidence": 0.92,
+    "ports": [
+      5984,
+      6984
+    ]
+  },
+  {
+    "service": "InfluxDB",
+    "category": "数据库",
+    "pattern": "(?i)influxdb",
+    "version_group": 0,
+    "confidence": 0.9,
+    "ports": [
+      8086,
+      8088
+    ]
+  },
+  {
+    "service": "ClickHouse",
+    "category": "数据库",
+    "pattern": "(?i)clickhouse",
+    "version_group": 0,
+    "confidence": 0.92,
+    "ports": [
+      8123,
+      9000,
+      9009
+    ]
+  },
+  {
+    "service": "Elasticsearch",
+    "category": "数据库",
+    "pattern": "(?i)(you know, for search|elasticsearch)",
+    "version_group": 0,
+    "confidence": 0.93,
+    "ports": [
+      9200,
+      9300,
+      9301
+    ]
+  },
+  {
+    "service": "phpMyAdmin",
+    "category": "数据库",
+    "pattern": "(?i)phpmyadmin[\\s/]*([\\d.]*)",
+    "version_group": 1,
+    "confidence": 0.92,
+    "ports": [
+      80,
+      443,
+      8080,
+      8888
+    ]
+  },
+  {
+    "service": "RabbitMQ",
+    "category": "消息队列",
+    "pattern": "(?i)rabbitmq",
+    "version_group": 0,
+    "confidence": 0.9,
+    "ports": [
+      5672,
+      15672,
+      15674,
+      25672
+    ]
+  },
+  {
+    "service": "Kafka",
+    "category": "消息队列",
+    "pattern": "(?i)kafka",
+    "version_group": 0,
+    "confidence": 0.85,
+    "ports": [
+      9092,
+      9093,
+      9094
+    ]
+  },
+  {
+    "service": "ZooKeeper",
+    "category": "消息队列",
+    "pattern": "(?i)(zookeeper|zk_version)",
+    "version_group": 0,
+    "confidence": 0.88,
+    "ports": [
+      2181,
+      2888,
+      3888
+    ]
+  },
+  {
+    "service": "ActiveMQ",
+    "category": "消息队列",
+    "pattern": "(?i)activemq",
+    "version_group": 0,
+    "confidence": 0.88,
+    "ports": [
+      5672,
+      8161,
+      61616
+    ]
+  },
+  {
+    "service": "RocketMQ",
+    "category": "消息队列",
+    "pattern": "(?i)rocketmq",
+    "version_group": 0,
+    "confidence": 0.85,
+    "ports": [
+      9876,
+      10911,
+      10912
+    ]
+  },
+  {
+    "service": "Postfix",
+    "category": "邮件",
+    "pattern": "(?i)postfix",
+    "version_group": 0,
+    "confidence": 0.92,
+    "ports": [
+      25,
+      465,
+      587,
+      2525
+    ]
+  },
+  {
+    "service": "Sendmail",
+    "category": "邮件",
+    "pattern": "(?i)sendmail[\\s/]*([\\d.]*)",
+    "version_group": 1,
+    "confidence": 0.93,
+    "ports": [
+      25,
+      587
+    ]
+  },
+  {
+    "service": "Exim",
+    "category": "邮件",
+    "pattern": "(?i)exim[\\s/]*([\\d.]*)",
+    "version_group": 1,
+    "confidence": 0.93,
+    "ports": [
+      25,
+      465,
+      587
+    ]
+  },
+  {
+    "service": "Dovecot",
+    "category": "邮件",
+    "pattern": "(?i)dovecot",
+    "version_group": 0,
+    "confidence": 0.93,
+    "ports": [
+      110,
+      143,
+      993,
+      995,
+      4190
+    ]
+  },
+  {
+    "service": "Microsoft Exchange",
+    "category": "邮件",
+    "pattern": "(?i)(microsoft esmtp|exchange)",
+    "version_group": 0,
+    "confidence": 0.9,
+    "ports": [
+      25,
+      443,
+      587,
+      993
+    ]
+  },
+  {
+    "service": "Courier",
+    "category": "邮件",
+    "pattern": "(?i)courier",
+    "version_group": 0,
+    "confidence": 0.88,
+    "ports": [
+      25,
+      110,
+      143,
+      993,
+      995
+    ]
+  },
+  {
+    "service": "vsftpd",
+    "category": "文件传输",
+    "pattern": "(?i)vsftpd[\\s/]*([\\d.]*)",
+    "version_group": 1,
+    "confidence": 0.96,
+    "ports": [
+      21,
+      2121
+    ]
+  },
+  {
+    "service": "ProFTPD",
+    "category": "文件传输",
+    "pattern": "(?i)proftpd[\\s/]*([\\d.]*)",
+    "version_group": 1,
+    "confidence": 0.96,
+    "ports": [
+      21,
+      2121
+    ]
+  },
+  {
+    "service": "FileZilla Server",
+    "category": "文件传输",
+    "pattern": "(?i)filezilla server[\\s/]*([\\d.]*)",
+    "version_group": 1,
+    "confidence": 0.95,
+    "ports": [
+      21,
+      14147
+    ]
+  },
+  {
+    "service": "Pure-FTPd",
+    "category": "文件传输",
+    "pattern": "(?i)pure-ftpd",
+    "version_group": 0,
+    "confidence": 0.95,
+    "ports": [
+      21,
+      2121
+    ]
+  },
+  {
+    "service": "Microsoft FTP",
+    "category": "文件传输",
+    "pattern": "(?i)microsoft ftp service",
+    "version_group": 0,
+    "confidence": 0.94,
+    "ports": [
+      21
+    ]
+  },
+  {
+    "service": "SMB/Samba",
+    "category": "文件传输",
+    "pattern": "(?i)(samba|smb)",
+    "version_group": 0,
+    "confidence": 0.75,
+    "ports": [
+      137,
+      138,
+      139,
+      445
+    ]
+  },
+  {
+    "service": "rsync",
+    "category": "文件传输",
+    "pattern": "(?i)rsync",
+    "version_group": 0,
+    "confidence": 0.85,
+    "ports": [
+      873,
+      8730
+    ]
+  },
+  {
+    "service": "BIND",
+    "category": "网络服务",
+    "pattern": "(?i)(bind[\\s/]*([\\d.]+)|^9\\.[\\d.]+)",
+    "version_group": 2,
+    "confidence": 0.85,
+    "ports": [
+      53,
+      953
+    ]
+  },
+  {
+    "service": "dnsmasq",
+    "category": "网络服务",
+    "pattern": "(?i)dnsmasq-([\\d.]+)",
+    "version_group": 1,
+    "confidence": 0.95,
+    "ports": [
+      53
+    ]
+  },
+  {
+    "service": "PowerDNS",
+    "category": "网络服务",
+    "pattern": "(?i)powerdns",
+    "version_group": 0,
+    "confidence": 0.9,
+    "ports": [
+      53,
+      8081
+    ]
+  },
+  {
+    "service": "CoreDNS",
+    "category": "网络服务",
+    "pattern": "(?i)coredns-([\\d.]+)",
+    "version_group": 1,
+    "confidence": 0.95,
+    "ports": [
+      53,
+      9153
+    ]
+  },
+  {
+    "service": "net-snmp",
+    "category": "网络服务",
+    "pattern": "(?i)(net-snmp|snmp)",
+    "version_group": 0,
+    "confidence": 0.8,
+    "ports": [
+      161,
+      162
+    ]
+  },
+  {
+    "service": "Squid",
+    "category": "网络服务",
+    "pattern": "(?i)squid/?([\\d.]*)",
+    "version_group": 1,
+    "confidence": 0.92,
+    "ports": [
+      3128,
+      3129,
+      8080
+    ]
+  },
+  {
+    "service": "OpenVPN",
+    "category": "网络服务",
+    "pattern": "(?i)openvpn",
+    "version_group": 0,
+    "confidence": 0.85,
+    "ports": [
+      443,
+      943,
+      1194
+    ]
+  },
+  {
+    "service": "NTP",
+    "category": "网络服务",
+    "pattern": "(?i)ntp",
+    "version_group": 0,
+    "confidence": 0.7,
+    "ports": [
+      123
+    ]
+  },
+  {
+    "service": "LDAP",
+    "category": "网络服务",
+    "pattern": "(?i)(ldap|active directory)",
+    "version_group": 0,
+    "confidence": 0.75,
+    "ports": [
+      389,
+      636,
+      3268,
+      3269
+    ]
+  },
+  {
+    "service": "XRDP",
+    "category": "远程登录",
+    "pattern": "(?i)xrdp",
+    "version_group": 0,
+    "confidence": 0.85,
+    "ports": [
+      3389
+    ]
+  },
+  {
+    "service": "SPICE",
+    "category": "远程登录",
+    "pattern": "(?i)spice",
+    "version_group": 0,
+    "confidence": 0.8,
+    "ports": [
+      5900,
+      5901
+    ]
+  },
+  {
+    "service": "Rlogin",
+    "category": "远程登录",
+    "pattern": "(?i)rlogin",
+    "version_group": 0,
+    "confidence": 0.75,
+    "ports": [
+      513
+    ]
+  },
+  {
+    "service": "RSH",
+    "category": "远程登录",
+    "pattern": "(?i)rsh",
+    "version_group": 0,
+    "confidence": 0.7,
+    "ports": [
+      514
+    ]
+  },
+  {
+    "service": "Gunicorn",
+    "category": "Web 服务器",
+    "pattern": "(?i)gunicorn",
+    "version_group": 0,
+    "confidence": 0.88,
+    "ports": [
+      8000,
+      8080
+    ]
+  },
+  {
+    "service": "uWSGI",
+    "category": "Web 服务器",
+    "pattern": "(?i)uwsgi",
+    "version_group": 0,
+    "confidence": 0.85,
+    "ports": [
+      8000,
+      8080
+    ]
+  },
+  {
+    "service": "Cherokee",
+    "category": "Web 服务器",
+    "pattern": "(?i)cherokee",
+    "version_group": 0,
+    "confidence": 0.88,
+    "ports": [
+      80,
+      443,
+      8080
+    ]
+  },
+  {
+    "service": "Booster",
+    "category": "Web 服务器",
+    "pattern": "(?i)booster",
+    "version_group": 0,
+    "confidence": 0.8,
+    "ports": [
+      80,
+      443
+    ]
+  },
+  {
+    "service": "AIOHTTP",
+    "category": "Web 服务器",
+    "pattern": "(?i)aiohttp",
+    "version_group": 0,
+    "confidence": 0.82,
+    "ports": [
+      8080,
+      8000
+    ]
+  },
+  {
+    "service": "Ruby on Rails",
+    "category": "Web 框架",
+    "pattern": "(?i)(ruby on rails|rails)",
+    "version_group": 0,
+    "confidence": 0.78,
+    "ports": [
+      3000,
+      8080
+    ]
+  },
+  {
+    "service": "Flask",
+    "category": "Web 框架",
+    "pattern": "(?i)flask",
+    "version_group": 0,
+    "confidence": 0.75,
+    "ports": [
+      5000,
+      8000,
+      8080
+    ]
+  },
+  {
+    "service": "FastAPI",
+    "category": "Web 框架",
+    "pattern": "(?i)fastapi",
+    "version_group": 0,
+    "confidence": 0.78,
+    "ports": [
+      8000,
+      8080
+    ]
+  },
+  {
+    "service": "Node.js",
+    "category": "Web 框架",
+    "pattern": "(?i)node\\.js",
+    "version_group": 0,
+    "confidence": 0.7,
+    "ports": [
+      3000,
+      8080,
+      5000
+    ]
+  },
+  {
+    "service": "Nuxt.js",
+    "category": "Web 框架",
+    "pattern": "(?i)nuxt\\.js",
+    "version_group": 0,
+    "confidence": 0.78,
+    "ports": [
+      3000
+    ]
+  },
+  {
+    "service": "Vue.js",
+    "category": "Web 框架",
+    "pattern": "(?i)vue\\.js",
+    "version_group": 0,
+    "confidence": 0.7,
+    "ports": [
+      80,
+      443,
+      8080
+    ]
+  },
+  {
+    "service": "React",
+    "category": "Web 框架",
+    "pattern": "(?i)react",
+    "version_group": 0,
+    "confidence": 0.65,
+    "ports": [
+      3000,
+      8080
+    ]
+  },
+  {
+    "service": "Gin",
+    "category": "Web 框架",
+    "pattern": "(?i)gin",
+    "version_group": 0,
+    "confidence": 0.7,
+    "ports": [
+      8080,
+      8000
+    ]
+  },
+  {
+    "service": "Kong",
+    "category": "API 网关",
+    "pattern": "(?i)kong",
+    "version_group": 0,
+    "confidence": 0.88,
+    "ports": [
+      8000,
+      8443,
+      8001,
+      8444
+    ]
+  },
+  {
+    "service": "Traefik",
+    "category": "API 网关",
+    "pattern": "(?i)traefik",
+    "version_group": 0,
+    "confidence": 0.88,
+    "ports": [
+      80,
+      443,
+      8080,
+      9000
+    ]
+  },
+  {
+    "service": "Spring Cloud Gateway",
+    "category": "API 网关",
+    "pattern": "(?i)spring cloud gateway",
+    "version_group": 0,
+    "confidence": 0.82,
+    "ports": [
+      8080,
+      8443
+    ]
+  },
+  {
+    "service": "Ambassador",
+    "category": "API 网关",
+    "pattern": "(?i)ambassador",
+    "version_group": 0,
+    "confidence": 0.82,
+    "ports": [
+      80,
+      443,
+      8080
+    ]
+  },
+  {
+    "service": "Apollo",
+    "category": "API 网关",
+    "pattern": "(?i)apollo",
+    "version_group": 0,
+    "confidence": 0.8,
+    "ports": [
+      8080,
+      8070
+    ]
+  },
+  {
+    "service": "Tyk",
+    "category": "API 网关",
+    "pattern": "(?i)tyk",
+    "version_group": 0,
+    "confidence": 0.85,
+    "ports": [
+      8080,
+      443
+    ]
+  },
+  {
+    "service": "Argo CD",
+    "category": "运维平台",
+    "pattern": "(?i)argo cd",
+    "version_group": 0,
+    "confidence": 0.88,
+    "ports": [
+      8080,
+      8443
+    ]
+  },
+  {
+    "service": "Rancher",
+    "category": "运维平台",
+    "pattern": "(?i)rancher",
+    "version_group": 0,
+    "confidence": 0.88,
+    "ports": [
+      80,
+      443,
+      8443
+    ]
+  },
+  {
+    "service": "Portainer",
+    "category": "运维平台",
+    "pattern": "(?i)portainer",
+    "version_group": 0,
+    "confidence": 0.88,
+    "ports": [
+      9000,
+      9443,
+      8000
+    ]
+  },
+  {
+    "service": "Jira",
+    "category": "运维平台",
+    "pattern": "(?i)jira",
+    "version_group": 0,
+    "confidence": 0.85,
+    "ports": [
+      8080,
+      8443
+    ]
+  },
+  {
+    "service": "Confluence",
+    "category": "运维平台",
+    "pattern": "(?i)confluence",
+    "version_group": 0,
+    "confidence": 0.85,
+    "ports": [
+      8090,
+      8443
+    ]
+  },
+  {
+    "service": "Redmine",
+    "category": "运维平台",
+    "pattern": "(?i)redmine",
+    "version_group": 0,
+    "confidence": 0.82,
+    "ports": [
+      80,
+      443,
+      8080
+    ]
+  },
+  {
+    "service": "Spinnaker",
+    "category": "运维平台",
+    "pattern": "(?i)spinnaker",
+    "version_group": 0,
+    "confidence": 0.85,
+    "ports": [
+      8080,
+      8443
+    ]
+  },
+  {
+    "service": "AWX",
+    "category": "运维平台",
+    "pattern": "(?i)awx",
+    "version_group": 0,
+    "confidence": 0.85,
+    "ports": [
+      80,
+      443,
+      8080
+    ]
+  },
+  {
+    "service": "Tower",
+    "category": "运维平台",
+    "pattern": "(?i)ansible tower",
+    "version_group": 0,
+    "confidence": 0.85,
+    "ports": [
+      80,
+      443,
+      8080
+    ]
+  },
+  {
+    "service": "Dubbo",
+    "category": "微服务",
+    "pattern": "(?i)dubbo",
+    "version_group": 0,
+    "confidence": 0.85,
+    "ports": [
+      20880,
+      20881
+    ]
+  },
+  {
+    "service": "Sentinel",
+    "category": "微服务",
+    "pattern": "(?i)sentinel",
+    "version_group": 0,
+    "confidence": 0.82,
+    "ports": [
+      8719,
+      8080
+    ]
+  },
+  {
+    "service": "Spring Cloud Config",
+    "category": "微服务",
+    "pattern": "(?i)spring cloud config",
+    "version_group": 0,
+    "confidence": 0.8,
+    "ports": [
+      8888
+    ]
+  },
+  {
+    "service": "Seata",
+    "category": "微服务",
+    "pattern": "(?i)seata",
+    "version_group": 0,
+    "confidence": 0.82,
+    "ports": [
+      8091,
+      7091
+    ]
+  },
+  {
+    "service": "Apollo Config",
+    "category": "微服务",
+    "pattern": "(?i)apollo",
+    "version_group": 0,
+    "confidence": 0.8,
+    "ports": [
+      8080,
+      8070
+    ]
+  },
+  {
+    "service": "Polaris",
+    "category": "微服务",
+    "pattern": "(?i)polaris",
+    "version_group": 0,
+    "confidence": 0.8,
+    "ports": [
+      8090,
+      8091
+    ]
+  },
+  {
+    "service": "containerd",
+    "category": "容器编排",
+    "pattern": "(?i)containerd",
+    "version_group": 0,
+    "confidence": 0.85,
+    "ports": [
+      10010
+    ]
+  },
+  {
+    "service": "Docker Registry",
+    "category": "容器编排",
+    "pattern": "(?i)docker-registry",
+    "version_group": 0,
+    "confidence": 0.88,
+    "ports": [
+      5000,
+      5001,
+      5443
+    ]
+  },
+  {
+    "service": "Nexus",
+    "category": "容器编排",
+    "pattern": "(?i)nexus",
+    "version_group": 0,
+    "confidence": 0.85,
+    "ports": [
+      8081,
+      8443
+    ]
+  },
+  {
+    "service": "Artifactory",
+    "category": "容器编排",
+    "pattern": "(?i)artifactory",
+    "version_group": 0,
+    "confidence": 0.85,
+    "ports": [
+      8081,
+      8082
+    ]
+  },
+  {
+    "service": "GitLab Registry",
+    "category": "容器编排",
+    "pattern": "(?i)gitlab-registry",
+    "version_group": 0,
+    "confidence": 0.8,
+    "ports": [
+      5005,
+      5006
+    ]
+  },
+  {
+    "service": "K3s",
+    "category": "容器编排",
+    "pattern": "(?i)k3s",
+    "version_group": 0,
+    "confidence": 0.82,
+    "ports": [
+      6443,
+      10250
+    ]
+  },
+  {
+    "service": "Neo4j",
+    "category": "数据库",
+    "pattern": "(?i)neo4j",
+    "version_group": 0,
+    "confidence": 0.88,
+    "ports": [
+      7474,
+      7687,
+      7473
+    ]
+  },
+  {
+    "service": "DB2",
+    "category": "数据库",
+    "pattern": "(?i)db2",
+    "version_group": 0,
+    "confidence": 0.85,
+    "ports": [
+      50000,
+      50001
+    ]
+  },
+  {
+    "service": "HBase",
+    "category": "数据库",
+    "pattern": "(?i)hbase",
+    "version_group": 0,
+    "confidence": 0.85,
+    "ports": [
+      16000,
+      16010
+    ]
+  },
+  {
+    "service": "Hive",
+    "category": "数据库",
+    "pattern": "(?i)hive",
+    "version_group": 0,
+    "confidence": 0.8,
+    "ports": [
+      10000,
+      10002
+    ]
+  },
+  {
+    "service": "Impala",
+    "category": "数据库",
+    "pattern": "(?i)impala",
+    "version_group": 0,
+    "confidence": 0.82,
+    "ports": [
+      21000,
+      21050
+    ]
+  },
+  {
+    "service": "Kudu",
+    "category": "数据库",
+    "pattern": "(?i)kudu",
+    "version_group": 0,
+    "confidence": 0.8,
+    "ports": [
+      7051,
+      8051
+    ]
+  },
+  {
+    "service": "Druid",
+    "category": "数据库",
+    "pattern": "(?i)druid",
+    "version_group": 0,
+    "confidence": 0.8,
+    "ports": [
+      8082,
+      8083
+    ]
+  },
+  {
+    "service": "Pulsar",
+    "category": "消息队列",
+    "pattern": "(?i)pulsar",
+    "version_group": 0,
+    "confidence": 0.85,
+    "ports": [
+      6650,
+      6651,
+      8080
+    ]
+  },
+  {
+    "service": "NSQ",
+    "category": "消息队列",
+    "pattern": "(?i)nsq",
+    "version_group": 0,
+    "confidence": 0.82,
+    "ports": [
+      4150,
+      4151,
+      4171
+    ]
+  },
+  {
+    "service": "NATS",
+    "category": "消息队列",
+    "pattern": "(?i)nats",
+    "version_group": 0,
+    "confidence": 0.85,
+    "ports": [
+      4222,
+      6222,
+      8222
+    ]
+  },
+  {
+    "service": "Zimbra",
+    "category": "邮件",
+    "pattern": "(?i)zimbra",
+    "version_group": 0,
+    "confidence": 0.88,
+    "ports": [
+      25,
+      443,
+      7071,
+      8080
+    ]
+  },
+  {
+    "service": "OpenSMTPD",
+    "category": "邮件",
+    "pattern": "(?i)opensmtpd",
+    "version_group": 0,
+    "confidence": 0.9,
+    "ports": [
+      25,
+      587
+    ]
+  },
+  {
+    "service": "TFTP",
+    "category": "文件传输",
+    "pattern": "(?i)tftp",
+    "version_group": 0,
+    "confidence": 0.75,
+    "ports": [
+      69
+    ]
+  },
+  {
+    "service": "SFTP",
+    "category": "文件传输",
+    "pattern": "(?i)sftp",
+    "version_group": 0,
+    "confidence": 0.8,
+    "ports": [
+      22
+    ]
+  },
+  {
+    "service": "WebDAV",
+    "category": "文件传输",
+    "pattern": "(?i)(webdav|DAV)",
+    "version_group": 0,
+    "confidence": 0.75,
+    "ports": [
+      80,
+      443,
+      8080
+    ]
+  },
+  {
+    "service": "NFS",
+    "category": "文件传输",
+    "pattern": "(?i)nfs",
+    "version_group": 0,
+    "confidence": 0.7,
+    "ports": [
+      2049,
+      111
+    ]
+  },
+  {
+    "service": "RADIUS",
+    "category": "网络服务",
+    "pattern": "(?i)radius",
+    "version_group": 0,
+    "confidence": 0.75,
+    "ports": [
+      1812,
+      1813,
+      1645,
+      1646
+    ]
+  },
+  {
+    "service": "DHCP",
+    "category": "网络服务",
+    "pattern": "(?i)dhcp",
+    "version_group": 0,
+    "confidence": 0.65,
+    "ports": [
+      67,
+      68
+    ]
+  },
+  {
+    "service": "PPTP",
+    "category": "网络服务",
+    "pattern": "(?i)pptp",
+    "version_group": 0,
+    "confidence": 0.75,
+    "ports": [
+      1723
+    ]
+  },
+  {
+    "service": "L2TP",
+    "category": "网络服务",
+    "pattern": "(?i)l2tp",
+    "version_group": 0,
+    "confidence": 0.7,
+    "ports": [
+      1701,
+      500,
+      4500
+    ]
+  },
+  {
+    "service": "IPSec",
+    "category": "网络服务",
+    "pattern": "(?i)ipsec",
+    "version_group": 0,
+    "confidence": 0.7,
+    "ports": [
+      500,
+      4500
+    ]
+  },
+  {
+    "service": "WireGuard",
+    "category": "网络服务",
+    "pattern": "(?i)wireguard",
+    "version_group": 0,
+    "confidence": 0.8,
+    "ports": [
+      51820,
+      51821
+    ]
+  },
+  {
+    "service": "SOCKS",
+    "category": "网络服务",
+    "pattern": "(?i)socks",
+    "version_group": 0,
+    "confidence": 0.75,
+    "ports": [
+      1080,
+      1081
+    ]
+  },
+  {
+    "service": "Modbus",
+    "category": "工控协议",
+    "pattern": "(?i)modbus",
+    "version_group": 0,
+    "confidence": 0.85,
+    "ports": [
+      502,
+      5020
+    ]
+  },
+  {
+    "service": "S7",
+    "category": "工控协议",
+    "pattern": "(?i)s7",
+    "version_group": 0,
+    "confidence": 0.82,
+    "ports": [
+      102
+    ]
+  },
+  {
+    "service": "BACnet",
+    "category": "工控协议",
+    "pattern": "(?i)bacnet",
+    "version_group": 0,
+    "confidence": 0.8,
+    "ports": [
+      47808
+    ]
+  },
+  {
+    "service": "DNP3",
+    "category": "工控协议",
+    "pattern": "(?i)dnp3",
+    "version_group": 0,
+    "confidence": 0.8,
+    "ports": [
+      20000
+    ]
+  },
+  {
+    "service": "OPC UA",
+    "category": "工控协议",
+    "pattern": "(?i)opc-ua",
+    "version_group": 0,
+    "confidence": 0.82,
+    "ports": [
+      4840,
+      4841
+    ]
+  },
+  {
+    "service": "MQTT",
+    "category": "工控协议",
+    "pattern": "(?i)mqtt",
+    "version_group": 0,
+    "confidence": 0.85,
+    "ports": [
+      1883,
+      8883,
+      8080
+    ]
+  },
+  {
+    "service": "CoAP",
+    "category": "工控协议",
+    "pattern": "(?i)coap",
+    "version_group": 0,
+    "confidence": 0.75,
+    "ports": [
+      5683,
+      5684
+    ]
+  },
+  {
+    "service": "Logstash",
+    "category": "数据管道",
+    "pattern": "(?i)logstash",
+    "version_group": 0,
+    "confidence": 0.85,
+    "ports": [
+      5044,
+      9600,
+      8080
+    ]
+  },
+  {
+    "service": "Fluentd",
+    "category": "数据管道",
+    "pattern": "(?i)fluentd",
+    "version_group": 0,
+    "confidence": 0.85,
+    "ports": [
+      8888,
+      24224,
+      24230
+    ]
+  },
+  {
+    "service": "Graylog",
+    "category": "数据管道",
+    "pattern": "(?i)graylog",
+    "version_group": 0,
+    "confidence": 0.88,
+    "ports": [
+      9000,
+      12900,
+      12201
+    ]
+  },
+  {
+    "service": "Splunk",
+    "category": "数据管道",
+    "pattern": "(?i)splunk",
+    "version_group": 0,
+    "confidence": 0.85,
+    "ports": [
+      8000,
+      8089,
+      9997
+    ]
+  },
+  {
+    "service": "Loki",
+    "category": "数据管道",
+    "pattern": "(?i)loki",
+    "version_group": 0,
+    "confidence": 0.85,
+    "ports": [
+      3100,
+      9096
+    ]
+  },
+  {
+    "service": "Vector",
+    "category": "数据管道",
+    "pattern": "(?i)vector",
+    "version_group": 0,
+    "confidence": 0.78,
+    "ports": [
+      8686
+    ]
+  },
+  {
+    "service": "Puppet",
+    "category": "配置管理",
+    "pattern": "(?i)puppet",
+    "version_group": 0,
+    "confidence": 0.8,
+    "ports": [
+      8140
+    ]
+  },
+  {
+    "service": "SaltStack",
+    "category": "配置管理",
+    "pattern": "(?i)salt",
+    "version_group": 0,
+    "confidence": 0.78,
+    "ports": [
+      4505,
+      4506
+    ]
+  },
+  {
+    "service": "JumpServer",
+    "category": "安全管理",
+    "pattern": "(?i)jumpserver",
+    "version_group": 0,
+    "confidence": 0.88,
+    "ports": [
+      80,
+      443,
+      8080,
+      2222
+    ]
+  },
+  {
+    "service": "Guacamole",
+    "category": "安全管理",
+    "pattern": "(?i)guacamole",
+    "version_group": 0,
+    "confidence": 0.85,
+    "ports": [
+      8080,
+      8443
+    ]
+  },
+  {
+    "service": "Keycloak",
+    "category": "认证授权",
+    "pattern": "(?i)keycloak",
+    "version_group": 0,
+    "confidence": 0.88,
+    "ports": [
+      8080,
+      8443,
+      9990
+    ]
+  },
+  {
+    "service": "CAS",
+    "category": "认证授权",
+    "pattern": "(?i)cas",
+    "version_group": 0,
+    "confidence": 0.8,
+    "ports": [
+      8080,
+      8443
+    ]
+  },
+  {
+    "service": "FreeIPA",
+    "category": "认证授权",
+    "pattern": "(?i)freeipa",
+    "version_group": 0,
+    "confidence": 0.85,
+    "ports": [
+      80,
+      443,
+      389,
+      636
+    ]
+  },
+  {
+    "service": "Windows AD",
+    "category": "认证授权",
+    "pattern": "(?i)active directory",
+    "version_group": 0,
+    "confidence": 0.8,
+    "ports": [
+      389,
+      636,
+      3268,
+      3269,
+      88,
+      464
+    ]
+  },
+  {
+    "service": "Kerberos",
+    "category": "认证授权",
+    "pattern": "(?i)kerberos",
+    "version_group": 0,
+    "confidence": 0.7,
+    "ports": [
+      88,
+      464,
+      749,
+      750
+    ]
+  },
+  {
+    "service": "Tableau",
+    "category": "BI 工具",
+    "pattern": "(?i)tableau",
+    "version_group": 0,
+    "confidence": 0.85,
+    "ports": [
+      80,
+      443,
+      8080,
+      8060
+    ]
+  },
+  {
+    "service": "Looker",
+    "category": "BI 工具",
+    "pattern": "(?i)looker",
+    "version_group": 0,
+    "confidence": 0.82,
+    "ports": [
+      80,
+      443,
+      8080
+    ]
+  },
+  {
+    "service": "Superset",
+    "category": "BI 工具",
+    "pattern": "(?i)superset",
+    "version_group": 0,
+    "confidence": 0.85,
+    "ports": [
+      8088,
+      8443
+    ]
+  },
+  {
+    "service": "Metabase",
+    "category": "BI 工具",
+    "pattern": "(?i)metabase",
+    "version_group": 0,
+    "confidence": 0.88,
+    "ports": [
+      3000,
+      8080
+    ]
+  },
+  {
+    "service": "Redash",
+    "category": "BI 工具",
+    "pattern": "(?i)redash",
+    "version_group": 0,
+    "confidence": 0.85,
+    "ports": [
+      5000,
+      8080
+    ]
+  },
+  {
+    "service": "MinIO",
+    "category": "对象存储",
+    "pattern": "(?i)minio",
+    "version_group": 0,
+    "confidence": 0.9,
+    "ports": [
+      9000,
+      9001,
+      9002
+    ]
+  },
+  {
+    "service": "Ceph",
+    "category": "对象存储",
+    "pattern": "(?i)ceph",
+    "version_group": 0,
+    "confidence": 0.85,
+    "ports": [
+      6789,
+      7480,
+      8443
+    ]
+  },
+  {
+    "service": "GlusterFS",
+    "category": "对象存储",
+    "pattern": "(?i)gluster",
+    "version_group": 0,
+    "confidence": 0.8,
+    "ports": [
+      24007,
+      24008,
+      49152
+    ]
+  },
+  {
+    "service": "Cinder",
+    "category": "对象存储",
+    "pattern": "(?i)cinder",
+    "version_group": 0,
+    "confidence": 0.78,
+    "ports": [
+      8776
+    ]
+  },
+  {
+    "service": "Swift",
+    "category": "对象存储",
+    "pattern": "(?i)swift",
+    "version_group": 0,
+    "confidence": 0.8,
+    "ports": [
+      8080,
+      443
+    ]
+  },
+  {
+    "service": "Bacula",
+    "category": "备份",
+    "pattern": "(?i)bacula",
+    "version_group": 0,
+    "confidence": 0.78,
+    "ports": [
+      9101,
+      9102,
+      9103
+    ]
+  },
+  {
+    "service": "Veeam",
+    "category": "备份",
+    "pattern": "(?i)veeam",
+    "version_group": 0,
+    "confidence": 0.82,
+    "ports": [
+      9392,
+      9393
+    ]
+  },
+  {
+    "service": "Minecraft",
+    "category": "游戏",
+    "pattern": "(?i)minecraft",
+    "version_group": 0,
+    "confidence": 0.88,
+    "ports": [
+      25565
+    ]
+  },
+  {
+    "service": "Valve Source",
+    "category": "游戏",
+    "pattern": "(?i)valve",
+    "version_group": 0,
+    "confidence": 0.8,
+    "ports": [
+      27015,
+      27016
+    ]
+  },
+  {
+    "service": "Steam",
+    "category": "游戏",
+    "pattern": "(?i)steam",
+    "version_group": 0,
+    "confidence": 0.7,
+    "ports": [
+      27020
+    ]
+  },
+  {
+    "service": "Syslog",
+    "category": "其他",
+    "pattern": "(?i)syslog",
+    "version_group": 0,
+    "confidence": 0.65,
+    "ports": [
+      514,
+      6514
+    ]
+  },
+  {
+    "service": "Rsyslog",
+    "category": "其他",
+    "pattern": "(?i)rsyslog",
+    "version_group": 0,
+    "confidence": 0.7,
+    "ports": [
+      514
+    ]
+  },
+  {
+    "service": "SNMP Trap",
+    "category": "其他",
+    "pattern": "(?i)snmptrap",
+    "version_group": 0,
+    "confidence": 0.7,
+    "ports": [
+      162
+    ]
+  },
+  {
+    "service": "Syslog-ng",
+    "category": "其他",
+    "pattern": "(?i)syslog-ng",
+    "version_group": 0,
+    "confidence": 0.72,
+    "ports": [
+      514
+    ]
+  },
+  {
+    "service": "Gitea",
+    "category": "代码管理",
+    "pattern": "(?i)gitea",
+    "version_group": 0,
+    "confidence": 0.88,
+    "ports": [
+      3000,
+      22,
+      443
+    ]
+  },
+  {
+    "service": "Gogs",
+    "category": "代码管理",
+    "pattern": "(?i)gogs",
+    "version_group": 0,
+    "confidence": 0.85,
+    "ports": [
+      3000,
+      22,
+      80
+    ]
+  },
+  {
+    "service": "GitBucket",
+    "category": "代码管理",
+    "pattern": "(?i)gitbucket",
+    "version_group": 0,
+    "confidence": 0.82,
+    "ports": [
+      8080,
+      8443
+    ]
+  },
+  {
+    "service": "Sourcegraph",
+    "category": "代码管理",
+    "pattern": "(?i)sourcegraph",
+    "version_group": 0,
+    "confidence": 0.82,
+    "ports": [
+      8080,
+      8443
+    ]
+  },
+  {
+    "service": "Gerrit",
+    "category": "代码管理",
+    "pattern": "(?i)gerrit",
+    "version_group": 0,
+    "confidence": 0.85,
+    "ports": [
+      8080,
+      29418
+    ]
+  },
+  {
+    "service": "Phabricator",
+    "category": "代码管理",
+    "pattern": "(?i)phabricator",
+    "version_group": 0,
+    "confidence": 0.8,
+    "ports": [
+      80,
+      443
+    ]
+  },
+  {
+    "service": "Mattermost",
+    "category": "协作通讯",
+    "pattern": "(?i)mattermost",
+    "version_group": 0,
+    "confidence": 0.85,
+    "ports": [
+      8065,
+      443
+    ]
+  },
+  {
+    "service": "Rocket.Chat",
+    "category": "协作通讯",
+    "pattern": "(?i)rocket\\.chat",
+    "version_group": 0,
+    "confidence": 0.85,
+    "ports": [
+      3000,
+      443
+    ]
+  },
+  {
+    "service": "Discourse",
+    "category": "协作通讯",
+    "pattern": "(?i)discourse",
+    "version_group": 0,
+    "confidence": 0.82,
+    "ports": [
+      80,
+      443
+    ]
+  },
+  {
+    "service": "Jupyter",
+    "category": "数据分析",
+    "pattern": "(?i)jupyter",
+    "version_group": 0,
+    "confidence": 0.85,
+    "ports": [
+      8888,
+      8889
+    ]
+  },
+  {
+    "service": "Zeppelin",
+    "category": "数据分析",
+    "pattern": "(?i)zeppelin",
+    "version_group": 0,
+    "confidence": 0.82,
+    "ports": [
+      8080,
+      8443
+    ]
+  },
+  {
+    "service": "Airflow",
+    "category": "工作流",
+    "pattern": "(?i)airflow",
+    "version_group": 0,
+    "confidence": 0.85,
+    "ports": [
+      8080,
+      8793
+    ]
+  },
+  {
+    "service": "DolphinScheduler",
+    "category": "工作流",
+    "pattern": "(?i)dolphinscheduler",
+    "version_group": 0,
+    "confidence": 0.8,
+    "ports": [
+      12345,
+      25333
+    ]
+  },
+  {
+    "service": "Elastic APM",
+    "category": "APM",
+    "pattern": "(?i)apm",
+    "version_group": 0,
+    "confidence": 0.75,
+    "ports": [
+      8200
+    ]
+  },
+  {
+    "service": "SkyWalking",
+    "category": "APM",
+    "pattern": "(?i)skywalking",
+    "version_group": 0,
+    "confidence": 0.82,
+    "ports": [
+      8080,
+      11800,
+      12800
+    ]
+  },
+  {
+    "service": "Jaeger",
+    "category": "APM",
+    "pattern": "(?i)jaeger",
+    "version_group": 0,
+    "confidence": 0.85,
+    "ports": [
+      16686,
+      5775,
+      6831
+    ]
+  },
+  {
+    "service": "Zipkin",
+    "category": "APM",
+    "pattern": "(?i)zipkin",
+    "version_group": 0,
+    "confidence": 0.85,
+    "ports": [
+      9411
+    ]
+  }
+]

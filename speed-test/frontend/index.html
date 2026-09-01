@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>网速测试</title>
+<link rel="stylesheet" href="qd-theme.css">
+<style>
+.app{display:flex;flex-direction:column;height:100%;padding:var(--sp-4);gap:var(--sp-3);box-sizing:border-box}
+.row{display:flex;gap:var(--sp-2);align-items:center}
+.input{flex:1;height:32px;padding:0 10px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:var(--fs-sm);outline:none;font-family:var(--font-mono)}
+.input:focus{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.lbl{font-size:var(--fs-xs);color:var(--text-muted);white-space:nowrap}
+.hint{font-size:var(--fs-sm);color:var(--text-muted);min-height:16px}
+.hint.err{color:var(--danger)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--sp-2)}
+.stat{background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius);padding:10px 8px;text-align:center}
+.stat-v{font-size:18px;font-weight:700;color:var(--text-primary);font-family:var(--font-mono)}
+.stat-k{font-size:11px;color:var(--text-muted);margin-top:3px}
+.bar{height:8px;background:var(--bg-tertiary);border-radius:var(--radius-pill);overflow:hidden}
+.bar-fill{height:100%;width:0;background:linear-gradient(90deg,var(--accent),#7bc0ff);transition:width 200ms}
+.big{font-size:34px;font-weight:800;font-family:var(--font-mono);color:var(--accent);text-align:center;font-variant-numeric:tabular-nums}
+.big-k{text-align:center;font-size:12px;color:var(--text-muted);margin-top:2px}
+.btn-stop{background:var(--danger);color:#fff;border-color:var(--danger)}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="row">
+    <input id="url" class="input" placeholder="测速节点 URL（留空用 Cloudflare 默认）" spellcheck="false" value="https://speed.cloudflare.com/__down?bytes=25000000">
+  </div>
+  <div class="row">
+    <span class="lbl">节点名</span>
+    <input id="node" class="input" style="flex:0 0 200px" placeholder="显示用，可留空">
+    <span class="spacer" style="flex:1"></span>
+    <button id="btnGo" class="p-btn p-btn-primary">开始测速</button>
+  </div>
+
+  <div id="hint" class="hint"></div>
+
+  <div class="big" id="speedBig">— Mbps</div>
+  <div class="big-k" id="speedSub">等待开始</div>
+
+  <div class="bar"><div id="barFill" class="bar-fill"></div></div>
+
+  <div class="stats">
+    <div class="stat"><div class="stat-v" id="s-lat">—</div><div class="stat-k">延迟 (ms)</div></div>
+    <div class="stat"><div class="stat-v" id="s-dl">0.0</div><div class="stat-k">已下载 (MB)</div></div>
+    <div class="stat"><div class="stat-v" id="s-tot">0.0</div><div class="stat-k">总计 (MB)</div></div>
+    <div class="stat"><div class="stat-v" id="s-el">0.0</div><div class="stat-k">用时 (s)</div></div>
+  </div>
+</div>
+<script>
+(function(){
+  'use strict'
+  var seq=0, pend={}
+  function send(command, input){
+    return new Promise(function(res, rej){
+      var id='sp_'+(++seq); pend[id]={res:res,rej:rej}
+      parent.postMessage({type:'plugin:execute',id:id,command:command,input:input||{}},'*')
+    })
+  }
+  window.addEventListener('message',function(e){
+    var d=e.data; if(!d) return
+    if(d.type==='plugin:result'&&d.id&&pend[d.id]){var p=pend[d.id];delete pend[d.id];if(d.error)p.rej(new Error(d.error));else p.res(d.data);return}
+    if(d.type==='plugin:theme'){var dd=d.data||{};if(dd.locale)document.documentElement.setAttribute('lang',dd.locale)}
+  })
+  var el=function(i){return document.getElementById(i)}
+  var running=false, sid=null, timer=null
+  function fmt(n,d){return (n==null||isNaN(n))?'—':Number(n).toFixed(d==null?1:d)}
+  function setRunning(v){
+    running=v; var b=el('btnGo')
+    b.textContent=v?'停止':'开始测速'; b.className=v?'p-btn btn-stop':'p-btn p-btn-primary'
+  }
+  function poll(){
+    if(!sid) return
+    send('poll',{sessionId:sid}).then(function(s){
+      render(s)
+      if(!s.running){ finish(); return }
+    }).catch(function(e){ el('hint').className='hint err'; el('hint').textContent=e.message||e; finish() })
+  }
+  function render(s){
+    el('s-lat').textContent = s.latencyMs>0?fmt(s.latencyMs,0):'—'
+    var dl=(s.downloaded||0)/1048576, tot=(s.total||0)/1048576
+    el('s-dl').textContent=fmt(dl,1)
+    el('s-tot').textContent=fmt(tot,1)
+    el('s-el').textContent=fmt((s.elapsedMs||0)/1000,1)
+    el('speedBig').textContent=fmt(s.speedMbps,1)+' Mbps'
+    el('speedSub').textContent='下载 '+fmt(s.speedMBps,2)+' MB/s'+(s.nodeName?' · '+s.nodeName:'')
+    var pct = tot>0 ? Math.min(100, dl/tot*100) : (s.running?50:100)
+    el('barFill').style.width=pct.toFixed(1)+'%'
+  }
+  function finish(){
+    if(timer){clearInterval(timer);timer=null}
+    setRunning(false)
+    var x=sid; sid=null
+    if(x) send('stop',{sessionId:x}).catch(function(){})
+  }
+  function start(){
+    var url=el('url').value.trim()
+    el('hint').className='hint'; el('hint').textContent='正在测速…'
+    send('start',{url:url, node:el('node').value.trim()}).then(function(r){
+      sid=r.sessionId; setRunning(true)
+      el('barFill').style.width='0%'
+      timer=setInterval(poll,400); poll()
+    }).catch(function(e){ el('hint').className='hint err'; el('hint').textContent=e.message||e })
+  }
+  el('btnGo').addEventListener('click',function(){ running?finish():start() })
+  window.addEventListener('resize',function(){})
+})()
+</script>
+</body>
+</html>

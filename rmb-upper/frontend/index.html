@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>人民币大写</title>
+<link rel="stylesheet" href="qd-theme.css">
+<style>
+.app{display:flex;flex-direction:column;height:100%;padding:var(--sp-4);gap:var(--sp-3);box-sizing:border-box}
+.row{display:flex;gap:var(--sp-2)}
+.input{flex:1;padding:9px 12px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:14px;outline:none;font-family:ui-monospace,Consolas,monospace}
+.input:focus{border-color:var(--accent,#4a9eff)}
+.btn{padding:9px 16px;background:var(--accent,#4a9eff);color:#fff;border:none;border-radius:var(--radius);cursor:pointer;font-size:13px;font-weight:600}
+.btn-ghost{padding:9px 14px;background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;font-size:13px}
+.hint{font-size:12px;color:var(--text-muted);min-height:16px}
+.hint.err{color:var(--danger,#e24b4a)}
+.out{flex:0 0 auto;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-lg);padding:var(--sp-4);min-height:76px;display:flex;align-items:center;justify-content:center;text-align:center}
+.out-text{font-size:22px;line-height:1.5;color:var(--text-primary);font-weight:600;letter-spacing:2px;word-break:break-all}
+.out-text.empty{font-size:14px;font-weight:400;color:var(--text-muted);letter-spacing:0}
+.extra{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:var(--sp-2)}
+.sect{background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-lg);padding:var(--sp-3)}
+.sect-title{font-size:12px;font-weight:700;color:var(--accent,#4a9eff);margin-bottom:8px}
+.presets{display:flex;flex-wrap:wrap;gap:6px}
+.preset{padding:5px 10px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius-sm,6px);color:var(--text-secondary);font-size:12px;cursor:pointer;font-family:ui-monospace,Consolas,monospace}
+.preset:hover{border-color:var(--accent,#4a9eff);color:var(--accent,#4a9eff)}
+.kv{display:flex;justify-content:space-between;font-size:12px;padding:3px 0;color:var(--text-secondary)}
+.kv b{color:var(--text-primary);font-weight:600;letter-spacing:1px}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="row">
+    <input id="amount" class="input" placeholder="输入金额，如 1234.56" spellcheck="false" autofocus>
+    <button id="btnCopy" class="btn-ghost">复制</button>
+  </div>
+  <div id="hint" class="hint"></div>
+  <div class="out"><span id="outText" class="out-text empty">—</span></div>
+  <div class="extra">
+    <div class="sect">
+      <div class="sect-title" id="t-presets">常用示例</div>
+      <div class="presets" id="presets"></div>
+    </div>
+    <div class="sect">
+      <div class="sect-title" id="t-detail">拆分明细</div>
+      <div id="detail"></div>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  'use strict'
+
+  /* ---------- i18n ---------- */
+  var L10N = {
+    'en-US': {
+      '输入金额，如 1234.56': 'Enter amount, e.g. 1234.56',
+      '复制': 'Copy',
+      '已复制': 'Copied',
+      '常用示例': 'Examples',
+      '拆分明细': 'Breakdown',
+      '请输入金额': 'Please enter an amount',
+      '金额格式不正确': 'Invalid amount format',
+      '金额过大（最多支持到万亿）': 'Amount too large (max 10^16)',
+      '整数部分': 'Integer',
+      '角': 'Jiao',
+      '分': 'Fen',
+      '已四舍五入到分': 'Rounded to 2 decimals'
+    }
+  }
+  function L(k){
+    var loc = document.documentElement.getAttribute('lang') || 'zh-CN'
+    var map = L10N[loc] || L10N[loc.split('-')[0]] || {}
+    return (map && map[k] !== undefined) ? map[k] : k
+  }
+  function renderStatic(){
+    document.getElementById('amount').placeholder = L('输入金额，如 1234.56')
+    document.getElementById('btnCopy').textContent = L('复制')
+    document.getElementById('t-presets').textContent = L('常用示例')
+    document.getElementById('t-detail').textContent = L('拆分明细')
+  }
+
+  /* ---------- 核心：人民币大写 ---------- */
+  var DIGITS = ['零','壹','贰','叁','肆','伍','陆','柒','捌','玖']
+  var UNITS = ['','拾','佰','仟']
+  var GROUP_UNITS = ['','万','亿','万亿','亿亿']
+
+  function incStr(s){
+    var a = s.split('')
+    for (var i = a.length - 1; i >= 0; i--) {
+      if (a[i] === '9') { a[i] = '0'; if (i === 0) { a.unshift('1'); break } }
+      else { a[i] = String(Number(a[i]) + 1); break }
+    }
+    return a.join('')
+  }
+
+  // 整数部分转中文大写（不含「元」）；调用前保证已去前导零
+  function intToUpper(intStr){
+    if (!/^[0-9]+$/.test(intStr) || intStr === '0') return ''
+    var gs = [], s = intStr
+    while (s.length > 0) { gs.unshift(s.slice(-4)); s = s.slice(0, -4) }
+    if (gs.length > GROUP_UNITS.length) return null // 超出支持范围
+
+    var out = '', zeroPending = false
+    for (var gi = 0; gi < gs.length; gi++) {
+      var g = gs[gi]
+      var gu = GROUP_UNITS[gs.length - 1 - gi]
+      var had = false
+      for (var i = 0; i < g.length; i++) {
+        var d = Number(g.charAt(i))
+        var u = UNITS[g.length - 1 - i]
+        if (d === 0) { if (out.length > 0) zeroPending = true; continue }
+        if (zeroPending) { out += '零'; zeroPending = false }
+        out += DIGITS[d] + u
+        had = true
+      }
+      if (had) out += gu
+    }
+    return out
+  }
+
+  function convert(raw){
+    var s = String(raw == null ? '' : raw).replace(/[,\s￥¥]/g, '').trim()
+    if (!s) return { ok:false, error:L('请输入金额') }
+    var neg = false
+    if (s.charAt(0) === '-') { neg = true; s = s.slice(1) }
+    if (!/^\d+(\.\d+)?$/.test(s)) return { ok:false, error:L('金额格式不正确') }
+
+    var parts = s.split('.')
+    var intStr = parts[0] || '0'
+    var decStr = parts[1] || ''
+    var rounded = false
+
+    // 超过 2 位小数：四舍五入到分
+    if (decStr.length > 2) {
+      rounded = true
+      var third = Number(decStr.charAt(2))
+      decStr = decStr.slice(0, 2)
+      if (third >= 5) {
+        var d = Number((decStr + '00').slice(0, 2)) + 1
+        if (d >= 100) { d = 0; intStr = incStr(intStr) }
+        decStr = String(d).padStart(2, '0')
+      }
+    }
+    while (decStr.length < 2) decStr += '0'
+    intStr = intStr.replace(/^0+(?=\d)/, '') // 去前导零
+
+    if (intStr.length > 16) return { ok:false, error:L('金额过大（最多支持到万亿）') }
+
+    var jiao = Number(decStr.charAt(0))
+    var fen = Number(decStr.charAt(1))
+    var intPart = intStr !== '0'
+    var upper = intToUpper(intStr)
+    if (upper === null) return { ok:false, error:L('金额过大（最多支持到万亿）') }
+
+    var result = ''
+    if (intPart) result += upper + '元'
+    if (jiao > 0) result += DIGITS[jiao] + '角'
+    else if (fen > 0 && intPart) result += '零'
+    if (fen > 0) result += DIGITS[fen] + '分'
+    if (intPart && jiao === 0 && fen === 0) result += '整'
+    if (!intPart && jiao === 0 && fen === 0) result = '零元整'
+    if (neg) result = '负' + result
+
+    return { ok:true, text:result, intUpper:upper, intPart:intPart, jiao:jiao, fen:fen, rounded:rounded }
+  }
+
+  /* ---------- UI ---------- */
+  var input = document.getElementById('amount')
+  var hint = document.getElementById('hint')
+  var outText = document.getElementById('outText')
+  var detail = document.getElementById('detail')
+  var lastText = ''
+
+  function esc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') }
+
+  function copyText(t){
+    try { if (window.host && window.host.clipboard && window.host.clipboard.write) return window.host.clipboard.write(t) } catch (e) {}
+    if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(t)
+    return new Promise(function(res){
+      var ta = document.createElement('textarea'); ta.value = t
+      document.body.appendChild(ta); ta.select()
+      try { document.execCommand('copy') } catch (e) {}
+      ta.remove(); res()
+    })
+  }
+
+  function render(){
+    var r = convert(input.value)
+    if (!r.ok) {
+      lastText = ''
+      outText.className = 'out-text empty'
+      outText.textContent = '—'
+      hint.className = 'hint err'
+      hint.textContent = r.error
+      detail.innerHTML = ''
+      return
+    }
+    lastText = r.text
+    outText.className = 'out-text'
+    outText.textContent = r.text
+    hint.className = 'hint'
+    hint.textContent = r.rounded ? L('已四舍五入到分') : ''
+
+    var rows = ''
+    if (r.intPart) rows += '<div class="kv"><span>' + esc(L('整数部分')) + '</span><b>' + esc(r.intUpper) + '</b></div>'
+    if (r.jiao > 0) rows += '<div class="kv"><span>' + esc(L('角')) + '</span><b>' + esc(DIGITS[r.jiao] + '角') + '</b></div>'
+    if (r.fen > 0) rows += '<div class="kv"><span>' + esc(L('分')) + '</span><b>' + esc(DIGITS[r.fen] + '分') + '</b></div>'
+    if (!rows) rows = '<div class="kv"><span>—</span><b>零元整</b></div>'
+    detail.innerHTML = rows
+  }
+
+  var PRESETS = ['1234.56', '10005', '100000000', '1000000000001', '0.05', '1200.5']
+  var presetsEl = document.getElementById('presets')
+  PRESETS.forEach(function(v){
+    var b = document.createElement('span')
+    b.className = 'preset'; b.textContent = v
+    b.addEventListener('click', function(){ input.value = v; render() })
+    presetsEl.appendChild(b)
+  })
+
+  document.getElementById('btnCopy').addEventListener('click', function(){
+    if (!lastText) return
+    var btn = this, old = btn.textContent
+    copyText(lastText).then(function(){
+      btn.textContent = L('已复制')
+      setTimeout(function(){ btn.textContent = old }, 1200)
+    })
+  })
+
+  input.addEventListener('input', render)
+
+  /* 命令面板输入接管（acceptsInput） */
+  window.addEventListener('message', function(e){
+    var d = e.data
+    if (!d) return
+    if (d.type === 'plugin:init') {
+      var payload = d.data || {}
+      if (payload.text) { input.value = payload.text; render() }
+    } else if (d.type === 'plugin:theme') {
+      var dd = d.data || {}
+      if (dd.locale) document.documentElement.setAttribute('lang', dd.locale)
+      renderStatic(); render()
+    }
+  })
+
+  renderStatic()
+  render()
+})()
+</script>
+</body>
+</html>

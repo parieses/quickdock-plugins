@@ -1,0 +1,63 @@
+{
+  "id": "io.github.parieses.dns-propagation",
+  "name": "DNS 传播检查",
+  "version": "0.1.0",
+  "description": "向多个公共 DNS 解析器（Cloudflare / Google / Quad9 / 阿里 DNS / DNSPod / OpenDNS）并行查询指定记录类型，对比各节点解析结果是否一致，判断 DNS 变更是否已全球生效",
+  "author": "QuickDock",
+  "category": "网络工具",
+  "platforms": [
+    "windows",
+    "darwin",
+    "linux"
+  ],
+  "icon": "icon.svg",
+  "backend": {
+    "runtime": "native",
+    "entry": "dns-propagation",
+    "args": []
+  },
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 920,
+    "height": 620
+  },
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "permissions": {
+    "network": true
+  },
+  "commands": [
+    {
+      "id": "check",
+      "title": "DNS 传播检查",
+      "keywords": [
+        "dns",
+        "propagation",
+        "传播",
+        "解析",
+        "DNS 检查",
+        "全球生效"
+      ],
+      "aliases": [
+        "DNS 传播",
+        "DNS 传播检查",
+        "解析一致性"
+      ],
+      "title_i18n": {
+        "zh-CN": "DNS 传播检查",
+        "en-US": "DNS Propagation Check"
+      }
+    }
+  ],
+  "name_i18n": {
+    "zh-CN": "DNS 传播检查",
+    "en-US": "DNS Propagation Check"
+  },
+  "description_i18n": {
+    "zh-CN": "向多个公共 DNS 并行查询并对比解析结果，判断 DNS 变更是否全球生效",
+    "en-US": "Query multiple public DNS resolvers in parallel and compare results to check if DNS changes have propagated"
+  }
+}

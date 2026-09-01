@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>目录探测</title>
+<link rel="stylesheet" href="qd-theme.css">
+<style>
+.app{display:flex;flex-direction:column;height:100%;padding:var(--sp-4);gap:var(--sp-3);box-sizing:border-box}
+.row{display:flex;gap:var(--sp-2);align-items:center}
+.input{flex:1;height:32px;padding:0 10px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:var(--fs-sm);outline:none;font-family:var(--font-mono)}
+.input:focus{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.input.sm{flex:0 0 200px}
+.select{height:32px;padding:0 8px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:var(--fs-sm);outline:none}
+.hint{font-size:var(--fs-xs);color:var(--text-muted);min-height:14px}
+.hint.err{color:var(--danger)}
+.warn{font-size:var(--fs-xs);color:var(--warning);background:var(--warning-soft);padding:6px 10px;border-radius:var(--radius)}
+.bar{height:8px;background:var(--bg-tertiary);border-radius:var(--radius-pill);overflow:hidden}
+.bar-fill{height:100%;width:0;background:linear-gradient(90deg,var(--accent),#7bc0ff);transition:width 200ms}
+.stats{display:flex;gap:var(--sp-3);font-size:var(--fs-xs);color:var(--text-secondary)}
+.stats b{color:var(--text-primary);font-family:var(--font-mono)}
+.list{flex:1;overflow:auto;display:flex;flex-direction:column}
+.item{display:flex;align-items:center;gap:var(--sp-2);padding:7px 10px;border-bottom:1px solid var(--border);font-size:var(--fs-sm)}
+.item:hover{background:var(--bg-hover)}
+.path{font-family:var(--font-mono);color:var(--text-primary);flex:1;word-break:break-all}
+.st{font-family:var(--font-mono);font-weight:700;width:42px;text-align:center;border-radius:var(--radius-sm);padding:1px 0}
+.st.s2{color:var(--success);background:var(--success-soft)}
+.st.s3{color:var(--warning);background:var(--warning-soft)}
+.st.s4,.st.s5{color:var(--danger);background:var(--danger-soft)}
+.loc{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--text-muted);max-width:38%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.btn-stop{background:var(--danger);color:#fff;border-color:var(--danger)}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="row">
+    <input id="url" class="input" placeholder="目标 URL，如 https://example.com" spellcheck="false" autofocus>
+  </div>
+  <div class="row">
+    <input id="exts" class="input sm" placeholder="扩展名(逗号分隔)" value="php,html,asp,jsp">
+    <select id="method" class="select"><option>GET</option><option>HEAD</option></select>
+    <span class="spacer" style="flex:1"></span>
+    <button id="btnGo" class="p-btn p-btn-primary">开始探测</button>
+  </div>
+  <div class="warn">仅用于你拥有合法授权的目标（自有站点/授权测试），内置字典、不递归、不写入任何文件。</div>
+  <div id="hint" class="hint"></div>
+  <div class="bar"><div id="barFill" class="bar-fill"></div></div>
+  <div class="stats">
+    <span>进度 <b id="s-scan">0/0</b></span>
+    <span>命中 <b id="s-found">0</b></span>
+  </div>
+  <div id="list" class="list"></div>
+</div>
+<script>
+(function(){
+  'use strict'
+  var seq=0, pend={}
+  function send(command, input){
+    return new Promise(function(res, rej){
+      var id='db_'+(++seq); pend[id]={res:res,rej:rej}
+      parent.postMessage({type:'plugin:execute',id:id,command:command,input:input||{}},'*')
+    })
+  }
+  window.addEventListener('message',function(e){
+    var d=e.data; if(!d) return
+    if(d.type==='plugin:result'&&d.id&&pend[d.id]){var p=pend[d.id];delete pend[d.id];if(d.error)p.rej(new Error(d.error));else p.res(d.data);return}
+    if(d.type==='plugin:theme'){var dd=d.data||{};if(dd.locale)document.documentElement.setAttribute('lang',dd.locale)}
+  })
+  var el=function(i){return document.getElementById(i)}
+  var running=false, sid=null, timer=null
+  function stclass(c){return 's'+Math.floor(c/100)}
+  function render(s){
+    el('s-scan').textContent=s.scanned+'/'+s.total
+    el('s-found').textContent=s.found.length
+    var pct=s.total>0?Math.min(100,s.scanned/s.total*100):0
+    el('barFill').style.width=pct.toFixed(1)+'%'
+    // 渲染命中去重（按 path）
+    var seen={}, html=''
+    ;(s.found||[]).forEach(function(f){
+      if(seen[f.path])return; seen[f.path]=1
+      html+='<div class="item"><span class="st '+stclass(f.status)+'">'+f.status+'</span><span class="path">'+esc(f.path)+'</span>'+(f.location?'<span class="loc" title="'+esc(f.location)+'">→ '+esc(f.location)+'</span>':'')+'</div>'
+    })
+    el('list').innerHTML=html
+  }
+  function poll(){
+    if(!sid)return
+    send('poll',{sessionId:sid}).then(function(s){ render(s); if(!s.running){finish();return} }).catch(function(e){ el('hint').className='hint err'; el('hint').textContent=e.message||e; finish() })
+  }
+  function finish(){
+    if(timer){clearInterval(timer);timer=null}
+    running=false; var b=el('btnGo'); b.textContent='开始探测'; b.className='p-btn p-btn-primary'
+    var x=sid; sid=null; if(x) send('stop',{sessionId:x}).catch(function(){})
+  }
+  function start(){
+    var url=el('url').value.trim()
+    if(!url){el('hint').className='hint err';el('hint').textContent='请输入目标 URL';return}
+    el('list').innerHTML=''
+    el('hint').className='hint';el('hint').textContent='正在探测…'
+    send('start',{url:url, extensions:el('exts').value.trim(), method:el('method').value}).then(function(r){
+      sid=r.sessionId; running=true
+      var b=el('btnGo'); b.textContent='停止'; b.className='p-btn btn-stop'
+      el('barFill').style.width='0%'
+      timer=setInterval(poll,400); poll()
+    }).catch(function(e){ el('hint').className='hint err'; el('hint').textContent=e.message||e })
+  }
+  function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+  el('btnGo').addEventListener('click',function(){ running?finish():start() })
+  el('url').addEventListener('keydown',function(e){if(e.key==='Enter'&&!running)start()})
+})()
+</script>
+</body>
+</html>

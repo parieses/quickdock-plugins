@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ping 监视器</title>
+<link rel="stylesheet" href="qd-theme.css">
+<style>
+.app{display:flex;flex-direction:column;height:100%;padding:var(--sp-3);gap:var(--sp-2);box-sizing:border-box}
+.row{display:flex;gap:var(--sp-2);align-items:center}
+.input{flex:1;padding:8px 10px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:13px;outline:none;font-family:ui-monospace,Consolas,monospace}
+.input:focus{border-color:var(--accent,#4a9eff)}
+.mini{width:74px;padding:8px 6px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:12px;outline:none}
+.lbl{font-size:11px;color:var(--text-muted);white-space:nowrap}
+.btn{padding:8px 18px;background:var(--accent,#4a9eff);color:#fff;border:none;border-radius:var(--radius);cursor:pointer;font-size:13px;font-weight:600;white-space:nowrap}
+.btn.stop{background:var(--danger,#e24b4a)}
+.hint{font-size:12px;color:var(--text-muted);min-height:16px}
+.hint.err{color:var(--danger,#e24b4a)}
+.stats{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.stat{background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius);padding:8px 6px;text-align:center}
+.stat-v{font-size:16px;font-weight:700;color:var(--text-primary);font-family:ui-monospace,Consolas,monospace}
+.stat-k{font-size:10px;color:var(--text-muted);margin-top:2px}
+.chart-wrap{flex:0 0 150px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-lg);padding:6px;box-sizing:border-box}
+canvas{width:100%;height:100%;display:block}
+.log{flex:1;overflow-y:auto;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-lg);padding:8px;font-family:ui-monospace,Consolas,monospace;font-size:12px;line-height:1.7}
+.log-row{display:flex;gap:10px}
+.log-seq{color:var(--text-muted);min-width:42px}
+.log-ok{color:var(--text-primary)}
+.log-bad{color:var(--danger,#e24b4a)}
+.tag{margin-left:6px;padding:1px 6px;border-radius:4px;font-size:10px;background:var(--bg-primary);color:var(--text-secondary)}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="row">
+    <input id="host" class="input" placeholder="主机名或 IP，如 223.5.5.5" spellcheck="false" autofocus>
+    <button id="btnGo" class="btn">开始</button>
+  </div>
+  <div class="row">
+    <span class="lbl" id="t-interval">间隔(ms)</span>
+    <input id="interval" class="mini" type="number" value="1000" min="200" max="10000">
+    <span class="lbl" id="t-count">次数(0=持续)</span>
+    <input id="count" class="mini" type="number" value="0" min="0" max="10000">
+    <span class="lbl" id="t-timeout">超时(ms)</span>
+    <input id="timeout" class="mini" type="number" value="2000" min="100" max="10000">
+    <span class="spacer" style="flex:1"></span>
+    <span id="modeTag" class="tag" style="display:none"></span>
+  </div>
+  <div id="hint" class="hint"></div>
+
+  <div class="stats">
+    <div class="stat"><div class="stat-v" id="s-sent">0</div><div class="stat-k" id="t-sent">发送</div></div>
+    <div class="stat"><div class="stat-v" id="s-recv">0</div><div class="stat-k" id="t-recv">接收</div></div>
+    <div class="stat"><div class="stat-v" id="s-loss">0%</div><div class="stat-k" id="t-loss">丢包</div></div>
+    <div class="stat"><div class="stat-v" id="s-min">-</div><div class="stat-k" id="t-min">最小</div></div>
+    <div class="stat"><div class="stat-v" id="s-avg">-</div><div class="stat-k" id="t-avg">平均</div></div>
+    <div class="stat"><div class="stat-v" id="s-max">-</div><div class="stat-k" id="t-max">最大</div></div>
+    <div class="stat"><div class="stat-v" id="s-last">-</div><div class="stat-k" id="t-last">最新</div></div>
+  </div>
+
+  <div class="chart-wrap"><canvas id="chart"></canvas></div>
+  <div class="log" id="log"></div>
+</div>
+<script>
+(function(){
+  'use strict'
+
+  /* ---------- i18n ---------- */
+  var L10N = {
+    'en-US': {
+      '间隔(ms)':'Interval(ms)','次数(0=持续)':'Count(0=∞)','超时(ms)':'Timeout(ms)',
+      '发送':'Sent','接收':'Recv','丢包':'Loss','最小':'Min','平均':'Avg','最大':'Max','最新':'Last',
+      '开始':'Start','停止':'Stop','请输入目标主机':'Enter a host or IP',
+      '正在探测…':'Probing…','已停止':'Stopped','目标无响应':'Host not responding',
+      '主机名或 IP，如 223.5.5.5':'Host or IP, e.g. 223.5.5.5',
+      'ICMP 模式':'ICMP mode','TCP 模式（ICMP 不可用）':'TCP mode (ICMP unavailable)'
+    }
+  }
+  function L(k){
+    var loc = document.documentElement.getAttribute('lang') || 'zh-CN'
+    var map = L10N[loc] || L10N[loc.split('-')[0]] || {}
+    return (map && map[k] !== undefined) ? map[k] : k
+  }
+  function renderStatic(){
+    var m = {'t-interval':'间隔(ms)','t-count':'次数(0=持续)','t-timeout':'超时(ms)',
+             't-sent':'发送','t-recv':'接收','t-loss':'丢包','t-min':'最小','t-avg':'平均',
+             't-max':'最大','t-last':'最新'}
+    for (var id in m) document.getElementById(id).textContent = L(m[id])
+    document.getElementById('host').placeholder = L('主机名或 IP，如 223.5.5.5')
+    if (!running) document.getElementById('btnGo').textContent = L('开始')
+  }
+
+  /* ---------- RPC ---------- */
+  var seq = 0, pend = {}
+  function send(command, input){
+    return new Promise(function(resolve, reject){
+      var id = 'pg_' + (++seq)
+      pend[id] = { resolve: resolve, reject: reject }
+      parent.postMessage({ type:'plugin:execute', id:id, command:command, input:input || {} }, '*')
+    })
+  }
+  window.addEventListener('message', function(e){
+    var d = e.data
+    if (!d) return
+    if (d.type === 'plugin:result' && d.id && pend[d.id]) {
+      var p = pend[d.id]; delete pend[d.id]
+      if (d.error) p.reject(new Error(d.error)); else p.resolve(d.data)
+      return
+    }
+    if (d.type === 'plugin:init') {
+      var pd = d.data || {}
+      if (pd.text) document.getElementById('host').value = pd.text
+      return
+    }
+    if (d.type === 'plugin:theme') {
+      var dd = d.data || {}
+      if (dd.locale) document.documentElement.setAttribute('lang', dd.locale)
+      renderStatic(); draw()
+    }
+  })
+
+  /* ---------- 状态 ---------- */
+  var running = false, sessionId = null, pollTimer = null
+  var results = [], stats = null, lastRendered = 0
+  var MAX_POINTS = 80
+
+  var el = function(id){ return document.getElementById(id) }
+  var hint = el('hint'), logEl = el('log'), canvas = el('chart'), ctx = canvas.getContext('2d')
+
+  function esc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+
+  // 亚毫秒（RTT=0）显示为 <1ms
+  function fmtRtt(r){
+    if (r.ok && r.rtt <= 0) return '&lt;1ms'
+    return r.rtt.toFixed(r.rtt < 10 ? 1 : 0) + 'ms'
+  }
+
+  /* ---------- 图表 ---------- */
+  function draw(){
+    var dpr = window.devicePixelRatio || 1
+    var w = canvas.clientWidth, h = canvas.clientHeight
+    if (!w || !h) return
+    canvas.width = w * dpr; canvas.height = h * dpr
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    ctx.clearRect(0, 0, w, h)
+
+    var css = getComputedStyle(document.body)
+    var gridC = css.getPropertyValue('--border').trim() || '#333'
+    var okC = css.getPropertyValue('--accent').trim() || '#4a9eff'
+    var badC = css.getPropertyValue('--danger').trim() || '#e24b4a'
+
+    // 网格线
+    ctx.strokeStyle = gridC; ctx.lineWidth = 1
+    for (var g = 1; g < 4; g++) {
+      var gy = Math.round(h * g / 4) + 0.5
+      ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(w, gy); ctx.stroke()
+    }
+
+    if (!results.length) return
+    var view = results.slice(-MAX_POINTS)
+    var maxRtt = 20
+    for (var i = 0; i < view.length; i++) if (view[i].ok && view[i].rtt > maxRtt) maxRtt = view[i].rtt
+    maxRtt = Math.ceil(maxRtt / 20) * 20
+
+    var bw = w / MAX_POINTS
+    for (var k = 0; k < view.length; k++) {
+      var r = view[k]
+      var x = k * bw
+      if (!r.ok) {
+        // 超时：顶部红色短条
+        ctx.fillStyle = badC
+        ctx.fillRect(x, 0, Math.max(bw - 1, 1), Math.max(h * 0.08, 3))
+        continue
+      }
+      var bh = Math.max((r.rtt / maxRtt) * (h - 6), 2)
+      ctx.fillStyle = okC
+      ctx.fillRect(x, h - bh, Math.max(bw - 1, 1), bh)
+    }
+  }
+
+  /* ---------- 渲染 ---------- */
+  function renderSnap(snap){
+    results = snap.results || []
+    stats = snap.stats || {}
+    el('s-sent').textContent = stats.sent
+    el('s-recv').textContent = stats.recv
+    el('s-loss').textContent = (stats.loss || 0).toFixed(0) + '%'
+    el('s-min').textContent = stats.recv ? (stats.min > 0 ? stats.min.toFixed(stats.min < 10 ? 1 : 0) : '<1') : '-'
+    el('s-avg').textContent = stats.recv ? stats.avg.toFixed(1) : '-'
+    el('s-max').textContent = stats.recv ? stats.max.toFixed(stats.max < 10 ? 1 : 0) : '-'
+    var last = stats.last
+    el('s-last').textContent = (last != null && last >= 0) ? (last > 0 ? last.toFixed(last < 10 ? 1 : 0) : '<1') : '-'
+
+    // 日志只渲染新增行，避免整表重绘
+    var html = ''
+    var from = Math.max(0, results.length - 200)
+    for (var i = from; i < results.length; i++) {
+      var r = results[i]
+      html += '<div class="log-row"><span class="log-seq">#' + r.seq + '</span>' +
+        (r.ok ? '<span class="log-ok">' + fmtRtt(r) + '</span>'
+              : '<span class="log-bad">' + esc(r.error || '超时') + '</span>') + '</div>'
+    }
+    logEl.innerHTML = html
+    logEl.scrollTop = logEl.scrollHeight
+    draw()
+  }
+
+  /* ---------- 控制 ---------- */
+  function setRunning(v){
+    running = v
+    var b = el('btnGo')
+    b.textContent = v ? L('停止') : L('开始')
+    b.className = v ? 'btn stop' : 'btn'
+  }
+
+  function poll(){
+    if (!sessionId) return
+    send('poll', { sessionId: sessionId }).then(function(snap){
+      renderSnap(snap)
+      if (!snap.running) { finish(); return }
+    }).catch(function(e){
+      hint.className = 'hint err'
+      hint.textContent = e && e.message ? e.message : String(e)
+      finish()
+    })
+  }
+
+  function finish(){
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
+    setRunning(false)
+    var sid = sessionId; sessionId = null
+    if (sid) { send('stop', { sessionId: sid }).catch(function(){}) }
+  }
+
+  function start(){
+    var host = el('host').value.trim()
+    if (!host) { hint.className = 'hint err'; hint.textContent = L('请输入目标主机'); return }
+    hint.className = 'hint'; hint.textContent = L('正在探测…')
+    logEl.innerHTML = ''
+    results = []; stats = null
+    lastRendered = 0
+
+    send('start', {
+      host: host,
+      interval: parseInt(el('interval').value, 10) || 1000,
+      count: parseInt(el('count').value, 10) || 0,
+      timeout: parseInt(el('timeout').value, 10) || 2000
+    }).then(function(r){
+      sessionId = r.sessionId
+      setRunning(true)
+      hint.className = 'hint'
+      hint.textContent = r.host + ' → ' + r.ip
+      var tag = el('modeTag')
+      tag.style.display = ''
+      tag.textContent = r.mode === 'icmp' ? L('ICMP 模式') : L('TCP 模式（ICMP 不可用）')
+      pollTimer = setInterval(poll, 800)
+      poll()
+    }).catch(function(e){
+      hint.className = 'hint err'
+      hint.textContent = e && e.message ? e.message : String(e)
+    })
+  }
+
+  el('btnGo').addEventListener('click', function(){
+    if (running) finish(); else start()
+  })
+  el('host').addEventListener('keydown', function(e){ if (e.key === 'Enter') { running ? finish() : start() } })
+  window.addEventListener('resize', draw)
+
+  renderStatic()
+  setRunning(false)
+  draw()
+})()
+</script>
+</body>
+</html>

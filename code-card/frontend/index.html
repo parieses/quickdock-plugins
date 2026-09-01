@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>代码卡片</title>
+<link rel="stylesheet" href="qd-theme.css">
+<style>
+.app{display:flex;flex-direction:column;height:100%;box-sizing:border-box;gap:var(--sp-2);padding:var(--sp-3)}
+.bar{display:flex;flex-wrap:wrap;gap:var(--sp-2);align-items:center}
+.bar label{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text-secondary)}
+select,.num{padding:5px 8px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:12px;outline:none}
+.num{width:56px}
+select:focus,.num:focus{border-color:var(--accent,#4a9eff)}
+.main{flex:1;display:flex;gap:var(--sp-3);min-height:0}
+.pane{display:flex;flex-direction:column;min-height:0}
+.pane.left{flex:0 0 40%}
+.pane.right{flex:1;align-items:center;justify-content:center;overflow:auto;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius-lg);padding:var(--sp-3)}
+textarea{flex:1;width:100%;resize:none;padding:10px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius-lg);color:var(--text-primary);font-size:12px;line-height:1.6;outline:none;font-family:ui-monospace,Consolas,monospace;box-sizing:border-box}
+textarea:focus{border-color:var(--accent,#4a9eff)}
+#preview{max-width:100%;max-height:100%;display:block;border-radius:8px}
+.foot{display:flex;gap:var(--sp-2);align-items:center}
+.btn{padding:8px 18px;background:var(--accent,#4a9eff);color:#fff;border:none;border-radius:var(--radius);cursor:pointer;font-size:13px;font-weight:600}
+.btn-ghost{padding:8px 14px;background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;font-size:13px}
+.hint{font-size:12px;color:var(--text-muted)}
+.spacer{flex:1}
+.chk{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text-secondary);cursor:pointer;user-select:none}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="bar">
+    <label><span id="t-lang">语言</span>
+      <select id="lang"></select>
+    </label>
+    <label><span id="t-theme">主题</span>
+      <select id="theme"></select>
+    </label>
+    <label><span id="t-size">字号</span>
+      <input id="fontSize" class="num" type="number" min="10" max="32" value="15">
+    </label>
+    <label><span id="t-pad">留白</span>
+      <input id="padding" class="num" type="number" min="8" max="80" value="32">
+    </label>
+    <label class="chk"><input id="lineNumbers" type="checkbox" checked><span id="t-ln">行号</span></label>
+    <label class="chk"><input id="chrome" type="checkbox" checked><span id="t-chrome">窗口装饰</span></label>
+    <label class="chk"><input id="shadow" type="checkbox" checked><span id="t-shadow">阴影</span></label>
+  </div>
+
+  <div class="main">
+    <div class="pane left"><textarea id="code" spellcheck="false"></textarea></div>
+    <div class="pane right"><canvas id="preview"></canvas></div>
+  </div>
+
+  <div class="foot">
+    <button id="btnPng" class="btn">导出 PNG</button>
+    <button id="btnCopy" class="btn-ghost">复制图片</button>
+    <span class="spacer"></span>
+    <span id="hint" class="hint"></span>
+  </div>
+</div>
+<script>
+(function(){
+  'use strict'
+
+  /* ---------- i18n ---------- */
+  var L10N = {
+    'en-US': {
+      '语言':'Language','主题':'Theme','字号':'Font','留白':'Padding',
+      '行号':'Line No.','窗口装饰':'Chrome','阴影':'Shadow',
+      '导出 PNG':'Export PNG','复制图片':'Copy Image',
+      '已导出':'Exported','已复制到剪贴板':'Copied to clipboard',
+      '复制失败，请用「导出 PNG」':'Copy failed, use Export PNG',
+      '已复制到剪贴板（图片）':'Image copied'
+    }
+  }
+  function L(k){
+    var loc = document.documentElement.getAttribute('lang') || 'zh-CN'
+    var map = L10N[loc] || L10N[loc.split('-')[0]] || {}
+    return (map && map[k] !== undefined) ? map[k] : k
+  }
+  function renderStatic(){
+    var map = { 't-lang':'语言','t-theme':'主题','t-size':'字号','t-pad':'留白',
+                't-ln':'行号','t-chrome':'窗口装饰','t-shadow':'阴影' }
+    for (var id in map) document.getElementById(id).textContent = L(map[id])
+    document.getElementById('btnPng').textContent = L('导出 PNG')
+    document.getElementById('btnCopy').textContent = L('复制图片')
+  }
+
+  /* ---------- 主题 ---------- */
+  var THEMES = [
+    { id:'midnight', name:'午夜',   bg:['#1e1e2e','#11111b'], card:'#181825', dark:true },
+    { id:'ocean',    name:'深海',   bg:['#0f2027','#203a43'], card:'#0f1f27', dark:true },
+    { id:'sunset',   name:'日落',   bg:['#ff7e5f','#feb47b'], card:'#2b1f2e', dark:true },
+    { id:'violet',   name:'紫霞',   bg:['#654ea3','#eaafc8'], card:'#241b35', dark:true },
+    { id:'mint',     name:'薄荷',   bg:['#a8e063','#56ab2f'], card:'#16241a', dark:true },
+    { id:'candy',    name:'糖果',   bg:['#a18cd1','#fbc2eb'], card:'#2a1f38', dark:true },
+    { id:'steel',    name:'石墨',   bg:['#232526','#414345'], card:'#1a1a1a', dark:true },
+    { id:'paper',    name:'素白',   bg:['#f5f7fa','#c3cfe2'], card:'#ffffff', dark:false }
+  ]
+  var PAL_DARK  = { plain:'#e4e4e7', comment:'#6c7086', keyword:'#cba6f7', string:'#a6e3a1', number:'#fab387', func:'#89b4fa', type:'#f9e2af', op:'#94a3b8', num:'#585b70', chrome:['#ff5f56','#ffbd2e','#27c93f'] }
+  var PAL_LIGHT = { plain:'#24292e', comment:'#6a737d', keyword:'#d73a49', string:'#032f62', number:'#005cc5', func:'#6f42c1', type:'#e36209', op:'#444d56', num:'#b0b6bd', chrome:['#ff5f56','#ffbd2e','#27c93f'] }
+
+  /* ---------- 语言配置 ---------- */
+  var JS_KW = ['const','let','var','function','return','if','else','for','while','class','new','import','from','export','default','async','await','try','catch','finally','throw','typeof','this','null','undefined','true','false','switch','case','break','continue','extends','super','yield','of','in','do','delete','instanceof','void','static','get','set']
+  var TS_KW = JS_KW.concat(['interface','type','implements','public','private','protected','readonly','enum','namespace','declare','as','any','string','number','boolean','unknown','never'])
+  var LANGS = {
+    plain:{ name:'纯文本', line:null, block:null, kw:[] },
+    js:   { name:'JavaScript', line:'//', block:['/*','*/'], kw:JS_KW },
+    ts:   { name:'TypeScript', line:'//', block:['/*','*/'], kw:TS_KW },
+    go:   { name:'Go', line:'//', block:['/*','*/'], kw:['package','import','func','return','if','else','for','range','var','const','type','struct','interface','map','chan','go','defer','switch','case','default','break','continue','nil','true','false','error','string','int','int64','bool','byte','rune','float64','make','new','len','cap','append','panic','recover','select'] },
+    py:   { name:'Python', line:'#', block:null, kw:['def','class','return','if','elif','else','for','while','import','from','as','try','except','finally','raise','with','lambda','None','True','False','and','or','not','in','is','pass','break','continue','global','yield','async','await','self','print','len','range'] },
+    java: { name:'Java', line:'//', block:['/*','*/'], kw:['public','private','protected','class','interface','extends','implements','static','final','void','int','long','double','float','boolean','char','String','new','return','if','else','for','while','do','switch','case','break','continue','try','catch','finally','throw','throws','import','package','this','super','null','true','false','abstract','enum','instanceof'] },
+    php:  { name:'PHP', line:'//', block:['/*','*/'], kw:['function','return','if','elseif','else','for','foreach','while','do','switch','case','break','continue','class','interface','trait','extends','implements','public','private','protected','static','const','new','echo','print','array','null','true','false','use','namespace','as','try','catch','finally','throw','isset','empty','count','global','require','include','abstract','final','yield','match','fn'] },
+    json: { name:'JSON', line:null, block:null, kw:['true','false','null'] },
+    html: { name:'HTML', line:null, block:['<!--','-->'], kw:[] },
+    css:  { name:'CSS', line:null, block:['/*','*/'], kw:[] },
+    sql:  { name:'SQL', line:'--', block:['/*','*/'], kw:['SELECT','FROM','WHERE','INSERT','INTO','VALUES','UPDATE','SET','DELETE','CREATE','TABLE','ALTER','DROP','INDEX','JOIN','LEFT','RIGHT','INNER','OUTER','ON','GROUP','BY','ORDER','HAVING','LIMIT','OFFSET','AND','OR','NOT','NULL','AS','DISTINCT','COUNT','SUM','AVG','MAX','MIN','CASE','WHEN','THEN','ELSE','END','UNION','ALL','PRIMARY','KEY','DEFAULT','INT','VARCHAR','TEXT','TIMESTAMP'] },
+    sh:   { name:'Shell', line:'#', block:null, kw:['if','then','else','elif','fi','for','while','do','done','case','esac','function','return','export','local','echo','cd','ls','mkdir','rm','cp','mv','cat','grep','sed','awk','set','exit','source'] }
+  }
+
+  var FONT = '"Cascadia Code","JetBrains Mono","Fira Code",Consolas,"Courier New",monospace'
+
+  /* ---------- 轻量词法分析 ---------- */
+  function tokenize(code, langId){
+    var cfg = LANGS[langId] || LANGS.plain
+    var out = []
+    var lines = code.split('\n')
+    var inBlock = false
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i], toks = [], j = 0
+      while (j < line.length) {
+        if (inBlock) {
+          var e = line.indexOf(cfg.block[1], j)
+          if (e < 0) { toks.push({ t: line.slice(j), c:'comment' }); j = line.length; break }
+          toks.push({ t: line.slice(j, e + cfg.block[1].length), c:'comment' })
+          j = e + cfg.block[1].length; inBlock = false; continue
+        }
+        var rest = line.slice(j)
+        var m = /^\s+/.exec(rest)
+        if (m) { toks.push({ t:m[0], c:'plain' }); j += m[0].length; continue }
+        if (cfg.line && rest.indexOf(cfg.line) === 0) { toks.push({ t:rest, c:'comment' }); j = line.length; continue }
+        if (cfg.block && rest.indexOf(cfg.block[0]) === 0) {
+          var e2 = line.indexOf(cfg.block[1], j + cfg.block[0].length)
+          if (e2 < 0) { toks.push({ t:rest, c:'comment' }); inBlock = true; j = line.length; continue }
+          toks.push({ t: line.slice(j, e2 + cfg.block[1].length), c:'comment' })
+          j = e2 + cfg.block[1].length; continue
+        }
+        var sm = /^(['"`])(?:\\.|(?!\1)[^\\])*\1?/.exec(rest)
+        if (sm && sm[0].length) { toks.push({ t:sm[0], c:'string' }); j += sm[0].length; continue }
+        var nm = /^(0[xX][0-9a-fA-F]+|(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?)/.exec(rest)
+        if (nm && nm[0].length && /[0-9]/.test(rest.charAt(0))) { toks.push({ t:nm[0], c:'number' }); j += nm[0].length; continue }
+        var wm = /^[A-Za-z_$][A-Za-z0-9_$]*/.exec(rest)
+        if (wm) {
+          var w = wm[0], c = 'plain'
+          if (cfg.kw.indexOf(w) >= 0) c = 'keyword'
+          else if (/^[A-Z]/.test(w)) c = 'type'
+          else if (line.charAt(j + w.length) === '(') c = 'func'
+          toks.push({ t:w, c:c }); j += w.length; continue
+        }
+        toks.push({ t: rest.charAt(0), c:'op' }); j += 1
+      }
+      out.push(toks)
+    }
+    return out
+  }
+
+  /* ---------- 绘制 ---------- */
+  function roundRect(ctx, x, y, w, h, r){
+    ctx.beginPath()
+    ctx.moveTo(x + r, y)
+    ctx.lineTo(x + w - r, y)
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r)
+    ctx.lineTo(x + w, y + h - r)
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h)
+    ctx.lineTo(x + r, y + h)
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r)
+    ctx.lineTo(x, y + r)
+    ctx.quadraticCurveTo(x, y, x + r, y)
+    ctx.closePath()
+  }
+
+  function drawCard(canvas, opts, scale){
+    var ctx = canvas.getContext('2d')
+    var theme = opts.theme
+    var pal = theme.dark ? PAL_DARK : PAL_LIGHT
+    var fs = opts.fontSize
+    var lh = Math.round(fs * 1.55)
+    var margin = opts.padding
+    var inner = Math.round(fs * 1.3)
+    var lines = opts.lines
+    var n = lines.length || 1
+
+    ctx.font = fs + 'px ' + FONT
+    var numW = 0
+    if (opts.lineNumbers) {
+      var maxNum = ctx.measureText(String(n)).width
+      numW = Math.max(maxNum, fs) + Math.round(fs * 0.9)
+    }
+    var maxW = 0
+    for (var i = 0; i < lines.length; i++) {
+      var t = ''
+      for (var k = 0; k < lines[i].length; k++) t += lines[i][k].t
+      var w = ctx.measureText(t).width
+      if (w > maxW) maxW = w
+    }
+    var chromeH = opts.chrome ? Math.round(fs * 2.2) : 0
+    var contentW = Math.ceil(numW + maxW) + 4
+    var contentH = n * lh
+    var cardW = inner * 2 + contentW
+    var cardH = chromeH + inner * 2 + contentH
+    var W = Math.max(margin * 2 + cardW, 200)
+    var H = margin * 2 + cardH
+
+    canvas.width = Math.round(W * scale)
+    canvas.height = Math.round(H * scale)
+    ctx.setTransform(scale, 0, 0, scale, 0, 0)
+    ctx.clearRect(0, 0, W, H)
+
+    // 背景渐变
+    var g = ctx.createLinearGradient(0, 0, W, H)
+    g.addColorStop(0, theme.bg[0]); g.addColorStop(1, theme.bg[1])
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
+
+    var cardX = Math.round((W - cardW) / 2)
+    var cardY = Math.round((H - cardH) / 2)
+
+    // 卡片 + 阴影
+    ctx.save()
+    if (opts.shadow) { ctx.shadowColor = 'rgba(0,0,0,0.45)'; ctx.shadowBlur = 28; ctx.shadowOffsetY = 10 }
+    ctx.fillStyle = theme.card
+    roundRect(ctx, cardX, cardY, cardW, cardH, 10)
+    ctx.fill()
+    ctx.restore()
+
+    // 窗口装饰
+    if (opts.chrome) {
+      var r = Math.max(3, fs * 0.28)
+      var cy = cardY + chromeH / 2
+      for (var d = 0; d < 3; d++) {
+        ctx.beginPath()
+        ctx.fillStyle = pal.chrome[d]
+        ctx.arc(cardX + inner + d * (r * 2 + r * 1.6), cy, r, 0, Math.PI * 2)
+        ctx.fill()
+      }
+    }
+
+    // 代码
+    ctx.textBaseline = 'top'
+    ctx.font = fs + 'px ' + FONT
+    var textX = cardX + inner + numW
+    var y0 = cardY + chromeH + inner
+    for (var li = 0; li < lines.length; li++) {
+      var y = y0 + li * lh
+      if (opts.lineNumbers) {
+        ctx.fillStyle = pal.num
+        ctx.textAlign = 'right'
+        ctx.fillText(String(li + 1), cardX + inner + numW - Math.round(fs * 0.45), y)
+        ctx.textAlign = 'left'
+      }
+      var x = textX
+      for (var ti = 0; ti < lines[li].length; ti++) {
+        var tk = lines[li][ti]
+        ctx.fillStyle = pal[tk.c] || pal.plain
+        ctx.fillText(tk.t, x, y)
+        x += ctx.measureText(tk.t).width
+      }
+    }
+    return { w: canvas.width, h: canvas.height }
+  }
+
+  /* ---------- UI ---------- */
+  var el = function(id){ return document.getElementById(id) }
+  var ta = el('code'), preview = el('preview'), hint = el('hint')
+
+  // 语言下拉
+  var langSel = el('lang')
+  Object.keys(LANGS).forEach(function(k){
+    var o = document.createElement('option'); o.value = k; o.textContent = LANGS[k].name
+    langSel.appendChild(o)
+  })
+  // 主题下拉
+  var themeSel = el('theme')
+  THEMES.forEach(function(t){
+    var o = document.createElement('option'); o.value = t.id; o.textContent = t.name
+    themeSel.appendChild(o)
+  })
+
+  function currentOpts(){
+    var tid = themeSel.value, theme = THEMES[0]
+    for (var i = 0; i < THEMES.length; i++) if (THEMES[i].id === tid) theme = THEMES[i]
+    return {
+      lines: tokenize(ta.value, langSel.value),
+      theme: theme,
+      fontSize: Math.max(10, Math.min(32, parseInt(el('fontSize').value, 10) || 15)),
+      padding: Math.max(8, Math.min(80, parseInt(el('padding').value, 10) || 32)),
+      lineNumbers: el('lineNumbers').checked,
+      chrome: el('chrome').checked,
+      shadow: el('shadow').checked
+    }
+  }
+
+  function render(){
+    try { drawCard(preview, currentOpts(), 2) } catch (e) { hint.textContent = String(e) }
+  }
+
+  function flash(msg){ hint.textContent = msg; setTimeout(function(){ hint.textContent = '' }, 2200) }
+
+  function makeCanvas(){
+    var c = document.createElement('canvas')
+    drawCard(c, currentOpts(), 2)
+    return c
+  }
+
+  el('btnPng').addEventListener('click', function(){
+    var c = makeCanvas()
+    c.toBlob(function(blob){
+      if (!blob) { flash('导出失败'); return }
+      var url = URL.createObjectURL(blob)
+      var a = document.createElement('a')
+      a.href = url; a.download = 'code-card.png'
+      document.body.appendChild(a); a.click(); a.remove()
+      setTimeout(function(){ URL.revokeObjectURL(url) }, 1000)
+      flash(L('已导出'))
+    }, 'image/png')
+  })
+
+  el('btnCopy').addEventListener('click', function(){
+    var c = makeCanvas()
+    c.toBlob(function(blob){
+      if (!blob) { flash(L('复制失败，请用「导出 PNG」')); return }
+      if (navigator.clipboard && navigator.clipboard.write && window.ClipboardItem) {
+        navigator.clipboard.write([new window.ClipboardItem({ 'image/png': blob })])
+          .then(function(){ flash(L('已复制到剪贴板（图片）')) })
+          .catch(function(){ flash(L('复制失败，请用「导出 PNG」')) })
+      } else {
+        flash(L('复制失败，请用「导出 PNG」'))
+      }
+    }, 'image/png')
+  })
+
+  // 控件联动
+  ;['lang','theme','fontSize','padding','lineNumbers','chrome','shadow'].forEach(function(id){
+    el(id).addEventListener('input', render)
+    el(id).addEventListener('change', render)
+  })
+  ta.addEventListener('input', render)
+
+  // Tab 缩进
+  ta.addEventListener('keydown', function(e){
+    if (e.key === 'Tab') {
+      e.preventDefault()
+      var s = this.selectionStart, en = this.selectionEnd
+      this.value = this.value.slice(0, s) + '  ' + this.value.slice(en)
+      this.selectionStart = this.selectionEnd = s + 2
+      render()
+    }
+  })
+
+  window.addEventListener('message', function(e){
+    var d = e.data
+    if (!d) return
+    if (d.type === 'plugin:init') {
+      var p = d.data || {}
+      if (p.text) { ta.value = p.text; render() }
+    } else if (d.type === 'plugin:theme') {
+      var dd = d.data || {}
+      if (dd.locale) document.documentElement.setAttribute('lang', dd.locale)
+      renderStatic()
+    }
+  })
+
+  // 默认示例
+  ta.value = [
+    'package main',
+    '',
+    'import "fmt"',
+    '',
+    '// QuickDock 代码卡片',
+    'func main() {',
+    '\tfor i := 1; i <= 3; i++ {',
+    '\t\tfmt.Printf("hello %d\\n", i)',
+    '\t}',
+    '}'
+  ].join('\n')
+
+  renderStatic()
+  render()
+})()
+</script>
+</body>
+</html>

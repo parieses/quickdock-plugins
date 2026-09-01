@@ -1,0 +1,64 @@
+{
+  "id": "io.github.parieses.code-card",
+  "name": "代码卡片",
+  "version": "0.1.0",
+  "description": "把代码渲染成高颜值分享卡片：语法高亮、主题背景、窗口装饰，一键导出 PNG",
+  "author": "QuickDock",
+  "icon": "icon.svg",
+  "category": "开发者日常",
+  "platforms": [
+    "windows",
+    "darwin",
+    "linux"
+  ],
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "permissions": {
+    "clipboard": true
+  },
+  "backend": {
+    "runtime": "none"
+  },
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 940,
+    "height": 640
+  },
+  "commands": [
+    {
+      "id": "code-card",
+      "title": "代码卡片",
+      "keywords": [
+        "code",
+        "card",
+        "代码",
+        "截图",
+        "分享",
+        "carbon",
+        "美化",
+        "图片"
+      ],
+      "aliases": [
+        "代码截图",
+        "代码美化",
+        "代码图片",
+        "代码分享"
+      ],
+      "title_i18n": {
+        "zh-CN": "代码卡片",
+        "en-US": "Code Card"
+      }
+    }
+  ],
+  "name_i18n": {
+    "zh-CN": "代码卡片",
+    "en-US": "Code Card"
+  },
+  "description_i18n": {
+    "zh-CN": "把代码渲染成高颜值分享卡片：语法高亮、主题背景、窗口装饰，一键导出 PNG",
+    "en-US": "Render code into beautiful shareable cards with syntax highlighting, themed backgrounds and window chrome. Export to PNG."
+  }
+}

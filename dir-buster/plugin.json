@@ -1,0 +1,64 @@
+{
+  "id": "io.github.parieses.dir-buster",
+  "name": "目录探测",
+  "version": "0.1.0",
+  "description": "对指定目标 URL 用内置常见路径字典进行轻量探测（自用）：并发受限、可配扩展名，采用异步会话模型实时返回命中的非 404 路径。仅探测你授权的目标，内置字典、不递归",
+  "author": "QuickDock",
+  "category": "网络工具",
+  "platforms": [
+    "windows",
+    "darwin",
+    "linux"
+  ],
+  "icon": "icon.svg",
+  "backend": {
+    "runtime": "native",
+    "entry": "dir-buster",
+    "args": []
+  },
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 900,
+    "height": 640
+  },
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "permissions": {
+    "network": true
+  },
+  "commands": [
+    {
+      "id": "start",
+      "title": "目录探测",
+      "keywords": [
+        "dir",
+        "buster",
+        "directory",
+        "目录",
+        "路径探测",
+        "泄露扫描",
+        "敏感路径"
+      ],
+      "aliases": [
+        "目录探测",
+        "路径探测",
+        "目录爆破"
+      ],
+      "title_i18n": {
+        "zh-CN": "目录探测",
+        "en-US": "Directory Buster"
+      }
+    }
+  ],
+  "name_i18n": {
+    "zh-CN": "目录探测",
+    "en-US": "Directory Buster"
+  },
+  "description_i18n": {
+    "zh-CN": "对指定目标用内置字典轻量探测暴露的路径（自用，仅你授权的目标）",
+    "en-US": "Lightweight path discovery against a target you authorize, using a built-in wordlist (self-use only)"
+  }
+}

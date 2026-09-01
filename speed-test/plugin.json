@@ -1,0 +1,64 @@
+{
+  "id": "io.github.parieses.speed-test",
+  "name": "网速测试",
+  "version": "0.1.0",
+  "description": "测量网络下载速率与延迟：流式下载测速（支持自定义测速节点 URL），实时显示速率与进度，采用异步会话模型规避宿主执行超时",
+  "author": "QuickDock",
+  "category": "网络工具",
+  "platforms": [
+    "windows",
+    "darwin",
+    "linux"
+  ],
+  "icon": "icon.svg",
+  "backend": {
+    "runtime": "native",
+    "entry": "speed-test",
+    "args": []
+  },
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 820,
+    "height": 560
+  },
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "permissions": {
+    "network": true
+  },
+  "commands": [
+    {
+      "id": "start",
+      "title": "网速测试",
+      "keywords": [
+        "speed",
+        "网速",
+        "带宽",
+        "测速",
+        "download",
+        "下载速率",
+        "带宽测试"
+      ],
+      "aliases": [
+        "网速测试",
+        "带宽测试",
+        "下载测速"
+      ],
+      "title_i18n": {
+        "zh-CN": "网速测试",
+        "en-US": "Speed Test"
+      }
+    }
+  ],
+  "name_i18n": {
+    "zh-CN": "网速测试",
+    "en-US": "Speed Test"
+  },
+  "description_i18n": {
+    "zh-CN": "测量网络下载速率与延迟：流式下载测速（支持自定义测速节点 URL），实时显示速率与进度",
+    "en-US": "Measure download throughput and latency via streaming download, with live speed and progress (custom node URL supported)"
+  }
+}

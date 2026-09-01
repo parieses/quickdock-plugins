@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DNS 传播检查</title>
+<link rel="stylesheet" href="qd-theme.css">
+<style>
+.app{display:flex;flex-direction:column;height:100%;padding:var(--sp-4);gap:var(--sp-3);box-sizing:border-box}
+.row{display:flex;gap:var(--sp-2);align-items:center}
+.input{flex:1;height:32px;padding:0 10px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:var(--fs-sm);outline:none;font-family:var(--font-mono)}
+.input:focus{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.select{height:32px;padding:0 8px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:var(--fs-sm);outline:none}
+.hint{font-size:var(--fs-sm);color:var(--text-muted);min-height:16px}
+.hint.err{color:var(--danger)}
+.banner{display:flex;align-items:center;gap:var(--sp-2);padding:10px 12px;border-radius:var(--radius);font-size:var(--fs-sm);font-weight:var(--fw-semibold)}
+.banner.ok{background:var(--success-soft);color:var(--success)}
+.banner.bad{background:var(--warning-soft);color:var(--warning)}
+.banner .d{font-weight:400;color:var(--text-secondary);margin-left:auto;font-family:var(--font-mono)}
+.list{flex:1;overflow:auto;display:flex;flex-direction:column;gap:var(--sp-2)}
+.item{background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px}
+.item-h{display:flex;align-items:center;gap:var(--sp-2);margin-bottom:4px}
+.item-name{font-weight:var(--fw-semibold);color:var(--text-primary);font-size:var(--fs-sm)}
+.item-srv{font-size:var(--fs-xs);color:var(--text-muted);font-family:var(--font-mono)}
+.item-ms{margin-left:auto;font-size:var(--fs-xs);color:var(--text-muted);font-family:var(--font-mono)}
+.ans{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--text-secondary);word-break:break-all;line-height:1.6}
+.ans .a{display:inline-block;background:var(--bg-tertiary);border-radius:var(--radius-sm);padding:1px 6px;margin:2px 4px 2px 0}
+.item.err .ans{color:var(--danger)}
+.consensus{background:var(--bg-tertiary);border:1px dashed var(--border-strong);border-radius:var(--radius);padding:10px 12px;font-size:var(--fs-xs);color:var(--text-secondary)}
+.consensus b{color:var(--text-primary);font-family:var(--font-mono)}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="row">
+    <input id="domain" class="input" placeholder="域名，如 github.com" spellcheck="false" autofocus>
+    <select id="type" class="select"><option>A</option><option>AAAA</option><option>CNAME</option><option>MX</option><option>TXT</option><option>NS</option></select>
+    <button id="btnGo" class="p-btn p-btn-primary">检查</button>
+  </div>
+  <div id="hint" class="hint"></div>
+  <div id="banner" class="banner" style="display:none"></div>
+  <div id="list" class="list"></div>
+  <div id="consensus" class="consensus" style="display:none"></div>
+</div>
+<script>
+(function(){
+  'use strict'
+  var seq=0, pend={}
+  function send(command, input){
+    return new Promise(function(res, rej){
+      var id='dp_'+(++seq); pend[id]={res:res,rej:rej}
+      parent.postMessage({type:'plugin:execute',id:id,command:command,input:input||{}},'*')
+    })
+  }
+  window.addEventListener('message',function(e){
+    var d=e.data; if(!d) return
+    if(d.type==='plugin:result'&&d.id&&pend[d.id]){var p=pend[d.id];delete pend[d.id];if(d.error)p.rej(new Error(d.error));else p.res(d.data);return}
+    if(d.type==='plugin:theme'){var dd=d.data||{};if(dd.locale)document.documentElement.setAttribute('lang',dd.locale)}
+  })
+  var el=function(i){return document.getElementById(i)}
+  function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+  function check(){
+    var domain=el('domain').value.trim()
+    if(!domain){el('hint').className='hint err';el('hint').textContent='请输入域名';return}
+    el('hint').className='hint';el('hint').textContent='正在向各解析器并行查询…'
+    el('banner').style.display='none'; el('list').innerHTML=''; el('consensus').style.display='none'
+    send('check',{domain:domain, type:el('type').value}).then(function(r){
+      el('hint').className='hint'; el('hint').textContent='已查询 '+r.resolvers.length+' 个解析器，'+r.okCount+' 个成功'
+      var b=el('banner')
+      b.style.display='flex'
+      if(r.okCount===0){ b.className='banner bad'; b.innerHTML='全部解析器查询失败 <span class="d">检查域名是否正确</span>'; }
+      else if(r.consistent){ b.className='banner ok'; b.innerHTML='✓ 各解析器结果一致，DNS 变更已全球生效 <span class="d">'+r.okCount+'/'+r.resolvers.length+' 成功</span>'; }
+      else { b.className='banner bad'; b.innerHTML='⚠ 解析结果不一致，部分节点尚未更新（传播中） <span class="d">'+r.okCount+'/'+r.resolvers.length+' 成功</span>'; }
+      var list=el('list')
+      r.resolvers.forEach(function(rs){
+        var d=document.createElement('div'); d.className='item'+(rs.ok?'':' err')
+        var ans = rs.ok ? rs.answers.map(function(a){return '<span class="a">'+esc(a)+'</span>'}).join('') : esc(rs.error)
+        d.innerHTML='<div class="item-h"><span class="item-name">'+esc(rs.name)+'</span><span class="item-srv">'+esc(rs.server)+'</span><span class="item-ms">'+(rs.elapsedMs||0)+'ms</span></div><div class="ans">'+ans+'</div>'
+        list.appendChild(d)
+      })
+      if(r.consensus && r.consensus.length){
+        var c=el('consensus'); c.style.display='block'
+        c.innerHTML='共识结果（'+r.consensus.length+' 条）：<br>'+r.consensus.map(function(a){return '<b>'+esc(a)+'</b>'}).join(' · ')
+      }
+    }).catch(function(e){ el('hint').className='hint err'; el('hint').textContent=e.message||e })
+  }
+  el('btnGo').addEventListener('click',check)
+  el('domain').addEventListener('keydown',function(e){if(e.key==='Enter')check()})
+})()
+</script>
+</body>
+</html>

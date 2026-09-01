@@ -1,0 +1,65 @@
+{
+  "id": "io.github.parieses.http-headers-audit",
+  "name": "HTTP 安全头审计",
+  "version": "0.1.0",
+  "description": "抓取目标 URL 响应头与 Cookie，按 HSTS / CSP / X-Content-Type-Options / X-Frame-Options / Referrer-Policy / Permissions-Policy / COOP-COEP 等维度评分(0-100)，逐条给出 pass/warn/fail 建议，比 http-status 更深",
+  "author": "QuickDock",
+  "category": "网络工具",
+  "platforms": [
+    "windows",
+    "darwin",
+    "linux"
+  ],
+  "icon": "icon.svg",
+  "backend": {
+    "runtime": "native",
+    "entry": "http-headers-audit",
+    "args": []
+  },
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 920,
+    "height": 680
+  },
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "permissions": {
+    "network": true
+  },
+  "commands": [
+    {
+      "id": "audit",
+      "title": "安全头审计",
+      "keywords": [
+        "headers",
+        "security",
+        "安全头",
+        "响应头",
+        "HSTS",
+        "CSP",
+        "审计",
+        "评分"
+      ],
+      "aliases": [
+        "安全头审计",
+        "响应头审计",
+        "HTTP 安全审计"
+      ],
+      "title_i18n": {
+        "zh-CN": "安全头审计",
+        "en-US": "HTTP Security Headers Audit"
+      }
+    }
+  ],
+  "name_i18n": {
+    "zh-CN": "HTTP 安全头审计",
+    "en-US": "HTTP Security Headers Audit"
+  },
+  "description_i18n": {
+    "zh-CN": "抓取目标 URL 响应头与 Cookie，按安全头维度评分并给出整改建议",
+    "en-US": "Audit response headers and cookies against security best practices with a 0-100 score and per-header findings"
+  }
+}

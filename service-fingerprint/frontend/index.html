@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>服务指纹识别</title>
+<link rel="stylesheet" href="qd-theme.css">
+<style>
+.app{display:flex;flex-direction:column;height:100%;padding:var(--sp-3);gap:var(--sp-2);box-sizing:border-box}
+.row{display:flex;gap:var(--sp-2);align-items:center;flex-wrap:wrap}
+.input{flex:1;min-width:150px;padding:8px 10px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:13px;outline:none;font-family:ui-monospace,Consolas,monospace}
+.select{padding:8px 10px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:12px;outline:none;cursor:pointer}
+.mini{width:70px;padding:8px 6px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:12px;outline:none}
+input:focus,select:focus{border-color:var(--accent,#4a9eff)}
+.lbl{font-size:11px;color:var(--text-muted);white-space:nowrap}
+.btn{padding:8px 18px;background:var(--accent,#4a9eff);color:#fff;border:none;border-radius:var(--radius);cursor:pointer;font-size:13px;font-weight:600;white-space:nowrap}
+.btn.stop{background:var(--danger,#e24b4a)}
+.btn-ghost{padding:7px 12px;background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;font-size:12px}
+.chk{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text-secondary);cursor:pointer}
+.hint{font-size:12px;color:var(--text-muted);min-height:16px}
+.hint.err{color:var(--danger,#e24b4a)}
+.prog{height:4px;background:var(--bg-secondary);border-radius:2px;overflow:hidden;flex-shrink:0}
+.prog-bar{height:100%;background:var(--accent,#4a9eff);width:0;transition:width .2s}
+.wrap{flex:1;overflow:auto;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-lg)}
+table{width:100%;border-collapse:collapse;font-family:ui-monospace,Consolas,monospace;font-size:12px}
+th{position:sticky;top:0;background:var(--bg-secondary);text-align:left;color:var(--text-muted);font-weight:500;font-size:11px;padding:7px 8px;border-bottom:1px solid var(--border);z-index:1}
+td{padding:6px 8px;color:var(--text-primary);border-bottom:1px solid var(--border);vertical-align:top}
+tr:hover td{background:var(--bg-hover,rgba(255,255,255,.03))}
+.port{color:var(--accent,#4a9eff);font-weight:600}
+.svc{color:var(--text-primary);font-weight:600}
+.ver{color:var(--text-primary)}
+.cat{color:var(--text-muted);font-size:11px}
+.scheme{font-size:10px;color:var(--text-muted)}
+.conf{display:flex;align-items:center;gap:6px;min-width:90px}
+.conf-bar{height:5px;border-radius:3px;background:var(--bg-primary);flex:1;overflow:hidden}
+.conf-fill{height:100%;border-radius:3px}
+.conf-hi{background:#5ac05a}.conf-mid{background:var(--accent,#4a9eff)}.conf-lo{background:var(--text-muted)}
+.conf-txt{font-size:11px;color:var(--text-secondary);min-width:30px;text-align:right}
+.banner{color:var(--text-muted);font-size:11px;word-break:break-all;line-height:1.5;max-width:420px}
+.tag{font-size:10px;padding:1px 5px;border-radius:3px;margin-left:5px}
+.tag-guess{background:rgba(232,131,58,.16);color:#e8833a}
+.tag-code{background:var(--bg-primary);color:var(--text-secondary);border:1px solid var(--border)}
+.empty{color:var(--text-muted);font-size:12px;padding:24px;text-align:center}
+.spin{display:inline-block;width:12px;height:12px;border:2px solid var(--border);border-top-color:var(--accent,#4a9eff);border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="row">
+    <input id="host" class="input" placeholder="主机名或 IP，如 192.168.1.1" spellcheck="false" autofocus>
+    <select id="preset" class="select">
+      <option value="common">常用端口</option>
+      <option value="web">Web 服务</option>
+      <option value="db">数据库</option>
+      <option value="top100">Top 100</option>
+      <option value="all">全部 1-65535</option>
+    </select>
+    <input id="ports" class="input" style="flex:0 0 190px" placeholder="自定义：80,443,1-1000" spellcheck="false">
+    <button id="btnGo" class="btn">扫描</button>
+  </div>
+  <div class="row">
+    <span class="lbl" id="t-timeout">超时(ms)</span>
+    <input id="timeout" class="mini" type="number" value="800" min="100" max="10000">
+    <span class="lbl" id="t-conc">并发</span>
+    <input id="conc" class="mini" type="number" value="256" min="16" max="1024">
+    <label class="chk"><input id="onlyId" type="checkbox"><span id="t-onlyid">仅看已识别</span></label>
+    <input id="filter" class="input" style="flex:0 0 140px" placeholder="过滤…" spellcheck="false">
+    <span style="flex:1"></span>
+    <button id="btnCopy" class="btn-ghost">复制结果</button>
+  </div>
+  <div class="prog"><div class="prog-bar" id="pbar"></div></div>
+  <div id="hint" class="hint"></div>
+  <div class="wrap">
+    <table>
+      <thead><tr>
+        <th id="t-c-port">端口</th>
+        <th id="t-c-svc">服务</th>
+        <th id="t-c-ver">版本</th>
+        <th id="t-c-conf">置信度</th>
+        <th id="t-c-cat">分类</th>
+        <th id="t-c-banner">Banner</th>
+      </tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <div id="empty" class="empty">输入目标后点击「扫描」识别端口服务</div>
+  </div>
+</div>
+<script>
+(function(){
+  'use strict'
+
+  /* ---------- i18n ---------- */
+  var L10N = {
+    'en-US': {
+      '超时(ms)':'Timeout(ms)','并发':'Concurrency','仅看已识别':'Identified only',
+      '复制结果':'Copy results','扫描':'Scan','停止':'Stop','过滤…':'Filter…',
+      '端口':'Port','服务':'Service','版本':'Version','置信度':'Confidence','分类':'Category',
+      '主机名或 IP，如 192.168.1.1':'Host or IP, e.g. 192.168.1.1',
+      '自定义：80,443,1-1000':'Custom: 80,443,1-1000',
+      '输入目标后点击「扫描」识别端口服务':'Enter a target and click Scan',
+      '请输入目标主机':'Enter a host or IP','扫描完成':'Done',
+      '未发现开放端口':'No open ports found','按端口推测':'guessed',
+      '常用端口':'Common','Web 服务':'Web','数据库':'Database'
+    }
+  }
+  function L(k){
+    var loc = document.documentElement.getAttribute('lang') || 'zh-CN'
+    var map = L10N[loc] || L10N[loc.split('-')[0]] || {}
+    return (map && map[k] !== undefined) ? map[k] : k
+  }
+  function renderStatic(){
+    var m = {'t-timeout':'超时(ms)','t-conc':'并发','t-onlyid':'仅看已识别',
+             't-c-port':'端口','t-c-svc':'服务','t-c-ver':'版本','t-c-conf':'置信度',
+             't-c-cat':'分类','t-c-banner':'Banner'}
+    for (var id in m) document.getElementById(id).textContent = L(m[id])
+    document.getElementById('host').placeholder = L('主机名或 IP，如 192.168.1.1')
+    document.getElementById('filter').placeholder = L('过滤…')
+    document.getElementById('btnCopy').textContent = L('复制结果')
+    if (!running) document.getElementById('btnGo').textContent = L('扫描')
+    if (!results.length) document.getElementById('empty').textContent = L('输入目标后点击「扫描」识别端口服务')
+  }
+
+  /* ---------- RPC ---------- */
+  var seq = 0, pend = {}
+  function send(command, input){
+    return new Promise(function(resolve, reject){
+      var id = 'fp_' + (++seq)
+      pend[id] = { resolve: resolve, reject: reject }
+      parent.postMessage({ type:'plugin:execute', id:id, command:command, input:input || {} }, '*')
+    })
+  }
+  window.addEventListener('message', function(e){
+    var d = e.data
+    if (!d) return
+    if (d.type === 'plugin:result' && d.id && pend[d.id]) {
+      var p = pend[d.id]; delete pend[d.id]
+      if (d.error) p.reject(new Error(d.error)); else p.resolve(d.data)
+      return
+    }
+    if (d.type === 'plugin:init') {
+      var pd = d.data || {}
+      if (pd.text) document.getElementById('host').value = pd.text
+      return
+    }
+    if (d.type === 'plugin:theme') {
+      var dd = d.data || {}
+      if (dd.locale) document.documentElement.setAttribute('lang', dd.locale)
+      renderStatic(); renderTable()
+    }
+  })
+
+  /* ---------- 状态 ---------- */
+  var running = false, sessionId = null, pollTimer = null
+  var results = [], progress = {total:0, scanned:0, open:0}
+
+  var el = function(id){ return document.getElementById(id) }
+  var hint = el('hint'), tbody = el('tbody'), emptyEl = el('empty')
+
+  function esc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+
+  // 置信度分档：>=.8 真实指纹 / .5-.8 Server 头或通用 / <.5 端口推测
+  function confClass(c){ return c >= 0.8 ? 'conf-hi' : (c >= 0.5 ? 'conf-mid' : 'conf-lo') }
+
+  function renderProgress(){
+    var pct = progress.total ? (progress.scanned / progress.total * 100) : 0
+    el('pbar').style.width = pct.toFixed(1) + '%'
+  }
+
+  function renderTable(){
+    var q = el('filter').value.trim().toLowerCase()
+    var onlyId = el('onlyId').checked
+
+    var list = results.filter(function(x){
+      if (onlyId && !x.service) return false
+      if (!q) return true
+      var hay = (x.port + ' ' + (x.service||'') + ' ' + (x.version||'') + ' ' +
+                 (x.category||'') + ' ' + (x.banner||'')).toLowerCase()
+      return hay.indexOf(q) >= 0
+    })
+
+    if (!list.length) {
+      tbody.innerHTML = ''
+      emptyEl.style.display = ''
+      emptyEl.textContent = results.length ? '无匹配结果' : L('输入目标后点击「扫描」识别端口服务')
+      return
+    }
+    emptyEl.style.display = 'none'
+
+    var html = ''
+    for (var i = 0; i < list.length; i++) {
+      var x = list[i]
+      var c = x.confidence || 0
+      var svc = x.service || '<span style="color:var(--text-muted)">未识别</span>'
+      var tags = ''
+      if (x.guessed) tags += '<span class="tag tag-guess">' + L('按端口推测') + '</span>'
+      if (x.statusCode) tags += '<span class="tag tag-code">' + x.statusCode + '</span>'
+
+      html += '<tr>' +
+        '<td><span class="port">' + x.port + '</span> ' +
+          '<span class="scheme">' + esc(x.scheme || 'tcp') + '</span></td>' +
+        '<td><span class="svc">' + svc + '</span>' + tags + '</td>' +
+        '<td class="ver">' + esc(x.version || '-') + '</td>' +
+        '<td><div class="conf">' +
+          '<div class="conf-bar"><div class="conf-fill ' + confClass(c) + '" style="width:' +
+            Math.round(c * 100) + '%"></div></div>' +
+          '<span class="conf-txt">' + Math.round(c * 100) + '%</span>' +
+        '</div></td>' +
+        '<td class="cat">' + esc(x.category || '-') + '</td>' +
+        '<td class="banner">' + esc((x.banner || '').slice(0, 160) || '-') + '</td>' +
+        '</tr>'
+    }
+    tbody.innerHTML = html
+  }
+
+  function setRunning(v){
+    running = v
+    var b = el('btnGo')
+    b.textContent = v ? L('停止') : L('扫描')
+    b.className = v ? 'btn stop' : 'btn'
+  }
+
+  function poll(){
+    if (!sessionId) return
+    send('poll', { sessionId: sessionId }).then(function(snap){
+      results = snap.results || []
+      progress = snap.progress || progress
+      renderProgress()
+      renderTable()
+      el('hint').className = 'hint'
+      el('hint').textContent = '已扫描 ' + progress.scanned + '/' + progress.total +
+        ' · 开放 ' + progress.open + ' 个 · 已识别 ' + results.length + ' 个'
+      if (!snap.running) { finish(); return }
+    }).catch(function(e){
+      hint.className = 'hint err'
+      hint.textContent = e && e.message ? e.message : String(e)
+      finish()
+    })
+  }
+
+  function finish(){
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
+    setRunning(false)
+    var sid = sessionId; sessionId = null
+    if (sid) send('stop', { sessionId: sid }).catch(function(){})
+    el('pbar').style.width = '100%'
+  }
+
+  function start(){
+    var host = el('host').value.trim()
+    if (!host) { hint.className = 'hint err'; hint.textContent = L('请输入目标主机'); return }
+
+    var ports = el('ports').value.trim() || el('preset').value
+    results = []; progress = {total:0, scanned:0, open:0}
+    tbody.innerHTML = ''
+    el('pbar').style.width = '0'
+    hint.className = 'hint'; hint.textContent = ''
+
+    send('start', {
+      host: host,
+      ports: ports,
+      timeout: parseInt(el('timeout').value, 10) || 800,
+      concurrency: parseInt(el('conc').value, 10) || 256
+    }).then(function(r){
+      sessionId = r.sessionId
+      progress.total = r.total || 0
+      setRunning(true)
+      pollTimer = setInterval(poll, 800)
+      poll()
+    }).catch(function(e){
+      hint.className = 'hint err'
+      hint.textContent = e && e.message ? e.message : String(e)
+    })
+  }
+
+  el('btnGo').addEventListener('click', function(){ running ? finish() : start() })
+  el('host').addEventListener('keydown', function(e){ if (e.key === 'Enter') { running ? finish() : start() } })
+  el('ports').addEventListener('keydown', function(e){ if (e.key === 'Enter') { running ? finish() : start() } })
+  el('filter').addEventListener('input', renderTable)
+  el('onlyId').addEventListener('change', renderTable)
+
+  el('btnCopy').addEventListener('click', function(){
+    if (!results.length) return
+    var text = results.map(function(x){
+      return x.port + '/' + (x.scheme||'tcp') + '\t' + (x.service||'未识别') +
+        '\t' + (x.version||'') + '\t' + Math.round((x.confidence||0)*100) + '%'
+    }).join('\n')
+    var self = this, old = self.textContent
+    var done = function(){ self.textContent = L('已复制'); setTimeout(function(){ self.textContent = old }, 1200) }
+    try{
+      if (window.host && window.host.clipboard && window.host.clipboard.write) { window.host.clipboard.write(text).then(done, done); return }
+    }catch(e){}
+    if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, done); return }
+    var ta = document.createElement('textarea'); ta.value = text
+    document.body.appendChild(ta); ta.select()
+    try{ document.execCommand('copy') }catch(e){}
+    ta.remove(); done()
+  })
+
+  renderStatic()
+  setRunning(false)
+})()
+</script>
+</body>
+</html>

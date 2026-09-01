@@ -7,32 +7,89 @@
 <style>
 .p-app{display:flex;flex-direction:column;height:100vh;padding:10px;gap:8px}
 .p-label{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px}
-.p-row{display:flex;gap:8px}
+.p-row{display:flex;gap:8px;align-items:center}
 .p-input{flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-tertiary);color:var(--text-primary);font-family:var(--font-mono);font-size:14px;outline:none}
 .p-input:focus{border-color:var(--accent)}.p-input::placeholder{color:var(--text-placeholder)}
-.p-btn{height:32px;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-tertiary);color:var(--text-primary);font-size:12px;cursor:pointer}
+.p-btn{height:32px;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-tertiary);color:var(--text-primary);font-size:12px;cursor:pointer;white-space:nowrap}
 .p-btn:hover{background:var(--bg-hover)}
 .p-btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
 .p-btn-primary:hover{background:var(--accent-hover)}
 .p-output{flex:1;overflow:auto;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius);padding:10px;font-family:var(--font-mono);font-size:12px;line-height:1.6;white-space:pre-wrap;color:var(--text-primary)}
-.p-vis{display:flex;flex-wrap:wrap;gap:2px;margin-top:4px}
 .p-vis-bar{display:flex;align-items:center;gap:2px;font-size:11px;font-family:var(--font-mono);padding:1px 0}
 .p-vis-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
 .p-vis-active{background:var(--accent)}
 .p-vis-inactive{background:var(--bg-tertiary)}
-.p-next{margin-top:4px;color:var(--text-secondary)}
+
+/* 标签页 */
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);padding-bottom:6px;flex-shrink:0}
+.tab{padding:6px 14px;border:1px solid transparent;border-radius:var(--radius);background:transparent;color:var(--text-secondary);font-size:12px;cursor:pointer}
+.tab:hover{color:var(--text-primary);background:var(--bg-hover)}
+.tab.active{background:var(--accent);color:#fff;font-weight:600}
+.pane{display:flex;flex-direction:column;flex:1;min-height:0;gap:8px}
+
+/* 生成页 */
+.g-fields{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.g-field{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text-secondary)}
+.g-field input[type=number]{width:64px;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-tertiary);color:var(--text-primary);font-family:var(--font-mono);font-size:13px;outline:none}
+.g-field input[type=text]{width:88px;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-tertiary);color:var(--text-primary);font-family:var(--font-mono);font-size:13px;outline:none}
+.g-field input:focus{border-color:var(--accent)}
+.g-week{display:flex;gap:4px;flex-wrap:wrap}
+.g-day{padding:5px 9px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-tertiary);color:var(--text-secondary);font-size:12px;cursor:pointer;user-select:none}
+.g-day.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.g-presets{display:flex;flex-wrap:wrap;gap:6px}
+.g-preset{padding:5px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-tertiary);color:var(--text-secondary);font-size:11px;cursor:pointer;font-family:var(--font-mono)}
+.g-preset:hover{border-color:var(--accent);color:var(--accent)}
+.g-expr{font-family:var(--font-mono);font-size:15px;color:var(--accent);font-weight:600}
+select.p-input{cursor:pointer}
 </style>
 </head>
 <body>
 <div class="p-app">
-  <div class="p-label">Cron 表达式</div>
-  <div class="p-row">
-    <input type="text" id="inputField" class="p-input" placeholder="*/5 * * * *" spellcheck="false" autofocus>
-    <button class="p-btn p-btn-primary" id="btnExplain">解释</button>
+  <div class="tabs">
+    <button class="tab active" data-tab="explain">解释</button>
+    <button class="tab" data-tab="gen">生成</button>
   </div>
-  <div class="p-label">解释结果</div>
-  <div class="p-output" id="output">
-    <span style="color:var(--text-muted)">输入 cron 表达式查看解释…</span>
+
+  <!-- ============ 解释 ============ -->
+  <div class="pane" id="pane-explain">
+    <div class="p-label">Cron 表达式</div>
+    <div class="p-row">
+      <input type="text" id="inputField" class="p-input" placeholder="*/5 * * * *" spellcheck="false" autofocus>
+      <button class="p-btn p-btn-primary" id="btnExplain">解释</button>
+    </div>
+    <div class="p-label">解释结果</div>
+    <div class="p-output" id="output">
+      <span style="color:var(--text-muted)">输入 cron 表达式查看解释…</span>
+    </div>
+  </div>
+
+  <!-- ============ 生成 ============ -->
+  <div class="pane" id="pane-gen" style="display:none">
+    <div class="p-label">常用预设</div>
+    <div class="g-presets" id="presets"></div>
+
+    <div class="p-label">周期类型</div>
+    <select id="genType" class="p-input">
+      <option value="minute">每隔 N 分钟</option>
+      <option value="hour">每隔 N 小时</option>
+      <option value="day">每天</option>
+      <option value="week">每周</option>
+      <option value="month">每月</option>
+      <option value="custom">自定义（分别填 5 段）</option>
+    </select>
+
+    <div class="g-fields" id="genFields"></div>
+
+    <div class="p-label">生成的表达式</div>
+    <div class="p-row">
+      <span class="g-expr" id="genExpr">—</span>
+    </div>
+    <div class="p-row">
+      <button class="p-btn" id="btnCopyGen">复制</button>
+      <button class="p-btn p-btn-primary" id="btnExplainGen">解释它</button>
+    </div>
+    <div class="p-label">预览</div>
+    <div class="p-output" id="genPreview"></div>
   </div>
 </div>
 <script>
@@ -54,7 +111,31 @@ var L10N = {
     '⏰ 下次执行:': '⏰ Next runs:',
     '📊 小时分布:': '📊 Hour distribution:',
     '无法计算（请检查表达式）': 'Cannot compute (check the expression)',
-    '每分钟执行一次': 'Runs every minute'
+    '每分钟执行一次': 'Runs every minute',
+    // —— 生成页 ——
+    '生成': 'Generate',
+    '常用预设': 'Presets',
+    '周期类型': 'Frequency',
+    '生成的表达式': 'Expression',
+    '复制': 'Copy',
+    '已复制': 'Copied',
+    '解释它': 'Explain it',
+    '预览': 'Preview',
+    '每隔': 'Every',
+    '分钟': 'min(s)',
+    '小时': 'hour(s)',
+    '于第': 'at min',
+    '执行时间': 'At',
+    '时': 'h',
+    '分': 'm',
+    '日期': 'Day',
+    '号': '',
+    '星期': 'Weekday',
+    '日': 'd',
+    '周': 'dow',
+    '月': 'mon',
+    '自定义（分别填 5 段）': 'Custom (5 separate fields)',
+    '请至少选择一个星期': 'Select at least one weekday'
   }
 };
 function isEn() {
@@ -66,9 +147,8 @@ function L(key) {
   var map = L10N['en-US'] || {};
   return map[key] !== undefined ? map[key] : key;
 }
-// 静态文本应用：data-orig 缓存原文防重复翻译
 function applyStaticL10n() {
-  document.querySelectorAll('.p-label, .p-btn').forEach(function (el) {
+  document.querySelectorAll('.p-label, .p-btn, .tab').forEach(function (el) {
     var src = el.getAttribute('data-orig');
     if (!src) { src = el.textContent.trim(); el.setAttribute('data-orig', src); }
     if (src) el.textContent = L(src);
@@ -81,18 +161,46 @@ function applyStaticL10n() {
   function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
   btn.addEventListener('click',explain);input.addEventListener('keydown',function(e){if(e.key==='Enter')explain()})
   document.addEventListener('keydown',function(e){if(e.key==='Escape')input.focus()})
-  // 命令面板带参打开时，自动填入并解释
+
+  /* ---------- 标签页切换 ---------- */
+  document.querySelectorAll('.tab').forEach(function(t){
+    t.addEventListener('click',function(){
+      document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')})
+      t.classList.add('active')
+      var which=t.getAttribute('data-tab')
+      document.getElementById('pane-explain').style.display = which==='explain'?'flex':'none'
+      document.getElementById('pane-gen').style.display = which==='gen'?'flex':'none'
+      if(which==='explain') input.focus()
+    })
+  })
+
+  /* ---------- 命令面板 / 主题 ---------- */
   window.addEventListener('message',function(e){
     var d=e.data
-    if(d&&d.type==='plugin:init'&&d.data&&d.data.text){input.value=d.data.text;explain()}
-    // 宿主切语言 → 静态文案 + 结果重渲染
+    if(d&&d.type==='plugin:init'){
+      var pd=d.data||{}
+      // gen-cron 命令（无输入）直达生成页
+      if(pd.command==='gen-cron'&&!pd.text){switchTo('gen');return}
+      if(pd.text){switchTo('explain');input.value=pd.text;explain()}
+    }
     if(d&&d.type==='plugin:theme'&&d.data&&d.data.locale){
       document.documentElement.setAttribute('lang',d.data.locale)
       applyStaticL10n()
+      buildGenFields();renderGen()
       if(input.value.trim())explain()
       else output.innerHTML='<span style="color:var(--text-muted)">'+L('输入 cron 表达式查看解释…')+'</span>'
     }
   })
+  function switchTo(which){
+    document.querySelectorAll('.tab').forEach(function(x){
+      var on=x.getAttribute('data-tab')===which
+      x.classList.toggle('active',on)
+    })
+    document.getElementById('pane-explain').style.display = which==='explain'?'flex':'none'
+    document.getElementById('pane-gen').style.display = which==='gen'?'flex':'none'
+  }
+
+  /* ==================== 解释 ==================== */
   function explain(){
     var text=input.value.trim().replace(/^\/cron\s+/,'')
     if(!text){output.innerHTML='<span style="color:var(--text-muted)">'+L('输入 cron 表达式')+'</span>';return}
@@ -168,7 +276,6 @@ function applyStaticL10n() {
     }
     return results.length?results:[L('无法计算（请检查表达式）')]
   }
-  // 英文版描述：字段式表达，避免生硬直译中文语序
   function describeEn(f){
     var parts=[]
     if(f.dow!=='*') parts.push('on '+describeSimpleEn(f.dow,['Sun','Mon','Tue','Wed','Thu','Fri','Sat','Sun']))
@@ -190,9 +297,203 @@ function applyStaticL10n() {
     return res.join(', ')
   }
   function fmt(d){var p=function(n){return n<10?'0'+n:''+n};return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes())}
+
+  /* ==================== 生成 ==================== */
+  var DAY_CN=['日','一','二','三','四','五','六']
+  var DAY_EN=['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
+
+  var PRESETS=[
+    {label:'每分钟',     expr:'* * * * *'},
+    {label:'每5分钟',    expr:'*/5 * * * *'},
+    {label:'每30分钟',   expr:'*/30 * * * *'},
+    {label:'每小时',     expr:'0 * * * *'},
+    {label:'每天 2:00',  expr:'0 2 * * *'},
+    {label:'每天 9:00',  expr:'0 9 * * *'},
+    {label:'工作日 9:00',expr:'0 9 * * 1-5'},
+    {label:'每周一 9:00',expr:'0 9 * * 1'},
+    {label:'每月1号',    expr:'0 0 1 * *'},
+    {label:'每年1月1日', expr:'0 0 1 1 *'}
+  ]
+
+  // 每种周期类型需要的输入项
+  function fieldSpecs(type){
+    switch(type){
+      case 'minute': return [
+        {k:'n',label:L('每隔'),type:'number',min:1,max:59,def:5,suffix:L('分钟')}
+      ]
+      case 'hour': return [
+        {k:'n',label:L('每隔'),type:'number',min:1,max:23,def:2,suffix:L('小时')},
+        {k:'m',label:L('于第'),type:'number',min:0,max:59,def:0,suffix:L('分')}
+      ]
+      case 'day': return [
+        {k:'h',label:L('执行时间'),type:'number',min:0,max:23,def:2,suffix:L('时')},
+        {k:'m',label:'',type:'number',min:0,max:59,def:0,suffix:L('分')}
+      ]
+      case 'week': return [
+        {k:'dow',label:L('星期'),type:'week'},
+        {k:'h',label:L('执行时间'),type:'number',min:0,max:23,def:9,suffix:L('时')},
+        {k:'m',label:'',type:'number',min:0,max:59,def:0,suffix:L('分')}
+      ]
+      case 'month': return [
+        {k:'d',label:L('日期'),type:'number',min:1,max:31,def:1,suffix:L('号')},
+        {k:'h',label:L('执行时间'),type:'number',min:0,max:23,def:0,suffix:L('时')},
+        {k:'m',label:'',type:'number',min:0,max:59,def:0,suffix:L('分')}
+      ]
+      default: return [
+        {k:'minute',label:L('分'),type:'text',def:'*'},
+        {k:'hour',  label:L('时'),type:'text',def:'*'},
+        {k:'dom',   label:L('日'),type:'text',def:'*'},
+        {k:'month', label:L('月'),type:'text',def:'*'},
+        {k:'dow',   label:L('周'),type:'text',def:'*'}
+      ]
+    }
+  }
+
+  var genState={ type:'minute', n:5, m:0, h:2, d:1, dow:[1], minute:'*', hour:'*', dom:'*', month:'*', dowf:'*' }
+
+  function clampNum(el,min,max){
+    var v=parseInt(el.value,10)
+    if(isNaN(v))v=min
+    if(v<min)v=min; if(v>max)v=max
+    el.value=v
+    return v
+  }
+
+  function buildGenFields(){
+    var box=document.getElementById('genFields')
+    box.innerHTML=''
+    var specs=fieldSpecs(genState.type)
+    specs.forEach(function(sp){
+      var wrap=document.createElement('div');wrap.className='g-field'
+      if(sp.label){var lb=document.createElement('span');lb.textContent=sp.label;wrap.appendChild(lb)}
+      if(sp.type==='week'){
+        var wk=document.createElement('div');wk.className='g-week'
+        DAY_CN.forEach(function(d,i){
+          var b=document.createElement('span')
+          b.className='g-day'+(genState.dow.indexOf(i)>=0?' on':'')
+          b.textContent=isEn()?DAY_EN[i]:d
+          b.addEventListener('click',function(){
+            var idx=genState.dow.indexOf(i)
+            if(idx>=0)genState.dow.splice(idx,1); else genState.dow.push(i)
+            genState.dow.sort(function(a,b){return a-b})
+            b.classList.toggle('on')
+            renderGen()
+          })
+          wk.appendChild(b)
+        })
+        wrap.appendChild(wk)
+      } else if(sp.type==='number'){
+        var inp=document.createElement('input')
+        inp.type='number';inp.min=sp.min;inp.max=sp.max;inp.value=genState[sp.k]
+        inp.addEventListener('input',function(){genState[sp.k]=clampNum(inp,sp.min,sp.max);renderGen()})
+        wrap.appendChild(inp)
+        if(sp.suffix){var su=document.createElement('span');su.textContent=sp.suffix;wrap.appendChild(su)}
+      } else {
+        var ti=document.createElement('input')
+        ti.type='text';ti.value=genState[sp.k]
+        ti.addEventListener('input',function(){genState[sp.k]=ti.value.trim()||'*';renderGen()})
+        wrap.appendChild(ti)
+      }
+      box.appendChild(wrap)
+    })
+  }
+
+  function buildExpr(){
+    var s=genState
+    switch(s.type){
+      case 'minute': return s.n<=1 ? '* * * * *' : '*/'+s.n+' * * * *'
+      case 'hour':   return (s.n<=1?'0':s.m)+' '+(s.n<=1?'*':'*/'+s.n)+' * * *'
+      case 'day':    return s.m+' '+s.h+' * * *'
+      case 'week':
+        if(!s.dow.length) return ''
+        return s.m+' '+s.h+' * * '+s.dow.join(',')
+      case 'month':  return s.m+' '+s.h+' '+s.d+' * *'
+      default:       return [s.minute,s.hour,s.dom,s.month,s.dowf].join(' ')
+    }
+  }
+
+  function renderGen(){
+    var expr=buildExpr()
+    var exprEl=document.getElementById('genExpr')
+    exprEl.textContent=expr||(genState.type==='week'?L('请至少选择一个星期'):'—')
+    var pv=document.getElementById('genPreview')
+    if(!expr){pv.innerHTML='<span style="color:var(--text-muted)">—</span>';return}
+    var parts=expr.split(/\s+/)
+    var fields={minute:parts[0],hour:parts[1],dom:parts[2],month:parts[3],dow:parts[4]}
+    var desc=isEn()?describeEn(fields):describe(fields)
+    var next=computeNext(fields,5)
+    var html='<div style="color:var(--accent);font-weight:500;margin-bottom:6px">📋 '+escapeHtml(desc)+'</div>'
+    html+='<div style="color:var(--text-muted);margin:4px 0">'+L('⏰ 下次执行:')+'</div>'
+    for(var i=0;i<next.length;i++)html+='<div>  '+(i+1)+'. '+escapeHtml(next[i])+'</div>'
+    pv.innerHTML=html
+  }
+
+  // 预设点击：把表达式反解回填生成器，停留在生成页即时预览（不再跳到解释页）
+  function applyExprToGenerator(expr){
+    var parts=String(expr).trim().split(/\s+/)
+    var fit=null
+    if(parts.length===5){
+      var m=parts[0],h=parts[1],dom=parts[2],mon=parts[3],dow=parts[4]
+      if(/^\*\/\d+$/.test(m)){fit='minute';genState.n=parseInt(m.slice(2),10)||1}
+      else if(m==='*'&&h==='*'&&dom==='*'&&mon==='*'&&dow==='*'){fit='minute';genState.n=1}
+      else if(/^\d+$/.test(m)&&/^\*\/\d+$/.test(h)){fit='hour';genState.m=parseInt(m,10);genState.n=parseInt(h.slice(2),10)}
+      else if(/^\d+$/.test(m)&&h==='*'&&dom==='*'&&mon==='*'&&dow==='*'){fit='hour';genState.m=parseInt(m,10);genState.n=1}
+      else if(/^\d+$/.test(m)&&/^\d+$/.test(h)&&dom==='*'&&mon==='*'&&dow==='*'){fit='day';genState.m=parseInt(m,10);genState.h=parseInt(h,10)}
+      else if(/^\d+$/.test(m)&&/^\d+$/.test(h)&&/^\d+$/.test(dom)&&mon==='*'&&dow==='*'){fit='month';genState.m=parseInt(m,10);genState.h=parseInt(h,10);genState.d=parseInt(dom,10)}
+      else if(/^\d+$/.test(m)&&/^\d+$/.test(h)&&dom==='*'&&mon==='*'&&/^[\d,\-]+$/.test(dow)){
+        fit='week';genState.m=parseInt(m,10);genState.h=parseInt(h,10)
+        var arr=[];dow.split(',').forEach(function(seg){if(seg.indexOf('-')>=0){var a=seg.split('-');for(var i=+a[0];i<=+a[1];i++)arr.push(i)}else arr.push(+seg)})
+        genState.dow=arr
+      }
+    }
+    if(fit){
+      genState.type=fit
+      document.getElementById('genType').value=fit
+    } else {
+      genState.type='custom'
+      genState.minute=parts[0]||'*';genState.hour=parts[1]||'*';genState.dom=parts[2]||'*'
+      genState.month=parts[3]||'*';genState.dowf=parts[4]||'*'
+      document.getElementById('genType').value='custom'
+    }
+    buildGenFields();renderGen()
+  }
+
+  // 预设
+  var presetBox=document.getElementById('presets')
+  PRESETS.forEach(function(p){
+    var b=document.createElement('span');b.className='g-preset';b.textContent=p.label
+    b.addEventListener('click',function(){
+      applyExprToGenerator(p.expr) // 停留在生成页：回填周期类型与字段并即时预览
+    })
+    presetBox.appendChild(b)
+  })
+
+  document.getElementById('genType').addEventListener('change',function(){
+    genState.type=this.value;buildGenFields();renderGen()
+  })
+
+  document.getElementById('btnCopyGen').addEventListener('click',function(){
+    var expr=buildExpr(); if(!expr)return
+    var self=this,old=self.textContent
+    var done=function(){self.textContent=L('已复制');setTimeout(function(){self.textContent=old},1200)}
+    try{
+      if(window.host&&window.host.clipboard&&window.host.clipboard.write){window.host.clipboard.write(expr).then(done,done);return}
+    }catch(e){}
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(expr).then(done,done);return}
+    var ta=document.createElement('textarea');ta.value=expr;document.body.appendChild(ta);ta.select()
+    try{document.execCommand('copy')}catch(e){}
+    ta.remove();done()
+  })
+
+  document.getElementById('btnExplainGen').addEventListener('click',function(){
+    var expr=buildExpr(); if(!expr)return
+    switchTo('explain');input.value=expr;explain()
+  })
+
   // 初始占位按当前语言渲染
   output.innerHTML='<span style="color:var(--text-muted)">'+L('输入 cron 表达式查看解释…')+'</span>'
   input.focus()
+  buildGenFields();renderGen()
 })()
 </script>
 </body>

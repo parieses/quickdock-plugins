@@ -1,8 +1,8 @@
 {
   "id": "io.github.parieses.cron-explainer",
   "name": "Crontab 解释器",
-  "version": "0.2.1",
-  "description": "解析 cron 表达式，显示人类可读描述、下次执行时间和可视化时间表",
+  "version": "0.3.0",
+  "description": "解析 cron 表达式（含义/下次执行/小时分布），并可可视化生成表达式、实时预览下次执行时间",
   "author": "QuickDock",
   "icon": "icon.svg",
   "category": "开发者日常",
@@ -45,6 +45,29 @@
         "zh-CN": "Crontab 解释器",
         "en-US": "Cron Explainer"
       }
+    },
+    {
+      "id": "gen-cron",
+      "title": "Cron 表达式生成",
+      "keywords": [
+        "cron",
+        "generate",
+        "builder",
+        "生成",
+        "构造",
+        "定时器"
+      ],
+      "aliases": [
+        "生成cron",
+        "cron生成",
+        "表达式生成",
+        "定时生成"
+      ],
+      "prefix": "/genc",
+      "title_i18n": {
+        "zh-CN": "Cron 表达式生成",
+        "en-US": "Generate Cron Expression"
+      }
     }
   ],
   "capabilities": [
@@ -59,7 +82,7 @@
     "en-US": "Cron Explainer"
   },
   "description_i18n": {
-    "zh-CN": "解析 cron 表达式，显示人类可读描述、下次执行时间和可视化时间表",
-    "en-US": "Parse cron expressions, show human-readable description, next run time and a visual schedule."
+    "zh-CN": "解析 cron 表达式（含义/下次执行/小时分布），并可可视化生成表达式、实时预览下次执行时间",
+    "en-US": "Parse cron expressions (meaning / next runs / hour distribution), or build one visually with a live preview of upcoming runs."
   }
 }

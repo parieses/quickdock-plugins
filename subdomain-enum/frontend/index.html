@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>子域名枚举</title>
+<link rel="stylesheet" href="qd-theme.css">
+<style>
+.app{display:flex;flex-direction:column;height:100%;padding:var(--sp-3);gap:var(--sp-2);box-sizing:border-box}
+.row{display:flex;gap:var(--sp-2);align-items:center;flex-wrap:wrap}
+.input{flex:1;min-width:200px;padding:8px 10px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:13px;outline:none;font-family:ui-monospace,Consolas,monospace}
+.input:focus{border-color:var(--accent,#4a9eff)}
+.btn{padding:8px 18px;background:var(--accent,#4a9eff);color:#fff;border:none;border-radius:var(--radius);cursor:pointer;font-size:13px;font-weight:600;white-space:nowrap}
+.btn.stop{background:var(--danger,#e24b4a)}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+.btn-ghost{padding:7px 12px;background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;font-size:12px}
+.chk{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text-secondary);cursor:pointer}
+.hint{font-size:12px;color:var(--text-muted);min-height:16px}
+.hint.err{color:var(--danger,#e24b4a)}
+.srcbar{display:flex;gap:6px;flex-wrap:wrap}
+.src{font-size:11px;padding:3px 8px;border-radius:var(--radius);background:var(--bg-secondary);border:1px solid var(--border);color:var(--text-muted);font-family:ui-monospace,Consolas,monospace}
+.src.done{color:#5ac05a;border-color:rgba(90,192,90,.4)}
+.src.running{color:var(--accent,#4a9eff);border-color:var(--accent,#4a9eff)}
+.src.error{color:var(--danger,#e24b4a);border-color:rgba(226,75,74,.4)}
+.filters{display:flex;gap:8px;align-items:center}
+.wrap{flex:1;overflow:auto;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-lg)}
+table{width:100%;border-collapse:collapse;font-family:ui-monospace,Consolas,monospace;font-size:12px}
+th{position:sticky;top:0;background:var(--bg-secondary);text-align:left;color:var(--text-muted);font-weight:500;font-size:11px;padding:7px 8px;border-bottom:1px solid var(--border);z-index:1}
+td{padding:5px 8px;color:var(--text-primary);border-bottom:1px solid var(--border)}
+tr:hover td{background:var(--bg-hover,rgba(255,255,255,.03))}
+.name{color:var(--text-primary)}
+.alive .name{color:var(--accent,#4a9eff);font-weight:600}
+.ips{color:var(--text-secondary)}
+.src-tag{font-size:10px;padding:1px 5px;border-radius:3px;background:var(--bg-primary);color:var(--text-muted);margin-right:3px}
+.wc{font-size:10px;padding:1px 5px;border-radius:3px;background:rgba(232,131,58,.15);color:#e8833a}
+.empty{color:var(--text-muted);font-size:12px;padding:24px;text-align:center}
+.spin{display:inline-block;width:12px;height:12px;border:2px solid var(--border);border-top-color:var(--accent,#4a9eff);border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="row">
+    <input id="domain" class="input" placeholder="域名，如 example.com" spellcheck="false" autofocus>
+    <button id="btnGo" class="btn">开始</button>
+  </div>
+  <div class="row">
+    <label class="chk"><input id="resolve" type="checkbox" checked><span id="t-resolve">解析 A 记录</span></label>
+    <input id="filter" class="input" style="flex:0 0 180px" placeholder="过滤…" spellcheck="false">
+    <label class="chk"><input id="onlyAlive" type="checkbox"><span id="t-alive">仅看可解析</span></label>
+    <span style="flex:1"></span>
+    <button id="btnCopy" class="btn-ghost">复制全部</button>
+    <span id="status" class="hint"></span>
+  </div>
+  <div class="srcbar" id="srcbar"></div>
+  <div id="hint" class="hint"></div>
+  <div class="wrap">
+    <table>
+      <thead><tr>
+        <th id="t-c-name">子域名</th>
+        <th id="t-c-ip">IP</th>
+        <th id="t-c-src">来源</th>
+      </tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <div id="empty" class="empty">输入域名后点击「开始」收集子域名</div>
+  </div>
+</div>
+<script>
+(function(){
+  'use strict'
+
+  /* ---------- i18n ---------- */
+  var L10N = {
+    'en-US': {
+      '解析 A 记录':'Resolve A records','仅看可解析':'Resolvable only','复制全部':'Copy all',
+      '开始':'Start','停止':'Stop','过滤…':'Filter…','子域名':'Subdomain','IP':'IP','来源':'Source',
+      '域名，如 example.com':'Domain, e.g. example.com',
+      '输入域名后点击「开始」收集子域名':'Enter a domain and click Start',
+      '请输入域名':'Enter a domain','收集完成':'Done','未收集到子域名':'No subdomains found',
+      '已复制':'Copied','收集中':'Collecting','通配证书':'wildcard cert',
+      '结果已达上限，已截断':'Result limit reached, truncated'
+    }
+  }
+  function L(k){
+    var loc = document.documentElement.getAttribute('lang') || 'zh-CN'
+    var map = L10N[loc] || L10N[loc.split('-')[0]] || {}
+    return (map && map[k] !== undefined) ? map[k] : k
+  }
+  function renderStatic(){
+    var m = {'t-resolve':'解析 A 记录','t-alive':'仅看可解析','t-c-name':'子域名',
+             't-c-ip':'IP','t-c-src':'来源'}
+    for (var id in m) document.getElementById(id).textContent = L(m[id])
+    document.getElementById('domain').placeholder = L('域名，如 example.com')
+    document.getElementById('filter').placeholder = L('过滤…')
+    document.getElementById('btnCopy').textContent = L('复制全部')
+    if (!running) document.getElementById('btnGo').textContent = L('开始')
+    if (!all.length) document.getElementById('empty').textContent = L('输入域名后点击「开始」收集子域名')
+  }
+
+  /* ---------- RPC ---------- */
+  var seq = 0, pend = {}
+  function send(command, input){
+    return new Promise(function(resolve, reject){
+      var id = 'se_' + (++seq)
+      pend[id] = { resolve: resolve, reject: reject }
+      parent.postMessage({ type:'plugin:execute', id:id, command:command, input:input || {} }, '*')
+    })
+  }
+  window.addEventListener('message', function(e){
+    var d = e.data
+    if (!d) return
+    if (d.type === 'plugin:result' && d.id && pend[d.id]) {
+      var p = pend[d.id]; delete pend[d.id]
+      if (d.error) p.reject(new Error(d.error)); else p.resolve(d.data)
+      return
+    }
+    if (d.type === 'plugin:init') {
+      var pd = d.data || {}
+      if (pd.text) document.getElementById('domain').value = pd.text
+      return
+    }
+    if (d.type === 'plugin:theme') {
+      var dd = d.data || {}
+      if (dd.locale) document.documentElement.setAttribute('lang', dd.locale)
+      renderStatic(); renderTable()
+    }
+  })
+
+  /* ---------- 状态 ---------- */
+  var running = false, sessionId = null, pollTimer = null
+  var all = [], sources = {}, truncated = false
+
+  var el = function(id){ return document.getElementById(id) }
+  var hint = el('hint'), tbody = el('tbody'), emptyEl = el('empty')
+
+  function esc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+
+  function renderSources(){
+    var box = el('srcbar')
+    var html = ''
+    Object.keys(sources).sort().forEach(function(k){
+      var v = sources[k] || 'running'
+      var cls = 'src'
+      if (v === 'done') cls += ' done'
+      else if (v.indexOf('error:') === 0) cls += ' error'
+      else cls += ' running'
+      // 源错误不直接抛给前端，只在标签上提示
+      var txt = k + ' · ' + (v === 'done' ? '完成' : (v === 'running' ? '进行中' : v.replace('error:','')))
+      html += '<span class="' + cls + '" title="' + esc(v) + '">' + esc(txt) + '</span>'
+    })
+    box.innerHTML = html
+  }
+
+  function renderTable(){
+    var q = el('filter').value.trim().toLowerCase()
+    var onlyAlive = el('onlyAlive').checked
+    var list = all.filter(function(s){
+      if (onlyAlive && !s.alive) return false
+      if (q && s.name.toLowerCase().indexOf(q) < 0 && (s.ips || []).join(' ').indexOf(q) < 0) return false
+      return true
+    })
+
+    if (!list.length) {
+      tbody.innerHTML = ''
+      emptyEl.style.display = ''
+      emptyEl.textContent = all.length ? '无匹配结果' : L('输入域名后点击「开始」收集子域名')
+      return
+    }
+    emptyEl.style.display = 'none'
+
+    var html = ''
+    for (var i = 0; i < list.length; i++) {
+      var s = list[i]
+      var srcTags = (s.source || '').split(',').map(function(x){
+        return '<span class="src-tag">' + esc(x) + '</span>'
+      }).join('')
+      html += '<tr class="' + (s.alive ? 'alive' : '') + '">' +
+        '<td><span class="name">' + esc(s.name) + '</span>' +
+          (s.wildcard ? ' <span class="wc">' + L('通配证书') + '</span>' : '') + '</td>' +
+        '<td class="ips">' + esc((s.ips || []).join(', ') || '-') + '</td>' +
+        '<td>' + srcTags + '</td>' +
+        '</tr>'
+    }
+    tbody.innerHTML = html
+  }
+
+  function setRunning(v){
+    running = v
+    var b = el('btnGo')
+    b.textContent = v ? L('停止') : L('开始')
+    b.className = v ? 'btn stop' : 'btn'
+  }
+
+  function poll(){
+    if (!sessionId) return
+    send('poll', { sessionId: sessionId }).then(function(snap){
+      all = snap.subdomains || []
+      sources = snap.sources || {}
+      truncated = !!snap.truncated
+      renderSources(); renderTable()
+      el('status').textContent = '共 ' + (snap.total || 0) + ' 个 · 可解析 ' + (snap.alive || 0) + ' 个'
+      if (!snap.running) { finish(); return }
+    }).catch(function(e){
+      hint.className = 'hint err'
+      hint.textContent = e && e.message ? e.message : String(e)
+      finish()
+    })
+  }
+
+  function finish(){
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
+    setRunning(false)
+    var sid = sessionId; sessionId = null
+    if (sid) send('stop', { sessionId: sid }).catch(function(){})
+    hint.className = 'hint'
+    hint.textContent = all.length
+      ? L('收集完成') + (truncated ? ' · ' + L('结果已达上限，已截断') : '')
+      : L('未收集到子域名')
+  }
+
+  function start(){
+    var domain = el('domain').value.trim()
+    if (!domain) { hint.className = 'hint err'; hint.textContent = L('请输入域名'); return }
+    hint.className = 'hint'; hint.textContent = L('收集中')
+    all = []; sources = {}; truncated = false
+    tbody.innerHTML = ''
+    el('status').textContent = ''
+
+    send('start', { domain: domain, resolve: el('resolve').checked }).then(function(r){
+      sessionId = r.sessionId
+      setRunning(true)
+      pollTimer = setInterval(poll, 900)
+      poll()
+    }).catch(function(e){
+      hint.className = 'hint err'
+      hint.textContent = e && e.message ? e.message : String(e)
+    })
+  }
+
+  el('btnGo').addEventListener('click', function(){ running ? finish() : start() })
+  el('domain').addEventListener('keydown', function(e){ if (e.key === 'Enter') { running ? finish() : start() } })
+  el('filter').addEventListener('input', renderTable)
+  el('onlyAlive').addEventListener('change', renderTable)
+
+  el('btnCopy').addEventListener('click', function(){
+    if (!all.length) return
+    var text = all.map(function(s){ return s.name }).join('\n')
+    var self = this, old = self.textContent
+    var done = function(){ self.textContent = L('已复制'); setTimeout(function(){ self.textContent = old }, 1200) }
+    try{
+      if (window.host && window.host.clipboard && window.host.clipboard.write) { window.host.clipboard.write(text).then(done, done); return }
+    }catch(e){}
+    if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, done); return }
+    var ta = document.createElement('textarea'); ta.value = text
+    document.body.appendChild(ta); ta.select()
+    try{ document.execCommand('copy') }catch(e){}
+    ta.remove(); done()
+  })
+
+  renderStatic()
+  setRunning(false)
+})()
+</script>
+</body>
+</html>
