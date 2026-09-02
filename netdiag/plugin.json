@@ -1,0 +1,75 @@
+{
+  "id": "io.github.parieses.netdiag",
+  "name": "网络诊断箱",
+  "version": "0.1.0",
+  "description": "将 Ping 监视、路由追踪、局域网扫描、IP 归属地、端口指纹五个网络工具合并为单一插件，按需切换标签页，共享一个原生子进程",
+  "author": "QuickDock",
+  "category": "网络工具",
+  "platforms": [
+    "windows"
+  ],
+  "icon": "icon.svg",
+  "backend": {
+    "runtime": "native",
+    "entry": "netdiag",
+    "args": []
+  },
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 940,
+    "height": 680
+  },
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "permissions": {
+    "network": true
+  },
+  "commands": [
+    {
+      "id": "ping",
+      "title": "Ping 延迟监视",
+      "keywords": ["ping", "延迟", "丢包", "icmp", "latency"],
+      "aliases": ["ping监控", "延迟监控", "网络延迟"],
+      "title_i18n": {"zh-CN": "Ping 延迟监视", "en-US": "Ping Monitor"}
+    },
+    {
+      "id": "trace",
+      "title": "路由追踪",
+      "keywords": ["traceroute", "路由", "追踪", "ttl", "path"],
+      "aliases": ["路由跟踪", "路径追踪", "tracert"],
+      "title_i18n": {"zh-CN": "路由追踪", "en-US": "Traceroute"}
+    },
+    {
+      "id": "lan",
+      "title": "局域网扫描",
+      "keywords": ["lan", "局域网", "扫描", "设备", "arp", "mac"],
+      "aliases": ["内网扫描", "设备扫描"],
+      "title_i18n": {"zh-CN": "局域网扫描", "en-US": "LAN Scanner"}
+    },
+    {
+      "id": "geo",
+      "title": "IP 归属地查询",
+      "keywords": ["geo", "ip", "归属地", "运营商", "asn", "经纬度"],
+      "aliases": ["IP定位", "IP查询"],
+      "title_i18n": {"zh-CN": "IP 归属地查询", "en-US": "IP Geolocation"}
+    },
+    {
+      "id": "fp",
+      "title": "端口指纹识别",
+      "keywords": ["fingerprint", "指纹", "端口", "服务识别", "banner", "nmap"],
+      "aliases": ["服务指纹", "端口扫描"],
+      "title_i18n": {"zh-CN": "端口指纹识别", "en-US": "Service Fingerprint"}
+    }
+  ],
+  "name_i18n": {
+    "zh-CN": "网络诊断箱",
+    "en-US": "Network Diagnostics"
+  },
+  "description_i18n": {
+    "zh-CN": "将 Ping 监视、路由追踪、局域网扫描、IP 归属地、端口指纹五个网络工具合并为单一插件，按需切换标签页，共享一个原生子进程",
+    "en-US": "Combines Ping, Traceroute, LAN scan, IP geolocation and port fingerprint into one plugin with tabbed UI, sharing a single native subprocess."
+  }
+}

@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="qd-theme.css">
+  <style>
+    body { overflow: hidden; }
+    .hc { display:flex; flex-direction:column; height:100vh; }
+    .hc-head { display:flex; align-items:center; gap:var(--sp-2); padding:0 var(--sp-3); height:44px; background:var(--bg-secondary); border-bottom:1px solid var(--border); flex-shrink:0; }
+    .hc-title { font-size:var(--fs-lg); font-weight:var(--fw-semibold); }
+    .hc-head .spacer { flex:1; }
+
+    .hc-body { flex:1; display:flex; overflow:hidden; }
+    .hc-tree { width:262px; flex-shrink:0; display:flex; flex-direction:column; background:var(--bg-secondary); border-right:1px solid var(--border); overflow:hidden; }
+    .hc-tree-head { display:flex; align-items:center; justify-content:space-between; padding:8px 10px; font-size:var(--fs-xs); font-weight:var(--fw-semibold); color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px; border-bottom:1px solid var(--border); }
+    .hc-tree-body { flex:1; overflow:auto; padding:6px; }
+
+    .hc-main { flex:1; min-width:0; display:flex; flex-direction:column; overflow:hidden; }
+
+    /* 树节点 */
+    .ht-node { margin-bottom:3px; }
+    .ht-row { display:flex; align-items:center; gap:5px; padding:5px 6px; border-radius:var(--radius-sm); cursor:pointer; color:var(--text-secondary); font-size:var(--fs-sm); }
+    .ht-row:hover { background:var(--bg-hover); }
+    .ht-folder.active, .ht-req.active, .ht-doc.active { background:var(--accent-soft); color:var(--text-primary); }
+    .ht-caret { color:var(--text-muted); width:12px; flex-shrink:0; font-size:10px; }
+    .ht-ico { flex-shrink:0; }
+    .ht-name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .ht-children { padding:2px 0 4px 14px; }
+    .ht-method { font-size:9px; font-weight:700; flex-shrink:0; padding:1px 4px; border-radius:3px; color:#fff; }
+    .m-get{background:#2e9e5b}.m-post{background:#3a8ae0}.m-put{background:#d9920a}.m-delete{background:#e8584c}.m-patch{background:#9b6ddb}.m-head{background:#6b7785}.m-options{background:#5a8f9e}
+    .ht-actions { display:none; align-items:center; gap:2px; flex-shrink:0; }
+    .ht-row:hover .ht-actions { display:flex; }
+    .ht-act { border:none; background:none; color:var(--text-muted); cursor:pointer; font-size:10px; padding:1px 4px; border-radius:4px; }
+    .ht-act:hover { background:var(--bg-hover); color:var(--accent); }
+    .ht-act.ht-del:hover { color:var(--danger); }
+    .ht-env { display:flex; align-items:center; gap:5px; padding:4px 6px; }
+    .ht-env label { font-size:10px; color:var(--text-muted); flex-shrink:0; }
+    .ht-env select { flex:1; min-width:0; padding:4px 6px; border-radius:var(--radius-sm); font-size:var(--fs-xs); border:1px solid var(--border); background:var(--bg-tertiary); color:var(--text-primary); }
+    .ht-empty { padding:8px; text-align:center; color:var(--text-disabled); font-size:var(--fs-xs); }
+
+    /* 请求编辑器 */
+    .hc-req { display:flex; flex-direction:column; border-bottom:1px solid var(--border); flex-shrink:0; }
+    .hc-urlbar { display:flex; align-items:center; gap:var(--sp-2); padding:var(--sp-2) var(--sp-3); }
+    .hc-method { height:32px; border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-tertiary); color:var(--text-primary); font-size:var(--fs-sm); font-weight:var(--fw-semibold); padding:0 8px; }
+    .hc-url { flex:1; height:32px; }
+    .hc-tabs { display:flex; gap:2px; padding:0 var(--sp-3); border-bottom:1px solid var(--border); }
+    .hc-tab { border:none; background:transparent; color:var(--text-muted); font-size:var(--fs-sm); padding:7px 12px; cursor:pointer; border-bottom:2px solid transparent; }
+    .hc-tab.active { color:var(--text-primary); border-bottom-color:var(--accent); font-weight:var(--fw-semibold); }
+    .hc-pane { padding:var(--sp-3); display:none; overflow:auto; max-height:230px; }
+    .hc-pane.active { display:block; }
+
+    .kv-row { display:flex; align-items:center; gap:6px; margin-bottom:5px; }
+    .kv-check { width:15px; height:15px; accent-color:var(--accent); }
+    .kv-key, .kv-val { flex:1; min-width:0; padding:5px 8px; border-radius:var(--radius-sm); border:1px solid var(--border); background:var(--bg-tertiary); color:var(--text-primary); font-size:var(--fs-sm); font-family:var(--font-mono); }
+    .kv-key:focus, .kv-val:focus { border-color:var(--accent); outline:none; }
+    .kv-del { border:none; background:none; color:var(--text-disabled); cursor:pointer; }
+    .kv-del:hover { color:var(--danger); }
+    .kv-add { display:inline-flex; align-items:center; gap:4px; padding:4px 6px; border:1px dashed var(--border); border-radius:var(--radius-sm); background:none; color:var(--text-muted); font-size:var(--fs-xs); cursor:pointer; }
+    .kv-add:hover { color:var(--accent); border-color:var(--accent); }
+    textarea.hc-text { width:100%; min-height:120px; padding:8px 10px; border-radius:var(--radius); border:1px solid var(--border); background:var(--bg-primary); color:var(--text-primary); font-family:var(--font-mono); font-size:var(--fs-sm); line-height:1.5; resize:vertical; }
+
+    /* 响应 */
+    .hc-resp { flex:1; display:flex; flex-direction:column; overflow:hidden; min-height:0; }
+    .hc-resp-head { display:flex; align-items:center; gap:var(--sp-2); padding:var(--sp-2) var(--sp-3); border-bottom:1px solid var(--border); font-size:var(--fs-sm); }
+    .hc-status { font-weight:var(--fw-semibold); padding:2px 8px; border-radius:var(--radius-pill); font-size:var(--fs-xs); }
+    .hc-status.ok { background:var(--success-soft); color:var(--success); }
+    .hc-status.err { background:var(--danger-soft); color:var(--danger); }
+    .hc-resp-tabs { display:flex; gap:2px; margin-left:auto; }
+    .hc-resp-body { flex:1; overflow:auto; padding:var(--sp-3); }
+    .hc-resp-body pre { margin:0; white-space:pre-wrap; word-break:break-all; font-family:var(--font-mono); font-size:var(--fs-xs); color:var(--text-secondary); }
+    table.hc-headers { width:100%; border-collapse:collapse; font-size:var(--fs-xs); }
+    table.hc-headers td { padding:5px 8px; border-bottom:1px solid var(--border); vertical-align:top; font-family:var(--font-mono); }
+    table.hc-headers td.k { color:var(--text-muted); width:200px; word-break:break-all; }
+
+    /* 文档 */
+    .hc-doc { flex:1; display:flex; flex-direction:column; overflow:hidden; min-height:0; }
+    .hc-doc-head { display:flex; align-items:center; gap:var(--sp-2); padding:var(--sp-2) var(--sp-3); border-bottom:1px solid var(--border); }
+    .hc-doc-split { flex:1; display:flex; min-height:0; }
+    .hc-doc-input { flex:1; min-width:0; resize:none; padding:12px; border:none; border-right:1px solid var(--border); background:var(--bg-secondary); color:var(--text-primary); font-size:var(--fs-sm); font-family:var(--font-mono); line-height:1.6; outline:none; }
+    .hc-doc-preview { flex:1; min-width:0; overflow:auto; padding:12px 16px; background:var(--bg-primary); }
+    .md h1,.md h2,.md h3 { margin:12px 0 8px; line-height:1.3; }
+    .md h1 { font-size:20px; border-bottom:1px solid var(--border); padding-bottom:6px; }
+    .md h2 { font-size:17px; border-bottom:1px solid var(--border); padding-bottom:4px; }
+    .md p { margin:8px 0; }
+    .md code { background:var(--bg-tertiary); padding:1px 5px; border-radius:4px; font-family:var(--font-mono); font-size:var(--fs-sm); }
+    .md pre { background:var(--bg-tertiary); padding:10px 12px; border-radius:var(--radius); overflow:auto; }
+    .md pre code { background:none; padding:0; }
+    .md blockquote { border-left:3px solid var(--accent); margin:8px 0; padding:2px 12px; color:var(--text-muted); }
+    .md ul { padding-left:22px; margin:8px 0; }
+    .md a { color:var(--accent); }
+
+    /* 历史抽屉 */
+    .hc-drawer { position:fixed; top:0; right:0; bottom:0; width:380px; background:var(--bg-secondary); border-left:1px solid var(--border); box-shadow:var(--shadow-2); z-index:200; display:flex; flex-direction:column; }
+    .hc-drawer-head { display:flex; align-items:center; justify-content:space-between; padding:var(--sp-3); border-bottom:1px solid var(--border); }
+    .hc-drawer-body { flex:1; overflow:auto; padding:var(--sp-2); }
+    .hc-hist { padding:var(--sp-2); border:1px solid var(--border); border-radius:var(--radius); margin-bottom:6px; cursor:pointer; }
+    .hc-hist:hover { background:var(--bg-hover); }
+
+    /* 弹窗 */
+    .hc-mask { position:fixed; inset:0; background:rgba(0,0,0,.45); display:flex; align-items:center; justify-content:center; z-index:300; }
+    .hc-modal { width:480px; max-width:92vw; max-height:86vh; overflow:auto; background:var(--bg-secondary); border:1px solid var(--border); border-radius:var(--radius-lg); padding:var(--sp-4); display:flex; flex-direction:column; box-shadow:var(--shadow-2); }
+    .hc-modal.wide { width:560px; }
+    .hc-modal-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:var(--sp-3); font-size:var(--fs-lg); font-weight:var(--fw-semibold); }
+    .hc-field { display:flex; flex-direction:column; gap:5px; margin-bottom:var(--sp-2); }
+    .hc-field label { font-size:var(--fs-sm); color:var(--text-muted); }
+    .hc-actions { display:flex; align-items:center; gap:var(--sp-2); margin-top:var(--sp-3); }
+    .hc-actions .spacer { flex:1; }
+
+    .hc-toast { position:fixed; top:12px; right:12px; padding:8px 14px; border-radius:var(--radius); font-size:var(--fs-sm); z-index:999; box-shadow:var(--shadow-2); max-width:360px; }
+    .hc-toast.ok { background:var(--success); color:#fff; }
+    .hc-toast.err { background:var(--danger); color:#fff; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="hc">
+    <div class="hc-head">
+      <span class="hc-title">🌐 HTTP 客户端</span>
+      <button class="p-btn p-btn-sm" @click="newProject">新建项目</button>
+      <button class="p-btn p-btn-sm" @click="importPostman">Postman 导入</button>
+      <div class="spacer"></div>
+      <button class="p-btn p-btn-sm" @click="toggleHistory">历史</button>
+    </div>
+
+    <div class="hc-body">
+      <!-- 左：项目树 -->
+      <div class="hc-tree">
+        <div class="hc-tree-head"><span>项目</span><button class="p-btn p-btn-sm" @click="newProject">＋</button></div>
+        <div class="hc-tree-body">
+          <div class="ht-node" v-for="p in projects" :key="p.id">
+            <div class="ht-row ht-folder" :class="{active: expandedProjects.has(p.id)}" @click="toggleProj(p.id)">
+              <span class="ht-caret">{{ expandedProjects.has(p.id) ? '▾' : '▸' }}</span>
+              <span class="ht-ico">📁</span>
+              <span class="ht-name" :title="p.name">{{ p.name }}</span>
+              <span class="ht-actions">
+                <button class="ht-act" title="新建请求" @click.stop="newRequest(p.id,'')">＋R</button>
+                <button class="ht-act" title="新建目录" @click.stop="openNewFolder(p.id,'')">＋F</button>
+                <button class="ht-act" title="新建文档" @click.stop="newDoc(p.id,'')">＋D</button>
+                <button class="ht-act" title="环境" @click.stop="openEnvModal(p)">⚙</button>
+                <button class="ht-act" title="项目设置" @click.stop="openProjSettings(p)">✎</button>
+                <button class="ht-act ht-del" title="删除项目" @click.stop="deleteProject(p)">🗑</button>
+              </span>
+            </div>
+            <div class="ht-children" v-if="expandedProjects.has(p.id)">
+              <div class="ht-row ht-req" v-for="r in topRequests(p.id)" :key="r.id" :class="{active: r.id===currentId}" @click="loadRequest(r)">
+                <span class="ht-method" :class="'m-'+methodClass(r.method)">{{ r.method || 'GET' }}</span>
+                <span class="ht-name" :title="r.name||r.url">{{ r.name || r.url }}</span>
+                <span class="ht-actions"><button class="ht-act ht-del" @click.stop="deleteRequest(r)">🗑</button></span>
+              </div>
+              <div class="ht-row ht-doc" v-for="d in topDocs(p.id)" :key="d.id" :class="{active: d.id===currentDocId}" @click="openDoc(d)">
+                <span class="ht-ico">📄</span><span class="ht-name">{{ d.name }}</span>
+                <span class="ht-actions"><button class="ht-act ht-del" @click.stop="deleteDoc(d)">🗑</button></span>
+              </div>
+              <folder-node v-for="f in topFolders(p.id)" :key="f.id" :folder="f" :folders="folders" :requests="requests" :docs="docs" :expanded-folders="expandedFolders" :current-id="currentId" :current-doc-id="currentDocId"
+                @add-req="id=>newRequest(currentProjectId,id)" @add-folder="id=>openNewFolder(currentProjectId,id)"
+                @add-doc="id=>newDoc(currentProjectId,id)" @del-folder="deleteFolder" @del-req="deleteRequest" @del-doc="deleteDoc"
+                @select-req="loadRequest" @select-doc="openDoc"></folder-node>
+              <div class="ht-env">
+                <label>环境</label>
+                <select :value="activeEnvs[p.id]||''" @change="setActiveEnv(p.id, $event.target.value)">
+                  <option value="">（无）</option>
+                  <option v-for="e in envsByProject(p.id)" :key="e.id" :value="e.id">{{ e.name }}</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="ht-node">
+            <div class="ht-row ht-folder" :class="{active: uncatExpanded}" @click="uncatExpanded=!uncatExpanded">
+              <span class="ht-caret">{{ uncatExpanded ? '▾' : '▸' }}</span>
+              <span class="ht-name">未分类</span>
+            </div>
+            <div class="ht-children" v-if="uncatExpanded">
+              <div class="ht-row ht-req" v-for="r in uncategorized" :key="r.id" :class="{active: r.id===currentId}" @click="loadRequest(r)">
+                <span class="ht-method" :class="'m-'+methodClass(r.method)">{{ r.method || 'GET' }}</span>
+                <span class="ht-name" :title="r.name||r.url">{{ r.name || r.url }}</span>
+                <span class="ht-actions"><button class="ht-act ht-del" @click.stop="deleteRequest(r)">🗑</button></span>
+              </div>
+              <div v-if="!uncategorized.length" class="ht-empty">暂无请求</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右：请求 / 文档 -->
+      <div class="hc-main">
+        <template v-if="!editingDoc">
+          <!-- URL 栏 -->
+          <div class="hc-req">
+            <div class="hc-urlbar">
+              <select class="hc-method" v-model="method">
+                <option v-for="m in methods" :key="m">{{ m }}</option>
+              </select>
+              <input class="p-input hc-url" v-model="url" placeholder="https://api.example.com/v1/resource" @keyup.ctrl.enter="send" @keyup.meta.enter="send">
+              <button class="p-btn p-btn-primary" :disabled="sending" @click="send">{{ sending ? '发送中…' : '发送' }}</button>
+              <button class="p-btn" @click="save">保存</button>
+              <button class="p-btn" @click="copyCurl" title="复制为 curl">curl</button>
+            </div>
+            <div class="hc-tabs">
+              <button class="hc-tab" :class="{active: activeTab==='params'}" @click="activeTab='params'">Params</button>
+              <button class="hc-tab" :class="{active: activeTab==='headers'}" @click="activeTab='headers'">Headers</button>
+              <button class="hc-tab" :class="{active: activeTab==='body'}" @click="activeTab='body'">Body</button>
+              <button class="hc-tab" :class="{active: activeTab==='auth'}" @click="activeTab='auth'">Auth</button>
+            </div>
+
+            <div class="hc-pane" :class="{active: activeTab==='params'}">
+              <div class="kv-row" v-for="(r,i) in paramRows" :key="'p'+i">
+                <input type="checkbox" class="kv-check" v-model="r.enabled">
+                <input class="kv-key" v-model="r.key" placeholder="key">
+                <input class="kv-val" v-model="r.value" placeholder="value">
+                <button class="kv-del" @click="paramRows.splice(i,1)">✕</button>
+              </div>
+              <button class="kv-add" @click="paramRows.push({enabled:true,key:'',value:''})">＋ 添加参数</button>
+            </div>
+
+            <div class="hc-pane" :class="{active: activeTab==='headers'}">
+              <div class="kv-row" v-for="(r,i) in headerRows" :key="'h'+i">
+                <input type="checkbox" class="kv-check" v-model="r.enabled">
+                <input class="kv-key" v-model="r.key" placeholder="Header">
+                <input class="kv-val" v-model="r.value" placeholder="Value">
+                <button class="kv-del" @click="headerRows.splice(i,1)">✕</button>
+              </div>
+              <button class="kv-add" @click="headerRows.push({enabled:true,key:'',value:''})">＋ 添加请求头</button>
+            </div>
+
+            <div class="hc-pane" :class="{active: activeTab==='body'}">
+              <div style="display:flex; gap:6px; margin-bottom:8px;">
+                <select class="hc-method" v-model="bodyType">
+                  <option v-for="b in bodyTypes" :key="b" :value="b">{{ b }}</option>
+                </select>
+              </div>
+              <template v-if="bodyType==='form'">
+                <div class="kv-row" v-for="(r,i) in formRows" :key="'f'+i">
+                  <input type="checkbox" class="kv-check" v-model="r.enabled">
+                  <input class="kv-key" v-model="r.key" placeholder="key">
+                  <input class="kv-val" v-model="r.value" placeholder="value">
+                  <button class="kv-del" @click="formRows.splice(i,1)">✕</button>
+                </div>
+                <button class="kv-add" @click="formRows.push({enabled:true,key:'',value:''})">＋ 添加字段</button>
+              </template>
+              <template v-else-if="bodyType!=='none'">
+                <textarea class="hc-text" v-model="body" :placeholder="bodyPlaceholder" spellcheck="false"></textarea>
+              </template>
+              <div v-else class="ht-empty">该请求无 Body</div>
+            </div>
+
+            <div class="hc-pane" :class="{active: activeTab==='auth'}">
+              <div style="display:flex; gap:6px; margin-bottom:8px;">
+                <select class="hc-method" v-model="authType">
+                  <option v-for="a in authTypes" :key="a" :value="a">{{ a }}</option>
+                </select>
+              </div>
+              <div v-if="authType==='bearer'" class="hc-field">
+                <label>Token</label><input class="p-input" v-model="authToken" placeholder="eyJ...">
+              </div>
+              <template v-else-if="authType==='basic'">
+                <div class="hc-field"><label>用户名</label><input class="p-input" v-model="authUser"></div>
+                <div class="hc-field"><label>密码</label><input class="p-input" type="password" v-model="authPass"></div>
+              </template>
+              <div v-else class="ht-empty">不使用认证</div>
+            </div>
+          </div>
+
+          <!-- 响应 -->
+          <div class="hc-resp">
+            <div class="hc-resp-head" v-if="response">
+              <span class="hc-status" :class="response.ok?'ok':'err'">{{ response.status }}</span>
+              <span>{{ response.durationMs }} ms</span>
+              <span>{{ formatSize(response.size) }}</span>
+              <span v-if="response.truncated" style="color:var(--warning)">（已截断）</span>
+              <div class="hc-resp-tabs">
+                <button class="hc-tab" :class="{active: responseTab==='body'}" @click="responseTab='body'">Body</button>
+                <button class="hc-tab" :class="{active: responseTab==='headers'}" @click="responseTab='headers'">Headers</button>
+                <button class="ht-act" title="复制" @click="copyResponse">复制</button>
+              </div>
+            </div>
+            <div class="hc-resp-head" v-else><span class="ht-empty">发送请求后在此查看响应</span></div>
+            <div class="hc-resp-body" v-if="response">
+              <pre v-if="responseTab==='body'">{{ responseBodyText }}</pre>
+              <table class="hc-headers" v-else>
+                <tr v-for="(v,k) in response.headers" :key="k"><td class="k">{{ k }}</td><td>{{ v }}</td></tr>
+              </table>
+            </div>
+          </div>
+        </template>
+
+        <!-- 文档编辑器 -->
+        <template v-else>
+          <div class="hc-doc">
+            <div class="hc-doc-head">
+              <input class="p-input" v-model="editingDoc.name" placeholder="文档标题" style="flex:1">
+              <button class="p-btn" @click="saveDoc">保存</button>
+              <button class="p-btn p-btn-danger" @click="deleteDoc(editingDoc)" v-if="editingDoc.id">删除</button>
+              <button class="p-btn" @click="editingDoc=null">关闭</button>
+            </div>
+            <div class="hc-doc-split">
+              <textarea class="hc-doc-input" v-model="editingDoc.content" placeholder="# 在此用 Markdown 编写文档"></textarea>
+              <div class="hc-doc-preview md" v-html="docPreview"></div>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <!-- 历史抽屉 -->
+    <div class="hc-drawer" v-if="showHistory">
+      <div class="hc-drawer-head">
+        <span>请求历史</span>
+        <span>
+          <button class="p-btn p-btn-sm p-btn-danger" @click="clearHistory">清空</button>
+          <button class="p-btn p-btn-sm" @click="showHistory=false">✕</button>
+        </span>
+      </div>
+      <div class="hc-drawer-body">
+        <div class="hc-hist" v-for="h in history" :key="h.id" @click="loadFromHistory(h)">
+          <div style="display:flex; gap:6px; align-items:center;">
+            <span class="ht-method" :class="'m-'+methodClass(h.method)">{{ h.method }}</span>
+            <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ h.url }}</span>
+            <span class="hc-status" :class="h.ok?'ok':'err'">{{ h.statusCode||'' }}</span>
+          </div>
+          <div class="ht-empty" style="text-align:left; padding:2px 0;">{{ h.name || '' }} · {{ h.durationMs }}ms</div>
+        </div>
+        <div v-if="!history.length" class="ht-empty">暂无历史</div>
+      </div>
+    </div>
+
+    <!-- 项目设置 -->
+    <div class="hc-mask" v-if="showProjModal" @click.self="showProjModal=false">
+      <div class="hc-modal">
+        <div class="hc-modal-head"><span>{{ projModal.id ? '项目设置' : '新建项目' }}</span><button class="p-btn p-btn-sm" @click="showProjModal=false">✕</button></div>
+        <div class="hc-field"><label>项目名称</label><input class="p-input" v-model="projModal.name"></div>
+        <div class="hc-field"><label>共享请求头（JSON）</label>
+          <div class="kv-row" v-for="(r,i) in projModal.headers" :key="'ph'+i">
+            <input type="checkbox" class="kv-check" v-model="r.enabled">
+            <input class="kv-key" v-model="r.key" placeholder="Header">
+            <input class="kv-val" v-model="r.value" placeholder="Value">
+            <button class="kv-del" @click="projModal.headers.splice(i,1)">✕</button>
+          </div>
+          <button class="kv-add" @click="projModal.headers.push({enabled:true,key:'',value:''})">＋ 添加共享头</button>
+        </div>
+        <div class="hc-actions"><div class="spacer"></div><button class="p-btn" @click="showProjModal=false">取消</button><button class="p-btn p-btn-primary" @click="saveProjSettings">保存</button></div>
+      </div>
+    </div>
+
+    <!-- 环境管理 -->
+    <div class="hc-mask" v-if="showEnvModal" @click.self="showEnvModal=false">
+      <div class="hc-modal wide">
+        <div class="hc-modal-head"><span>环境管理：{{ envModalProjectName }}</span><button class="p-btn p-btn-sm" @click="showEnvModal=false">✕</button></div>
+        <div class="hc-modal-body">
+          <div class="p-section" v-for="(env,i) in envEditList" :key="'e'+i" style="margin-bottom:10px;">
+            <div style="display:flex; gap:6px; margin-bottom:6px;"><input class="p-input" style="flex:1" v-model="env.name" placeholder="环境名"><button class="kv-del" @click="deleteEnv(i)">🗑</button></div>
+            <div class="kv-row" v-for="(v,j) in env.variables" :key="'v'+i+'_'+j">
+              <input type="checkbox" class="kv-check" v-model="v.enabled">
+              <input class="kv-key" v-model="v.key" placeholder="变量名">
+              <input class="kv-val" v-model="v.value" placeholder="变量值">
+              <button class="kv-del" @click="env.variables.splice(j,1)">✕</button>
+            </div>
+            <button class="kv-add" @click="env.variables.push({enabled:true,key:'',value:''})">＋ 添加变量</button>
+          </div>
+          <div v-if="!envEditList.length" class="ht-empty">暂无环境</div>
+          <button class="kv-add" @click="addEnv">＋ 添加环境</button>
+        </div>
+        <div class="hc-actions"><div class="spacer"></div><button class="p-btn" @click="showEnvModal=false">取消</button><button class="p-btn p-btn-primary" @click="saveEnvs">保存</button></div>
+      </div>
+    </div>
+
+    <!-- 新建/重命名目录 -->
+    <div class="hc-mask" v-if="folderDialog.visible" @click.self="folderDialog.visible=false">
+      <div class="hc-modal" style="width:360px">
+        <div class="hc-modal-head"><span>{{ folderDialog.isRename ? '重命名目录' : '新建目录' }}</span><button class="p-btn p-btn-sm" @click="folderDialog.visible=false">✕</button></div>
+        <div class="hc-field"><label>目录名</label><input class="p-input" v-model="folderDialog.name" @keyup.enter="confirmFolder"></div>
+        <div class="hc-actions"><div class="spacer"></div><button class="p-btn" @click="folderDialog.visible=false">取消</button><button class="p-btn p-btn-primary" @click="confirmFolder">确定</button></div>
+      </div>
+    </div>
+
+    <!-- Postman 导入 -->
+    <div class="hc-mask" v-if="showImport" @click.self="showImport=false">
+      <div class="hc-modal">
+        <div class="hc-modal-head"><span>导入 Postman 集合</span><button class="p-btn p-btn-sm" @click="showImport=false">✕</button></div>
+        <div class="hc-field"><label>选择 .json 文件</label><input type="file" accept=".json,application/json" @change="onImportFile"></div>
+        <div class="hc-field"><label>或直接粘贴 JSON</label><textarea class="hc-text" v-model="importText" placeholder="在此粘贴 Postman Collection v2.1 JSON" style="min-height:160px"></textarea></div>
+        <div class="hc-actions"><div class="spacer"></div><button class="p-btn" @click="showImport=false">取消</button><button class="p-btn p-btn-primary" @click="doImport" :disabled="!importText">导入</button></div>
+      </div>
+    </div>
+
+    <!-- 通用确认 -->
+    <div class="hc-mask" v-if="confirmDialog.visible" @click.self="confirmCancel">
+      <div class="hc-modal" style="width:380px">
+        <div class="hc-modal-head"><span>确认操作</span><button class="p-btn p-btn-sm" @click="confirmCancel">✕</button></div>
+        <div class="hc-modal-body"><p style="margin:0;line-height:1.6">{{ confirmDialog.message }}</p></div>
+        <div class="hc-actions"><div class="spacer"></div><button class="p-btn" @click="confirmCancel">取消</button><button class="p-btn p-btn-danger" @click="confirmOk">确认删除</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="vue.global.prod.js"></script>
+<script>
+(function(){
+  'use strict'
+  var Vue = window.Vue
+  var createApp = Vue.createApp
+
+  /* ---------- RPC 桥接 ---------- */
+  var seq = 0, pend = {}
+  function send(command, input){
+    return new Promise(function(res, rej){
+      var id = 'hc_' + (++seq)
+      pend[id] = { res: res, rej: rej }
+      parent.postMessage({ type:'plugin:execute', id:id, command:command, input: input || {} }, '*')
+    })
+  }
+  window.addEventListener('message', function(e){
+    var d = e.data; if(!d) return
+    if(d.type==='plugin:result' && d.id && pend[d.id]){
+      var p = pend[d.id]; delete pend[d.id]
+      if(d.error) p.rej(new Error(typeof d.error==='string' ? d.error : (d.error.message||'error')))
+      else p.res(d.data || {})
+    }
+  })
+
+  /* ---------- 工具 ---------- */
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+  function $(sel){ return document.querySelector(sel) }
+  function toast(msg, kind){
+    var t = document.createElement('div')
+    t.className = 'hc-toast ' + (kind==='err' ? 'err' : 'ok')
+    t.textContent = msg
+    document.body.appendChild(t)
+    setTimeout(function(){ t.remove() }, 3200)
+  }
+  function kvToJSON(rows){
+    var m = {}
+    ;(rows||[]).forEach(function(r){ if(r.enabled && r.key && r.key.trim()) m[r.key.trim()] = r.value })
+    return JSON.stringify(m)
+  }
+  function jsonToKV(str){
+    var out = []
+    try { var m = JSON.parse(str||'{}'); Object.keys(m).forEach(function(k){ out.push({enabled:true, key:k, value:String(m[k])}) }) } catch(e){}
+    if(!out.length) out.push({enabled:true,key:'',value:''})
+    return out
+  }
+  function kvToQuery(rows){
+    var p = new URLSearchParams()
+    ;(rows||[]).forEach(function(r){ if(r.enabled && r.key && r.key.trim()) p.append(r.key.trim(), r.value==null?'':r.value) })
+    return p.toString()
+  }
+  function parseQuery(full){
+    try {
+      var u = new URL(full)
+      var rows = []
+      u.searchParams.forEach(function(v,k){ rows.push({enabled:true, key:k, value:v}) })
+      return { base: u.origin + u.pathname + u.hash, rows: rows }
+    } catch(e){ return { base: full, rows: [] } }
+  }
+  function formToQuery(rows){ return kvToQuery(rows) }
+  function queryToForm(str){
+    var rows = []
+    new URLSearchParams(str||'').forEach(function(v,k){ rows.push({enabled:true, key:k, value:v}) })
+    return rows
+  }
+
+  /* ---------- 递归目录组件 ---------- */
+  var FolderNode = {
+    name: 'folder-node',
+    props: { folder:Object, folders:Array, requests:Array, docs:Array, expandedFolders:Object, currentId:String, currentDocId:String },
+    emits: ['add-req','add-folder','add-doc','del-folder','del-req','del-doc','select-req','select-doc'],
+    computed: {
+      subfolders: function(){ return this.folders.filter(function(f){ return f.parentId===this.folder.id }.bind(this)) },
+      reqs: function(){ return this.requests.filter(function(r){ return r.folderId===this.folder.id }.bind(this)) },
+      docsInFolder: function(){ return this.docs.filter(function(d){ return d.folderId===this.folder.id }.bind(this)) }
+    },
+    methods: {
+      toggle: function(){ var s=this.expandedFolders; if(s.has(this.folder.id)) s.delete(this.folder.id); else s.add(this.folder.id) }
+    },
+    template: [
+      '<div class="ht-node">',
+      '  <div class="ht-row ht-folder" :class="{active: expandedFolders.has(folder.id)}" @click="toggle">',
+      '    <span class="ht-caret">{{ expandedFolders.has(folder.id) ? "▾" : "▸" }}</span>',
+      '    <span class="ht-ico">📁</span>',
+      '    <span class="ht-name" :title="folder.name">{{ folder.name }}</span>',
+      '    <span class="ht-actions">',
+      '      <button class="ht-act" title="新建请求" @click.stop="$emit(\'add-req\', folder.id)">＋R</button>',
+      '      <button class="ht-act" title="新建子目录" @click.stop="$emit(\'add-folder\', folder.id)">＋F</button>',
+      '      <button class="ht-act" title="新建文档" @click.stop="$emit(\'add-doc\', folder.id)">＋D</button>',
+      '      <button class="ht-act ht-del" title="删除目录" @click.stop="$emit(\'del-folder\', folder)">🗑</button>',
+      '    </span>',
+      '  </div>',
+      '  <div class="ht-children" v-if="expandedFolders.has(folder.id)">',
+      '    <div class="ht-row ht-req" v-for="r in reqs" :key="r.id" :class="{active: r.id===currentId}" @click="$emit(\'select-req\', r)">',
+      '      <span class="ht-method" :class="\'m-\'+methodCls(r.method)">{{ r.method || \'GET\' }}</span>',
+      '      <span class="ht-name" :title="r.name||r.url">{{ r.name || r.url }}</span>',
+      '      <span class="ht-actions"><button class="ht-act ht-del" @click.stop="$emit(\'del-req\', r)">🗑</button></span>',
+      '    </div>',
+      '    <div class="ht-row ht-doc" v-for="d in docsInFolder" :key="d.id" :class="{active: d.id===currentDocId}" @click="$emit(\'select-doc\', d)">',
+      '      <span class="ht-ico">📄</span><span class="ht-name">{{ d.name }}</span>',
+      '      <span class="ht-actions"><button class="ht-act ht-del" @click.stop="$emit(\'del-doc\', d)">🗑</button></span>',
+      '    </div>',
+      '    <folder-node v-for="f in subfolders" :key="f.id" :folder="f" :folders="folders" :requests="requests" :docs="docs" :expanded-folders="expandedFolders" :current-id="currentId" :current-doc-id="currentDocId"',
+      '      @add-req="$emit(\'add-req\', $event)" @add-folder="$emit(\'add-folder\', $event)" @add-doc="$emit(\'add-doc\', $event)"',
+      '      @del-folder="$emit(\'del-folder\', $event)" @del-req="$emit(\'del-req\', $event)" @del-doc="$emit(\'del-doc\', $event)"',
+      '      @select-req="$emit(\'select-req\', $event)" @select-doc="$emit(\'select-doc\', $event)"></folder-node>',
+      '  </div>',
+      '</div>'
+    ].join('\n'),
+    methods: {
+      toggle: function(){ var s=this.expandedFolders; if(s.has(this.folder.id)) s.delete(this.folder.id); else s.add(this.folder.id) },
+      methodCls: function(m){ return (m||'GET').toLowerCase() }
+    }
+  }
+
+  var app = createApp({
+    components: { 'folder-node': FolderNode },
+    data: function(){
+      return {
+        projects: [], folders: [], requests: [], docs: [], environments: [],
+        currentId: '', currentProjectId: '', currentFolderId: '',
+        expandedProjects: new Set(), expandedFolders: new Set(), uncatExpanded: false,
+        activeEnvs: {},
+        // 表单
+        name: '', method: 'GET', url: '', paramRows: [], headerRows: [{enabled:true,key:'Content-Type',value:'application/json'}],
+        bodyType: 'none', body: '', formRows: [], authType: 'none', authToken: '', authUser: '', authPass: '',
+        activeTab: 'headers', responseTab: 'body', sending: false, response: null,
+        methods: ['GET','POST','PUT','DELETE','PATCH','HEAD','OPTIONS'],
+        bodyTypes: ['none','json','form','text','xml'],
+        authTypes: ['none','bearer','basic'],
+        // 文档
+        editingDoc: null,
+        // 历史
+        showHistory: false, history: [],
+        // 弹窗
+        showProjModal: false, projModal: { id:'', name:'', headers: [] },
+        showEnvModal: false, envModalProjectId: '', envEditList: [],
+        folderDialog: { visible:false, isRename:false, name:'', projectId:'', parentId:'', renameId:'' },
+        showImport: false, importText: '',
+        confirmDialog: { visible:false, message:'', onConfirm:null }
+      }
+    },
+    computed: {
+      responseBodyText: function(){
+        var b = this.response ? this.response.body : ''
+        if(!b) return ''
+        var ct = (this.response.headers && (this.response.headers['Content-Type']||this.response.headers['content-type'])) || ''
+        if(ct.indexOf('json') >= 0){
+          try { return JSON.stringify(JSON.parse(b), null, 2) } catch(e){}
+        }
+        return b
+      },
+      docPreview: function(){
+        if(!this.editingDoc || !this.editingDoc.content) return ''
+        return renderMarkdown(this.editingDoc.content)
+      },
+      bodyPlaceholder: function(){
+        if(this.bodyType==='json') return '{\n  "key": "value"\n}'
+        if(this.bodyType==='xml') return '<root>\n  <item>value</item>\n</root>'
+        if(this.bodyType==='text') return '纯文本'
+        return ''
+      }
+    },
+    methods: {
+      methodClass: function(m){ return (m||'GET').toLowerCase() },
+      formatSize: function(n){ if(n<1024) return n+' B'; if(n<1024*1024) return (n/1024).toFixed(1)+' KB'; return (n/1024/1024).toFixed(1)+' MB' },
+      // 树筛选
+      topFolders: function(pid){ return this.folders.filter(function(f){ return f.projectId===pid && !f.parentId }) },
+      topRequests: function(pid){ return this.requests.filter(function(r){ return r.projectId===pid && !r.folderId }) },
+      topDocs: function(pid){ return this.docs.filter(function(d){ return d.projectId===pid && !d.folderId }) },
+      envsByProject: function(pid){ return this.environments.filter(function(e){ return e.projectId===pid }) },
+      uncategorized: function(){ return this.requests.filter(function(r){ return !r.projectId }) },
+      // 加载
+      load: function(){
+        var self = this
+        Promise.all([
+          send('project.list'), send('folder.list', {}), send('req.list'), send('doc.list', {}), send('env.list', {})
+        ]).then(function(r){
+          self.projects = r[0] || []; self.folders = r[1] || []; self.requests = r[2] || []; self.docs = r[3] || []; self.environments = r[4] || []
+        }).catch(function(e){ toast('加载失败: ' + (e.message||e), 'err') })
+      },
+      toggleProj: function(id){ var s=this.expandedProjects; if(s.has(id)) s.delete(id); else s.add(id) },
+      setActiveEnv: function(pid, eid){ this.activeEnvs[pid] = eid; this.activeEnvs = Object.assign({}, this.activeEnvs) },
+      activeEnvForCurrent: function(){ return (this.currentProjectId && this.activeEnvs[this.currentProjectId]) || '' },
+      // 请求增删
+      newProject: function(){
+        this.projModal = { id:'', name:'', headers: [] }
+        this.showProjModal = true
+      },
+      askConfirm: function(msg, cb){ this.confirmDialog = { visible:true, message:msg, onConfirm:cb } },
+      confirmOk: function(){ var cb=this.confirmDialog.onConfirm; this.confirmDialog.visible=false; this.confirmDialog.onConfirm=null; if(cb) cb() },
+      confirmCancel: function(){ this.confirmDialog.visible=false; this.confirmDialog.onConfirm=null },
+      deleteProject: function(p){
+        var self = this
+        this.askConfirm('确认删除项目「' + p.name + '」？其下请求将变为未分类。', function(){
+          send('project.delete', { id: p.id }).then(function(){ self.load() }).catch(function(e){ toast('删除失败: '+(e.message||e),'err') })
+        })
+      },
+      newRequest: function(pid, folderId){
+        this.editingDoc = null
+        this.currentId = ''; this.currentProjectId = pid||''; this.currentFolderId = folderId||''
+        this.name=''; this.method='GET'; this.url=''
+        this.paramRows = []; this.headerRows = [{enabled:true,key:'Content-Type',value:'application/json'}]
+        this.bodyType='none'; this.body=''; this.formRows=[]; this.authType='none'; this.authToken=''; this.authUser=''; this.authPass=''
+        this.response = null; this.activeTab='headers'
+      },
+      loadRequest: function(r){
+        this.editingDoc = null
+        this.currentId = r.id; this.currentProjectId = r.projectId||''; this.currentFolderId = r.folderId||''
+        this.name = r.name||''; this.method = r.method||'GET'
+        var pq = parseQuery(r.url); this.url = pq.base; this.paramRows = pq.rows
+        this.headerRows = jsonToKV(r.headers)
+        this.bodyType = r.bodyType||'none'
+        if(this.bodyType==='form') this.formRows = queryToForm(r.body); else this.body = r.body||''
+        this.authType = r.authType||'none'; this.authToken = r.authToken||''; this.authUser = r.authUser||''; this.authPass = r.authPass||''
+        this.response = null; this.activeTab='headers'
+      },
+      buildInput: function(){
+        var q = kvToQuery(this.paramRows)
+        var fullUrl = q ? this.url + (this.url.indexOf('?')>=0 ? '&' : '?') + q : this.url
+        var finalBody = this.body
+        if(this.bodyType==='form') finalBody = formToQuery(this.formRows)
+        return {
+          id: this.currentId || '', projectId: this.currentProjectId, folderId: this.currentFolderId,
+          environmentId: this.activeEnvForCurrent(), name: this.name.trim(), method: this.method, url: fullUrl,
+          headers: kvToJSON(this.headerRows), body: finalBody, bodyType: this.bodyType,
+          authType: this.authType, authToken: this.authToken, authUser: this.authUser, authPass: this.authPass, sort: 0
+        }
+      },
+      save: function(){
+        if(!this.url.trim()){ toast('请填写 URL','err'); return }
+        var self = this; var input = this.buildInput()
+        send('req.save', input).then(function(r){
+          toast('已保存','ok'); self.load(); if(r) self.loadRequest(r)
+        }).catch(function(e){ toast('保存失败: '+(e.message||e),'err') })
+      },
+      send: function(){
+        if(!this.url.trim()){ toast('请填写 URL','err'); return }
+        var self = this; this.sending = true; this.response = null; this.responseTab='body'
+        send('req.send', this.buildInput()).then(function(resp){
+          self.response = resp || null
+          if(resp && !resp.ok) toast('状态码 ' + resp.status, 'err')
+          else if(resp) toast('请求成功 ' + resp.status, 'ok')
+        }).catch(function(e){ toast('发送失败: '+(e.message||e),'err') }).finally(function(){ self.sending = false })
+      },
+      copyCurl: function(){
+        if(!this.url.trim()){ toast('请填写 URL','err'); return }
+        var self = this
+        send('req.curl', this.buildInput()).then(function(r){
+          if(navigator.clipboard) navigator.clipboard.writeText(r.command).then(function(){ toast('curl 已复制','ok') }).catch(function(){})
+        }).catch(function(e){ toast('复制失败: '+(e.message||e),'err') })
+      },
+      deleteRequest: function(r){
+        var self = this
+        this.askConfirm('删除请求「' + (r.name||r.url) + '」？', function(){
+          send('req.delete', { id: r.id }).then(function(){ if(self.currentId===r.id) self.currentId=''; self.load() }).catch(function(e){ toast('删除失败: '+(e.message||e),'err') })
+        })
+      },
+      // 文档
+      newDoc: function(pid, folderId){
+        this.currentId=''; this.editingDoc = { id:'', projectId: pid||this.currentProjectId, folderId: folderId||'', name:'未命名文档', content:'' }
+      },
+      openDoc: function(d){
+        this.currentId=''; this.editingDoc = { id: d.id, projectId: d.projectId, folderId: d.folderId, name: d.name, content: d.content }
+      },
+      saveDoc: function(){
+        if(!this.editingDoc) return
+        var self = this; var d = this.editingDoc
+        send('doc.save', { id: d.id, projectId: d.projectId, folderId: d.folderId, name: d.name, content: d.content }).then(function(r){
+          toast('文档已保存','ok'); self.load(); if(r && r.id) self.editingDoc.id = r.id
+        }).catch(function(e){ toast('保存失败: '+(e.message||e),'err') })
+      },
+      deleteDoc: function(d){
+        var self = this; var id = d.id || (self.editingDoc && self.editingDoc.id)
+        if(!id){ self.editingDoc=null; return }
+        this.askConfirm('删除文档「' + (d.name||'') + '」？', function(){
+          send('doc.delete', { id: id }).then(function(){ self.editingDoc=null; self.load() }).catch(function(e){ toast('删除失败: '+(e.message||e),'err') })
+        })
+      },
+      // 目录
+      openNewFolder: function(pid, parentId){
+        this.folderDialog = { visible:true, isRename:false, name:'', projectId: pid, parentId: parentId||'', renameId:'' }
+      },
+      confirmFolder: function(){
+        var self = this; var d = this.folderDialog
+        if(!d.name.trim()){ toast('请输入目录名','err'); return }
+        var payload = { name: d.name, projectId: d.projectId, parentId: d.parentId }
+        if(d.isRename && d.renameId) payload.id = d.renameId
+        send('folder.save', payload).then(function(r){ self.folderDialog.visible=false; self.load(); if(d.parentId) self.expandedFolders.add(d.parentId); else if(d.projectId) self.expandedProjects.add(d.projectId) }).catch(function(e){ toast('操作失败: '+(e.message||e),'err') })
+      },
+      deleteFolder: function(f){
+        var self = this
+        this.askConfirm('删除目录「' + f.name + '」及其子目录与请求？', function(){
+          send('folder.delete', { id: f.id }).then(function(){ self.load() }).catch(function(e){ toast('删除失败: '+(e.message||e),'err') })
+        })
+      },
+      // 项目设置
+      openProjSettings: function(p){
+        var self = this
+        send('project.list').then(function(){ // 确保最新
+          var proj = self.projects.find(function(x){ return x.id===p.id })
+          self.projModal = { id: p.id, name: p.name, headers: jsonToKV(proj ? proj.headers : '{}') }
+          self.showProjModal = true
+        })
+      },
+      saveProjSettings: function(){
+        var self = this
+        send('project.save', { id: this.projModal.id, name: this.projModal.name, headers: kvToJSON(this.projModal.headers) }).then(function(r){ self.showProjModal=false; self.load(); if(r && r.id) self.toggleProj(r.id) }).catch(function(e){ toast('保存失败: '+(e.message||e),'err') })
+      },
+      // 环境
+      openEnvModal: function(p){
+        var self = this
+        this.envModalProjectId = p.id
+        this.envModalProjectName = p.name
+        this.envEditList = []
+        send('env.list', { projectId: p.id }).then(function(list){
+          self.envEditList = (list||[]).map(function(e){
+            var vars = []
+            try { vars = JSON.parse(e.variables||'[]') } catch(err){}
+            return { id: e.id, name: e.name, variables: vars.length ? vars : [{enabled:true,key:'',value:''}] }
+          })
+          self.showEnvModal = true
+        }).catch(function(e){ toast('加载环境失败: '+(e.message||e),'err') })
+      },
+      addEnv: function(){ this.envEditList.push({ id:'', name:'新环境', variables:[{enabled:true,key:'',value:''}] }) },
+      deleteEnv: function(i){ this.envEditList.splice(i,1) },
+      saveEnvs: function(){
+        var self = this
+        var tasks = this.envEditList.map(function(env){
+          var cleanVars = (env.variables||[]).filter(function(v){ return v.key && v.key.trim() })
+          var payload = { id: env.id, projectId: self.envModalProjectId, name: env.name, variables: JSON.stringify(cleanVars) }
+          return send('env.save', payload)
+        })
+        Promise.all(tasks).then(function(){ self.showEnvModal=false; self.load() }).catch(function(e){ toast('保存环境失败: '+(e.message||e),'err') })
+      },
+      // 历史
+      toggleHistory: function(){
+        this.showHistory = !this.showHistory
+        if(this.showHistory) this.refreshHistory()
+      },
+      refreshHistory: function(){
+        var self = this
+        send('history.list', { limit: 100 }).then(function(list){ self.history = list || [] }).catch(function(e){ toast('加载历史失败: '+(e.message||e),'err') })
+      },
+      clearHistory: function(){
+        var self = this
+        this.askConfirm('清空全部请求历史？', function(){
+          send('history.clear', {}).then(function(){ self.refreshHistory() }).catch(function(e){ toast('清空失败: '+(e.message||e),'err') })
+        })
+      },
+      loadFromHistory: function(h){
+        this.editingDoc = null
+        this.currentId=''; this.currentProjectId = h.projectId||''; this.currentFolderId = h.folderId||''
+        this.name = h.name||''; this.method = h.method||'GET'
+        var pq = parseQuery(h.url); this.url = pq.base; this.paramRows = pq.rows
+        this.headerRows = jsonToKV(h.headers)
+        this.bodyType = h.bodyType||'none'
+        if(this.bodyType==='form') this.formRows = queryToForm(h.body); else this.body = h.body||''
+        this.authType = h.authType||'none'; this.authToken = h.authToken||''; this.authUser = h.authUser||''; this.authPass = h.authPass||''
+        this.response = null; this.showHistory = false; this.activeTab='headers'
+      },
+      // Postman 导入
+      importPostman: function(){ this.importText=''; this.showImport=true },
+      onImportFile: function(e){
+        var self = this; var file = e.target.files && e.target.files[0]
+        if(!file) return
+        var reader = new FileReader()
+        reader.onload = function(){ self.importText = String(reader.result||'') }
+        reader.readAsText(file)
+      },
+      doImport: function(){
+        var self = this
+        send('project.importPostman', { json: this.importText }).then(function(r){
+          self.showImport=false; self.load()
+          var msg = '已导入 ' + (r.imported||0) + ' 个请求'
+          if(r.errors && r.errors.length) msg += '（' + r.errors.length + ' 条跳过）'
+          toast(msg, 'ok')
+        }).catch(function(e){ toast('导入失败: '+(e.message||e),'err') })
+      },
+      copyResponse: function(){
+        if(!this.response) return
+        var text = this.responseTab==='body' ? this.responseBodyText : Object.keys(this.response.headers).map(function(k){ return k+': '+this.response.headers[k] }.bind(this)).join('\n')
+        if(navigator.clipboard) navigator.clipboard.writeText(text).then(function(){ toast('已复制','ok') }).catch(function(){})
+      }
+    },
+    mounted: function(){ this.load() }
+  })
+
+  // 简单安全的 Markdown 渲染（转义后做轻量格式化）
+  function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+  function inlineMd(s){
+    return s.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
+            .replace(/`([^`]+)`/g,'<code>$1</code>')
+            .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>')
+  }
+  function renderMarkdown(src){
+    if(!src) return ''
+    var lines = escapeHtml(src).split('\n')
+    var html = '', inList = false
+    var closeList = function(){ if(inList){ html += '</ul>'; inList = false } }
+    for(var i=0;i<lines.length;i++){
+      var t = lines[i].trim()
+      if(t===''){ closeList(); continue }
+      var m
+      if(m = t.match(/^###\s+(.*)/)){ closeList(); html += '<h3>'+m[1]+'</h3>'; }
+      else if(m = t.match(/^##\s+(.*)/)){ closeList(); html += '<h2>'+m[1]+'</h2>'; }
+      else if(m = t.match(/^#\s+(.*)/)){ closeList(); html += '<h1>'+m[1]+'</h1>'; }
+      else if(m = t.match(/^[-*]\s+(.*)/)){ if(!inList){ html += '<ul>'; inList = true } html += '<li>'+inlineMd(m[1])+'</li>'; }
+      else if(m = t.match(/^>\s?(.*)/)){ closeList(); html += '<blockquote>'+inlineMd(m[1])+'</blockquote>'; }
+      else { closeList(); html += '<p>'+inlineMd(t)+'</p>'; }
+    }
+    closeList()
+    return html
+  }
+
+  app.mount('#app')
+})()
+</script>
+</body>
+</html>

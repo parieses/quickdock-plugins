@@ -6,6 +6,8 @@
 
 | 插件 | ID | 版本 | 说明 |
 |------|----|------|------|
+| [HTTP 客户端](./http-client/) | `io.github.parieses.http-client` | 0.1.0 | 轻量 HTTP 请求调试客户端：项目管理请求、目录与文档树、环境变量与 `{{var}}` 替换、请求历史重放、Postman 集合导入（数据独立存储，三平台） |
+| [数据库客户端](./database/) | `io.github.parieses.database` | 0.1.0 | 轻量数据库连接与查询工具：MySQL / SQLite / Redis 连接管理、SQL 与 Redis 命令执行、库表浏览器、结果网格内联行编辑（数据独立存储，三平台） |
 | [磁盘分析器](./disk-analyzer/) | `io.github.parieses.disk-analyzer` | 0.1.1 | 可视化磁盘空间占用分析，类似 SpaceSniffer，树图展示目录结构（Windows / macOS / Linux 三平台） |
 | [Windows 垃圾清理](./junk-cleaner/) | `io.github.parieses.junk-cleaner` | 0.1.3 | 扫描并清理系统垃圾，18 类白名单（参考 ZyperWinOptimize）：更新/传递优化缓存、缩略图、网页缓存/Cookies、D3D/.NET/远程桌面缓存、崩溃转储与 WER、诊断/Defender/WinSxS 临时、系统临时/预读取、回收站（高危默认关）。安全只读扫描 + 确认后删除（仅 Windows）。确认弹窗改用 QuickDock 框架 modal 样式（替代原生 confirm/alert，高危项红色二次警告） |
 | [接口压测](./api-loadtest/) | `io.github.parieses.api-loadtest` | 0.1.1 | 功能丰富的 HTTP 接口压测工具：并发/时长双模式、自定义 Header 与 Body、实时 QPS 与延迟分布(p50/p90/p95/p99)、状态码分布、错误率统计与结果一键导出 |
@@ -16,7 +18,8 @@
 | [Git 仓库浏览器](./git-browser/) | `io.github.parieses.git-browser` | 0.1.1 | 只读浏览 Git 仓库：本地（HEAD/提交/工作区状态/分支，可选目录）+ 远程公开仓库（owner/repo，GitHub API 查分支/提交/star） |
 | [对比工具](./compare/) | `io.github.parieses.compare` | 0.2.2 | 文件/图片对比（元数据 + 预览 + 文本差异）与文本块逐行 Diff（点选改走原生对话框，拖拽保留） |
 | [Crontab 解释器](./cron-explainer/) | `io.github.parieses.cron-explainer` | 0.2.1 | 解析 cron 表达式，显示可读描述、下次执行时间与可视化时间表 |
-| [HTTP 状态码速查](./http-status/) | `io.github.parieses.http-status` | 0.2.1 | 查询 HTTP 状态码含义、描述和常见场景 |
+| [网络诊断箱](./netdiag/) | `io.github.parieses.netdiag` | 0.1.0 | 合并 Ping 监视、路由追踪、局域网扫描、IP 归属地、端口指纹五个网络工具为单一插件（标签页切换，共享一个原生子进程） |
+| [站点审计箱](./site-audit/) | `io.github.parieses.site-audit` | 0.1.0 | 合并 WHOIS 查询、SSL 证书检查、DNS 查询、DNS 传播检查、HTTP 状态码速查、HTTP 安全头审计六个站点工具为单一插件（标签页切换，共享一个原生子进程） |
 | [cURL 转代码](./curl-converter/) | `io.github.parieses.curl-converter` | 0.1.1 | 把 curl 命令解析成 Python / Go / JavaScript / PHP 请求代码，也支持把 fetch、requests 代码反向转回 curl |
 | [计算稿纸](./calcsheet/) | `io.github.parieses.calcsheet` | 0.2.0 | 兼具草稿纸自由度与电子表格智能的多行计算工具，支持行号引用、变量定义、函数计算（自内置插件迁移） |
 | [Emoji 搜索](./emoji-search/) | `io.github.parieses.emoji-search` | 0.2.1 | 搜索 Emoji 并一键复制到剪贴板（自内置插件迁移） |

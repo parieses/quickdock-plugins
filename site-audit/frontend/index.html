@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>站点审计箱</title>
+<link rel="stylesheet" href="qd-theme.css">
+<style>
+.p-app{display:flex;flex-direction:column;height:100vh}
+.p-head{display:flex;align-items:center;gap:var(--sp-2);padding:0 var(--sp-4);height:46px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0}
+.p-head-title{font-size:var(--fs-lg);font-weight:var(--fw-semibold);color:var(--text-primary)}
+.tabs{display:flex;gap:4px;margin-left:var(--sp-3);flex-wrap:wrap}
+.tab{padding:6px 12px;border:1px solid transparent;border-radius:var(--radius);font-size:var(--fs-sm);color:var(--text-secondary);cursor:pointer;background:transparent;transition:all var(--transition)}
+.tab:hover{background:var(--bg-hover);color:var(--text-primary)}
+.tab.active{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+.p-content{flex:1;overflow-y:auto;padding:var(--sp-4);display:flex;flex-direction:column;gap:var(--sp-3)}
+.pane{display:none;flex-direction:column;gap:var(--sp-3)}
+.pane.active{display:flex}
+.row{display:flex;gap:var(--sp-2);align-items:center;flex-wrap:wrap}
+.input{flex:1;min-width:160px;height:30px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-primary);color:var(--text-primary);font-size:var(--fs-sm);outline:none}
+.input:focus{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.mini{width:90px;height:30px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-primary);color:var(--text-primary);font-size:var(--fs-sm);outline:none}
+.lbl{font-size:var(--fs-xs);color:var(--text-muted);white-space:nowrap}
+.btn{padding:8px 18px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);cursor:pointer;font-size:var(--fs-sm);font-weight:var(--fw-semibold);white-space:nowrap}
+.btn:hover{background:var(--accent-hover)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.hint{font-size:var(--fs-sm);color:var(--text-muted);min-height:16px}
+.hint.err{color:var(--danger)}
+.fields{background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-lg);padding:var(--sp-3)}
+.flist{display:grid;grid-template-columns:140px 1fr;gap:8px 12px;align-items:start}
+.fk{color:var(--text-muted);font-size:var(--fs-sm)}
+.fv{color:var(--text-primary);font-size:var(--fs-sm);word-break:break-all}
+textarea.raw{width:100%;min-height:240px;resize:vertical;padding:10px;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--bg-primary);color:var(--text-primary);font-family:var(--font-mono);font-size:12px;line-height:1.6;outline:none}
+table{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
+th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--border)}
+th{color:var(--text-muted);font-weight:var(--fw-medium);font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.4px}
+td{color:var(--text-primary)}
+tr:hover td{background:var(--bg-hover)}
+.tag{display:inline-flex;padding:1px 7px;border-radius:var(--radius-pill);font-size:10px;background:var(--bg-tertiary);color:var(--text-secondary)}
+.tag.ok{background:var(--success-soft);color:var(--success)}
+.tag.guess{background:var(--warning-soft);color:var(--warning)}
+.score-big{display:flex;align-items:center;gap:var(--sp-3);margin-bottom:var(--sp-2)}
+.score-num{font-size:44px;font-weight:800;font-family:var(--font-mono)}
+.grade{font-size:22px;font-weight:800;padding:4px 14px;border-radius:var(--radius)}
+.g-A{background:var(--success-soft);color:var(--success)}
+.g-B{background:var(--accent-soft);color:var(--accent)}
+.g-C{background:var(--warning-soft);color:var(--warning)}
+.g-D{background:#f97316;color:#fff}
+.g-F{background:var(--danger);color:#fff}
+.find{display:flex;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);margin-bottom:8px;background:var(--bg-secondary)}
+.find-status{font-size:10px;font-weight:700;padding:2px 8px;border-radius:var(--radius-pill);min-width:44px;text-align:center;height:fit-content}
+.fs-pass{background:var(--success-soft);color:var(--success)}
+.fs-warn{background:var(--warning-soft);color:var(--warning)}
+.fs-fail{background:var(--danger);color:#fff}
+.fs-info{background:var(--bg-tertiary);color:var(--text-secondary)}
+.find-body{flex:1}
+.find-title{font-size:var(--fs-sm);font-weight:var(--fw-semibold);color:var(--text-primary)}
+.find-msg{font-size:var(--fs-sm);color:var(--text-secondary);margin-top:2px}
+.find-advice{font-size:var(--fs-xs);color:var(--accent);margin-top:3px}
+.empty{flex:1;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:var(--fs-md);min-height:160px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{padding:5px 10px;border:1px solid var(--border);border-radius:var(--radius-pill);font-size:var(--fs-xs);cursor:pointer;color:var(--text-secondary);user-select:none}
+.chip.active{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+select.input{flex:0 0 auto;min-width:auto}
+
+/* HTTP 状态码卡片 */
+.st-toolbar{display:flex;align-items:center;gap:6px;padding:8px 10px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius);flex-shrink:0}
+.st-grid{display:flex;flex-wrap:wrap;gap:6px;align-content:flex-start}
+.st-card{flex:1 1 calc(25% - 5px);min-width:0;border:1px solid var(--border);border-radius:var(--radius);padding:8px 10px;background:var(--bg-secondary);cursor:pointer;transition:border-color .15s,background .15s;box-sizing:border-box}
+.st-card:hover{background:var(--bg-hover);border-color:var(--accent)}
+.st-card-info{border-left:3px solid #3b82f6}
+.st-card-success{border-left:3px solid #22c55e}
+.st-card-redirect{border-left:3px solid #f59e0b}
+.st-card-client{border-left:3px solid #f97316}
+.st-card-server{border-left:3px solid #ef4444}
+.st-code{font-size:15px;font-weight:700;font-family:var(--font-mono);color:var(--text-primary)}
+.st-label{font-size:11px;color:var(--text-secondary);margin:1px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.st-desc{font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.st-cat{display:inline-block;font-size:10px;padding:0 4px;border-radius:3px;margin-top:2px;line-height:16px}
+.cat-info{background:rgba(59,130,246,0.12);color:#3b82f6}
+.cat-success{background:rgba(34,197,94,0.12);color:#22c55e}
+.cat-redirect{background:rgba(245,158,11,0.12);color:#f59e0b}
+.cat-client{background:rgba(249,115,22,0.12);color:#f97316}
+.cat-server{background:rgba(239,68,68,0.12);color:#ef4444}
+.st-detail{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:100}
+.st-detail-card{background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:20px;max-width:440px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.3)}
+.st-detail-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.st-detail-code{font-size:28px;font-weight:700;font-family:var(--font-mono)}
+.st-detail-close{width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:none;border-radius:var(--radius);background:transparent;color:var(--text-muted);cursor:pointer;font-size:18px}
+.st-detail-close:hover{background:var(--bg-hover);color:var(--text-primary)}
+.st-detail-body{font-size:13px;line-height:1.6;color:var(--text-secondary)}
+.st-detail-body strong{color:var(--text-primary)}
+</style>
+</head>
+<body>
+<div class="p-app">
+  <div class="p-head">
+    <span class="p-head-title">站点审计箱</span>
+    <div class="tabs" id="tabs">
+      <button class="tab active" data-pane="whois">WHOIS</button>
+      <button class="tab" data-pane="ssl">SSL 证书</button>
+      <button class="tab" data-pane="dns">DNS 查询</button>
+      <button class="tab" data-pane="prop">DNS 传播</button>
+      <button class="tab" data-pane="status">HTTP 状态码</button>
+      <button class="tab" data-pane="headers">安全头审计</button>
+    </div>
+  </div>
+
+  <div class="p-content">
+    <!-- WHOIS -->
+    <div class="pane active" id="pane-whois">
+      <div class="row">
+        <input id="whois-q" class="input" placeholder="域名或 IP，如 example.com / 8.8.8.8" spellcheck="false" autofocus>
+        <button id="whois-go" class="btn">查询</button>
+      </div>
+      <div id="whois-hint" class="hint"></div>
+      <textarea id="whois-raw" class="raw" readonly placeholder="WHOIS 原始信息将显示在这里…"></textarea>
+    </div>
+
+    <!-- SSL -->
+    <div class="pane" id="pane-ssl">
+      <div class="row">
+        <input id="ssl-host" class="input" placeholder="域名或 host:port，如 github.com" spellcheck="false">
+        <button id="ssl-go" class="btn">检查</button>
+      </div>
+      <div id="ssl-hint" class="hint"></div>
+      <div id="ssl-fields" class="fields"><div class="empty" style="min-height:120px">输入目标后点击检查</div></div>
+    </div>
+
+    <!-- DNS -->
+    <div class="pane" id="pane-dns">
+      <div class="row">
+        <input id="dns-domain" class="input" placeholder="域名，如 example.com" spellcheck="false">
+        <button id="dns-go" class="btn">查询</button>
+      </div>
+      <div class="row">
+        <span class="lbl">记录类型</span>
+        <div class="chips" id="dns-types">
+          <span class="chip active" data-t="A">A</span>
+          <span class="chip active" data-t="AAAA">AAAA</span>
+          <span class="chip active" data-t="MX">MX</span>
+          <span class="chip active" data-t="TXT">TXT</span>
+          <span class="chip active" data-t="CNAME">CNAME</span>
+          <span class="chip active" data-t="NS">NS</span>
+        </div>
+      </div>
+      <div id="dns-hint" class="hint"></div>
+      <div style="flex:1;overflow:auto;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-lg)">
+        <table><thead><tr><th style="width:120px">类型</th><th>记录值</th></tr></thead>
+        <tbody id="dns-body"><tr><td colspan="2" class="empty" style="height:120px">尚未查询</td></tr></tbody></table>
+      </div>
+    </div>
+
+    <!-- DNS 传播 -->
+    <div class="pane" id="pane-prop">
+      <div class="row">
+        <input id="prop-domain" class="input" placeholder="域名，如 example.com" spellcheck="false">
+        <select id="prop-type" class="input" style="flex:0 0 110px">
+          <option value="A">A</option>
+          <option value="AAAA">AAAA</option>
+          <option value="CNAME">CNAME</option>
+          <option value="MX">MX</option>
+          <option value="TXT">TXT</option>
+          <option value="NS">NS</option>
+        </select>
+        <button id="prop-go" class="btn">对比</button>
+      </div>
+      <div id="prop-hint" class="hint"></div>
+      <div id="prop-summary" class="fields" style="display:none"></div>
+      <div style="flex:1;overflow:auto;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-lg)">
+        <table><thead><tr><th style="width:120px">解析器</th><th>结果</th><th style="width:90px">耗时</th></tr></thead>
+        <tbody id="prop-body"><tr><td colspan="3" class="empty" style="height:120px">尚未对比</td></tr></tbody></table>
+      </div>
+    </div>
+
+    <!-- HTTP 状态码（纯前端字典） -->
+    <div class="pane" id="pane-status">
+      <div class="st-toolbar">
+        <input type="text" id="st-search" class="input" placeholder="搜索状态码或关键词 (如 404, not found)" spellcheck="false">
+        <div class="tabs" id="st-tabs" style="margin-left:0"></div>
+      </div>
+      <div class="st-grid" id="st-grid"></div>
+    </div>
+
+    <!-- 安全头审计 -->
+    <div class="pane" id="pane-headers">
+      <div class="row">
+        <input id="hd-url" class="input" placeholder="目标 URL，如 https://example.com" spellcheck="false">
+        <button id="hd-go" class="btn">审计</button>
+      </div>
+      <div id="hd-hint" class="hint"></div>
+      <div id="hd-score" style="display:none"></div>
+      <div id="hd-findings"></div>
+    </div>
+  </div>
+</div>
+
+<!-- HTTP 状态码详情弹窗 -->
+<div id="st-modal" class="st-detail" style="display:none">
+  <div class="st-detail-card">
+    <div class="st-detail-header">
+      <span class="st-detail-code" id="st-dcode"></span>
+      <button class="st-detail-close" id="st-detail-close" type="button">&times;</button>
+    </div>
+    <div class="st-detail-body" id="st-dbody"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict'
+
+  /* ---------- 主题 / i18n ---------- */
+  function setLang(loc){ document.documentElement.setAttribute('lang', loc || 'zh-CN') }
+  window.addEventListener('message', function(e){
+    var d=e.data; if(!d) return
+    if(d.type==='plugin:theme'){ setLang((d.data||{}).locale); if(stRendered) stRender() }
+    if(d.type==='plugin:init'){ var pd=d.data||{}; if(pd.text){
+      var m=String(pd.text).match(/(\d{3})/); if(m){ activate('status'); stShow(parseInt(m[1],10)) }
+    }}
+  })
+
+  /* ---------- RPC ---------- */
+  var seq=0, pend={}
+  function send(command, input){
+    return new Promise(function(res,rej){
+      var id='sa_'+(++seq); pend[id]={res:res,rej:rej}
+      parent.postMessage({type:'plugin:execute',id:id,command:command,input:input||{}},'*')
+    })
+  }
+  window.addEventListener('message', function(e){
+    var d=e.data; if(!d) return
+    if(d.type==='plugin:result' && d.id && pend[d.id]){
+      var p=pend[d.id]; delete pend[d.id]
+      if(d.error) p.rej(new Error(d.error)); else p.res(d.data)
+    }
+  })
+  function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+  function fail(el,e){el.className='hint err';el.textContent=(e&&e.message)?e.message:String(e)}
+
+  /* ---------- 标签页切换 ---------- */
+  function activate(pane){
+    document.querySelectorAll('.tab').forEach(function(t){t.classList.toggle('active',t.dataset.pane===pane)})
+    document.querySelectorAll('.pane').forEach(function(p){p.classList.toggle('active',p.id==='pane-'+pane)})
+  }
+  document.getElementById('tabs').addEventListener('click', function(e){
+    var b=e.target.closest('.tab'); if(!b) return; activate(b.dataset.pane)
+  })
+
+  /* ==================== WHOIS ==================== */
+  function whoisGo(){
+    var q=document.getElementById('whois-q').value.trim()
+    if(!q){fail(document.getElementById('whois-hint'),'请输入域名或 IP');return}
+    document.getElementById('whois-hint').className='hint';document.getElementById('whois-hint').textContent='查询中…'
+    document.getElementById('whois-raw').value=''
+    send('whois.lookup',{query:q}).then(function(r){
+      if(!r.ok){document.getElementById('whois-hint').className='hint err';document.getElementById('whois-hint').textContent=r.error||'查询失败';return}
+      document.getElementById('whois-hint').textContent='来源 '+r.server+(r.truncated?'（结果已截断）':'')
+      document.getElementById('whois-raw').value=r.raw
+    }).catch(function(e){fail(document.getElementById('whois-hint'),e)})
+  }
+  document.getElementById('whois-go').addEventListener('click',whoisGo)
+  document.getElementById('whois-q').addEventListener('keydown',function(e){if(e.key==='Enter')whoisGo()})
+
+  /* ==================== SSL ==================== */
+  function sslGo(){
+    var host=document.getElementById('ssl-host').value.trim()
+    if(!host){fail(document.getElementById('ssl-hint'),'请输入域名');return}
+    document.getElementById('ssl-hint').className='hint';document.getElementById('ssl-hint').textContent='检查中…'
+    send('ssl.check',{host:host}).then(function(r){
+      if(r.error){document.getElementById('ssl-hint').className='hint err';document.getElementById('ssl-hint').textContent=r.error;return}
+      document.getElementById('ssl-hint').textContent=r.expired?'证书已过期':(r.notYetValid?'证书尚未生效':'证书有效 · 剩余 '+r.daysLeft+' 天')
+      var rows=[
+        ['主题 CN',r.subjectCN],['颁发者',r.issuerCN],['SAN',(r.san||[]).join(', ')],
+        ['序列号',r.serial],['生效',r.notBefore],['到期',r.notAfter],
+        ['签名算法',r.sigAlgo],['公钥算法',r.pubAlgo],['域名校验',r.verifyError?('失败: '+r.verifyError):'通过']
+      ]
+      document.getElementById('ssl-fields').innerHTML='<div class="flist">'+rows.map(function(x){
+        return '<div class="fk">'+esc(x[0])+'</div><div class="fv">'+esc(x[1]||'-')+'</div>'
+      }).join('')+'</div>'
+    }).catch(function(e){fail(document.getElementById('ssl-hint'),e)})
+  }
+  document.getElementById('ssl-go').addEventListener('click',sslGo)
+  document.getElementById('ssl-host').addEventListener('keydown',function(e){if(e.key==='Enter')sslGo()})
+
+  /* ==================== DNS ==================== */
+  document.getElementById('dns-types').addEventListener('click',function(e){
+    var c=e.target.closest('.chip'); if(!c)return; c.classList.toggle('active')
+  })
+  function dnsGo(){
+    var domain=document.getElementById('dns-domain').value.trim()
+    if(!domain){fail(document.getElementById('dns-hint'),'请输入域名');return}
+    var types=[].slice.call(document.querySelectorAll('#dns-types .chip.active')).map(function(c){return c.dataset.t})
+    if(!types.length){fail(document.getElementById('dns-hint'),'请至少选择一个记录类型');return}
+    document.getElementById('dns-hint').className='hint';document.getElementById('dns-hint').textContent='查询中…'
+    send('dns.lookup',{domain:domain,types:types}).then(function(r){
+      var recs=r.records||[]
+      document.getElementById('dns-hint').textContent='共 '+recs.length+' 条记录'
+      if(!recs.length){document.getElementById('dns-body').innerHTML='<tr><td colspan="2" class="empty" style="height:120px">无记录</td></tr>';return}
+      document.getElementById('dns-body').innerHTML=recs.map(function(rec){
+        return '<tr><td>'+esc(rec.type)+'</td><td>'+esc(rec.value)+'</td></tr>'
+      }).join('')
+    }).catch(function(e){fail(document.getElementById('dns-hint'),e)})
+  }
+  document.getElementById('dns-go').addEventListener('click',dnsGo)
+  document.getElementById('dns-domain').addEventListener('keydown',function(e){if(e.key==='Enter')dnsGo()})
+
+  /* ==================== DNS 传播 ==================== */
+  function propGo(){
+    var domain=document.getElementById('prop-domain').value.trim()
+    if(!domain){fail(document.getElementById('prop-hint'),'请输入域名');return}
+    var type=document.getElementById('prop-type').value
+    document.getElementById('prop-hint').className='hint';document.getElementById('prop-hint').textContent='并行查询中…'
+    send('prop.check',{domain:domain,type:type}).then(function(r){
+      var ok=r.okCount||0
+      document.getElementById('prop-hint').textContent='成功解析 '+ok+'/'+((r.resolvers||[]).length)+' 个解析器 · '+(r.consistent?'结果一致':'结果不一致')
+      var sum=document.getElementById('prop-summary')
+      sum.style.display=''
+      sum.innerHTML='<div class="flist"><div class="fk">一致性</div><div class="fv">'+(r.consistent?'<span class="tag ok">一致</span>':'<span class="tag guess">不一致</span>')+'</div>'+
+        '<div class="fk">共识结果</div><div class="fv">'+(r.consensus||[]).map(function(x){return '<span class="tag">'+esc(x)+'</span>'}).join(' ')||'-'+'</div></div>'
+      var html=''
+      ;(r.resolvers||[]).forEach(function(res){
+        var ans=(res.answers||[]).join(', ')||(res.error||'无结果')
+        html+='<tr><td>'+esc(res.name)+'<br><span style="color:var(--text-muted);font-size:11px">'+esc(res.server)+'</span></td><td>'+esc(ans)+'</td><td>'+(res.elapsedMs||0)+'ms</td></tr>'
+      })
+      document.getElementById('prop-body').innerHTML=html
+    }).catch(function(e){fail(document.getElementById('prop-hint'),e)})
+  }
+  document.getElementById('prop-go').addEventListener('click',propGo)
+  document.getElementById('prop-domain').addEventListener('keydown',function(e){if(e.key==='Enter')propGo()})
+
+  /* ==================== HTTP 状态码（纯前端） ==================== */
+  var allStatusCodes = [
+    {code:100,label:"Continue",desc:"继续",category:"信息",detail:"服务器已收到请求头，客户端应继续发送请求体。"},
+    {code:101,label:"Switching Protocols",desc:"切换协议",category:"信息",detail:"服务器已理解客户端的请求，将切换到更合适的协议。"},
+    {code:102,label:"Processing",desc:"处理中",category:"信息",detail:"WebDAV 请求，服务器正在处理但尚无响应。"},
+    {code:103,label:"Early Hints",desc:"早期提示",category:"信息",detail:"服务器在最终响应前提前返回一些响应头，主要用于预加载资源。"},
+    {code:200,label:"OK",desc:"成功",category:"成功",detail:"请求成功。GET 返回资源，POST 返回操作结果。"},
+    {code:201,label:"Created",desc:"已创建",category:"成功",detail:"请求已被实现，新资源已创建。常用于 POST/PUT 响应。"},
+    {code:202,label:"Accepted",desc:"已接受",category:"成功",detail:"请求已接受但尚未处理完成，用于异步操作。"},
+    {code:204,label:"No Content",desc:"无内容",category:"成功",detail:"请求成功但无返回内容。常用于 DELETE 响应。"},
+    {code:301,label:"Moved Permanently",desc:"永久重定向",category:"重定向",detail:"请求的资源已被永久移动到新 URL，后续应使用新地址。"},
+    {code:302,label:"Found",desc:"临时重定向",category:"重定向",detail:"请求的资源临时位于另一个 URL，后续仍用原地址。"},
+    {code:304,label:"Not Modified",desc:"未修改",category:"重定向",detail:"资源未修改，客户端可使用缓存版本。用于条件请求。"},
+    {code:307,label:"Temporary Redirect",desc:"临时重定向",category:"重定向",detail:"类似 302 但要求客户端保持原 HTTP 方法不变。"},
+    {code:308,label:"Permanent Redirect",desc:"永久重定向",category:"重定向",detail:"类似 301 但要求客户端保持原 HTTP 方法不变。"},
+    {code:400,label:"Bad Request",desc:"错误请求",category:"客户端错误",detail:"服务器无法理解请求的格式，客户端不应不经修改重试。"},
+    {code:401,label:"Unauthorized",desc:"未授权",category:"客户端错误",detail:"请求需要身份验证。客户端应提供有效的认证凭据。"},
+    {code:403,label:"Forbidden",desc:"禁止访问",category:"客户端错误",detail:"服务器拒绝执行请求，即使有认证也无权限。"},
+    {code:404,label:"Not Found",desc:"未找到",category:"客户端错误",detail:"服务器找不到请求的资源。可能是 URL 错误或资源已删除。"},
+    {code:405,label:"Method Not Allowed",desc:"方法不允许",category:"客户端错误",detail:"请求方法不被该资源支持。例如不允许 DELETE。"},
+    {code:408,label:"Request Timeout",desc:"请求超时",category:"客户端错误",detail:"服务器等待客户端发送请求时超时。"},
+    {code:409,label:"Conflict",desc:"冲突",category:"客户端错误",detail:"请求与资源的当前状态冲突。常用于 PUT 版本冲突。"},
+    {code:410,label:"Gone",desc:"已删除",category:"客户端错误",detail:"请求的资源已永久删除，与 404 不同，410 明确表示资源曾存在。"},
+    {code:413,label:"Payload Too Large",desc:"请求实体过大",category:"客户端错误",detail:"请求体超过服务器允许的大小限制。"},
+    {code:415,label:"Unsupported Media Type",desc:"不支持的媒体类型",category:"客户端错误",detail:"请求的格式不被请求的资源支持。"},
+    {code:422,label:"Unprocessable Entity",desc:"不可处理的实体",category:"客户端错误",detail:"请求格式正确但语义错误。常用于表单验证失败。"},
+    {code:429,label:"Too Many Requests",desc:"请求过多",category:"客户端错误",detail:"客户端在指定时间内发送了太多请求（限流）。"},
+    {code:500,label:"Internal Server Error",desc:"服务器内部错误",category:"服务器错误",detail:"服务器遇到意外错误，无法完成请求。"},
+    {code:501,label:"Not Implemented",desc:"未实现",category:"服务器错误",detail:"服务器不支持请求的功能。"},
+    {code:502,label:"Bad Gateway",desc:"网关错误",category:"服务器错误",detail:"网关或代理从上游服务器收到无效响应。"},
+    {code:503,label:"Service Unavailable",desc:"服务不可用",category:"服务器错误",detail:"服务器暂时无法处理请求（过载或维护中）。"},
+    {code:504,label:"Gateway Timeout",desc:"网关超时",category:"服务器错误",detail:"网关或代理等待上游服务器响应超时。"},
+    {code:505,label:"HTTP Version Not Supported",desc:"HTTP 版本不支持",category:"服务器错误",detail:"服务器不支持请求中使用的 HTTP 协议版本。"}
+  ]
+  var stCategories=['全部','信息','成功','重定向','客户端错误','服务器错误']
+  var stActiveCat='全部', stRendered=false
+  var stColorMap={'信息':'info','成功':'success','重定向':'redirect','客户端错误':'client','服务器错误':'server'}
+  function stRenderTabs(){
+    document.getElementById('st-tabs').innerHTML=stCategories.map(function(c){
+      return '<button class="tab'+(c===stActiveCat?' active':'')+'" data-cat="'+c+'">'+c+'</button>'
+    }).join('')
+  }
+  function stSetCat(c){ stActiveCat=c; document.getElementById('st-search').value=''; stRenderTabs(); stRender() }
+  function stRender(){
+    stRendered=true
+    var items=stActiveCat==='全部'?allStatusCodes:allStatusCodes.filter(function(s){return s.category===stActiveCat})
+    var q=document.getElementById('st-search').value.trim().toLowerCase()
+    if(q) items=items.filter(function(s){return String(s.code).indexOf(q)>=0||s.label.toLowerCase().indexOf(q)>=0||s.desc.indexOf(q)>=0})
+    var grid=document.getElementById('st-grid')
+    if(!items.length){grid.innerHTML='<div class="empty" style="width:100%">未找到匹配的状态码</div>';return}
+    grid.innerHTML=items.map(function(s){
+      var c=stColorMap[s.category]||'info'
+      return '<div class="st-card st-card-'+c+'" data-code="'+s.code+'">'+
+        '<div class="st-code">'+s.code+'</div><div class="st-label">'+s.label+'</div>'+
+        '<div class="st-desc">'+s.desc+'</div>'+
+        '<span class="st-cat cat-'+c+'">'+s.category+'</span></div>'
+    }).join('')
+  }
+  function stFilter(){ stRender() }
+  function stShow(code){
+    var s=allStatusCodes.find(function(x){return x.code===code}); if(!s)return
+    document.getElementById('st-dcode').textContent=s.code+' '+s.label
+    document.getElementById('st-dbody').innerHTML='<strong>描述：</strong>'+s.desc+'<br><br><strong>分类：</strong>'+s.category+'<br><br><strong>详细说明：</strong><br>'+s.detail
+    document.getElementById('st-modal').style.display='flex'
+  }
+  function stClose(){ document.getElementById('st-modal').style.display='none' }
+  stRenderTabs(); stRender()
+
+  // 事件绑定（用 addEventListener 替代内联 handler，避免严格模式下全局函数不可见导致筛选/分类/详情失效）
+  document.getElementById('st-search').addEventListener('input', stFilter)
+  document.getElementById('st-tabs').addEventListener('click', function(e){
+    var b=e.target.closest('.tab'); if(!b) return; stSetCat(b.dataset.cat)
+  })
+  document.getElementById('st-grid').addEventListener('click', function(e){
+    var c=e.target.closest('.st-card'); if(!c) return; stShow(parseInt(c.dataset.code,10))
+  })
+  document.getElementById('st-detail-close').addEventListener('click', stClose)
+  document.getElementById('st-modal').addEventListener('click', function(e){ if(e.target===this) stClose() })
+
+  /* ==================== 安全头审计 ==================== */
+  function hdGo(){
+    var url=document.getElementById('hd-url').value.trim()
+    if(!url){fail(document.getElementById('hd-hint'),'请输入目标 URL');return}
+    document.getElementById('hd-hint').className='hint';document.getElementById('hd-hint').textContent='审计中…'
+    send('headers.audit',{url:url}).then(function(r){
+      if(!r.ok){document.getElementById('hd-hint').className='hint err';document.getElementById('hd-hint').textContent=r.error||'请求失败';return}
+      document.getElementById('hd-hint').textContent=r.finalUrl+' · HTTP '+r.statusCode+' · '+r.elapsedMs+'ms'
+      var score=document.getElementById('hd-score'); score.style.display=''
+      score.innerHTML='<div class="score-big"><span class="score-num">'+r.score+'</span><span class="grade g-'+r.grade+'">'+r.grade+'</span><span style="color:var(--text-muted);font-size:12px">评分 /100</span></div>'
+      var html=''
+      ;(r.findings||[]).forEach(function(f){
+        html+='<div class="find"><span class="find-status fs-'+f.status+'">'+(f.status==='pass'?'通过':f.status==='warn'?'警告':f.status==='fail'?'失败':'信息')+'</span>'+
+          '<div class="find-body"><div class="find-title">'+esc(f.title)+'</div>'+
+          '<div class="find-msg">'+esc(f.message)+'</div>'+
+          (f.advice?'<div class="find-advice">建议：'+esc(f.advice)+'</div>':'')+'</div></div>'
+      })
+      document.getElementById('hd-findings').innerHTML=html
+    }).catch(function(e){fail(document.getElementById('hd-hint'),e)})
+  }
+  document.getElementById('hd-go').addEventListener('click',hdGo)
+  document.getElementById('hd-url').addEventListener('keydown',function(e){if(e.key==='Enter')hdGo()})
+
+  setLang()
+})()
+</script>
+</body>
+</html>

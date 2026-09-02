@@ -1,0 +1,10 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="#1e1f23" stroke="#2b2d33" stroke-width="1.5"/>
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="#4a9eff" fill-opacity="0.08"/>
+  <!-- 箭头：发送 -->
+  <path d="M16 32 L46 32" stroke="#4a9eff" stroke-width="4" stroke-linecap="round"/>
+  <path d="M38 22 L48 32 L38 42" fill="none" stroke="#4a9eff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- 请求小方块（URL 锚点意象） -->
+  <rect x="13" y="22" width="9" height="9" rx="2.5" fill="#28c864" fill-opacity="0.85"/>
+  <circle cx="22.5" cy="46" r="4" fill="#f0a030" fill-opacity="0.9"/>
+</svg>

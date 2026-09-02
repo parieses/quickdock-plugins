@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>网络诊断箱</title>
+<link rel="stylesheet" href="qd-theme.css">
+<style>
+.p-app{display:flex;flex-direction:column;height:100vh}
+.p-head{display:flex;align-items:center;gap:var(--sp-2);padding:0 var(--sp-4);height:46px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0}
+.p-head-title{font-size:var(--fs-lg);font-weight:var(--fw-semibold);color:var(--text-primary)}
+.tabs{display:flex;gap:4px;margin-left:var(--sp-3)}
+.tab{padding:6px 14px;border:1px solid transparent;border-radius:var(--radius);font-size:var(--fs-sm);color:var(--text-secondary);cursor:pointer;background:transparent;transition:all var(--transition)}
+.tab:hover{background:var(--bg-hover);color:var(--text-primary)}
+.tab.active{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+.p-content{flex:1;overflow-y:auto;padding:var(--sp-4);display:flex;flex-direction:column;gap:var(--sp-3)}
+.pane{display:none;flex-direction:column;gap:var(--sp-3)}
+.pane.active{display:flex}
+.row{display:flex;gap:var(--sp-2);align-items:center;flex-wrap:wrap}
+.input{flex:1;min-width:160px;height:30px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-primary);color:var(--text-primary);font-size:var(--fs-sm);outline:none}
+.input:focus{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.mini{width:72px;height:30px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-primary);color:var(--text-primary);font-size:var(--fs-sm);outline:none}
+.lbl{font-size:var(--fs-xs);color:var(--text-muted);white-space:nowrap}
+.btn{padding:8px 18px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);cursor:pointer;font-size:var(--fs-sm);font-weight:var(--fw-semibold);white-space:nowrap}
+.btn:hover{background:var(--accent-hover)}
+.btn.stop{background:var(--danger)}
+.btn.ghost{background:var(--bg-tertiary);color:var(--text-primary);border:1px solid var(--border)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.hint{font-size:var(--fs-sm);color:var(--text-muted);min-height:16px}
+.hint.err{color:var(--danger)}
+.stats{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.stat{background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius);padding:8px 6px;text-align:center}
+.stat-v{font-size:15px;font-weight:700;font-family:var(--font-mono)}
+.stat-k{font-size:10px;color:var(--text-muted);margin-top:2px}
+.chart-wrap{flex:0 0 140px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-lg);padding:6px}
+canvas{width:100%;height:100%;display:block}
+.log{flex:1;min-height:120px;overflow-y:auto;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-lg);padding:8px;font-family:var(--font-mono);font-size:12px;line-height:1.7}
+.log-row{display:flex;gap:10px}
+.log-seq{color:var(--text-muted);min-width:42px}
+.log-ok{color:var(--text-primary)}
+.log-bad{color:var(--danger)}
+table{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
+th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--border)}
+th{color:var(--text-muted);font-weight:var(--fw-medium);font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.4px}
+td{color:var(--text-primary)}
+tr:hover td{background:var(--bg-hover)}
+.tag{display:inline-flex;padding:1px 7px;border-radius:var(--radius-pill);font-size:10px;background:var(--bg-tertiary);color:var(--text-secondary)}
+.tag.ok{background:var(--success-soft);color:var(--success)}
+.tag.guess{background:var(--warning-soft);color:var(--warning)}
+.flist{display:grid;grid-template-columns:120px 1fr;gap:8px 12px;align-items:center}
+.fk{color:var(--text-muted);font-size:var(--fs-sm)}
+.fv{color:var(--text-primary);font-size:var(--fs-sm);word-break:break-all}
+.fields{background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-lg);padding:var(--sp-3)}
+.pbar{height:6px;background:var(--bg-tertiary);border-radius:var(--radius-pill);overflow:hidden}
+.pbar>i{display:block;height:100%;width:0;background:var(--accent);transition:width 200ms}
+.empty{flex:1;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:var(--fs-md)}
+select.input{flex:0 0 auto;min-width:auto}
+a{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="p-app">
+  <div class="p-head">
+    <span class="p-head-title">网络诊断箱</span>
+    <div class="tabs" id="tabs">
+      <button class="tab active" data-pane="ping">Ping 监视</button>
+      <button class="tab" data-pane="trace">路由追踪</button>
+      <button class="tab" data-pane="lan">局域网扫描</button>
+      <button class="tab" data-pane="geo">IP 归属地</button>
+      <button class="tab" data-pane="fp">端口指纹</button>
+    </div>
+  </div>
+
+  <div class="p-content">
+    <!-- Ping -->
+    <div class="pane active" id="pane-ping">
+      <div class="row">
+        <input id="ping-host" class="input" placeholder="主机名或 IP，如 223.5.5.5" spellcheck="false" autofocus>
+        <button id="ping-go" class="btn">开始</button>
+      </div>
+      <div class="row">
+        <span class="lbl">间隔(ms)</span><input id="ping-interval" class="mini" type="number" value="1000" min="200" max="10000">
+        <span class="lbl">次数(0=持续)</span><input id="ping-count" class="mini" type="number" value="0" min="0" max="10000">
+        <span class="lbl">超时(ms)</span><input id="ping-timeout" class="mini" type="number" value="2000" min="100" max="10000">
+        <span class="spacer" style="flex:1"></span>
+        <span id="ping-mode" class="tag" style="display:none"></span>
+      </div>
+      <div id="ping-hint" class="hint"></div>
+      <div class="stats">
+        <div class="stat"><div class="stat-v" id="p-sent">0</div><div class="stat-k">发送</div></div>
+        <div class="stat"><div class="stat-v" id="p-recv">0</div><div class="stat-k">接收</div></div>
+        <div class="stat"><div class="stat-v" id="p-loss">0%</div><div class="stat-k">丢包</div></div>
+        <div class="stat"><div class="stat-v" id="p-min">-</div><div class="stat-k">最小</div></div>
+        <div class="stat"><div class="stat-v" id="p-avg">-</div><div class="stat-k">平均</div></div>
+        <div class="stat"><div class="stat-v" id="p-max">-</div><div class="stat-k">最大</div></div>
+        <div class="stat"><div class="stat-v" id="p-last">-</div><div class="stat-k">最新</div></div>
+      </div>
+      <div class="chart-wrap"><canvas id="ping-chart"></canvas></div>
+      <div class="log" id="ping-log"></div>
+    </div>
+
+    <!-- Traceroute -->
+    <div class="pane" id="pane-trace">
+      <div class="row">
+        <input id="tr-host" class="input" placeholder="目标主机或 IP" spellcheck="false">
+        <button id="tr-go" class="btn">开始追踪</button>
+      </div>
+      <div class="row">
+        <span class="lbl">最大跳数</span><input id="tr-max" class="mini" type="number" value="30" min="1" max="64">
+        <span class="lbl">每跳探测</span><input id="tr-probes" class="mini" type="number" value="3" min="1" max="5">
+        <span class="lbl">超时(ms)</span><input id="tr-timeout" class="mini" type="number" value="1500" min="100" max="5000">
+      </div>
+      <div id="tr-hint" class="hint"></div>
+      <div style="flex:1;overflow:auto;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-lg)">
+        <table><thead><tr><th style="width:54px">TTL</th><th style="width:140px">IP</th><th>主机名</th><th style="width:160px">RTT(ms)</th></tr></thead>
+        <tbody id="tr-body"><tr><td colspan="4" class="empty" style="height:120px">尚未开始</td></tr></tbody></table>
+      </div>
+    </div>
+
+    <!-- LAN -->
+    <div class="pane" id="pane-lan">
+      <div class="row">
+        <input id="lan-cidr" class="input" placeholder="网段，留空自动检测本机网段（如 192.168.1.0/24）" spellcheck="false">
+        <button id="lan-detect" class="btn ghost">检测网段</button>
+        <button id="lan-go" class="btn">开始扫描</button>
+      </div>
+      <div class="row">
+        <span class="lbl">超时(ms)</span><input id="lan-timeout" class="mini" type="number" value="600" min="100" max="5000">
+        <span class="lbl">并发</span><input id="lan-conc" class="mini" type="number" value="128" min="16" max="512">
+      </div>
+      <div id="lan-hint" class="hint"></div>
+      <div style="flex:1;overflow:auto;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-lg)">
+        <table><thead><tr><th style="width:130px">IP</th><th>主机名</th><th style="width:150px">MAC</th><th style="width:90px">厂商</th><th style="width:200px">开放端口</th><th style="width:80px">RTT</th></tr></thead>
+        <tbody id="lan-body"><tr><td colspan="6" class="empty" style="height:120px">尚未开始</td></tr></tbody></table>
+      </div>
+    </div>
+
+    <!-- GeoIP -->
+    <div class="pane" id="pane-geo">
+      <div class="row">
+        <input id="geo-ip" class="input" placeholder="IP，留空查询本机出口 IP" spellcheck="false">
+        <button id="geo-go" class="btn">查询</button>
+      </div>
+      <div id="geo-hint" class="hint"></div>
+      <div class="fields" id="geo-fields"><div class="empty" style="height:160px">输入 IP 后点击查询</div></div>
+    </div>
+
+    <!-- FP -->
+    <div class="pane" id="pane-fp">
+      <div class="row">
+        <input id="fp-host" class="input" placeholder="目标主机或 IP" spellcheck="false">
+        <select id="fp-presets" class="input" style="flex:0 0 140px">
+          <option value="common">common</option>
+          <option value="web">web</option>
+          <option value="db">db</option>
+          <option value="top100">top100</option>
+          <option value="custom">自定义…</option>
+        </select>
+        <button id="fp-go" class="btn">开始扫描</button>
+      </div>
+      <div class="row" id="fp-custom-row" style="display:none">
+        <span class="lbl">端口</span><input id="fp-ports" class="input" placeholder="逗号或范围，如 80,443,8000-8100" spellcheck="false">
+      </div>
+      <div class="row">
+        <span class="lbl">超时(ms)</span><input id="fp-timeout" class="mini" type="number" value="800" min="100" max="10000">
+        <span class="lbl">并发</span><input id="fp-conc" class="mini" type="number" value="256" min="16" max="1024">
+      </div>
+      <div id="fp-hint" class="hint"></div>
+      <div class="pbar"><i id="fp-prog"></i></div>
+      <div style="flex:1;overflow:auto;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-lg)">
+        <table><thead><tr><th style="width:70px">端口</th><th style="width:90px">协议</th><th>服务</th><th style="width:70px">版本</th><th style="width:90px">置信度</th><th>指纹</th></tr></thead>
+        <tbody id="fp-body"><tr><td colspan="6" class="empty" style="height:120px">尚未开始</td></tr></tbody></table>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  'use strict'
+
+  /* ---------- 主题 / i18n ---------- */
+  var L10N = {}
+  function setLang(loc){
+    document.documentElement.setAttribute('lang', loc || 'zh-CN')
+  }
+  window.addEventListener('message', function(e){
+    var d = e.data; if(!d) return
+    if (d.type === 'plugin:theme') { setLang((d.data||{}).locale); drawPing() }
+    if (d.type === 'plugin:init') { var pd=d.data||{}; if(pd.text) document.getElementById('ping-host').value=pd.text }
+  })
+
+  /* ---------- RPC ---------- */
+  var seq=0, pend={}
+  function send(command, input){
+    return new Promise(function(res,rej){
+      var id='nd_'+(++seq); pend[id]={res:res,rej:rej}
+      parent.postMessage({type:'plugin:execute',id:id,command:command,input:input||{}},'*')
+    })
+  }
+  window.addEventListener('message', function(e){
+    var d=e.data; if(!d) return
+    if (d.type==='plugin:result' && d.id && pend[d.id]){
+      var p=pend[d.id]; delete pend[d.id]
+      if(d.error) p.rej(new Error(d.error)); else p.res(d.data)
+    }
+  })
+  function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+  function fail(el,e){el.className='hint err';el.textContent=(e&&e.message)?e.message:String(e)}
+
+  /* ---------- 标签页切换 ---------- */
+  document.getElementById('tabs').addEventListener('click', function(e){
+    var b=e.target.closest('.tab'); if(!b) return
+    var pane=b.dataset.pane
+    document.querySelectorAll('.tab').forEach(function(t){t.classList.toggle('active',t===b)})
+    document.querySelectorAll('.pane').forEach(function(p){p.classList.toggle('active',p.id==='pane-'+pane)})
+  })
+
+  /* ==================== Ping ==================== */
+  var ping={running:false,sid:null,timer:null,results:[]}
+  var pcanvas=document.getElementById('ping-chart'), pctx=pcanvas.getContext('2d')
+  function drawPing(){
+    var dpr=window.devicePixelRatio||1, w=pcanvas.clientWidth,h=pcanvas.clientHeight
+    if(!w||!h) return
+    pcanvas.width=w*dpr;pcanvas.height=h*dpr;pctx.setTransform(dpr,0,0,dpr,0,0);pctx.clearRect(0,0,w,h)
+    var css=getComputedStyle(document.body)
+    var grid=css.getPropertyValue('--border').trim()||'#333'
+    var okC=css.getPropertyValue('--accent').trim()||'#4a9eff'
+    var badC=css.getPropertyValue('--danger').trim()||'#e24b4a'
+    pctx.strokeStyle=grid;pctx.lineWidth=1
+    for(var g=1;g<4;g++){var gy=Math.round(h*g/4)+.5;pctx.beginPath();pctx.moveTo(0,gy);pctx.lineTo(w,gy);pctx.stroke()}
+    if(!ping.results.length) return
+    var view=ping.results.slice(-80), max=20
+    for(var i=0;i<view.length;i++) if(view[i].ok&&view[i].rtt>max) max=view[i].rtt
+    max=Math.ceil(max/20)*20
+    var bw=w/80
+    for(var k=0;k<view.length;k++){
+      var r=view[k],x=k*bw
+      if(!r.ok){pctx.fillStyle=badC;pctx.fillRect(x,0,Math.max(bw-1,1),Math.max(h*.08,3));continue}
+      var bh=Math.max((r.rtt/max)*(h-6),2)
+      pctx.fillStyle=okC;pctx.fillRect(x,h-bh,Math.max(bw-1,1),bh)
+    }
+  }
+  function fmtR(r){if(r.ok&&r.rtt<=0)return '<1ms';return r.rtt.toFixed(r.rtt<10?1:0)+'ms'}
+  function pingRender(snap){
+    ping.results=snap.results||[]
+    var st=snap.stats||{}
+    document.getElementById('p-sent').textContent=st.sent
+    document.getElementById('p-recv').textContent=st.recv
+    document.getElementById('p-loss').textContent=(st.loss||0).toFixed(0)+'%'
+    document.getElementById('p-min').textContent=st.recv?(st.min>0?st.min.toFixed(st.min<10?1:0):'<1'):'-'
+    document.getElementById('p-avg').textContent=st.recv?st.avg.toFixed(1):'-'
+    document.getElementById('p-max').textContent=st.recv?st.max.toFixed(st.max<10?1:0):'-'
+    document.getElementById('p-last').textContent=(st.last!=null&&st.last>=0)?(st.last>0?st.last.toFixed(st.last<10?1:0):'<1'):'-'
+    var html='',from=Math.max(0,ping.results.length-200)
+    for(var i=from;i<ping.results.length;i++){var r=ping.results[i]
+      html+='<div class="log-row"><span class="log-seq">#'+r.seq+'</span>'+(r.ok?'<span class="log-ok">'+fmtR(r)+'</span>':'<span class="log-bad">'+esc(r.error||'超时')+'</span>')+'</div>'}
+    var log=document.getElementById('ping-log');log.innerHTML=html;log.scrollTop=log.scrollHeight
+    drawPing()
+  }
+  function pingPoll(){
+    if(!ping.sid) return
+    send('ping.poll',{sessionId:ping.sid}).then(function(s){pingRender(s);if(!s.running)pingFinish()}).catch(function(e){fail(document.getElementById('ping-hint'),e);pingFinish()})
+  }
+  function pingFinish(){
+    if(ping.timer){clearInterval(ping.timer);ping.timer=null}
+    ping.running=false;document.getElementById('ping-go').textContent='开始';document.getElementById('ping-go').className='btn'
+    var s=ping.sid;ping.sid=null;if(s)send('ping.stop',{sessionId:s}).catch(function(){})
+  }
+  function pingStart(){
+    var host=document.getElementById('ping-host').value.trim()
+    if(!host){fail(document.getElementById('ping-hint'),'请输入目标主机');return}
+    document.getElementById('ping-hint').className='hint';document.getElementById('ping-hint').textContent='探测中…'
+    document.getElementById('ping-log').innerHTML='';ping.results=[]
+    send('ping.start',{host:host,interval:parseInt(document.getElementById('ping-interval').value,10)||1000,count:parseInt(document.getElementById('ping-count').value,10)||0,timeout:parseInt(document.getElementById('ping-timeout').value,10)||2000}).then(function(r){
+      ping.sid=r.sessionId;ping.running=true
+      var b=document.getElementById('ping-go');b.textContent='停止';b.className='btn stop'
+      var tag=document.getElementById('ping-mode');tag.style.display='';tag.textContent=r.mode==='icmp'?'ICMP 模式':'TCP 模式'
+      document.getElementById('ping-hint').textContent=r.host+' → '+r.ip
+      ping.timer=setInterval(pingPoll,800);pingPoll()
+    }).catch(function(e){fail(document.getElementById('ping-hint'),e)})
+  }
+  document.getElementById('ping-go').addEventListener('click',function(){ping.running?pingFinish():pingStart()})
+  document.getElementById('ping-host').addEventListener('keydown',function(e){if(e.key==='Enter'){ping.running?pingFinish():pingStart()}})
+  window.addEventListener('resize',drawPing)
+
+  /* ==================== Traceroute ==================== */
+  var tr={running:false,sid:null,timer:null}
+  function trPoll(){
+    if(!tr.sid) return
+    send('trace.poll',{sessionId:tr.sid}).then(function(s){
+      var html=''
+      if(!s.hops.length){html='<tr><td colspan="4" class="empty" style="height:120px">探测中…</td></tr>'}
+      else for(var i=0;i<s.hops.length;i++){var h=s.hops[i]
+        var rt=h.rtts.map(function(v){return v<0?'*':v.toFixed(1)}).join(' / ')||'-'
+        html+='<tr><td>'+h.ttl+'</td><td>'+(h.ip||'<span style="color:var(--text-muted)">*</span>')+'</td><td>'+esc(h.host||'')+'</td><td>'+rt+'</td></tr>'}
+      document.getElementById('tr-body').innerHTML=html
+      if(!s.running)trFinish()
+    }).catch(function(e){fail(document.getElementById('tr-hint'),e);trFinish()})
+  }
+  function trFinish(){
+    if(tr.timer){clearInterval(tr.timer);tr.timer=null}
+    tr.running=false;var b=document.getElementById('tr-go');b.textContent='开始追踪';b.className='btn'
+    var s=tr.sid;tr.sid=null;if(s)send('trace.stop',{sessionId:s}).catch(function(){})
+  }
+  function trStart(){
+    var host=document.getElementById('tr-host').value.trim()
+    if(!host){fail(document.getElementById('tr-hint'),'请输入目标主机');return}
+    document.getElementById('tr-hint').className='hint';document.getElementById('tr-hint').textContent='追踪中…'
+    send('trace.start',{host:host,maxHops:parseInt(document.getElementById('tr-max').value,10)||30,probes:parseInt(document.getElementById('tr-probes').value,10)||3,timeout:parseInt(document.getElementById('tr-timeout').value,10)||1500}).then(function(r){
+      tr.sid=r.sessionId;tr.running=true;var b=document.getElementById('tr-go');b.textContent='停止';b.className='btn stop'
+      document.getElementById('tr-hint').textContent=r.host+' → '+r.ip
+      tr.timer=setInterval(trPoll,1000);trPoll()
+    }).catch(function(e){fail(document.getElementById('tr-hint'),e)})
+  }
+  document.getElementById('tr-go').addEventListener('click',function(){tr.running?trFinish():trStart()})
+
+  /* ==================== LAN ==================== */
+  var lan={running:false,sid:null,timer:null}
+  function lanPoll(){
+    if(!lan.sid) return
+    send('lan.poll',{sessionId:lan.sid}).then(function(s){
+      var html=''
+      if(!s.hosts.length){html='<tr><td colspan="6" class="empty" style="height:120px">扫描中… ('+(s.scanned||0)+'/'+(s.total||0)+')</td></tr>'}
+      else for(var i=0;i<s.hosts.length;i++){var h=s.hosts[i]
+        html+='<tr><td>'+esc(h.ip)+'</td><td>'+esc(h.hostname||'')+'</td><td>'+esc(h.mac||'')+'</td><td>'+esc(h.vendor||'')+'</td><td>'+(h.openPorts||[]).map(function(p){return '<span class="tag">'+p+'</span>'}).join(' ')+'</td><td>'+(h.rtt>0?h.rtt.toFixed(1)+'ms':'')+'</td></tr>'}
+      document.getElementById('lan-body').innerHTML=html
+      document.getElementById('lan-hint').textContent='进度 '+(s.scanned||0)+' / '+(s.total||0)+'，已发现 '+(s.hosts||[]).length+' 台'
+      if(!s.running)lanFinish()
+    }).catch(function(e){fail(document.getElementById('lan-hint'),e);lanFinish()})
+  }
+  function lanFinish(){
+    if(lan.timer){clearInterval(lan.timer);lan.timer=null}
+    lan.running=false;var b=document.getElementById('lan-go');b.textContent='开始扫描';b.className='btn'
+    var s=lan.sid;lan.sid=null;if(s)send('lan.stop',{sessionId:s}).catch(function(){})
+  }
+  function lanStart(){
+    var cidr=document.getElementById('lan-cidr').value.trim()
+    document.getElementById('lan-hint').className='hint';document.getElementById('lan-hint').textContent='扫描中…'
+    send('lan.start',{cidr:cidr,timeout:parseInt(document.getElementById('lan-timeout').value,10)||600,concurrency:parseInt(document.getElementById('lan-conc').value,10)||128}).then(function(r){
+      lan.sid=r.sessionId;lan.running=true;var b=document.getElementById('lan-go');b.textContent='停止';b.className='btn stop'
+      if(r.cidr)document.getElementById('lan-cidr').value=r.cidr
+      document.getElementById('lan-hint').textContent='网段 '+r.cidr+'，共 '+(r.total||0)+' 个地址'
+      lan.timer=setInterval(lanPoll,800);lanPoll()
+    }).catch(function(e){fail(document.getElementById('lan-hint'),e)})
+  }
+  document.getElementById('lan-go').addEventListener('click',function(){lan.running?lanFinish():lanStart()})
+  document.getElementById('lan-detect').addEventListener('click',function(){
+    send('lan.interfaces',{}).then(function(r){
+      var ifs=(r.interfaces||[]);if(!ifs.length){document.getElementById('lan-hint').className='hint err';document.getElementById('lan-hint').textContent='未检测到可用网段';return}
+      document.getElementById('lan-cidr').value=ifs[0].cidr||''
+      document.getElementById('lan-hint').className='hint';document.getElementById('lan-hint').textContent='已选 '+ifs[0].iface+'：'+ifs[0].cidr
+    }).catch(function(e){fail(document.getElementById('lan-hint'),e)})
+  })
+
+  /* ==================== GeoIP ==================== */
+  document.getElementById('geo-go').addEventListener('click',function(){
+    var ip=document.getElementById('geo-ip').value.trim()
+    document.getElementById('geo-hint').className='hint';document.getElementById('geo-hint').textContent='查询中…'
+    send('geo.lookup',{ip:ip}).then(function(r){
+      if(!r.ok){document.getElementById('geo-hint').className='hint err';document.getElementById('geo-hint').textContent=r.error||'查询失败';return}
+      document.getElementById('geo-hint').textContent='查询完成'
+      var html=''
+      ;(r.fields||[]).forEach(function(f){if(f.value)html+='<div class="fk">'+esc(f.label)+'</div><div class="fv">'+esc(f.value)+'</div>'})
+      if(r.mapUrl)html+='<div class="fk">地图</div><div class="fv"><a href="'+r.mapUrl+'" target="_blank">在 OpenStreetMap 打开</a></div>'
+      document.getElementById('geo-fields').innerHTML=html||'<div class="empty">无数据</div>'
+    }).catch(function(e){fail(document.getElementById('geo-hint'),e)})
+  })
+
+  /* ==================== 端口指纹 ==================== */
+  var fp={running:false,sid:null,timer:null}
+  document.getElementById('fp-presets').addEventListener('change',function(){
+    document.getElementById('fp-custom-row').style.display=this.value==='custom'?'flex':'none'
+  })
+  function fpPoll(){
+    if(!fp.sid) return
+    send('fp.poll',{sessionId:fp.sid}).then(function(s){
+      var p=s.progress||{}
+      var total=p.total||1
+      document.getElementById('fp-prog').style.width=Math.min(100,Math.round((p.scanned||0)/total*100))+'%'
+      var html=''
+      if(!s.results.length){html='<tr><td colspan="6" class="empty" style="height:120px">扫描中…</td></tr>'}
+      else for(var i=0;i<s.results.length;i++){var r=s.results[i]
+        var conf=(r.confidence||0).toFixed(2)
+        var svc=r.service?('<span class="tag ok">'+esc(r.service)+'</span>'+(r.guessed?' <span class="tag guess">推测</span>':'')):'-'
+        html+='<tr><td>'+r.port+'</td><td>'+(r.scheme||'tcp')+'</td><td>'+svc+'</td><td>'+(r.version||'')+'</td><td>'+conf+'</td><td style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted)">'+esc((r.banner||'').slice(0,60))+'</td></tr>'}
+      document.getElementById('fp-body').innerHTML=html
+      if(!s.running)fpFinish()
+    }).catch(function(e){fail(document.getElementById('fp-hint'),e);fpFinish()})
+  }
+  function fpFinish(){
+    if(fp.timer){clearInterval(fp.timer);fp.timer=null}
+    fp.running=false;var b=document.getElementById('fp-go');b.textContent='开始扫描';b.className='btn'
+    var s=fp.sid;fp.sid=null;if(s)send('fp.stop',{sessionId:s}).catch(function(){})
+  }
+  function fpStart(){
+    var host=document.getElementById('fp-host').value.trim()
+    if(!host){fail(document.getElementById('fp-hint'),'请输入目标主机');return}
+    var preset=document.getElementById('fp-presets').value
+    var ports=preset==='custom'?document.getElementById('fp-ports').value.trim():preset
+    document.getElementById('fp-hint').className='hint';document.getElementById('fp-hint').textContent='扫描中…'
+    document.getElementById('fp-prog').style.width='0%'
+    send('fp.start',{host:host,ports:ports,timeout:parseInt(document.getElementById('fp-timeout').value,10)||800,concurrency:parseInt(document.getElementById('fp-conc').value,10)||256}).then(function(r){
+      fp.sid=r.sessionId;fp.running=true;var b=document.getElementById('fp-go');b.textContent='停止';b.className='btn stop'
+      document.getElementById('fp-hint').textContent=r.host+' → '+r.ip+'，端口 '+(r.total||0)+' 个'
+      fp.timer=setInterval(fpPoll,1000);fpPoll()
+    }).catch(function(e){fail(document.getElementById('fp-hint'),e)})
+  }
+  document.getElementById('fp-go').addEventListener('click',function(){fp.running?fpFinish():fpStart()})
+
+  setLang()
+})()
+</script>
+</body>
+</html>

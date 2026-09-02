@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="qd-theme.css">
+  <style>
+    .gw-tabs { display:flex; gap:2px; padding:0 var(--sp-3); height:38px; background:var(--bg-secondary); border-bottom:1px solid var(--border); flex-shrink:0; overflow-x:auto; }
+    .gw-tab { display:inline-flex; align-items:center; gap:6px; height:38px; padding:0 14px; border:none; background:transparent; color:var(--text-muted); font-size:var(--fs-sm); cursor:pointer; border-bottom:2px solid transparent; white-space:nowrap; }
+    .gw-tab:hover { color:var(--text-secondary); }
+    .gw-tab.active { color:var(--text-primary); border-bottom-color:var(--accent); font-weight:var(--fw-semibold); }
+    .gw-pane { display:none; flex:1; overflow-y:auto; padding:var(--sp-4); }
+    .gw-pane.active { display:flex; flex-direction:column; gap:var(--sp-4); }
+
+    .gw-repo { display:flex; align-items:center; gap:var(--sp-2); flex-shrink:0; }
+    .gw-repo .p-input { flex:1; min-width:120px; }
+    .gw-summary { display:flex; gap:var(--sp-4); flex-wrap:wrap; font-size:var(--fs-sm); color:var(--text-secondary); }
+    .gw-summary b { color:var(--text-primary); font-weight:var(--fw-semibold); }
+
+    table.gw-tbl { width:100%; border-collapse:collapse; font-size:var(--fs-sm); }
+    table.gw-tbl th, table.gw-tbl td { text-align:left; padding:7px 10px; border-bottom:1px solid var(--border); vertical-align:top; }
+    table.gw-tbl th { color:var(--text-muted); font-weight:var(--fw-medium); font-size:var(--fs-xs); text-transform:uppercase; letter-spacing:0.4px; position:sticky; top:0; background:var(--bg-secondary); }
+    table.gw-tbl tbody tr { transition:background var(--transition); }
+    table.gw-tbl tbody tr:hover { background:var(--bg-hover); }
+    .gw-mono { font-family:var(--font-mono); font-size:var(--fs-xs); }
+    .gw-sub { color:var(--text-muted); font-size:var(--fs-xs); margin-top:4px; }
+    .gw-hint { font-size:var(--fs-xs); color:var(--text-muted); }
+    .gw-grid { display:grid; grid-template-columns:1fr 1fr; gap:var(--sp-3); }
+    .gw-field { display:flex; flex-direction:column; gap:6px; }
+    .gw-field label { font-size:var(--fs-xs); color:var(--text-muted); }
+    .gw-field .p-input, .gw-field textarea { width:100%; }
+    textarea.p-input { height:auto; min-height:60px; padding:8px 10px; resize:vertical; font-family:var(--font-mono); font-size:var(--fs-sm); line-height:1.5; }
+
+    .gw-progress { height:8px; background:var(--bg-tertiary); border-radius:var(--radius-pill); overflow:hidden; }
+    .gw-progress > i { display:block; height:100%; width:0; background:var(--accent); transition:width 200ms; }
+
+    .gw-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:var(--sp-3); }
+    .gw-card { padding:var(--sp-3); border:1px solid var(--border); border-radius:var(--radius-lg); background:var(--bg-secondary); }
+    .gw-card .v { font-size:var(--fs-2xl); font-weight:var(--fw-semibold); color:var(--text-primary); }
+    .gw-card .k { font-size:var(--fs-xs); color:var(--text-muted); margin-top:2px; }
+
+    .gw-conflict-grid { display:grid; grid-template-columns:1fr 1fr; gap:var(--sp-2); }
+    .gw-conflict-grid .pane { display:flex; flex-direction:column; gap:4px; }
+    .gw-conflict-grid textarea { height:160px; }
+    pre.gw-pre { margin:0; white-space:pre-wrap; word-break:break-all; font-family:var(--font-mono); font-size:var(--fs-xs); background:var(--bg-primary); border:1px solid var(--border); border-radius:var(--radius); padding:8px; max-height:200px; overflow:auto; color:var(--text-secondary); }
+
+    table.gw-blame { table-layout:fixed; }
+    table.gw-blame td.ln { width:42px; color:var(--text-muted); text-align:right; }
+    table.gw-blame td.au { width:110px; }
+    table.gw-blame td.hs { width:74px; }
+    table.gw-blame td.tx { white-space:pre-wrap; word-break:break-all; font-family:var(--font-mono); font-size:var(--fs-xs); color:var(--text-secondary); }
+    .gw-au-chip { display:inline-block; padding:1px 7px; border-radius:var(--radius-pill); font-size:var(--fs-xs); color:#fff; }
+
+    .gw-heat { display:grid; grid-template-columns:32px repeat(24,1fr); gap:2px; font-size:9px; }
+    .gw-heat .hl { color:var(--text-muted); }
+    .gw-heat .hc { border-radius:2px; min-height:14px; }
+    .gw-bars { display:flex; align-items:flex-end; gap:2px; overflow-x:auto; height:150px; padding-bottom:18px; position:relative; }
+    .gw-bar { flex:0 0 5px; background:var(--accent); border-radius:2px 2px 0 0; min-height:2px; position:relative; }
+    .gw-bar.empty { background:var(--bg-tertiary); }
+    .gw-bar span { position:absolute; bottom:-16px; left:50%; transform:translateX(-50%); font-size:8px; color:var(--text-muted); white-space:nowrap; }
+
+    .gw-empty { display:flex; align-items:center; justify-content:center; flex:1; color:var(--text-muted); font-size:var(--fs-md); flex-direction:column; gap:8px; }
+    .gw-warn { display:flex; gap:8px; align-items:flex-start; padding:10px 12px; border-radius:var(--radius); background:var(--warning-soft); color:var(--warning); font-size:var(--fs-sm); line-height:1.5; }
+    .gw-danger-box { border:1px solid var(--danger); background:var(--danger-soft); border-radius:var(--radius-lg); padding:var(--sp-3); }
+    .gw-toast { position:fixed; top:12px; right:12px; padding:8px 14px; border-radius:var(--radius); font-size:var(--fs-sm); z-index:999; box-shadow:var(--shadow-2); max-width:360px; }
+    .gw-toast.ok { background:var(--success); color:#fff; }
+    .gw-toast.err { background:var(--danger); color:#fff; }
+    .gw-row { display:flex; align-items:center; gap:var(--sp-2); flex-wrap:wrap; }
+    .gw-spacer { flex:1; }
+    .gw-list { display:flex; flex-direction:column; gap:4px; max-height:240px; overflow:auto; }
+    .gw-list .it { display:flex; align-items:center; gap:8px; padding:8px 10px; border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-secondary); cursor:pointer; transition:background var(--transition); }
+    .gw-list .it:hover { background:var(--bg-hover); }
+    .gw-list .it.sel { border-color:var(--accent); background:var(--accent-soft); }
+  </style>
+</head>
+<body>
+<div class="p-app">
+  <div class="p-head">
+    <span class="p-head-title">🌿 Git 工作台</span>
+    <div class="gw-repo" style="margin-left:12px; flex:1; max-width:560px;">
+      <input class="p-input" id="repo-path" placeholder="仓库目录（点击右侧选择）" spellcheck="false">
+      <button class="p-btn p-btn-sm" id="btn-pick">选择目录</button>
+      <button class="p-btn p-btn-sm p-btn-primary" id="btn-open">打开</button>
+    </div>
+    <div class="p-head-actions">
+      <button class="p-btn p-btn-sm" id="btn-browse-gh" title="打开 GitHub 远程仓库分析">远程仓库</button>
+    </div>
+  </div>
+
+  <div class="gw-tabs" id="tabs">
+    <button class="gw-tab active" data-tab="repo">📁 仓库</button>
+    <button class="gw-tab" data-tab="bisect">🔍 二分定位</button>
+    <button class="gw-tab" data-tab="conflict">🧩 冲突解决</button>
+    <button class="gw-tab" data-tab="timeline">📜 演化时间轴</button>
+    <button class="gw-tab" data-tab="stats">🩺 仓库体检</button>
+    <button class="gw-tab" data-tab="rewrite">✏️ 历史改写</button>
+  </div>
+
+  <!-- ===== 仓库 ===== -->
+  <div class="gw-pane active" id="pane-repo">
+    <div class="gw-summary" id="repo-summary"><span class="gw-hint">未打开仓库</span></div>
+    <div class="p-section">
+      <div class="p-section-label">最近提交 <span class="p-spacer"></span> <span class="gw-hint" id="repo-commit-count"></span></div>
+      <div style="max-height:300px; overflow:auto">
+        <table class="gw-tbl"><thead><tr><th>Hash</th><th>作者</th><th>时间</th><th>说明</th></tr></thead>
+        <tbody id="repo-commits"><tr><td colspan="4" class="gw-hint">请先打开仓库</td></tr></tbody></table>
+      </div>
+    </div>
+    <div class="gw-grid">
+      <div class="p-section">
+        <div class="p-section-label">分支</div>
+        <div class="gw-list" id="repo-branches"></div>
+      </div>
+      <div class="p-section">
+        <div class="p-section-label">标签</div>
+        <div class="gw-list" id="repo-tags"></div>
+      </div>
+    </div>
+    <div class="p-section" id="repo-status-sec">
+      <div class="p-section-label">工作区状态</div>
+      <div id="repo-status"><span class="gw-hint">—</span></div>
+    </div>
+  </div>
+
+  <!-- ===== 二分 ===== -->
+  <div class="gw-pane" id="pane-bisect">
+    <div class="p-section">
+      <div class="p-section-label">定位引入问题（bug）的提交</div>
+      <div class="gw-grid">
+        <div class="gw-field"><label>已知良好提交（good，更早）</label><input class="p-input" id="bs-good" placeholder="如 v1.0 或 提交hash 或 HEAD~10"></div>
+        <div class="gw-field"><label>已知问题提交（bad，更新）</label><input class="p-input" id="bs-bad" placeholder="如 main 或 HEAD"></div>
+      </div>
+      <div class="gw-row" style="margin-top:8px">
+        <button class="p-btn p-btn-primary" id="bs-start">开始二分</button>
+        <button class="p-btn" id="bs-good-btn" disabled>标记为 good（当前正常）</button>
+        <button class="p-btn" id="bs-bad-btn" disabled>标记为 bad（当前异常）</button>
+        <button class="p-btn" id="bs-skip-btn" disabled>跳过当前</button>
+        <button class="p-btn" id="bs-reset-btn">重置并恢复分支</button>
+      </div>
+      <div class="gw-hint" style="margin-top:6px">二分会自动 checkout 待测提交，请确保工作区干净。结束（或重置）后会恢复到原分支。</div>
+    </div>
+    <div class="p-section">
+      <div class="p-section-label">当前待测 <span class="p-spacer"></span> <span class="gw-hint" id="bs-stats"></span></div>
+      <div id="bs-current"><span class="gw-hint">尚未开始</span></div>
+      <div id="bs-result" style="margin-top:8px"></div>
+    </div>
+    <div class="p-section">
+      <div class="p-section-label">步骤记录</div>
+      <div class="gw-list" id="bs-history"><span class="gw-hint">暂无</span></div>
+    </div>
+  </div>
+
+  <!-- ===== 冲突 ===== -->
+  <div class="gw-pane" id="pane-conflict">
+    <div class="p-section">
+      <div class="p-section-label">合并冲突文件 <span class="p-spacer"></span> <span class="gw-hint" id="cf-count"></span></div>
+      <div class="gw-row" style="margin-top:6px">
+        <button class="p-btn p-btn-primary" id="cf-list">列出冲突文件</button>
+        <span class="gw-hint" id="cf-merging"></span>
+      </div>
+      <div class="gw-list" id="cf-files" style="margin-top:8px"><span class="gw-hint">点击「列出冲突文件」</span></div>
+    </div>
+    <div class="p-section" id="cf-editor" style="display:none">
+      <div class="p-section-label">解决：<b id="cf-name"></b> <span class="p-spacer"></span> <span class="gw-hint" id="cf-remain"></span></div>
+      <div class="gw-conflict-grid" style="margin-bottom:8px">
+        <div class="pane"><label class="gw-hint">OURS（当前分支）</label><pre class="gw-pre" id="cf-ours"></pre></div>
+        <div class="pane"><label class="gw-hint">THEIRS（合并进来的分支）</label><pre class="gw-pre" id="cf-theirs"></pre></div>
+      </div>
+      <label class="gw-hint">合并结果（可编辑，保存即作为最终内容）</label>
+      <textarea class="p-input" id="cf-merged" style="min-height:220px; font-family:var(--font-mono)"></textarea>
+      <div class="gw-row" style="margin-top:8px">
+        <button class="p-btn" id="cf-take-ours">整文件采用 ours</button>
+        <button class="p-btn" id="cf-take-theirs">整文件采用 theirs</button>
+        <button class="p-btn p-btn-primary" id="cf-save">保存并标记已解决</button>
+        <label style="display:flex;align-items:center;gap:6px;font-size:var(--fs-sm);color:var(--text-secondary)"><input type="checkbox" id="cf-autocommit"> 全部解决后自动提交合并</label>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 时间轴 ===== -->
+  <div class="gw-pane" id="pane-timeline">
+    <div class="p-section">
+      <div class="p-section-label">代码演化时间轴（blame）</div>
+      <div class="gw-grid">
+        <div class="gw-field"><label>文件路径（相对仓库根）</label><input class="p-input" id="tl-file" placeholder="如 main.go / src/app.js"></div>
+        <div class="gw-field"><label>参考提交（默认 HEAD）</label><input class="p-input" id="tl-ref" placeholder="HEAD"></div>
+        <div class="gw-field"><label>起始行（可选）</label><input class="p-input" id="tl-start" placeholder="1"></div>
+        <div class="gw-field"><label>结束行（可选）</label><input class="p-input" id="tl-end" placeholder="末尾"></div>
+      </div>
+      <div class="gw-row" style="margin-top:8px">
+        <button class="p-btn p-btn-primary" id="tl-start-btn">开始分析</button>
+        <span class="gw-hint" id="tl-prog-txt"></span>
+      </div>
+      <div class="gw-progress" style="margin-top:8px"><i id="tl-prog"></i></div>
+    </div>
+    <div class="p-section">
+      <div class="p-section-label">逐行归属</div>
+      <div style="max-height:340px; overflow:auto">
+        <table class="gw-tbl gw-blame"><thead><tr><th class="ln">行</th><th class="au">作者</th><th class="hs">提交</th><th class="tx">内容</th></tr></thead>
+        <tbody id="tl-lines"><tr><td colspan="4" class="gw-hint">请先分析一个文件</td></tr></tbody></table>
+      </div>
+    </div>
+    <div class="gw-grid">
+      <div class="p-section">
+        <div class="p-section-label">按作者聚合</div>
+        <table class="gw-tbl"><thead><tr><th>作者</th><th>行数</th><th>占比</th></tr></thead>
+        <tbody id="tl-authors"><tr><td colspan="3" class="gw-hint">—</td></tr></tbody></table>
+      </div>
+      <div class="p-section">
+        <div class="p-section-label">按提交聚合（时间顺序）</div>
+        <div class="gw-list" id="tl-commits"><span class="gw-hint">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 体检 ===== -->
+  <div class="gw-pane" id="pane-stats">
+    <div class="p-section">
+      <div class="p-section-label">仓库体检 <span class="p-spacer"></span> <span class="gw-hint" id="st-span"></span></div>
+      <div class="gw-row">
+        <button class="p-btn p-btn-primary" id="st-start">开始体检</button>
+        <span class="gw-hint" id="st-prog-txt"></span>
+      </div>
+      <div class="gw-progress" style="margin-top:8px"><i id="st-prog"></i></div>
+    </div>
+    <div class="gw-cards" id="st-cards"></div>
+    <div class="gw-grid">
+      <div class="p-section">
+        <div class="p-section-label">作者统计</div>
+        <div style="max-height:260px; overflow:auto">
+          <table class="gw-tbl"><thead><tr><th>作者</th><th>提交</th><th>增</th><th>删</th><th>占比</th></tr></thead>
+          <tbody id="st-authors"><tr><td colspan="5" class="gw-hint">—</td></tr></tbody></table>
+        </div>
+      </div>
+      <div class="p-section">
+        <div class="p-section-label">改动最频繁的文件</div>
+        <div style="max-height:260px; overflow:auto">
+          <table class="gw-tbl"><thead><tr><th>文件</th><th>改动</th><th>作者</th></tr></thead>
+          <tbody id="st-files"><tr><td colspan="3" class="gw-hint">—</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="p-section">
+      <div class="p-section-label">知识孤岛（仅一人改动且常改）</div>
+      <div class="gw-list" id="st-islands"><span class="gw-hint">—</span></div>
+    </div>
+    <div class="p-section">
+      <div class="p-section-label">提交时间热力（行=星期 列=小时）</div>
+      <div class="gw-heat" id="st-heat"></div>
+    </div>
+    <div class="p-section">
+      <div class="p-section-label">每日提交数（近 90 天） <span class="gw-hint">（每 7 天标一个刻度，悬停看具体日期）</span></div>
+      <div class="gw-bars" id="st-daily"></div>
+    </div>
+    <div class="p-section">
+      <div class="p-section-label">代码行数趋势（累计） <span class="gw-hint">（按提交日累计净代码行）</span></div>
+      <div id="st-trend"></div>
+    </div>
+  </div>
+
+  <!-- ===== 改写 ===== -->
+  <div class="gw-pane" id="pane-rewrite">
+    <div class="gw-danger-box">
+      <div class="gw-warn" style="background:transparent; padding:0; color:var(--danger)">
+        <span>⚠️</span>
+        <span>历史改写会重写提交对象并移动分支引用，属于<strong>破坏性操作</strong>。应用前请确保工作区干净，且已备份（插件会自动创建 <code>refs/rewrite-backup/</code> 备份引用以便回滚）。</span>
+      </div>
+    </div>
+    <div class="p-section">
+      <div class="p-section-label">改写模式</div>
+      <div class="gw-field">
+        <select class="p-input" id="rw-mode">
+          <option value="author">改作者（邮箱 / 姓名）</option>
+          <option value="deleteFile">删除历史中的敏感文件</option>
+        </select>
+      </div>
+      <div id="rw-author-fields">
+        <div class="gw-grid" style="margin-top:8px">
+          <div class="gw-field"><label>原邮箱（留空=匹配全部提交）</label><input class="p-input" id="rw-oldemail" placeholder="old@example.com"></div>
+          <div class="gw-field"><label>新姓名</label><input class="p-input" id="rw-newname" placeholder="New Name"></div>
+          <div class="gw-field"><label>新邮箱</label><input class="p-input" id="rw-newemail" placeholder="new@example.com"></div>
+        </div>
+      </div>
+      <div id="rw-file-fields" style="display:none">
+        <div class="gw-field" style="margin-top:8px"><label>要删除的文件（每行一个，相对仓库根路径）</label>
+          <textarea class="p-input" id="rw-targets" placeholder="secrets.env&#10;config/credentials.json"></textarea></div>
+      </div>
+    </div>
+    <div class="p-section">
+      <div class="gw-row">
+        <button class="p-btn" id="rw-preview">预览改动</button>
+        <button class="p-btn p-btn-danger" id="rw-apply" disabled>应用改写</button>
+        <span class="gw-hint" id="rw-preview-state">尚未预览</span>
+      </div>
+      <div id="rw-plan" style="margin-top:10px"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict'
+
+  /* ---------- 主题 / 语言 ---------- */
+  window.addEventListener('message', function(e){
+    var d=e.data; if(!d) return
+    if(d.type==='plugin:theme' && d.data && d.data.locale){ document.documentElement.setAttribute('lang', d.data.locale) }
+  })
+
+  /* ---------- RPC ---------- */
+  var seq=0, pend={}
+  function send(command, input){
+    return new Promise(function(res,rej){
+      var id='gw_'+(++seq); pend[id]={res:res,rej:rej}
+      parent.postMessage({type:'plugin:execute', id:id, command:command, input:input||{}},'*')
+    })
+  }
+  window.addEventListener('message', function(e){
+    var d=e.data; if(!d) return
+    if(d.type==='plugin:result' && d.id && pend[d.id]){
+      var p=pend[d.id]; delete pend[d.id]
+      if(d.error) p.rej(new Error(typeof d.error==='string'?d.error:(d.error.message||'error')))
+      else p.res(d.data||{})
+    }
+  })
+
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+  function $(id){ return document.getElementById(id) }
+  function state(){ return { path: $('repo-path').value.trim() } }
+  function toast(msg, kind){
+    var t=document.createElement('div'); t.className='gw-toast '+(kind==='err'?'err':'ok'); t.textContent=msg
+    document.body.appendChild(t); setTimeout(function(){ t.remove() }, 3200)
+  }
+
+  /* ---------- Tabs ---------- */
+  $('tabs').addEventListener('click', function(e){
+    var btn=e.target.closest('.gw-tab'); if(!btn) return
+    var name=btn.dataset.tab
+    document.querySelectorAll('.gw-tab').forEach(function(b){ b.classList.toggle('active', b===btn) })
+    document.querySelectorAll('.gw-pane').forEach(function(p){ p.classList.toggle('active', p.id==='pane-'+name) })
+  })
+
+  /* ---------- 选目录 ---------- */
+  $('btn-pick').addEventListener('click', function(){
+    if(!window.qdPickFolder){ alert('当前宿主不支持原生选目录'); return }
+    qdPickFolder({title:'选择 Git 仓库目录'}).then(function(p){
+      if(p){ $('repo-path').value=p; openRepo() }
+    }).catch(function(){})
+  })
+  $('btn-open').addEventListener('click', openRepo)
+
+  function openRepo(){
+    var path=state().path
+    if(!path){ toast('请先选择仓库目录','err'); return }
+    send('repo.open', {path:path, limit:40}).then(function(r){
+      if(r.error) throw new Error(r.error)
+      renderRepo(r)
+    }).catch(function(e){ toast('打开失败: '+(e.message||e),'err') })
+  }
+
+  function renderRepo(r){
+    var sum=$('repo-summary')
+    var parts=[]
+    if(r.branch) parts.push('分支 <b>'+esc(r.branch)+'</b>')
+    if(r.headHash) parts.push('HEAD <b class="gw-mono">'+esc(r.headHash)+'</b>')
+    parts.push(r.clean ? '<span class="p-tag p-tag-ok">工作区干净</span>' : '<span class="p-tag p-tag-warn">有未提交改动 ('+(r.conflictCount||0)+' 冲突)</span>')
+    if(r.merging) parts.push('<span class="p-tag p-tag-info">合并中 → '+esc(r.mergeHead||'')+'</span>')
+    sum.innerHTML=parts.join(' &nbsp; ')
+
+    var cb=$('repo-commits')
+    if(r.commits && r.commits.length){
+      cb.innerHTML=r.commits.map(function(c){
+        return '<tr><td class="gw-mono">'+esc(c.hash)+'</td><td>'+esc(c.author)+'</td><td class="gw-hint">'+esc(c.time)+'</td><td>'+esc(c.message)+'</td></tr>'
+      }).join('')
+      $('repo-commit-count').textContent='共 '+r.commits.length+' 条'
+    }
+    fillList($('repo-branches'), r.branches)
+    fillList($('repo-tags'), r.tags)
+
+    var st=$('repo-status')
+    if(r.status && r.status.length){
+      st.innerHTML='<table class="gw-tbl"><thead><tr><th>文件</th><th>状态</th></tr></thead><tbody>'+
+        r.status.map(function(f){ return '<tr><td class="gw-mono">'+esc(f.file)+'</td><td>'+esc(f.status)+'</td></tr>' }).join('')+'</tbody></table>'
+    } else {
+      st.innerHTML='<span class="gw-hint">无改动</span>'
+    }
+
+    // 若处于合并态，自动提醒去冲突页
+    if(r.merging){ $('cf-merging').textContent='当前处于合并状态（合并目标 '+esc(r.mergeSubject||'')+'）' }
+  }
+  function fillList(el, arr){
+    if(!arr || !arr.length){ el.innerHTML='<span class="gw-hint">无</span>'; return }
+    el.innerHTML=arr.map(function(x){ return '<div class="it"><span class="gw-mono">'+esc(x)+'</span></div>' }).join('')
+  }
+
+  /* ---------- 二分 ---------- */
+  $('bs-start').addEventListener('click', function(){
+    var path=state().path; if(!path){ toast('请先打开仓库','err'); return }
+    var good=$('bs-good').value.trim(), bad=$('bs-bad').value.trim()
+    if(!good||!bad){ toast('请填写 good / bad','err'); return }
+    send('bisect.start', {path:path, good:good, bad:bad}).then(function(r){
+      if(r.error) throw new Error(r.error)
+      if(r.needClean){ toast('工作区不干净：'+ (r.dirty||[]).slice(0,5).join(', '),'err'); return }
+      bsRender(r)
+    }).catch(function(e){ toast('二分失败: '+(e.message||e),'err') })
+  })
+  function bsMark(mark){
+    var path=state().path
+    send('bisect.mark', {path:path, mark:mark}).then(function(r){
+      if(r.error) throw new Error(r.error)
+      bsRender(r)
+    }).catch(function(e){ toast('标记失败: '+(e.message||e),'err') })
+  }
+  $('bs-good-btn').addEventListener('click', function(){ bsMark('good') })
+  $('bs-bad-btn').addEventListener('click', function(){ bsMark('bad') })
+  $('bs-skip-btn').addEventListener('click', function(){ bsMark('skip') })
+  $('bs-reset-btn').addEventListener('click', function(){
+    var path=state().path
+    send('bisect.reset', {path:path}).then(function(r){
+      if(r.error) throw new Error(r.error)
+      toast(r.message||'已重置','ok')
+      bsClear()
+    }).catch(function(e){ toast('重置失败: '+(e.message||e),'err') })
+  })
+  function bsRender(r){
+    $('bs-good-btn').disabled=!!r.done; $('bs-bad-btn').disabled=!!r.done; $('bs-skip-btn').disabled=!!r.done
+    $('bs-stats').textContent='步骤 '+r.steps+' · 区间剩 '+(r.remain||0)+' · 共 '+r.total
+    var cur=$('bs-current')
+    if(r.done && r.culprit){
+      cur.innerHTML='<div class="gw-warn" style="color:var(--danger)">🎯 首次引入问题的提交：<b class="gw-mono">'+esc(r.culprit.hash)+'</b> '+esc(r.culprit.message)+'<div class="gw-sub">作者 '+esc(r.culprit.author)+' · '+esc(r.culprit.time)+'</div></div>'
+    } else if(r.current){
+      cur.innerHTML='<div class="gw-card"><div class="v gw-mono">'+esc(r.current.hash)+'</div><div class="k">'+esc(r.current.message)+'</div><div class="gw-sub">作者 '+esc(r.current.author)+' · '+esc(r.current.time)+'</div></div>'+
+        '<div class="gw-hint" style="margin-top:6px">请测试当前版本，然后标记它是否正常。</div>'
+    } else {
+      cur.innerHTML='<span class="gw-hint">—</span>'
+    }
+    if(r.history && r.history.length){
+      $('bs-history').innerHTML=r.history.map(function(h){
+        var c = h.mark==='good'?'p-tag-ok':h.mark==='bad'?'p-tag-warn':'p-tag-neutral'
+        return '<div class="it"><span class="p-tag '+c+'">'+esc(h.mark)+'</span><span class="gw-mono">'+esc(h.hash)+'</span><span>'+esc(h.title)+'</span><span class="gw-hint">'+esc(h.time)+'</span></div>'
+      }).join('')
+    }
+  }
+  function bsClear(){
+    $('bs-current').innerHTML='<span class="gw-hint">尚未开始</span>'
+    $('bs-history').innerHTML='<span class="gw-hint">暂无</span>'
+    $('bs-stats').textContent=''; $('bs-good-btn').disabled=true; $('bs-bad-btn').disabled=true; $('bs-skip-btn').disabled=true
+  }
+
+  /* ---------- 冲突 ---------- */
+  $('cf-list').addEventListener('click', function(){
+    var path=state().path; if(!path){ toast('请先打开仓库','err'); return }
+    send('conflict.list', {path:path}).then(function(r){
+      if(r.error) throw new Error(r.error)
+      $('cf-count').textContent='共 '+r.count+' 个冲突文件'
+      if(r.merging) $('cf-merging').textContent='合并目标 '+esc(r.mergeSubject||'')+' ('+esc(r.theirRef||'')+')'
+      var box=$('cf-files')
+      if(!r.files || !r.files.length){ box.innerHTML='<span class="gw-hint">没有冲突文件</span>'; return }
+      box.innerHTML=r.files.map(function(f){ return '<div class="it" data-file="'+esc(f)+'"><span class="gw-mono">'+esc(f)+'</span></div>' }).join('')
+      box.querySelectorAll('.it').forEach(function(it){
+        it.addEventListener('click', function(){ loadConflict(it.dataset.file) })
+      })
+    }).catch(function(e){ toast('列出冲突失败: '+(e.message||e),'err') })
+  })
+  var curConflict=null
+  function loadConflict(file){
+    var path=state().path
+    send('conflict.load', {path:path, file:file}).then(function(r){
+      if(r.error) throw new Error(r.error)
+      curConflict=file
+      $('cf-editor').style.display='flex'; $('cf-name').textContent=file
+      $('cf-ours').textContent=r.ours||'(空)'
+      $('cf-theirs').textContent=r.theirs||'(空)'
+      $('cf-merged').value=r.merged||''
+      $('cf-remain').textContent='剩余冲突文件：'+(r.remain!=null?r.remain:'?')
+    }).catch(function(e){ toast('加载失败: '+(e.message||e),'err') })
+  }
+  $('cf-take-ours').addEventListener('click', function(){ send('conflict.resolve',{path:state().path,file:curConflict,action:'takeOurs'}).then(afterResolve).catch(errToast) })
+  $('cf-take-theirs').addEventListener('click', function(){ send('conflict.resolve',{path:state().path,file:curConflict,action:'takeTheirs'}).then(afterResolve).catch(errToast) })
+  $('cf-save').addEventListener('click', function(){
+    if(!curConflict) return
+    send('conflict.resolve',{path:state().path,file:curConflict,content:$('cf-merged').value,commit:$('cf-autocommit').checked,message:'Merge: resolve '+curConflict}).then(afterResolve).catch(errToast)
+  })
+  function afterResolve(r){
+    if(r.error){ toast('解决失败: '+r.error,'err'); return }
+    toast(r.message||'已保存','ok')
+    if(r.remain!=null) $('cf-remain').textContent='剩余冲突文件：'+r.remain
+    if(r.committed){ toast('已提交合并结果','ok'); $('cf-editor').style.display='none' }
+    else if(r.files && r.files.length===0){ $('cf-editor').style.display='none' }
+    else { $('cf-list').click() } // 刷新列表
+  }
+  function errToast(e){ toast((e.message||e),'err') }
+
+  /* ---------- 时间轴（异步任务） ---------- */
+  function pollTask(taskId, onProg, onDone){
+    var timer=setInterval(function(){
+      send('task.status', {taskId:taskId}).then(function(r){
+        if(r.error) throw new Error(r.error)
+        onProg(r)
+        if(r.status==='done'){ clearInterval(timer); onDone(r.result||{}) }
+        else if(r.status==='error'){ clearInterval(timer); throw new Error(r.error||'任务失败') }
+        else if(r.status==='missing'){ clearInterval(timer) }
+      }).catch(function(e){ clearInterval(timer); toast('轮询失败: '+(e.message||e),'err') })
+    }, 400)
+  }
+  $('tl-start-btn').addEventListener('click', function(){
+    var path=state().path; if(!path){ toast('请先打开仓库','err'); return }
+    var file=$('tl-file').value.trim(); if(!file){ toast('请输入文件路径','err'); return }
+    var input={path:path, file:file, ref:$('tl-ref').value.trim()||'HEAD',
+      startLine:parseInt($('tl-start').value,10)||0, endLine:parseInt($('tl-end').value,10)||0}
+    send('timeline.file', input).then(function(r){
+      if(r.error) throw new Error(r.error)
+      $('tl-prog-txt').textContent='分析中…'
+      pollTask(r.taskId, function(p){ $('tl-prog').style.width=(p.progress||0)+'%' }, function(res){ renderTimeline(res) })
+    }).catch(function(e){ toast('时间轴失败: '+(e.message||e),'err') })
+  })
+  function colorFor(str){
+    var h=0; for(var i=0;i<str.length;i++){ h=(h*31+str.charCodeAt(i))%360 }
+    return 'hsl('+h+',55%,62%)'
+  }
+  function renderTimeline(r){
+    $('tl-prog').style.width='100%'; $('tl-prog-txt').textContent='完成（共 '+r.total+' 行）'
+    var lb=$('tl-lines')
+    if(r.lines && r.lines.length){
+      lb.innerHTML=r.lines.map(function(l){
+        var c=colorFor(l.author||'?')
+        return '<tr><td class="ln">'+l.no+'</td><td class="au"><span class="gw-au-chip" style="background:'+c+'">'+esc(l.author)+'</span></td><td class="hs gw-mono">'+esc(l.hash)+'</td><td class="tx">'+esc(l.text)+'</td></tr>'
+      }).join('')
+    }
+    var ab=$('tl-authors')
+    if(r.authors && r.authors.length){
+      ab.innerHTML=r.authors.map(function(a){
+        return '<tr><td>'+esc(a.author)+'</td><td>'+a.lines+'</td><td>'+a.percent.toFixed(1)+'%</td></tr>'
+      }).join('')
+    }
+    var cb=$('tl-commits')
+    if(r.commits && r.commits.length){
+      cb.innerHTML=r.commits.map(function(c){
+        return '<div class="it"><span class="gw-au-chip" style="background:'+colorFor(c.author)+'">'+esc(c.author)+'</span><span class="gw-mono">'+esc(c.hash)+'</span><span>'+esc(c.message)+'</span><span class="gw-hint">'+c.lines+' 行 ('+c.first+'-'+c.last+') · '+esc(c.time||'')+'</span></div>'
+      }).join('')
+    }
+  }
+
+  /* ---------- 体检（异步任务） ---------- */
+  $('st-start').addEventListener('click', function(){
+    var path=state().path; if(!path){ toast('请先打开仓库','err'); return }
+    send('stats.start', {path:path, limit:2000}).then(function(r){
+      if(r.error) throw new Error(r.error)
+      $('st-prog-txt').textContent='体检中…'; $('st-prog').style.width='5%'
+      pollTask(r.taskId, function(p){ $('st-prog').style.width=(p.progress||0)+'%'; $('st-prog-txt').textContent=p.message||'体检中…' }, function(res){ renderStats(res) })
+    }).catch(function(e){ toast('体检失败: '+(e.message||e),'err') })
+  })
+  function renderStats(r){
+    $('st-prog').style.width='100%'; $('st-prog-txt').textContent='完成'
+    $('st-span').textContent=r.span||''
+    $('st-cards').innerHTML=[
+      ['提交数', r.commits],
+      ['作者数', r.authorCount],
+      ['文件数', r.fileCount],
+      ['合并提交', r.mergeCount],
+      ['净代码行', r.netLines]
+    ].map(function(c){ return '<div class="gw-card"><div class="v">'+esc(c[1])+'</div><div class="k">'+c[0]+'</div></div>' }).join('')
+
+    var ab=$('st-authors')
+    if(r.authors && r.authors.length){
+      ab.innerHTML=r.authors.map(function(a){
+        return '<tr><td>'+esc(a.name)+'<div class="gw-sub">'+esc(a.email)+'</div></td><td>'+a.commits+'</td><td class="gw-hint">+'+(a.adds||0)+'</td><td class="gw-hint">-'+(a.dels||0)+'</td><td>'+(a.percent||0).toFixed(1)+'%</td></tr>'
+      }).join('')
+    }
+    var fb=$('st-files')
+    if(r.files && r.files.length){
+      fb.innerHTML=r.files.slice(0,30).map(function(f){
+        var risk=f.soleRisk?' <span class="p-tag p-tag-warn">孤岛</span>':''
+        return '<tr><td class="gw-mono">'+esc(f.path)+'</td><td>'+f.changes+'</td><td>'+esc((f.authors||[]).join(', '))+risk+'</td></tr>'
+      }).join('')
+    }
+    var ib=$('st-islands')
+    if(r.islands && r.islands.length){
+      ib.innerHTML=r.islands.map(function(f){ return '<div class="it"><span class="gw-mono">'+esc(f.path)+'</span><span class="gw-hint">改动 '+f.changes+' 次 · 仅 '+(f.authors||[]).join(',')+'</span></div>' }).join('')
+    } else { ib.innerHTML='<span class="gw-hint">未发现明显的知识孤岛</span>' }
+
+    // 热力图
+    var heat=r.heatmap||[], max=r.heatMax||1
+    var wd=['日','一','二','三','四','五','六']
+    var h=$('st-heat'); h.innerHTML=''
+    heat.forEach(function(row,wi){
+      var lab=document.createElement('div'); lab.className='hl'; lab.textContent=wd[wi]||wi; h.appendChild(lab)
+      for(var h2=0;h2<24;h2++){
+        var v=row[h2]||0, cell=document.createElement('div'); cell.className='hc'
+        var a=Math.min(1, v/max); cell.style.background = a>0 ? 'rgba(74,158,255,'+(0.15+a*0.85).toFixed(2)+')' : 'var(--bg-tertiary)'
+        cell.title=wd[wi]+' '+h2+':00 → '+v+' 次'
+        h.appendChild(cell)
+      }
+    })
+    // 每日提交
+    var db=$('st-daily'); db.innerHTML=''
+    var dl=r.daily||[], dmax=1
+    dl.forEach(function(d){ if(d.count>dmax) dmax=d.count })
+    var BH=110
+    dl.forEach(function(d,idx){
+      var bar=document.createElement('div'); bar.className='gw-bar'+(d.count>0?'':' empty')
+      bar.style.height=Math.max(2, Math.round(d.count/dmax*BH))+'px'
+      bar.title=d.day+' → '+d.count+' 次'
+      if(idx%7===0 || idx===dl.length-1){
+        var s=document.createElement('span'); s.textContent=d.day.slice(5); bar.appendChild(s)
+      }
+      db.appendChild(bar)
+    })
+    // 趋势
+    drawTrend(r.trends||[])
+  }
+  function drawTrend(trends){
+    var box=$('st-trend'); box.innerHTML=''
+    if(!trends.length) return
+    var W=520,H=160,pad=24
+    var vals=trends.map(function(t){return t.total}), mn=Math.min.apply(null,vals), mx=Math.max.apply(null,vals)
+    if(mx===mn) mx=mn+1
+    var n=trends.length, step=(W-pad*2)/Math.max(1,n-1)
+    var pts=trends.map(function(t,i){ var x=pad+i*step; var y=H-pad-((t.total-mn)/(mx-mn))*(H-pad*2); return x.toFixed(1)+','+y.toFixed(1) })
+    var area='M'+pad+','+(H-pad)+' L'+pts.join(' L')+' L'+(W-pad)+','+(H-pad)+' Z'
+    var svg='<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="display:block">'
+    svg+='<path d="'+area+'" fill="var(--accent-soft)"/>'
+    svg+='<polyline points="'+pts.join(' ')+'" fill="none" stroke="var(--accent)" stroke-width="2"/>'
+    svg+='<text x="'+pad+'" y="14" fill="var(--text-muted)" font-size="10">'+mx+'</text>'
+    svg+='<text x="'+pad+'" y="'+(H-6)+'" fill="var(--text-muted)" font-size="10">'+mn+'</text>'
+    svg+='</svg>'
+    box.innerHTML=svg
+  }
+
+  /* ---------- 改写 ---------- */
+  $('rw-mode').addEventListener('change', function(){
+    var m=$('rw-mode').value
+    $('rw-author-fields').style.display = m==='author'?'block':'none'
+    $('rw-file-fields').style.display = m==='deleteFile'?'block':'none'
+  })
+  $('rw-preview').addEventListener('click', function(){
+    var path=state().path; if(!path){ toast('请先打开仓库','err'); return }
+    var input=buildRewriteInput()
+    if(!input) return
+    send('rewrite.preview', Object.assign({path:path}, input)).then(function(r){
+      if(r.error) throw new Error(r.error)
+      renderPlan(r.plan, r)
+    }).catch(function(e){ toast('预览失败: '+(e.message||e),'err') })
+  })
+  function buildRewriteInput(){
+    var m=$('rw-mode').value
+    if(m==='author'){
+      var oldE=$('rw-oldemail').value.trim(), nN=$('rw-newname').value.trim(), nE=$('rw-newemail').value.trim()
+      if(!oldE && !nN && !nE){ toast('请填写要改的邮箱/姓名','err'); return null }
+      return {mode:'author', oldEmail:oldE, newName:nN, newEmail:nE}
+    } else {
+      var tg=$('rw-targets').value.split('\n').map(function(s){return s.trim()}).filter(Boolean)
+      if(!tg.length){ toast('请填写要删除的文件','err'); return null }
+      return {mode:'deleteFile', targets:tg}
+    }
+  }
+  function renderPlan(plan, resp){
+    var box=$('rw-plan')
+    if(!plan){ box.innerHTML='<span class="gw-hint">无改动</span>'; return }
+    var rows=(plan.Commits||[]).filter(function(c){ return c.AuthorChanged || (c.RemovedFiles&&c.RemovedFiles.length) })
+    var modeTxt = plan.Mode==='author' ? '改作者' : '删除文件'
+    var html='<div class="gw-summary" style="margin-bottom:8px"><span>模式 <b>'+modeTxt+'</b></span><span>总提交 <b>'+plan.Total+'</b></span><span>将改动 <b>'+plan.Affected+'</b></span>'+(plan.Branch?'<span>分支 <b>'+esc(plan.Branch)+'</b></span>':'')+'</div>'
+    if(plan.Mode==='author'){
+      html+='<div class="gw-hint">原邮箱：'+(plan.OldEmail||'（全部）')+' → 新姓名 '+esc(plan.NewName||'-')+' / 新邮箱 '+esc(plan.NewEmail||'-')+'</div>'
+    } else {
+      html+='<div class="gw-hint">目标文件：'+esc((plan.Targets||[]).join(', '))+'</div>'
+    }
+    if(rows.length){
+      html+='<div style="max-height:240px;overflow:auto;margin-top:8px"><table class="gw-tbl"><thead><tr><th>提交</th><th>作者</th><th>时间</th><th>说明</th><th>改动</th></tr></thead><tbody>'+
+        rows.map(function(c){
+          var ch=[]
+          if(c.AuthorChanged) ch.push('作者')
+          if(c.RemovedFiles&&c.RemovedFiles.length) ch.push('删 '+c.RemovedFiles.join(','))
+          return '<tr><td class="gw-mono">'+esc(c.Hash)+'</td><td>'+esc(c.Author)+'</td><td class="gw-hint">'+esc(c.Time)+'</td><td>'+esc(c.Message)+'</td><td class="p-tag p-tag-info">'+esc(ch.join('；'))+'</td></tr>'
+        }).join('')+'</tbody></table></div>'
+    } else {
+      html+='<div class="gw-warn" style="margin-top:8px">没有命中任何提交，请检查条件。</div>'
+    }
+    if(resp && resp.clean===false){
+      html+='<div class="gw-warn" style="margin-top:8px">⚠️ 工作区有未提交改动，应用前必须先提交或贮藏。</div>'
+    }
+    box.innerHTML=html
+    $('rw-apply').disabled = !rows.length || (resp && resp.clean===false)
+    $('rw-preview-state').textContent= rows.length ? ('预览就绪：'+rows.length+' 个提交将改动') : '无改动'
+  }
+  $('rw-apply').addEventListener('click', function(){
+    var path=state().path
+    var input=buildRewriteInput(); if(!input) return
+    if(!confirm('确认执行历史改写？将重写提交对象并移动分支引用（自动创建备份引用）。')) return
+    send('rewrite.apply', Object.assign({path:path, confirm:true}, input)).then(function(r){
+      if(r.error) throw new Error(r.error)
+      toast('改写完成：'+r.changed+' 个提交被重写，备份引用 '+esc(r.backupRef),'ok')
+      $('rw-apply').disabled=true
+      openRepo()
+    }).catch(function(e){ toast('改写失败: '+(e.message||e),'err') })
+  })
+
+})()
+</script>
+</body>
+</html>

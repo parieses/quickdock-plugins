@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="qd-theme.css">
+  <style>
+    /* 表单控件：qd-theme.css 只提供 .p-input，本页统一用 .input，这里补齐样式 */
+    .input {
+      width: 100%;
+      height: 32px;
+      padding: 0 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-size: var(--fs-sm);
+      outline: none;
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+    .input:hover { border-color: var(--border-strong); }
+    .input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+    .input::placeholder { color: var(--text-placeholder); }
+    textarea.input { height: auto; min-height: 68px; padding: 8px 10px; resize: vertical; font-family: var(--font-mono); font-size: var(--fs-sm); line-height: 1.5; }
+    select.input { height: 32px; cursor: pointer; }
+
+    /* 区块标题左侧强调条 */
+    .p-section-label::before {
+      content: "";
+      width: 3px; height: 12px;
+      border-radius: var(--radius-pill);
+      background: var(--accent);
+      display: inline-block;
+    }
+
+    .lt-warn { display:flex; gap:8px; align-items:flex-start; padding:10px 12px; border-radius:var(--radius); background:var(--warning-soft); color:var(--warning); font-size:var(--fs-sm); line-height:1.5; }
+    .lt-grid { display:grid; grid-template-columns: 1fr 1fr; gap:var(--sp-3); }
+    .lt-field { display:flex; flex-direction:column; gap:6px; }
+    .lt-field label { font-size:var(--fs-xs); color:var(--text-muted); }
+    .p-bar { height:8px; background:var(--bg-tertiary); border-radius:var(--radius-pill); overflow:hidden; }
+    .p-bar > i { display:block; height:100%; width:0; background:var(--accent); transition:width 200ms; }
+    .lt-stat { display:flex; gap:var(--sp-4); flex-wrap:wrap; font-size:var(--fs-sm); color:var(--text-secondary); }
+    .lt-stat b { color:var(--text-primary); font-weight:var(--fw-semibold); }
+    table.lt-tbl { width:100%; border-collapse:collapse; font-size:var(--fs-sm); }
+    table.lt-tbl th, table.lt-tbl td { text-align:left; padding:7px 10px; border-bottom:1px solid var(--border); }
+    table.lt-tbl th { color:var(--text-muted); font-weight:var(--fw-medium); font-size:var(--fs-xs); text-transform:uppercase; letter-spacing:0.4px; }
+    table.lt-tbl tbody tr { transition: background var(--transition); }
+    table.lt-tbl tbody tr:hover { background: var(--bg-hover); }
+    .tag-ok { color:var(--success); font-weight:var(--fw-semibold); }
+    .tag-fail { color:var(--text-muted); }
+    .lt-hint { font-size:var(--fs-xs); color:var(--text-muted); margin-top:4px; }
+    .collapse > .collapse-body { display:none; }
+    .collapse.open > .collapse-body { display:block; }
+    .link-btn { background:none; border:none; color:var(--accent); cursor:pointer; font-size:var(--fs-sm); padding:0; }
+    .link-btn:hover { text-decoration: underline; }
+    .p-head-title { display:flex; align-items:center; gap:8px; }
+    .lt-snip { font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--text-secondary); word-break: break-all; }
+  </style>
+</head>
+<body>
+<div class="p-app">
+  <div class="p-head">
+    <span class="p-head-title">🔐 登录爆破测试器</span>
+    <div class="p-head-actions">
+      <button class="p-btn p-btn-primary" id="btn-start">开始测试</button>
+      <button class="p-btn" id="btn-stop" disabled>停止</button>
+    </div>
+  </div>
+
+  <div class="p-content">
+    <div class="lt-warn">
+      <span>⚠️</span>
+      <span>本工具仅用于测试<strong>你拥有或已获书面授权</strong>的站点登录接口，验证是否存在弱口令、缺少限速或账号锁定等风险。未经授权对他人站点进行爆破测试可能违反法律法规与服务条款。</span>
+    </div>
+
+    <div class="p-section">
+      <div class="p-section-label">目标与字段</div>
+      <div class="lt-grid">
+        <div class="lt-field">
+          <label>登录接口 URL</label>
+          <input class="input" id="f-url" placeholder="https://example.com/login" spellcheck="false">
+        </div>
+        <div class="lt-field">
+          <label>请求方法</label>
+          <select class="input" id="f-method">
+            <option value="POST">POST（表单）</option>
+            <option value="GET">GET（查询参数）</option>
+          </select>
+        </div>
+        <div class="lt-field">
+          <label>账号字段名</label>
+          <input class="input" id="f-userfield" value="username" spellcheck="false">
+        </div>
+        <div class="lt-field">
+          <label>密码字段名</label>
+          <input class="input" id="f-passfield" value="password" spellcheck="false">
+        </div>
+      </div>
+      <div class="lt-field" style="margin-top:8px">
+        <label>固定附加字段（每行 key=value，如 _csrf=xxx 或 remember=1）</label>
+        <textarea class="input" id="f-extra" spellcheck="false"></textarea>
+      </div>
+      <div class="lt-field" style="margin-top:8px">
+        <label>自定义请求头（每行 key: value，如 X-Requested-With: XMLHttpRequest）</label>
+        <textarea class="input" id="f-headers" spellcheck="false"></textarea>
+      </div>
+      <div class="lt-grid" style="margin-top:8px">
+        <div class="lt-field">
+          <label>Cookie（可选）</label>
+          <input class="input" id="f-cookie" placeholder="session=xxx; csrf=yyy" spellcheck="false">
+        </div>
+        <div class="lt-field">
+          <label>User-Agent（可选）</label>
+          <input class="input" id="f-ua" placeholder="留空使用默认" spellcheck="false">
+        </div>
+      </div>
+    </div>
+
+    <div class="p-section">
+      <div class="p-section-label">账号与密码库</div>
+      <div class="lt-grid">
+        <div class="lt-field">
+          <label>单个账号</label>
+          <input class="input" id="f-user" placeholder="admin（与下方多账号二选一）" spellcheck="false">
+        </div>
+        <div class="lt-field">
+          <label>多个账号（每行一个，覆盖上方单账号）</label>
+          <textarea class="input" id="f-users" spellcheck="false"></textarea>
+        </div>
+      </div>
+      <div class="lt-field" style="margin-top:8px">
+        <label>密码库（每行一个口令）</label>
+        <textarea class="input" id="f-passlist" spellcheck="false" placeholder="可勾选下方使用内置常见密码库"></textarea>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px; margin-top:8px; flex-wrap:wrap">
+        <label style="display:flex; align-items:center; gap:6px; font-size:var(--fs-sm); color:var(--text-secondary)">
+          <input type="checkbox" id="f-usebuiltin"> 使用内置常见密码库（约 150 条 TOP 弱口令）
+        </label>
+        <button class="link-btn" id="btn-loadbuiltin" type="button">查看内置库数量</button>
+        <span class="lt-hint" id="builtin-hint"></span>
+      </div>
+    </div>
+
+    <div class="p-section">
+      <div class="p-section-label">成功判定</div>
+      <div class="lt-grid">
+        <div class="lt-field">
+          <label>判定方式</label>
+          <select class="input" id="f-mode">
+            <option value="failKeyword">响应「不包含」失败文案 = 成功（最常用）</option>
+            <option value="successKeyword">响应「包含」成功文案 = 成功</option>
+            <option value="statusEquals">状态码等于某值 = 成功</option>
+            <option value="redirectContains">重定向 Location 包含 = 成功</option>
+            <option value="cookieContains">Set-Cookie 包含 = 成功</option>
+          </select>
+        </div>
+        <div class="lt-field" id="f-condwrap">
+          <label id="f-condlabel">失败文案关键词</label>
+          <input class="input" id="f-cond" placeholder="如：密码错误 / 用户名或密码" spellcheck="false">
+        </div>
+      </div>
+      <div class="lt-hint">提示：多数登录页失败时会返回「用户名或密码错误」，选第一种并填该词即可；命中即视为爆破成功。</div>
+    </div>
+
+    <div class="p-section collapse" id="csrf-box">
+      <div class="p-section-label" style="cursor:pointer">
+        <span>CSRF Token 抓取（可选）</span>
+        <button class="link-btn" id="csrf-toggle" type="button" style="margin-left:auto">展开</button>
+      </div>
+      <div class="collapse-body">
+        <div class="lt-grid">
+          <div class="lt-field">
+            <label>获取页面 URL（GET）</label>
+            <input class="input" id="csrf-url" placeholder="https://example.com/login" spellcheck="false">
+          </div>
+          <div class="lt-field">
+            <label>提取正则（用 (.*?) 捕获 token）</label>
+            <input class="input" id="csrf-regex" placeholder='name="csrf" value="(.*?)"' spellcheck="false">
+          </div>
+          <div class="lt-field">
+            <label>放入字段名（表单字段）</label>
+            <input class="input" id="csrf-field" placeholder="_csrf" spellcheck="false">
+          </div>
+          <div class="lt-field">
+            <label>放入请求头名（如 X-CSRF-Token）</label>
+            <input class="input" id="csrf-header" spellcheck="false">
+          </div>
+        </div>
+        <label style="display:flex; align-items:center; gap:6px; font-size:var(--fs-sm); color:var(--text-secondary); margin-top:8px">
+          <input type="checkbox" id="csrf-per"> 每次请求前重新抓取（token 频繁轮换时勾选）
+        </label>
+      </div>
+    </div>
+
+    <div class="p-section">
+      <div class="p-section-label">并发与限速</div>
+      <div class="lt-grid">
+        <div class="lt-field">
+          <label>并发线程数（1–50）</label>
+          <input class="input" id="f-threads" value="5" spellcheck="false">
+        </div>
+        <div class="lt-field">
+          <label>每请求间隔 (ms，0=无)</label>
+          <input class="input" id="f-delay" value="0" spellcheck="false">
+        </div>
+        <div class="lt-field">
+          <label>最大请求数（0=不限）</label>
+          <input class="input" id="f-max" value="0" spellcheck="false">
+        </div>
+        <div class="lt-field">
+          <label>超时 (ms)</label>
+          <input class="input" id="f-timeout" value="10000" spellcheck="false">
+        </div>
+      </div>
+      <label style="display:flex; align-items:center; gap:6px; font-size:var(--fs-sm); color:var(--text-secondary); margin-top:8px">
+        <input type="checkbox" id="f-follow"> 跟随重定向（默认不跟随，便于识别 302 跳转成功）
+      </label>
+    </div>
+
+    <div class="p-section">
+      <div class="p-section-label">控制台</div>
+      <div class="p-bar"><i id="bar"></i></div>
+      <div class="lt-stat" style="margin-top:8px">
+        <span>进度 <b id="st-done">0</b> / <b id="st-total">0</b></span>
+        <span>速率 <b id="st-rate">0</b>/s</span>
+        <span>耗时 <b id="st-elapsed">0</b>s</span>
+        <span>命中 <b id="st-found">0</b></span>
+      </div>
+      <div class="lt-warn" id="lockout" style="display:none; margin-top:8px"></div>
+      <div class="lt-warn" id="run-err" style="display:none; margin-top:8px; background:var(--danger-soft); color:var(--danger)"></div>
+
+      <div style="margin-top:10px">
+        <div class="p-section-label">命中凭证</div>
+        <div style="max-height:160px; overflow:auto">
+          <table class="lt-tbl" id="tbl-found">
+            <thead><tr><th>账号</th><th>密码</th><th>状态</th><th>返回</th><th>耗时</th></tr></thead>
+            <tbody><tr><td colspan="4" class="lt-hint">暂无</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div style="margin-top:10px">
+        <div class="p-section-label">最近尝试</div>
+        <div style="max-height:160px; overflow:auto">
+          <table class="lt-tbl" id="tbl-last">
+            <thead><tr><th>账号</th><th>密码</th><th>状态</th><th>返回</th><th>备注</th></tr></thead>
+            <tbody><tr><td colspan="4" class="lt-hint">未开始</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict'
+
+  function setLang(loc){ document.documentElement.setAttribute('lang', loc || 'zh-CN') }
+  window.addEventListener('message', function(e){
+    var d=e.data; if(!d) return
+    if(d.type==='plugin:theme'){ setLang((d.data||{}).locale) }
+  })
+
+  /* ---------- RPC ---------- */
+  var seq=0, pend={}
+  function send(command, input){
+    return new Promise(function(res,rej){
+      var id='lt_'+(++seq); pend[id]={res:res,rej:rej}
+      parent.postMessage({type:'plugin:execute',id:id,command:command,input:input||{}},'*')
+    })
+  }
+  window.addEventListener('message', function(e){
+    var d=e.data; if(!d) return
+    if(d.type==='plugin:result' && d.id && pend[d.id]){
+      var p=pend[d.id]; delete pend[d.id]
+      if(d.error) p.rej(new Error(d.error)); else p.res(d.data)
+    }
+  })
+  function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+  function $(id){ return document.getElementById(id) }
+
+  /* ---------- 成功判定条件联动 ---------- */
+  function refreshCondLabel(){
+    var mode=$('f-mode').value
+    var labels={
+      failKeyword:'失败文案关键词（响应「不含」任一即成功；可填多个，逗号/换行分隔）',
+      successKeyword:'成功文案关键词（响应「包含」任一即成功；可填多个，逗号/换行分隔）',
+      statusEquals:'成功状态码（如 302）',
+      redirectContains:'Location 需包含的字符串',
+      cookieContains:'Set-Cookie 需包含的字符串'
+    }
+    $('f-condlabel').textContent=labels[mode]||'条件值'
+    $('f-cond').placeholder = (mode==='failKeyword')?'如：密码错误 / 用户名或密码'
+      : (mode==='successKeyword')?'如：登录成功 / welcome'
+      : (mode==='statusEquals')?'302':(mode==='redirectContains')?'/dashboard':'sessionid='
+  }
+  $('f-mode').addEventListener('change', refreshCondLabel)
+
+  /* ---------- CSRF 折叠 ---------- */
+  $('csrf-toggle').addEventListener('click', function(){
+    var box=$('csrf-box')
+    box.classList.toggle('open')
+    this.textContent = box.classList.contains('open') ? '收起' : '展开'
+  })
+
+  /* ---------- 内置库查询 ---------- */
+  $('btn-loadbuiltin').addEventListener('click', function(){
+    send('meta.builtin',{}).then(function(r){
+      $('builtin-hint').textContent = '内置库共 '+ (r.count||0) +' 条，例如：'+ (r.sample||[]).slice(0,5).join(' / ')
+    }).catch(function(){})
+  })
+
+  /* ---------- 配置收集 ---------- */
+  function parseKV(text){
+    var out={}
+    text.split('\n').forEach(function(line){
+      line=line.trim()
+      if(!line) return
+      var idx=line.indexOf('=')
+      if(idx<0) return
+      var k=line.slice(0,idx).trim(), v=line.slice(idx+1).trim()
+      if(k) out[k]=v
+    })
+    return out
+  }
+  function parseHeaders(text){
+    var out={}
+    text.split('\n').forEach(function(line){
+      line=line.trim()
+      if(!line) return
+      var idx=line.indexOf(':')
+      if(idx<0) return
+      var k=line.slice(0,idx).trim(), v=line.slice(idx+1).trim()
+      if(k) out[k]=v
+    })
+    return out
+  }
+  function parseLines(text){
+    return text.split('\n').map(function(s){return s.trim()}).filter(function(s){return s!==''})
+  }
+  function intVal(id,def){
+    var n=parseInt($(id).value,10)
+    return isNaN(n)?def:n
+  }
+
+  function collectConfig(){
+    var users=parseLines($('f-users').value)
+    var single=$('f-user').value.trim()
+    if(users.length===0 && single){ users=[single] }
+    var passList=parseLines($('f-passlist').value)
+    var useBuiltin=$('f-usebuiltin').checked
+
+    var csrfEnabled=$('csrf-box').classList.contains('open') && $('csrf-url').value.trim()!==''
+    var csrf={
+      enabled:csrfEnabled,
+      url:$('csrf-url').value.trim(),
+      regex:$('csrf-regex').value.trim(),
+      field:$('csrf-field').value.trim(),
+      header:$('csrf-header').value.trim(),
+      perRequest:$('csrf-per').checked
+    }
+
+    return {
+      url:$('f-url').value.trim(),
+      method:$('f-method').value,
+      userField:$('f-userfield').value.trim()||'username',
+      passField:$('f-passfield').value.trim()||'password',
+      users:users,
+      passList:passList,
+      useBuiltin:useBuiltin,
+      extraFields:parseKV($('f-extra').value),
+      headers:parseHeaders($('f-headers').value),
+      cookie:$('f-cookie').value.trim(),
+      userAgent:$('f-ua').value.trim(),
+      successMode:$('f-mode').value,
+      failKeyword:$('f-cond').value.trim(),
+      successKeyword:$('f-cond').value.trim(),
+      successStatus:intVal('f-cond',0),
+      successLocation:$('f-cond').value.trim(),
+      successCookie:$('f-cond').value.trim(),
+      threads:Math.min(50,Math.max(1,intVal('f-threads',5))),
+      delayMs:intVal('f-delay',0),
+      maxRequests:intVal('f-max',0),
+      timeoutMs:intVal('f-timeout',10000),
+      followRedirects:$('f-follow').checked,
+      csrf:csrf
+    }
+  }
+
+  /* ---------- 渲染 ---------- */
+  function escAttr(s){ return esc(s).replace(/"/g,'&quot;') }
+  function respCell(r){
+    var code = r.status ? String(r.status) : '-';
+    var cls = r.success ? 'tag-ok' : 'tag-fail';
+    var parts = [];
+    if(r.body){
+      var snip = r.body.length>80 ? r.body.slice(0,80)+'…' : r.body;
+      var full = [r.body||''].concat(r.location?'Location: '+r.location:'', r.setCookie?'Set-Cookie: '+r.setCookie:'').filter(Boolean).join('\n');
+      parts.push('<span class="'+cls+'">'+code+'</span> <span class="lt-snip" title="'+escAttr(full)+'">'+esc(snip)+'</span>');
+    } else {
+      parts.push('<span class="'+cls+'">'+code+'</span>');
+    }
+    if(r.location) parts.push('<span class="lt-hint">↪ '+esc(r.location)+'</span>');
+    if(r.setCookie) parts.push('<span class="lt-hint">🍪 '+esc(r.setCookie.length>40?r.setCookie.slice(0,40)+'…':r.setCookie)+'</span>');
+    return parts.join(' ');
+  }
+  var sessionId=null, timer=null
+  function renderSnapshot(s){
+    $('st-done').textContent=s.done
+    $('st-total').textContent=s.total
+    $('st-rate').textContent=Math.round(s.ratePerSec||0)
+    $('st-elapsed').textContent=Math.round((s.elapsedMs||0)/1000)
+    $('st-found').textContent=s.foundCount||0
+    var pct = s.total>0 ? Math.round(s.done/s.total*100) : 0
+    $('bar').style.width=pct+'%'
+
+    if(s.lockout){
+      $('lockout').style.display='flex'
+      $('lockout').textContent='⚠️ 检测到疑似账号锁定/限流：'+ (s.lockoutNote||'') +' — 该站点可能对爆破有防护。'
+    } else {
+      $('lockout').style.display='none'
+    }
+    if(s.errMsg){
+      $('run-err').style.display='flex'
+      $('run-err').textContent=s.errMsg
+    } else {
+      $('run-err').style.display='none'
+    }
+
+    var fb=$('tbl-found').getElementsByTagName('tbody')[0]
+    if(s.found && s.found.length){
+      fb.innerHTML = s.found.map(function(r){
+        return '<tr><td>'+esc(r.user)+'</td><td>'+esc(r.pass)+'</td><td class="tag-ok">'+r.status+' 成功</td><td>'+respCell(r)+'</td><td>'+r.ms+'ms</td></tr>'
+      }).join('')
+    } else {
+      fb.innerHTML='<tr><td colspan="4" class="lt-hint">暂无命中</td></tr>'
+    }
+
+    var lb=$('tbl-last').getElementsByTagName('tbody')[0]
+    if(s.lastResults && s.lastResults.length){
+      lb.innerHTML = s.lastResults.slice().reverse().map(function(r){
+        return '<tr><td>'+esc(r.user)+'</td><td>'+esc(r.pass)+'</td><td>'+(r.status||'-')+'</td><td>'+respCell(r)+'</td><td class="lt-hint">'+esc(r.note||'')+'</td></tr>'
+      }).join('')
+    } else {
+      lb.innerHTML='<tr><td colspan="4" class="lt-hint">未开始</td></tr>'
+    }
+
+    if(s.status!=='running'){
+      stopPolling()
+      $('btn-start').disabled=false
+      $('btn-stop').disabled=true
+    }
+  }
+  function stopPolling(){
+    if(timer){ clearInterval(timer); timer=null }
+  }
+  function poll(){
+    if(!sessionId) return
+    send('test.poll',{id:sessionId}).then(renderSnapshot).catch(function(e){
+      stopPolling()
+      $('run-err').style.display='flex'
+      $('run-err').textContent='轮询失败: '+(e.message||e)
+    })
+  }
+
+  /* ---------- 开始 / 停止 ---------- */
+  $('btn-start').addEventListener('click', function(){
+    var cfg=collectConfig()
+    if(!cfg.url){ alert('请输入登录接口 URL'); return }
+    $('btn-start').disabled=true
+    $('btn-stop').disabled=false
+    $('run-err').style.display='none'
+    send('test.start', cfg).then(function(r){
+      if(!r.ok){ throw new Error(r.error||'启动失败') }
+      sessionId=r.id
+      poll()
+      timer=setInterval(poll, 700)
+    }).catch(function(e){
+      $('btn-start').disabled=false
+      $('btn-stop').disabled=true
+      $('run-err').style.display='flex'
+      $('run-err').textContent='启动失败: '+(e.message||e)
+    })
+  })
+
+  $('btn-stop').addEventListener('click', function(){
+    if(!sessionId) return
+    send('test.stop',{id:sessionId}).then(function(){
+      stopPolling()
+      $('btn-start').disabled=false
+      $('btn-stop').disabled=true
+    }).catch(function(e){
+      $('run-err').style.display='flex'
+      $('run-err').textContent='停止失败: '+(e.message||e)
+    })
+  })
+
+  refreshCondLabel()
+})()
+</script>
+</body>
+</html>

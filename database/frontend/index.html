@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="qd-theme.css">
+  <style>
+    body { overflow: hidden; }
+    .db { display:flex; flex-direction:column; height:100vh; }
+    .db-head { display:flex; align-items:center; gap:var(--sp-2); padding:0 var(--sp-3); height:44px; background:var(--bg-secondary); border-bottom:1px solid var(--border); flex-shrink:0; }
+    .db-title { font-size:var(--fs-lg); font-weight:var(--fw-semibold); }
+    .db-head .spacer { flex:1; }
+
+    .db-body { flex:1; display:flex; overflow:hidden; }
+    .db-side { width:282px; flex-shrink:0; display:flex; flex-direction:column; background:var(--bg-secondary); border-right:1px solid var(--border); overflow:hidden; }
+    .db-side-head { display:flex; align-items:center; justify-content:space-between; padding:8px 10px; font-size:var(--fs-xs); font-weight:var(--fw-semibold); color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px; border-bottom:1px solid var(--border); }
+    .db-side-body { flex:1; overflow:auto; padding:6px; }
+    .db-empty { padding:14px 8px; text-align:center; color:var(--text-disabled); font-size:var(--fs-xs); }
+    .db-conn { border:1px solid var(--border); border-radius:var(--radius); margin-bottom:6px; background:var(--bg-primary); overflow:hidden; }
+    .db-conn.active { border-color:var(--accent); }
+    .db-conn-row { display:flex; align-items:center; gap:6px; padding:7px 8px; cursor:pointer; }
+    .db-conn-row:hover { background:var(--bg-hover); }
+    .db-conn-name { flex:1; min-width:0; font-size:var(--fs-sm); font-weight:var(--fw-medium); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .db-conn-meta { font-size:9px; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .db-actions { display:none; align-items:center; gap:2px; flex-shrink:0; }
+    .db-conn-row:hover .db-actions { display:flex; }
+    .db-act { border:none; background:none; color:var(--text-muted); cursor:pointer; font-size:11px; padding:2px 5px; border-radius:4px; }
+    .db-act:hover { background:var(--bg-hover); color:var(--accent); }
+    .db-act.db-del:hover { color:var(--danger); }
+    .db-tree { padding:2px 4px 8px; max-height:46%; overflow:auto; border-top:1px solid var(--border); }
+    .db-tnode { display:flex; align-items:center; gap:4px; padding:3px 4px; border-radius:var(--radius-sm); cursor:pointer; font-size:var(--fs-sm); color:var(--text-secondary); white-space:nowrap; }
+    .db-tnode:hover { background:var(--bg-hover); }
+    .db-caret { width:12px; flex-shrink:0; color:var(--text-muted); font-size:10px; }
+    .db-tname { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; }
+    .db-tdetail { color:var(--text-disabled); font-size:10px; font-family:var(--font-mono); flex-shrink:0; }
+    .db-loading { padding:6px 16px; color:var(--text-muted); font-size:var(--fs-xs); }
+
+    .db-main { flex:1; min-width:0; display:flex; flex-direction:column; overflow:hidden; }
+    .db-editor { border-bottom:1px solid var(--border); flex-shrink:0; }
+    .db-editor-bar { display:flex; align-items:center; gap:var(--sp-2); padding:var(--sp-2) var(--sp-3); }
+    .db-ctx { font-size:var(--fs-xs); color:var(--text-muted); }
+    .db-ctx b { color:var(--text-secondary); font-weight:var(--fw-semibold); }
+    .db-ta { width:100%; min-height:120px; max-height:230px; padding:10px 12px; border:none; resize:vertical; background:var(--bg-primary); color:var(--text-primary); font-family:var(--font-mono); font-size:var(--fs-sm); line-height:1.5; outline:none; }
+    .db-resp { flex:1; display:flex; flex-direction:column; overflow:hidden; min-height:0; }
+    .db-resp-head { display:flex; align-items:center; gap:var(--sp-2); padding:var(--sp-2) var(--sp-3); border-bottom:1px solid var(--border); font-size:var(--fs-sm); flex-wrap:wrap; }
+    .db-status { font-weight:var(--fw-semibold); padding:2px 8px; border-radius:var(--radius-pill); font-size:var(--fs-xs); }
+    .db-status.ok { background:var(--success-soft); color:var(--success); }
+    .db-status.err { background:var(--danger-soft); color:var(--danger); }
+    .db-status.warn { background:var(--warning-soft); color:var(--warning); }
+    .db-resp-body { flex:1; overflow:auto; }
+    table.db-grid { width:100%; border-collapse:collapse; font-size:var(--fs-xs); font-family:var(--font-mono); }
+    table.db-grid th { position:sticky; top:0; background:var(--bg-secondary); color:var(--text-muted); text-align:left; padding:6px 9px; border-bottom:1px solid var(--border); font-weight:var(--fw-semibold); white-space:nowrap; }
+    table.db-grid td { padding:5px 9px; border-bottom:1px solid var(--border); color:var(--text-secondary); vertical-align:top; max-width:360px; word-break:break-all; white-space:pre-wrap; }
+    table.db-grid tr:hover td { background:var(--bg-hover); }
+    td.db-editable { cursor:text; }
+    td.db-editable:hover { box-shadow:inset 0 0 0 1px var(--accent); }
+    td.db-editing { padding:0; }
+    td.db-editing input { width:100%; box-sizing:border-box; border:none; outline:2px solid var(--accent); padding:5px 9px; background:var(--bg-primary); color:var(--text-primary); font-family:var(--font-mono); font-size:var(--fs-xs); }
+    td.db-null { color:var(--text-disabled); font-style:italic; }
+    td.db-pk { background:rgba(74,158,255,.08); }
+    .db-pre { padding:var(--sp-3); white-space:pre-wrap; word-break:break-all; font-family:var(--font-mono); font-size:var(--fs-xs); color:var(--text-secondary); }
+    .db-nores { padding:var(--sp-4); text-align:center; color:var(--text-disabled); font-size:var(--fs-sm); }
+
+    .db-mask { position:fixed; inset:0; background:rgba(0,0,0,.45); display:flex; align-items:center; justify-content:center; z-index:300; }
+    .db-modal { width:480px; max-width:92vw; max-height:88vh; overflow:auto; background:var(--bg-secondary); border:1px solid var(--border); border-radius:var(--radius-lg); padding:var(--sp-4); display:flex; flex-direction:column; box-shadow:var(--shadow-2); }
+    .db-modal-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:var(--sp-3); font-size:var(--fs-lg); font-weight:var(--fw-semibold); }
+    .db-field { display:flex; flex-direction:column; gap:5px; margin-bottom:var(--sp-2); }
+    .db-field label { font-size:var(--fs-sm); color:var(--text-muted); }
+    .db-field .p-input, .db-field select { width:100%; }
+    .db-row2 { display:flex; gap:var(--sp-2); }
+    .db-row2 > * { flex:1; min-width:0; }
+    .db-actions-bar { display:flex; align-items:center; gap:var(--sp-2); margin-top:var(--sp-3); }
+    .db-actions-bar .spacer { flex:1; }
+    .db-toast { position:fixed; top:12px; right:12px; padding:8px 14px; border-radius:var(--radius); font-size:var(--fs-sm); z-index:999; box-shadow:var(--shadow-2); max-width:360px; }
+    .db-toast.ok { background:var(--success); color:#fff; }
+    .db-toast.err { background:var(--danger); color:#fff; }
+    .db-link { color:var(--accent); cursor:pointer; font-size:var(--fs-sm); }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="db">
+    <div class="db-head">
+      <span class="db-title">🗄 数据库客户端</span>
+      <button class="p-btn p-btn-sm" @click="openConnModal()">新建连接</button>
+      <button class="p-btn p-btn-sm" @click="loadConns">刷新</button>
+      <div class="spacer"></div>
+      <span v-if="selectedConn" class="db-ctx">当前连接：<b>{{ selectedConn.name }}</b> · {{ selectedConn.dbType }}</span>
+    </div>
+
+    <div class="db-body">
+      <!-- 左：连接列表 + 库表树 -->
+      <div class="db-side">
+        <div class="db-side-head"><span>连接</span><button class="p-btn p-btn-sm" @click="openConnModal()">＋</button></div>
+        <div class="db-side-body">
+          <div v-if="conns.length===0" class="db-empty">还没有连接，点「新建连接」添加。</div>
+          <div v-for="c in conns" :key="c.id" class="db-conn" :class="{active: selectedConn && selectedConn.id===c.id}">
+            <div class="db-conn-row" @click="selectConn(c)">
+              <div style="flex:1; min-width:0;">
+                <div class="db-conn-name">{{ c.name }}</div>
+                <div class="db-conn-meta">{{ c.dbType }} · {{ c.dbType==='sqlite' ? (c.filePath||'(文件)') : (c.host||'') + (c.port?(':'+c.port):'') + (c.database?(' / '+c.database):'') }}</div>
+              </div>
+              <div class="db-actions">
+                <button class="db-act" title="编辑" @click.stop="openConnModal(c)">✎</button>
+                <button class="db-act db-del" title="删除" @click.stop="delConn(c)">🗑</button>
+              </div>
+            </div>
+            <div v-if="selectedConn && selectedConn.id===c.id && treeLoading" class="db-loading">加载库表…</div>
+            <div v-if="selectedConn && selectedConn.id===c.id" class="db-tree">
+              <div v-if="flatNodes.length===0" class="db-empty">暂无库表（点击连接测试连通后展开）。</div>
+              <div v-for="item in flatNodes" :key="item.key" class="db-tnode" :style="{paddingLeft: (6 + item.depth*14) + 'px'}" @click="onNodeClick(item.node)">
+                <span class="db-caret" v-if="hasChildren(item.node)" @click.stop="toggleNode(item.node, item.key)">{{ item.node._expanded ? '▾' : '▸' }}</span>
+                <span class="db-caret" v-else>·</span>
+                <span class="db-tname">{{ item.node.label || item.node.name }}</span>
+                <span class="db-tdetail" v-if="item.node.detail">{{ item.node.detail }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右：查询编辑器 + 结果 -->
+      <div class="db-main">
+        <div class="db-editor" v-if="selectedConn">
+          <div class="db-editor-bar">
+            <span class="db-ctx">库上下文：<b>{{ activeDb || '—' }}</b></span>
+            <div class="spacer"></div>
+            <button class="p-btn p-btn-sm" @click="runQuery">执行 ⌃↵</button>
+            <button class="p-btn p-btn-sm" @click="query=''">清空</button>
+          </div>
+          <textarea class="db-ta" v-model="query" @keydown.ctrl.enter.prevent="runQuery" placeholder="输入 SQL（MySQL / SQLite）或 Redis 命令，例如：SELECT * FROM users LIMIT 100"></textarea>
+        </div>
+        <div v-else class="db-nores" style="flex:1;">请选择左侧的一个连接开始查询。</div>
+
+        <div class="db-resp" v-if="selectedConn">
+          <div class="db-resp-head">
+            <span v-if="result" class="db-status" :class="result.success ? 'ok' : 'err'">{{ result.success ? '成功' : '失败' }}</span>
+            <span v-if="result && result.success && result.rowCount>=0" class="db-ctx">{{ result.rowCount }} 行</span>
+            <span v-if="result && result.affected>=0 && !result.rowCount" class="db-ctx">{{ result.affected }} 行受影响</span>
+            <span v-if="result && result.durationMs>=0" class="db-ctx">{{ result.durationMs }} ms</span>
+            <span v-if="result && result.editable" class="db-status ok" style="background:var(--accent-soft); color:var(--accent);">可编辑</span>
+            <span v-if="result && !result.editable && result.editReason" class="db-ctx" :title="result.editReason">💡 {{ result.editReason }}</span>
+            <div class="spacer" style="flex:1;"></div>
+            <span v-if="result && result.success && !result.editable && result.editReason" class="db-ctx">{{ result.editReason }}</span>
+          </div>
+          <div class="db-resp-body">
+            <div v-if="!result" class="db-nores">尚无结果。</div>
+            <div v-else-if="!result.success" class="db-pre" style="color:var(--danger);">{{ result.error }}</div>
+            <div v-else-if="result.columns && result.columns.length" >
+              <table class="db-grid">
+                <thead><tr><th v-for="(col,ci) in result.columns" :key="ci" :class="{'db-pk': isPkCol(ci)}">{{ col }}<span v-if="isPkCol(ci)" style="color:var(--accent);"> 🔑</span></th></tr></thead>
+                <tbody>
+                  <tr v-for="(row,ri) in result.rows" :key="ri">
+                    <td v-for="(cell,ci) in row" :key="ci"
+                        :class="[ isPkCol(ci) ? 'db-pk' : '', (result.nulls[ri] && result.nulls[ri][ci]) ? 'db-null' : '', (result.editable && !isPkCol(ci)) ? 'db-editable' : '', (editing.r===ri && editing.c===ci) ? 'db-editing' : '' ]"
+                        @click="beginEdit(ri, ci)">
+                      <input v-if="editing.r===ri && editing.c===ci" v-model="cellDraft" @keydown.enter.prevent="commitEdit(ri,ci)" @keydown.esc.prevent="cancelEdit" @blur="commitEdit(ri,ci)" ref="editInput" />
+                      <template v-else>{{ (result.nulls[ri] && result.nulls[ri][ci]) ? 'NULL' : cell }}</template>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div v-else-if="result.message!=null && result.message!==''" class="db-pre">{{ result.message }}</div>
+            <div v-else class="db-nores">查询已执行，无返回内容。</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 连接编辑弹窗 -->
+    <div v-if="showConnModal" class="db-mask" @click.self="showConnModal=false">
+      <div class="db-modal">
+        <div class="db-modal-head">
+          <span>{{ connForm.id ? '编辑连接' : '新建连接' }}</span>
+          <button class="p-btn p-btn-sm" @click="showConnModal=false">✕</button>
+        </div>
+        <div class="db-field">
+          <label>名称</label>
+          <input class="p-input" v-model="connForm.name" placeholder="连接名称" />
+        </div>
+        <div class="db-field">
+          <label>类型</label>
+          <select class="p-input" v-model="connForm.dbType">
+            <option value="mysql">MySQL</option>
+            <option value="sqlite">SQLite（文件）</option>
+            <option value="redis">Redis</option>
+          </select>
+        </div>
+        <template v-if="connForm.dbType!=='sqlite'">
+          <div class="db-row2">
+            <div class="db-field">
+              <label>主机</label>
+              <input class="p-input" v-model="connForm.host" placeholder="127.0.0.1" />
+            </div>
+            <div class="db-field" style="max-width:120px;">
+              <label>端口</label>
+              <input class="p-input" v-model="connForm.port" placeholder="3306" />
+            </div>
+          </div>
+          <div class="db-field">
+            <label>{{ connForm.dbType==='redis' ? '密码（可为空）' : '用户名' }}</label>
+            <input class="p-input" v-model="connForm.username" v-if="connForm.dbType!=='redis'" placeholder="root" />
+            <input class="p-input" v-model="connForm.password" type="password" v-if="connForm.dbType==='redis'" placeholder="auth 密码" />
+          </div>
+          <div class="db-field" v-if="connForm.dbType!=='redis'">
+            <label>密码</label>
+            <input class="p-input" v-model="connForm.password" type="password" placeholder="留空 = 不修改（编辑时）" />
+          </div>
+          <div class="db-field" v-if="connForm.dbType==='mysql'">
+            <label>默认数据库</label>
+            <input class="p-input" v-model="connForm.database" placeholder="可空，后续用库表树选择" />
+          </div>
+          <div class="db-field" v-if="connForm.dbType==='redis'">
+            <label>库索引 (DB 0-15)</label>
+            <input class="p-input" v-model="connForm.database" placeholder="0" />
+          </div>
+        </template>
+        <template v-else>
+          <div class="db-field">
+            <label>SQLite 文件</label>
+            <div class="db-row2">
+              <input class="p-input" v-model="connForm.filePath" placeholder="选择 .db / .sqlite 文件" readonly style="cursor:pointer;" @click="pickSqlite" />
+              <button class="p-btn p-btn-sm" @click="pickSqlite">浏览</button>
+            </div>
+          </div>
+        </template>
+        <div class="db-actions-bar">
+          <button class="p-btn p-btn-sm" @click="testConn" :disabled="testing">{{ testing ? '测试中…' : '测试连接' }}</button>
+          <div class="spacer"></div>
+          <button class="p-btn p-btn-sm" @click="showConnModal=false">取消</button>
+          <button class="p-btn p-btn-sm p-btn-primary" @click="saveConn">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 通用确认 -->
+    <div v-if="confirmDialog.visible" class="db-mask" @click.self="confirmCancel">
+      <div class="db-modal" style="width:360px">
+        <div class="db-modal-head"><span>确认操作</span><button class="p-btn p-btn-sm" @click="confirmCancel">✕</button></div>
+        <div style="padding:14px 16px;"><p style="margin:0;line-height:1.6">{{ confirmDialog.message }}</p></div>
+        <div class="db-actions-bar">
+          <div class="spacer"></div>
+          <button class="p-btn p-btn-sm" @click="confirmCancel">取消</button>
+          <button class="p-btn p-btn-sm" style="background:var(--danger,#e5484d);color:#fff" @click="confirmOk">确认删除</button>
+        </div>
+      </div>
+    </div>
+
+    <div v-for="(t,ti) in toasts" :key="ti" class="db-toast" :class="t.kind">{{ t.msg }}</div>
+  </div>
+</div>
+
+<script src="vue.global.prod.js"></script>
+<script>
+(function(){
+  'use strict'
+  var Vue = window.Vue
+  var createApp = Vue.createApp
+
+  /* ---------- RPC 桥接 ---------- */
+  var seq = 0, pend = {}
+  function send(command, input){
+    return new Promise(function(res, rej){
+      var id = 'db_' + (++seq)
+      pend[id] = { res: res, rej: rej }
+      parent.postMessage({ type:'plugin:execute', id:id, command:command, input: input || {} }, '*')
+    })
+  }
+  window.addEventListener('message', function(e){
+    var d = e.data; if(!d) return
+    if(d.type==='plugin:result' && d.id && pend[d.id]){
+      var p = pend[d.id]; delete pend[d.id]
+      if(d.error) p.rej(new Error(typeof d.error==='string' ? d.error : (d.error.message||'error')))
+      else p.res(d.data || {})
+    }
+  })
+
+  /* ---------- 工具 ---------- */
+  // toast 操作 mounted 实例的响应式 toasts 数组；mount 后由 app._toasts 指向它
+  function toast(msg, kind){
+    var arr = app._toasts
+    if(!arr) return
+    var id = Math.random()
+    arr.push({ id:id, msg:msg, kind: kind==='err' ? 'err' : 'ok' })
+    setTimeout(function(){ var i = arr.findIndex(function(t){ return t.id===id }); if(i>=0) arr.splice(i,1) }, 3200)
+  }
+  function quoteIdent(kind, name){
+    if(kind==='sqlite') return '"' + String(name).replace(/"/g,'""') + '"'
+    return '`' + String(name).replace(/`/g,'``') + '`'
+  }
+
+  var app = createApp({
+    data: function(){
+      return {
+        conns: [],
+        selectedConn: null,
+        treeRoot: [],
+        treeLoading: false,
+        expanded: {},
+        query: '',
+        activeDb: '',
+        result: null,
+        editing: { r:-1, c:-1 },
+        cellDraft: '',
+        showConnModal: false,
+        testing: false,
+        connForm: blankConn(),
+        toasts: [],
+        confirmDialog: { visible:false, message:'', onConfirm:null }
+      }
+    },
+    computed: {
+      flatNodes: function(){
+        var self = this, out = []
+        var walk = function(nodes, depth){
+          nodes.forEach(function(n){
+            var key = self.nodeKey(n, depth)
+            out.push({ node:n, depth:depth, key:key })
+            if(n._expanded && n.children && n.children.length) walk(n.children, depth+1)
+          })
+        }
+        walk(this.treeRoot, 0)
+        return out
+      }
+    },
+    methods: {
+      loadConns: function(){
+        var self = this
+        send('conn.list', {}).then(function(r){
+          self.conns = (r.connections || []).slice().sort(function(a,b){ return (b.createdAt||'').localeCompare(a.createdAt||'') })
+          if(self.selectedConn){
+            var still = self.conns.find(function(c){ return c.id===self.selectedConn.id })
+            self.selectedConn = still || null
+            if(!still) self.treeRoot = []
+          }
+        }).catch(function(e){ toast('加载连接失败: '+(e.message||e),'err') })
+      },
+      selectConn: function(c){
+        this.selectedConn = c
+        this.result = null
+        this.activeDb = (c.dbType==='mysql') ? (c.database||'') : ''
+        this.query = ''
+        this.loadTree(c)
+      },
+      loadTree: function(c){
+        var self = this
+        self.treeLoading = true
+        send('tree.list', { id:c.id }).then(function(r){
+          self.treeRoot = (r.nodes||[]).map(function(n){ n._expanded = !!n.children && n.children.length>0; n._loaded = !!n.children; return n })
+        }).catch(function(e){ toast('库表树加载失败: '+(e.message||e),'err') })
+        .finally(function(){ self.treeLoading = false })
+      },
+      nodeKey: function(n, depth){
+        // 用父链 + 自身名生成稳定 key
+        return (this.selectedConn ? this.selectedConn.id : '') + '|' + (n._path||n.name)
+      },
+      hasChildren: function(n){ return n.kind==='database' || n.kind==='folder' || n.kind==='table' || n.kind==='view' || (n.children && n.children.length) },
+      toggleNode: function(n, key){
+        var self = this
+        if(n._loaded && n.children){ n._expanded = !n._expanded; return }
+        if(n.kind==='database'){
+          n._expanded = true; n._loading = true
+          send('tree.objects', { id:self.selectedConn.id, database:n.name }).then(function(r){
+            n.children = r.nodes || []; n._loaded = true
+          }).catch(function(e){ toast('加载表失败: '+(e.message||e),'err'); n._expanded=false })
+          .finally(function(){ n._loading=false })
+        } else {
+          n._expanded = !n._expanded; n._loaded = true
+        }
+      },
+      onNodeClick: function(n){
+        var c = this.selectedConn
+        if(!c) return
+        if((n.kind==='table' || n.kind==='view') && c.dbType!=='redis'){
+          var tbl = quoteIdent(c.dbType, n.name)
+          if(c.dbType==='mysql' && this.activeDb) tbl = quoteIdent('mysql', this.activeDb) + '.' + tbl
+          this.query = 'SELECT * FROM ' + tbl + ' LIMIT 100'
+        } else if(n.kind==='key' && c.dbType==='redis'){
+          this.query = 'GET "' + n.name + '"'
+        } else if(n.kind==='database' && c.dbType==='mysql'){
+          this.activeDb = n.name
+          this.toggleNode(n)
+        }
+      },
+      runQuery: function(){
+        var c = this.selectedConn
+        if(!c){ toast('请先选择连接','err'); return }
+        if(!this.query.trim()){ toast('查询内容为空','err'); return }
+        var self = this
+        this.result = null; this.editing = { r:-1, c:-1 }
+        send('query.run', { id:c.id, query:this.query }).then(function(r){
+          // 规整：后端返回 rows 为二维字符串数组，nulls 同维
+          r.rows = r.rows || []
+          r.nulls = r.nulls || []
+          self.result = r
+          if(r.editable) toast('单表查询结果可双击单元格直接编辑','ok')
+        }).catch(function(e){ toast('查询失败: '+(e.message||e),'err') })
+      },
+      isPkCol: function(ci){
+        if(!this.result || !this.result.editable) return false
+        var pk = this.result.primaryKey
+        return this.result.columns[ci] === pk
+      },
+      beginEdit: function(ri, ci){
+        if(!this.result || !this.result.editable) return
+        if(this.isPkCol(ci)) return
+        this.editing = { r:ri, c:ci }
+        this.cellDraft = (this.result.nulls[ri] && this.result.nulls[ri][ci]) ? '' : (this.result.rows[ri][ci]||'')
+        var self = this
+        this.$nextTick(function(){ if(self.$refs.editInput && self.$refs.editInput[0]) self.$refs.editInput[0].focus() })
+      },
+      cancelEdit: function(){ this.editing = { r:-1, c:-1 } },
+      commitEdit: function(ri, ci){
+        if(this.editing.r!==ri || this.editing.c!==ci) return
+        var self = this
+        var val = this.cellDraft
+        var old = (this.result.nulls[ri] && this.result.nulls[ri][ci]) ? '' : (this.result.rows[ri][ci]||'')
+        if(val === old){ this.editing = { r:-1, c:-1 }; return }
+        var pkCol = this.result.primaryKey
+        var pkIdx = this.result.columns.indexOf(pkCol)
+        var pkVal = (pkIdx>=0) ? this.result.rows[ri][pkIdx] : ''
+        var col = this.result.columns[ci]
+        var sets = {}; sets[col] = val
+        var nulls = (val==='') ? [col] : []
+        send('row.update', {
+          id: this.selectedConn.id,
+          tableName: this.result.tableName,
+          pkColumn: pkCol,
+          pkValue: pkVal,
+          sets: sets,
+          nulls: nulls
+        }).then(function(r){
+          self.result.rows[ri][ci] = val
+          if(!self.result.nulls[ri]) self.result.nulls[ri] = []
+          self.result.nulls[ri][ci] = (val==='')
+          toast(r.message || '已更新','ok')
+        }).catch(function(e){ toast('更新失败: '+(e.message||e),'err') })
+        .finally(function(){ self.editing = { r:-1, c:-1 } })
+      },
+      openConnModal: function(c){
+        this.connForm = c ? {
+          id:c.id, name:c.name, dbType:c.dbType, host:c.host, port:c.port,
+          username:c.username, password:'', database:c.database, filePath:c.filePath
+        } : blankConn()
+        this.showConnModal = true
+      },
+      pickSqlite: function(){
+        var self = this
+        if(window.qdPickFile){
+          window.qdPickFile({ title:'选择 SQLite 数据库文件', filter:'SQLite DB (*.db;*.sqlite;*.sqlite3)', pattern:'*.db;*.sqlite;*.sqlite3' })
+            .then(function(p){ if(p) self.connForm.filePath = p })
+            .catch(function(){})
+        } else { toast('当前环境不支持文件选择','err') }
+      },
+      saveConn: function(){
+        var self = this, f = this.connForm
+        if(!f.name.trim()){ toast('请输入连接名称','err'); return }
+        if(f.dbType==='sqlite' && !f.filePath.trim()){ toast('请选择 SQLite 文件','err'); return }
+        send('conn.save', {
+          id:f.id, name:f.name, dbType:f.dbType, host:f.host, port:Number(f.port)||0,
+          username:f.username, password:f.password, database:f.database, filePath:f.filePath
+        }).then(function(r){
+          self.showConnModal = false
+          self.loadConns()
+          toast('连接已保存','ok')
+        }).catch(function(e){ toast('保存失败: '+(e.message||e),'err') })
+      },
+      testConn: function(){
+        var self = this, f = this.connForm
+        if(f.dbType==='sqlite' && !f.filePath.trim()){ toast('请选择 SQLite 文件','err'); return }
+        this.testing = true
+        send('conn.test', {
+          id:f.id, name:f.name, dbType:f.dbType, host:f.host, port:Number(f.port)||0,
+          username:f.username, password:f.password, database:f.database, filePath:f.filePath
+        }).then(function(r){
+          if(r.ok) toast('连接成功 ✓','ok')
+          else toast('连接失败: '+(r.error||'未知错误'),'err')
+        }).catch(function(e){ toast('测试失败: '+(e.message||e),'err') })
+        .finally(function(){ self.testing = false })
+      },
+      askConfirm: function(msg, cb){ this.confirmDialog = { visible:true, message:msg, onConfirm:cb } },
+      confirmOk: function(){ var cb=this.confirmDialog.onConfirm; this.confirmDialog.visible=false; this.confirmDialog.onConfirm=null; if(cb) cb() },
+      confirmCancel: function(){ this.confirmDialog.visible=false; this.confirmDialog.onConfirm=null },
+      delConn: function(c){
+        var self = this
+        this.askConfirm('删除连接「' + c.name + '」？此操作不可撤销。', function(){
+          send('conn.delete', { id:c.id }).then(function(){
+            if(self.selectedConn && self.selectedConn.id===c.id){ self.selectedConn=null; self.treeRoot=[]; self.result=null }
+            self.loadConns()
+            toast('已删除','ok')
+          }).catch(function(e){ toast('删除失败: '+(e.message||e),'err') })
+        })
+      }
+    },
+    mounted: function(){ this.loadConns() }
+  })
+
+  function blankConn(){
+    return { id:'', name:'', dbType:'mysql', host:'127.0.0.1', port:3306, username:'root', password:'', database:'', filePath:'' }
+  }
+  var mounted = app.mount('#app')
+  // 把响应式 toasts 数组暴露给 toast 闭包
+  app._toasts = mounted.toasts
+})()
+</script>
+</body>
+</html>

@@ -1,0 +1,41 @@
+{
+  "id": "io.github.parieses.login-tester",
+  "name": "登录爆破测试器",
+  "name_i18n": {"zh-CN": "登录爆破测试器", "en-US": "Login Tester"},
+  "version": "0.1.4",
+  "description": "对自身网站登录接口进行密码库撞库/爆破安全自检，支持并发、限速与锁定检测。仅用于你拥有或已授权的站点。",
+  "description_i18n": {
+    "zh-CN": "对自身网站登录接口进行密码库撞库/爆破安全自检，支持并发、限速与锁定检测。仅用于你拥有或已授权的站点。",
+    "en-US": "Self-audit your own login endpoint against a password list (credential stuffing / brute force). Supports concurrency, throttling and lockout detection. Use only on sites you own or are authorized to test."
+  },
+  "author": "QuickDock",
+  "category": "安全工具",
+  "platforms": [
+    "windows"
+  ],
+  "icon": "icon.svg",
+  "backend": {
+    "runtime": "native",
+    "entry": "login-tester",
+    "args": []
+  },
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 980,
+    "height": 760
+  },
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "permissions": {
+    "network": true
+  },
+  "commands": [
+    {"id": "test.start", "title": "开始测试", "title_i18n": {"zh-CN": "开始测试", "en-US": "Start"}, "prefix": "/login-test", "matchPattern": "^https?://", "acceptsInput": true},
+    {"id": "test.poll", "title": "轮询进度", "title_i18n": {"zh-CN": "轮询进度", "en-US": "Poll"}},
+    {"id": "test.stop", "title": "停止", "title_i18n": {"zh-CN": "停止", "en-US": "Stop"}},
+    {"id": "meta.builtin", "title": "内置密码库信息", "title_i18n": {"zh-CN": "内置密码库信息", "en-US": "Builtin wordlist"}}
+  ]
+}
