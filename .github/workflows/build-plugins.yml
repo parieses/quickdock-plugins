@@ -67,7 +67,7 @@ jobs:
               fi
             done
             
-            plugins=$(echo "$plugins" | tr ' ' '\n' | grep -v '^
+            plugins=$(echo "$plugins" | tr ' ' '\n' | grep -v '^$' | sort -u | tr '\n' ' ' || true)
             echo "检测到的插件: [$plugins]"
           fi
           echo "changed_plugins=$plugins" >> "$GITHUB_OUTPUT"
@@ -131,9 +131,5 @@ jobs:
           path: dist/*.zip
           if-no-files-found: warn
           retention-days: 30
- | sort -u | tr '\n' ' ' || true)
-            echo "检测到的插件: [$plugins]"
-          fi
-          echo "changed_plugins=$plugins" >> "$GITHUB_OUTPUT"
 
       
