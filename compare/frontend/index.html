@@ -223,7 +223,7 @@
       else{cls='diff-mod';marker='~';display=charDiff(lo[d.oi]||'',ro[d.ni]||'');on=d.oi+1;nn=d.ni+1}
       html+='<div class="diff-line '+cls+'"><span class="diff-linenum">'+on+'</span><span class="diff-linenum">'+nn+'</span><span class="diff-marker">'+marker+'</span><span class="diff-text">'+display+'</span></div>'
     }
-    container.innerHTML=html
+    container.textContent = html
   }
 
   // ===== 文本对比 tab =====
@@ -318,11 +318,11 @@
       +'<div class="fc-file-row"><span class="fc-file-label">'+L('大小')+'</span><span class="fc-file-value">'+sizeStr+'</span></div>'
       +'<div class="fc-file-row"><span class="fc-file-label">'+L('类型')+'</span><span class="fc-file-value">'+escapeHtml(typeStr)+'</span></div>'
       +'<div class="fc-file-row"><span class="fc-file-label">'+L('修改日期')+'</span><span class="fc-file-value">'+escapeHtml(dateStr)+'</span></div>'
-    if(file._dataUrl){infoEl.innerHTML=html+'<img class="fc-img" src="'+file._dataUrl+'" alt="preview">';return}
+    if(file._dataUrl){infoEl.textContent = html+'<img class="fc-img" src="'+file._dataUrl+'" alt="preview">';return}
     if(file.type&&file.type.indexOf('image/')===0){
-      var r=new FileReader();r.onload=function(e){infoEl.innerHTML=html+'<img class="fc-img" src="'+e.target.result+'" alt="preview">'};r.readAsDataURL(file);return
+      var r=new FileReader();r.onload=function(e){infoEl.textContent = html+'<img class="fc-img" src="'+e.target.result+'" alt="preview">'};r.readAsDataURL(file);return
     }
-    infoEl.innerHTML=html
+    infoEl.textContent = html
   }
   function isLikelyText(file){
     if(file.type&&file.type.indexOf('text/')===0)return true

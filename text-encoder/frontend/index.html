@@ -117,6 +117,10 @@
 </div>
 
 <!-- tab 切换（必须早于下方 codec/case 脚本，供其 plugin:init 调用） -->
+
+<script>
+function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
+</script>
 <script>
 (function(){
   var tabCodec=document.getElementById('tabCodec'),tabCase=document.getElementById('tabCase')
@@ -193,7 +197,7 @@
     previewImg.src=dataUri
     var pad=(base64Str.match(/=+$/)||[''])[0].length
     var sizeBytes=Math.floor(base64Str.length*3/4)-pad
-    imageInfo.innerHTML='<span>类型: <b>'+mime+'</b></span><span>大小: <b>'+formatSize(sizeBytes)+'</b></span><span id="dimInfo">尺寸: <b>加载中…</b></span>'
+    imageInfo.innerHTML = '<span>类型: <b>'+' + EH(mime) + ''</b></span><span>大小: <b>'+formatSize(sizeBytes)+'</b></span><span id="dimInfo">尺寸: <b>加载中…</b></span>'
     currentMime=mime;currentDataUri=dataUri
     statusText.textContent='🖼️ 检测到 Base64 图片 | '+mime+' | '+formatSize(sizeBytes)
   }

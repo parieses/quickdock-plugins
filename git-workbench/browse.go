@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -175,7 +176,7 @@ func newClient(timeout time.Duration) *http.Client {
 }
 
 func getJSON(client *http.Client, u string, out interface{}) error {
-	req, err := http.NewRequest("GET", u, nil)
+	req, err := http.NewRequestWithContext(context.Background(), "GET", u, nil)
 	if err != nil {
 		return err
 	}

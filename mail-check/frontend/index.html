@@ -76,6 +76,10 @@
   </div>
 </div>
 
+
+<script>
+function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
+</script>
 <script>
 (function(){
   'use strict'
@@ -172,7 +176,7 @@
     return '<span class="mc-badge b-'+status+'">'+label+'</span>'
   }
   function renderValidity(v){
-    vrows.innerHTML=''
+    vrows.innerHTML = ''
     var items=[]
     items.push(syntaxItem(v))
     items.push(mxItem(v))
@@ -192,7 +196,7 @@
     var map={ok:['有效','b-ok'],rejected:['被拒绝','b-error'],timeout:['无法验证','b-skip'],skipped:['未验证','b-skip']}
     var m=map[v.smtp]||['未验证','b-skip']
     var tip=v.smtpNote?' title="'+escAttr(v.smtpNote)+'"':''
-    return '<span class="mc-vitem"><span class="k">SMTP</span><span class="mc-badge '+m[1]+'"'+tip+'>'+m[0]+'</span></span>'
+    return '<span class="mc-vitem"><span class="k">SMTP</span><span class="mc-badge '+m[1]+'"'+' + EH(tip) + ''>'+m[0]+'</span></span>'
   }
   function renderProbes(list){
     probes.innerHTML=''

@@ -60,6 +60,10 @@
 .p-stats{display:flex;align-items:center;gap:8px;padding:4px 10px;font-size:11px;color:var(--text-muted);background:var(--bg-secondary);border-top:1px solid var(--border);flex-shrink:0;min-height:24px}
 .p-error{display:flex;align-items:center;gap:6px;padding:8px 10px;color:#e24b4a;font-size:12px;background:rgba(226,75,74,0.08);border-top:1px solid var(--border);flex-shrink:0}
 </style>
+
+<script>
+function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
+</script>
 <script>
 /* QuickDock sandbox 剪贴板桥接：iframe 内 navigator.clipboard 被 Permissions-Policy 禁用 */
 window.__cpSeq=0;

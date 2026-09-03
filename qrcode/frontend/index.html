@@ -11,6 +11,10 @@
 .p-qr-box svg{image-rendering:pixelated}
 .p-img-preview{max-width:180px;max-height:180px;border-radius:var(--radius);border:1px solid var(--border)}
 </style>
+
+<script>
+function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
+</script>
 <script>
 /* QuickDock sandbox 剪贴板桥接：iframe 内 navigator.clipboard 被 Permissions-Policy 禁用 */
 window.__cpSeq=0;

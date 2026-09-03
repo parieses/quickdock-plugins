@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"bufio"
 	"encoding/json"
 	"fmt"
@@ -55,7 +56,7 @@ func fetchCRT(domain string, timeout time.Duration) ([]string, error) {
 			time.Sleep(2 * time.Second)
 		}
 
-		req, err := http.NewRequest("GET", url, nil)
+		req, err := http.NewRequestWithContext(context.Background(), "GET", url, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -115,7 +116,7 @@ func fetchCertSpotter(domain string, timeout time.Duration) ([]string, error) {
 	url := "https://api.certspotter.com/v1/issuances?domain=" + domain +
 		"&include_subdomains=true&expand=dns_names"
 
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequestWithContext(context.Background(), "GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -188,7 +189,7 @@ func fetchHackerTarget(domain string, timeout time.Duration) ([]string, error) {
 // 注意：返回 results[].page.domain 才是被扫页面的真实子域；task.domain 多为 apex 域名。
 func fetchURLScan(domain string, timeout time.Duration) ([]string, error) {
 	url := "https://urlscan.io/api/v1/search/?q=domain:" + domain + "&size=10000"
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequestWithContext(context.Background(), "GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -238,7 +239,7 @@ func fetchURLScan(domain string, timeout time.Duration) ([]string, error) {
 // 用正则提取以目标域名结尾的主机名——add() 会再按归属做二次过滤。
 func fetchRapidDNS(domain string, timeout time.Duration) ([]string, error) {
 	url := "https://rapiddns.io/subdomain/" + domain + "?full=1"
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequestWithContext(context.Background(), "GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -281,7 +282,7 @@ func fetchOTX(domain string, timeout time.Duration) ([]string, error) {
 		if attempt > 0 {
 			time.Sleep(3 * time.Second)
 		}
-		req, err := http.NewRequest("GET", url, nil)
+		req, err := http.NewRequestWithContext(context.Background(), "GET", url, nil)
 		if err != nil {
 			return nil, err
 		}

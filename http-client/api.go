@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"net/url"
 	"strings"
 	"time"
+	httpTimeout = 30 * time.Second
 )
 
 // ---------- 输入结构 ----------
@@ -170,7 +172,7 @@ func doUserHTTP(input ApiRequestInput) (*ApiResponse, error) {
 	if input.Body != "" && method != http.MethodGet && method != http.MethodHead {
 		bodyReader = bytes.NewReader([]byte(input.Body))
 	}
-	req, err := http.NewRequest(method, u.String(), bodyReader)
+	req, err := http.NewRequestWithContext(context.Background(), method, u.String(), bodyReader)
 	if err != nil {
 		return nil, err
 	}

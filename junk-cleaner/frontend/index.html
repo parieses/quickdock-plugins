@@ -128,6 +128,10 @@
   </div>
 </div>
 
+
+<script>
+function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
+</script>
 <script>
 // ---- i18n（轻量，仅覆盖页面文案）----
 const L10N = {
@@ -264,8 +268,7 @@ function renderCatRow(c) {
     ? '<div class="sz">' + fmtSize(c.sizeBytes) + '</div><div class="cnt">' + (c.fileCount || 0) + ' 个文件</div>'
     : '<div class="zero">无</div>';
   const badge = c.dangerous ? '<span class="danger-badge">高危</span>' : '';
-  row.innerHTML =
-    '<input type="checkbox" class="cat-check" data-key="' + c.key + '" ' + checked + '>' +
+  row.innerHTML = '<input type="checkbox" class="cat-check" data-key="' + c.key + '" ' +' + EH(checked) + ' '>' +
     '<div class="cat-main">' +
       '<div class="cat-name">' + c.name + badge + '</div>' +
       '<div class="cat-desc">' + c.desc + '</div>' +
@@ -426,7 +429,7 @@ function showResult(result) {
     const skip = c.skipped ? '（跳过 ' + c.skipped + ' 个锁定文件）' : '';
     const item = document.createElement('div');
     item.className = 'result-item';
-    item.innerHTML = '<span class="nm">' + c.name + skip + '</span>' +
+    item.innerHTML = '<span class="nm">' + c.name +' + EH(skip) + ' '</span>' +
                      '<span class="v">−' + fmtSize(c.freed) + ' · ' + (c.deleted || 0) + ' 文件</span>';
     list.appendChild(item);
   });

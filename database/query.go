@@ -10,6 +10,26 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+// sqlQuote 对 SQL 标识符（表名/列名）做基本合法化，防止标识符注入。
+// 真正的值参数应使用 ? 占位符进行参数化查询。
+func sqlQuote(s string) string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return "_"
+	}
+	var b strings.Builder
+	b.Grow(len(s))
+	for _, r := range s {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') ||
+			(r >= '0' && r <= '9') || r == '_' || r == '.' {
+			b.WriteRune(r)
+		} else {
+			b.WriteByte('_')
+		}
+	}
+	return b.String()
+}
+
 const dbQueryTimeout = 30 * time.Second
 const dbMaxRows = 1000
 

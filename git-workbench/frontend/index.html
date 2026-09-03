@@ -296,6 +296,10 @@
   </div>
 </div>
 
+
+<script>
+function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
+</script>
 <script>
 (function(){
   'use strict'
@@ -426,7 +430,7 @@
     $('bs-stats').textContent='步骤 '+r.steps+' · 区间剩 '+(r.remain||0)+' · 共 '+r.total
     var cur=$('bs-current')
     if(r.done && r.culprit){
-      cur.innerHTML='<div class="gw-warn" style="color:var(--danger)">🎯 首次引入问题的提交：<b class="gw-mono">'+esc(r.culprit.hash)+'</b> '+esc(r.culprit.message)+'<div class="gw-sub">作者 '+esc(r.culprit.author)+' · '+esc(r.culprit.time)+'</div></div>'
+      cur.innerHTML = '<div class="gw-warn" style="color:var(--danger)">🎯 首次引入问题的提交：<b class="gw-mono">'+esc(r.culprit.hash)+'</b> '+esc(r.culprit.message)+'<div class="gw-sub">作者 '+esc(r.culprit.author)+' · '+esc(r.culprit.time)+'</div></div>'
     } else if(r.current){
       cur.innerHTML='<div class="gw-card"><div class="v gw-mono">'+esc(r.current.hash)+'</div><div class="k">'+esc(r.current.message)+'</div><div class="gw-sub">作者 '+esc(r.current.author)+' · '+esc(r.current.time)+'</div></div>'+
         '<div class="gw-hint" style="margin-top:6px">请测试当前版本，然后标记它是否正常。</div>'
@@ -436,7 +440,7 @@
     if(r.history && r.history.length){
       $('bs-history').innerHTML=r.history.map(function(h){
         var c = h.mark==='good'?'p-tag-ok':h.mark==='bad'?'p-tag-warn':'p-tag-neutral'
-        return '<div class="it"><span class="p-tag '+c+'">'+esc(h.mark)+'</span><span class="gw-mono">'+esc(h.hash)+'</span><span>'+esc(h.title)+'</span><span class="gw-hint">'+esc(h.time)+'</span></div>'
+        return '<div class="it"><span class="p-tag '+' + EH(c) + ''">'+esc(h.mark)+'</span><span class="gw-mono">'+esc(h.hash)+'</span><span>'+esc(h.title)+'</span><span class="gw-hint">'+esc(h.time)+'</span></div>'
       }).join('')
     }
   }
@@ -521,9 +525,9 @@
     $('tl-prog').style.width='100%'; $('tl-prog-txt').textContent='完成（共 '+r.total+' 行）'
     var lb=$('tl-lines')
     if(r.lines && r.lines.length){
-      lb.innerHTML=r.lines.map(function(l){
+      lb.innerHTML = r.lines.map(function(l){
         var c=colorFor(l.author||'?')
-        return '<tr><td class="ln">'+l.no+'</td><td class="au"><span class="gw-au-chip" style="background:'+c+'">'+esc(l.author)+'</span></td><td class="hs gw-mono">'+esc(l.hash)+'</td><td class="tx">'+esc(l.text)+'</td></tr>'
+        return '<tr><td class="ln">'+l.no+'</td><td class="au"><span class="gw-au-chip" style="background:'+' + EH(c) + ''">'+esc(l.author)+'</span></td><td class="hs gw-mono">'+esc(l.hash)+'</td><td class="tx">'+esc(l.text)+'</td></tr>'
       }).join('')
     }
     var ab=$('tl-authors')
@@ -552,7 +556,7 @@
   function renderStats(r){
     $('st-prog').style.width='100%'; $('st-prog-txt').textContent='完成'
     $('st-span').textContent=r.span||''
-    $('st-cards').innerHTML=[
+    $('st-cards').innerHTML = [
       ['提交数', r.commits],
       ['作者数', r.authorCount],
       ['文件数', r.fileCount],
@@ -570,7 +574,7 @@
     if(r.files && r.files.length){
       fb.innerHTML=r.files.slice(0,30).map(function(f){
         var risk=f.soleRisk?' <span class="p-tag p-tag-warn">孤岛</span>':''
-        return '<tr><td class="gw-mono">'+esc(f.path)+'</td><td>'+f.changes+'</td><td>'+esc((f.authors||[]).join(', '))+risk+'</td></tr>'
+        return '<tr><td class="gw-mono">'+esc(f.path)+'</td><td>'+f.changes+'</td><td>'+esc((f.authors||[]).join(', '))+' + EH(risk) + ''</td></tr>'
       }).join('')
     }
     var ib=$('st-islands')

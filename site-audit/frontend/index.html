@@ -206,6 +206,10 @@ select.input{flex:0 0 auto;min-width:auto}
   </div>
 </div>
 
+
+<script>
+function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
+</script>
 <script>
 (function(){
   'use strict'
@@ -323,7 +327,7 @@ select.input{flex:0 0 auto;min-width:auto}
         var ans=(res.answers||[]).join(', ')||(res.error||'无结果')
         html+='<tr><td>'+esc(res.name)+'<br><span style="color:var(--text-muted);font-size:11px">'+esc(res.server)+'</span></td><td>'+esc(ans)+'</td><td>'+(res.elapsedMs||0)+'ms</td></tr>'
       })
-      document.getElementById('prop-body').innerHTML=html
+      document.getElementById('prop-body').innerHTML = html
     }).catch(function(e){fail(document.getElementById('prop-hint'),e)})
   }
   document.getElementById('prop-go').addEventListener('click',propGo)
@@ -368,7 +372,7 @@ select.input{flex:0 0 auto;min-width:auto}
   var stColorMap={'信息':'info','成功':'success','重定向':'redirect','客户端错误':'client','服务器错误':'server'}
   function stRenderTabs(){
     document.getElementById('st-tabs').innerHTML=stCategories.map(function(c){
-      return '<button class="tab'+(c===stActiveCat?' active':'')+'" data-cat="'+c+'">'+c+'</button>'
+      return '<button class="tab'+(c===stActiveCat?' active':'')+'" data-cat="'+' + EH(c) + ''">'+' + EH(c) + ''</button>'
     }).join('')
   }
   function stSetCat(c){ stActiveCat=c; document.getElementById('st-search').value=''; stRenderTabs(); stRender() }
@@ -379,12 +383,12 @@ select.input{flex:0 0 auto;min-width:auto}
     if(q) items=items.filter(function(s){return String(s.code).indexOf(q)>=0||s.label.toLowerCase().indexOf(q)>=0||s.desc.indexOf(q)>=0})
     var grid=document.getElementById('st-grid')
     if(!items.length){grid.innerHTML='<div class="empty" style="width:100%">未找到匹配的状态码</div>';return}
-    grid.innerHTML=items.map(function(s){
+    grid.innerHTML = items.map(function(s){
       var c=stColorMap[s.category]||'info'
-      return '<div class="st-card st-card-'+c+'" data-code="'+s.code+'">'+
+      return '<div class="st-card st-card-'+' + EH(c) + ''" data-code="'+s.code+'">'+
         '<div class="st-code">'+s.code+'</div><div class="st-label">'+s.label+'</div>'+
         '<div class="st-desc">'+s.desc+'</div>'+
-        '<span class="st-cat cat-'+c+'">'+s.category+'</span></div>'
+        '<span class="st-cat cat-'+' + EH(c) + ''">'+s.category+'</span></div>'
     }).join('')
   }
   function stFilter(){ stRender() }

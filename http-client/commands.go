@@ -1,10 +1,13 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
+	"sync"
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 )
 
 func handleCommand(id int64, p executeParams) {
@@ -144,6 +147,8 @@ func cmdReqSend(id int64, input map[string]interface{}) {
 		respondError(id, -32603, err.Error())
 		return
 	}
+ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 	go func() {
 		_, _ = srv.db.RecordHistory(&HttpRequestHistory{
 			ProjectID:  cp.ProjectID,

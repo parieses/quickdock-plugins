@@ -20,6 +20,7 @@
 package main
 
 import (
+	"context"
 	"bufio"
 	"crypto/tls"
 	"encoding/json"
@@ -230,7 +231,7 @@ func fetchCSRFToken(cfg testConfig) (string, error) {
 		return "", fmt.Errorf("csrf 配置不完整")
 	}
 	client := &http.Client{Timeout: 8 * time.Second}
-	req, err := http.NewRequest("GET", cfg.CSRF.URL, nil)
+	req, err := http.NewRequestWithContext(context.Background(), "GET", cfg.CSRF.URL, nil)
 	if err != nil {
 		return "", err
 	}
@@ -352,13 +353,13 @@ func (s *session) attempt(user, pass string) attemptResult {
 			u += "?"
 		}
 		u += q.Encode()
-		req, err = http.NewRequest("GET", u, nil)
+		req, err = http.NewRequestWithContext(context.Background(), "GET", u, nil)
 	} else {
 		form := url.Values{}
 		for k, v := range fields {
 			form.Set(k, v)
 		}
-		req, err = http.NewRequest("POST", cfg.URL, strings.NewReader(form.Encode()))
+		req, err = http.NewRequestWithContext(context.Background(), "POST", cfg.URL, strings.NewReader(form.Encode()))
 		if err == nil {
 			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		}

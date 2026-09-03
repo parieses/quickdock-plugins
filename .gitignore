@@ -23,3 +23,8 @@ site/
 Thumbs.db
 PLUGIN_IDEAS.md
 service-fingerprint/FEASIBILITY.md
+# Build artifacts
+!.build/.gitkeep
+# Compiled binaries
+!.github/
+# Dist artifacts

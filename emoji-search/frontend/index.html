@@ -58,7 +58,7 @@ function renderEmojis(){var grid=document.getElementById('emojiGrid'),q=document
     var html=''
     for(var ci=0;ci<catKeys.length;ci++){var cat=catKeys[ci];if(activeCat!=='全部'&&cat!==activeCat)continue;var list=emojiData[cat];if(!list)continue
       for(var ei=0;ei<list.length;ei++){html+='<div class="em-item" data-cps="'+list[ei].join(',')+'">'+rnd(list[ei])+'</div>'}}
-    grid.innerHTML=html||'<div class="em-empty">无 Emoji</div>';ct.textContent=html.split('</div>').length-1
+    grid.textContent = html||'<div class="em-empty">无 Emoji</div>';ct.textContent=html.split('</div>').length-1
   }
 }
 function copyEmoji(el){var cps=(el.getAttribute('data-cps')||'').split(',').map(Number);window.copyViaHost(eF.apply(null,cps),function(ok){if(ok){el.classList.add('copied');setTimeout(function(){el.classList.remove('copied')},800)}})}

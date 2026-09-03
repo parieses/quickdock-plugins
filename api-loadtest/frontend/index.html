@@ -201,6 +201,10 @@ canvas{display:block;width:100%}
   </div>
 </div>
 
+
+<script>
+function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
+</script>
 <script>
 // ===== 自包含页面 i18n（样板同 pdf-toolkit，key=中文原文，经 <html lang> 判定语言）=====
 var L10N={'en-US':{

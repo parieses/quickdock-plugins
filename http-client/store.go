@@ -12,7 +12,68 @@ import (
 
 	"github.com/google/uuid"
 	_ "modernc.org/sqlite"
+
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+	"encoding/base64"
+	"io"
 )
+
+// ---- 凭证明文加密（AES-256-GCM）----
+// 注意：密钥硬编码仅用于演示。生产环境应使用 DPAPI (Windows) / Keychain (macOS) / env var。
+
+var authEncryptKey = []byte("quickdock-httpclient-authkey-32b!!") // 必须32字节
+
+// encryptAuth 对认证凭据进行 AES-256-GCM 加密，返回 base64 字符串。
+func encryptAuth(val string) (string, error) {
+	if val == "" {
+		return "", nil
+	}
+	block, err := aes.NewCipher(authEncryptKey)
+	if err != nil {
+		return "", err
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err = io.ReadFull(rand.Reader, nonce); err != nil {
+		return "", err
+	}
+	ciphertext := gcm.Seal(nonce, nonce, []byte(val), nil)
+	return base64.StdEncoding.EncodeToString(ciphertext), nil
+}
+
+// decryptAuth 解密 encryptAuth 生成的密文。
+func decryptAuth(encoded string) (string, error) {
+	if encoded == "" {
+		return "", nil
+	}
+	raw, err := base64.StdEncoding.DecodeString(encoded)
+	if err != nil {
+		return "", err
+	}
+	block, err := aes.NewCipher(authEncryptKey)
+	if err != nil {
+		return "", err
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
+	nonceSize := gcm.NonceSize()
+	if len(raw) < nonceSize {
+		return "", fmt.Errorf("ciphertext too short")
+	}
+	nonce, ciphertext := raw[:nonceSize], raw[nonceSize:]
+	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
+	if err != nil {
+		return "", err
+	}
+	return string(plaintext), nil
+}
 
 // ---------- 实体结构（JSON 字段保持 camelCase，便于前端直接消费） ----------
 
@@ -67,7 +128,8 @@ type ApiRequest struct {
 	Body      string `json:"body"`
 	BodyType  string `json:"bodyType"`
 	AuthType  string `json:"authType"`
-	AuthToken string `json:"authToken"`
+	AuthTokenEnc string `json:"authTokenEnc"` // 加密存储，读取时解密
+	AuthTokenRaw string `json:"-"` // 内存中明文（不持久化）
 	AuthUser  string `json:"authUser"`
 	AuthPass  string `json:"authPass"`
 	Sort      int    `json:"sort"`

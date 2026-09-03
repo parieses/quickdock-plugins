@@ -40,6 +40,10 @@
   </div>
   <div id="body" class="body"></div>
 </div>
+
+<script>
+function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
+</script>
 <script>
 (function(){
   'use strict'
@@ -119,20 +123,20 @@
     var groups=res.groups||[]
     if(!groups.length){
       hint.textContent='未发现重复文件'
-      body.innerHTML='<div class="empty">该目录下没有内容重复的（大小相同且哈希一致）文件</div>'
+      body.innerHTML = '<div class="empty">该目录下没有内容重复的（大小相同且哈希一致）文件</div>'
       return
     }
     hint.textContent='发现 '+groups.length+' 组重复 · 共 '+res.totalFiles+' 个文件 · 可节省 '+fmtSize(res.wasted||0)
     var html=''
     groups.forEach(function(g,gi){
-      html+='<div class="grp" data-gi="'+gi+'">'
+      html+='<div class="grp" data-gi="'+' + EH(gi) + ''">'
       html+='<div class="grp-head"><span class="grp-hash">'+esc(g.hash.slice(0,16))+'…</span>'+
         '<span class="grp-meta">'+g.count+' 个副本 · '+fmtSize(g.size)+'</span></div>'
       g.files.forEach(function(f,i){
         html+='<div class="file'+(i===0?' keep':'')+'"><span class="file-path">'+esc(f)+'</span>'+
           (i===0?'<span class="keep-tag">保留</span>':'<button class="btn-sm btn-danger" data-del="'+esc(f)+'">删除</button>')+'</div>'
       })
-      html+='<div style="margin-top:6px"><button class="btn-sm" data-delgroup="'+gi+'">删除本组冗余副本（保留首个）</button></div>'
+      html+='<div style="margin-top:6px"><button class="btn-sm" data-delgroup="'+' + EH(gi) + ''">删除本组冗余副本（保留首个）</button></div>'
       html+='</div>'
     })
     body.innerHTML=html

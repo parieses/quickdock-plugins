@@ -43,6 +43,10 @@
   <div id="hint" class="gb-hint">本地仓库或 owner/repo 远程仓库：HEAD 分支 · 提交 · 工作区改动 · 分支列表</div>
   <div id="body" class="gb-body"></div>
 </div>
+
+<script>
+function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
+</script>
 <script>
 (function(){
   'use strict'

@@ -43,6 +43,10 @@ textarea:focus{border-color:var(--accent,#4a9eff)}
   </div>
   <div id="result" class="result hidden"></div>
 </div>
+
+<script>
+function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
+</script>
 <script>
 (function(){
   'use strict'

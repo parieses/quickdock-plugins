@@ -210,6 +210,10 @@
   </div>
 </div>
 
+
+<script>
+function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
+</script>
 <script>
 // ==================== 页面 i18n（样板） ====================
 // 宿主已注入 <html lang="locale">，并通过 plugin:theme{theme,locale} 消息热更新语言。
@@ -714,7 +718,7 @@ class PDFToolkit {
   showResult(el, type, msg) {
     el.style.display = 'block';
     el.className = `p-result p-status ${type}`;
-    el.innerHTML = msg;
+    el.textContent = msg;
   }
 }
 
