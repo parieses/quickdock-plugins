@@ -13,7 +13,12 @@ on:
       - '**/icon.svg'
       - '**/frontend/**'
       - '.github/workflows/build-plugins.yml'
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      force_all:
+        description: '强制打包全部插件（忽略变更检测，用于补打之前因工作流故障漏打的版本）'
+        type: boolean
+        default: false
 
 jobs:
   build:
@@ -35,41 +40,47 @@ jobs:
         id: changed
         shell: bash
         run: |
-          base="${{ github.event.before }}"
-          echo "base: $base, head: ${{ github.sha }}"
           plugins=""
-          if [ "$base" = "0000000000000000000000000000000000000000" ] || [ -z "$base" ]; then
-            echo "首次推送或手动触发，执行全量打包"
+          force="${{ github.event.inputs.force_all }}"
+          if [ "$force" = "true" ]; then
+            echo "手动触发：强制全量打包所有插件"
             plugins=$(find . -mindepth 2 -maxdepth 2 -name plugin.json | sed 's|^\./||; s|/plugin.json$||' | sort -u | tr '\n' ' ')
           else
-            echo "检测变更文件..."
-            all_changed=$(git diff --name-only "$base" HEAD)
-            echo "所有变更文件:"
-            echo "$all_changed"
-            echo "变更文件数: $(echo "$all_changed" | wc -l)"
-            
-            # 方法1: 检测 plugin.json 变化
-            plugins=$(echo "$all_changed" | grep '/plugin.json' | sed 's|/plugin.json$||' | sort -u | tr '\n' ' ' || true)
-            
-            # 方法2: 检测 .go/.mod/.sum 变化
-            go_changed=$(echo "$all_changed" | grep -E '\.(go|mod|sum)$' | sed 's|/[^/]*$||' | sort -u || true)
-            for dir in $go_changed; do
-              if [ -d "$dir" ] && [ -f "$dir/plugin.json" ]; then
-                plugins="$plugins $dir"
-              fi
-            done
-            
-            # 方法3: 检测 frontend/ 变化
-            frontend_changed=$(echo "$all_changed" | grep '/frontend/' | sed 's|/frontend/.*||' | sort -u || true)
-            for dir in $frontend_changed; do
-              if [ -d "$dir" ] && [ -f "$dir/plugin.json" ]; then
-                plugins="$plugins $dir"
-              fi
-            done
-            
-            plugins=$(echo "$plugins" | tr ' ' '\n' | grep -v '^$' | sort -u | tr '\n' ' ' || true)
-            echo "检测到的插件: [$plugins]"
+            base="${{ github.event.before }}"
+            echo "base: $base, head: ${{ github.sha }}"
+            if [ "$base" = "0000000000000000000000000000000000000000" ] || [ -z "$base" ]; then
+              echo "首次推送或手动触发，执行全量打包"
+              plugins=$(find . -mindepth 2 -maxdepth 2 -name plugin.json | sed 's|^\./||; s|/plugin.json$||' | sort -u | tr '\n' ' ')
+            else
+              echo "检测变更文件..."
+              all_changed=$(git diff --name-only "$base" "${{ github.sha }}" || git diff --name-only "$base" HEAD || true)
+              echo "所有变更文件:"
+              echo "$all_changed"
+              echo "变更文件数: $(echo "$all_changed" | grep -c . || true)"
+              
+              # 方法1: 检测 plugin.json 变化
+              plugins=$(echo "$all_changed" | grep '/plugin.json' | sed 's|/plugin.json$||' | sort -u | tr '\n' ' ' || true)
+              
+              # 方法2: 检测 .go/.mod/.sum 变化
+              go_changed=$(echo "$all_changed" | grep -E '\.(go|mod|sum)$' | sed 's|/[^/]*$||' | sort -u || true)
+              for dir in $go_changed; do
+                if [ -d "$dir" ] && [ -f "$dir/plugin.json" ]; then
+                  plugins="$plugins $dir"
+                fi
+              done
+              
+              # 方法3: 检测 frontend/ 变化
+              frontend_changed=$(echo "$all_changed" | grep '/frontend/' | sed 's|/frontend/.*||' | sort -u || true)
+              for dir in $frontend_changed; do
+                if [ -d "$dir" ] && [ -f "$dir/plugin.json" ]; then
+                  plugins="$plugins $dir"
+                fi
+              done
+              
+              plugins=$(echo "$plugins" | tr ' ' '\n' | grep -v '^$' | sort -u | tr '\n' ' ' || true)
+            fi
           fi
+          echo "检测到的插件: [$plugins]"
           echo "changed_plugins=$plugins" >> "$GITHUB_OUTPUT"
 
       - name: Build pdfcpu for pdf-toolkit
