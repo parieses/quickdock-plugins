@@ -18,8 +18,6 @@ const (
 	httpTimeout         = 30 * time.Second
 )
 
-// ---------- 输入结构 ----------
-
 // ApiRequestInput 前端传入的请求（新建/更新/发送共用）。
 type ApiRequestInput struct {
 	ID            string `json:"id"`
@@ -49,12 +47,6 @@ type ApiResponse struct {
 	Size       int               `json:"size"`
 	Truncated  bool              `json:"truncated"`
 }
-
-const (
-	httpClientMaxBody   = 16 << 20
-	httpClientTimeout   = 60 * time.Second
-	httpClientMaxRedirs = 10
-)
 
 var userHTTPClient = &http.Client{
 	Timeout: httpClientTimeout,

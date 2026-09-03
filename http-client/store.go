@@ -128,8 +128,7 @@ type ApiRequest struct {
 	Body      string `json:"body"`
 	BodyType  string `json:"bodyType"`
 	AuthType  string `json:"authType"`
-	AuthTokenEnc string `json:"authTokenEnc"` // 加密存储，读取时解密
-	AuthTokenRaw string `json:"-"` // 内存中明文（不持久化）
+	AuthToken string `json:"authToken"`
 	AuthUser  string `json:"authUser"`
 	AuthPass  string `json:"authPass"`
 	Sort      int    `json:"sort"`
