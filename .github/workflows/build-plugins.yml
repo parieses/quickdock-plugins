@@ -48,17 +48,18 @@ jobs:
         shell: bash
         run: |
           base="${{ github.event.before }}"
+          echo "base: $base, head: ${{ github.sha }}"
           plugins=""
           if [ "$base" = "0000000000000000000000000000000000000000" ] || [ -z "$base" ]; then
-            # 首次推送或手动 dispatch：全量打包
-            plugins=$(find . -mindepth 2 -maxdepth 2 -name plugin.json \
-              | sed 's|^\./||; s|/plugin.json$||' | sort -u | tr '\n' ' ')
+            echo "首次推送或手动触发，执行全量打包"
+            plugins=$(find . -mindepth 2 -maxdepth 2 -name plugin.json | sed 's|^\./||; s|/plugin.json$||' | sort -u | tr '\n' ' ')
           else
-            # diff 出 plugin.json 变更的插件目录（一个插件一个子目录，plugin.json 为标志）
-            plugins=$(git diff --name-only "$base" HEAD -- '*/plugin.json' \
-              | sed 's|/plugin.json$||' | sort -u | tr '\n' ' ')
+            echo "检测变更文件..."
+            all_changed=$(git diff --name-only "$base" HEAD)
+            echo "变更文件数: $(echo "$all_changed" | wc -l)"
+            plugins=$(echo "$all_changed" | grep '/plugin.json' | sed 's|/plugin.json$||' | sort -u | tr '\n' ' ')
+            echo "检测到的插件: [$plugins]"
           fi
-          echo "changed_plugins=$plugins"
           echo "changed_plugins=$plugins" >> "$GITHUB_OUTPUT"
 
       - name: Build pdfcpu for pdf-toolkit
@@ -79,6 +80,7 @@ jobs:
         shell: bash
         run: |
           changed="${{ steps.changed.outputs.changed_plugins }}"
+          echo "要打包的插件: [$changed]"
           if [ -z "$changed" ]; then
             echo "无插件变更，跳过打包"
             exit 0
@@ -87,6 +89,8 @@ jobs:
             if [ -f "$dir/plugin.json" ]; then
               echo "==> 打包插件: $dir（windows）"
               python3 build.py "$dir" --platform windows
+            else
+              echo "==> 跳过 $dir（plugin.json 不存在）"
             fi
           done
 
