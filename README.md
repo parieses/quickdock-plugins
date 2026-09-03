@@ -15,7 +15,6 @@
 | [PDF 工具箱](./pdf-toolkit/) | `io.github.parieses.pdf-toolkit` | 0.1.7 | PDF 合并/拆分/压缩/加水印/提取图片，无需 Adobe Acrobat |
 | [图片工坊](./image-studio/) | `io.github.parieses.image-studio` | 0.2.0 | 仿 Squoosh 实时对比：左右预览、质量滑块、缩放(锁定比例/预设)、旋转/翻转、亮度/对比度/饱和度调整，实时文件大小与压缩率 |
 | [颜色工具](./color-converter/) | `io.github.parieses.color-converter` | 0.3.3 | 颜色格式互转（HEX/RGB/HSL + 常见英文色名识别）+ 屏幕取色（F8 取色 / ESC 取消） |
-| [Git 仓库浏览器](./git-browser/) | `io.github.parieses.git-browser` | 0.1.1 | 只读浏览 Git 仓库：本地（HEAD/提交/工作区状态/分支，可选目录）+ 远程公开仓库（owner/repo，GitHub API 查分支/提交/star） |
 | [对比工具](./compare/) | `io.github.parieses.compare` | 0.2.2 | 文件/图片对比（元数据 + 预览 + 文本差异）与文本块逐行 Diff（点选改走原生对话框，拖拽保留） |
 | [Crontab 解释器](./cron-explainer/) | `io.github.parieses.cron-explainer` | 0.2.1 | 解析 cron 表达式，显示可读描述、下次执行时间与可视化时间表 |
 | [网络诊断箱](./netdiag/) | `io.github.parieses.netdiag` | 0.1.0 | 合并 Ping 监视、路由追踪、局域网扫描、IP 归属地、端口指纹五个网络工具为单一插件（标签页切换，共享一个原生子进程） |
@@ -138,16 +137,16 @@ quickdock-plugins/
 |------|------|------|
 | `id` | ✅ | 全局唯一，**域名反写** `io.github.<你的账号>.<插件名>`；必须至少含一个点号 |
 | `name` / `version` / `description` | ✅ | 展示信息 |
-| `icon` | | 图标相对路径（plugin.json 同目录），主页与管理页展示 |
-| `author` / `category` | | 展示信息 |
-| `platforms` | | 支持平台数组 `windows/darwin/linux`；**未声明 = 全平台**。加载时按当前平台过滤 |
+| `icon` | - | 图标相对路径（plugin.json 同目录），主页与管理页展示 |
+| `author` / `category` | - | 展示信息 |
+| `platforms` | - | 支持平台数组 `windows/darwin/linux`；**未声明 = 全平台**。加载时按当前平台过滤 |
 | `backend.runtime` | ✅ | `native`（独立子进程二进制）/ `goja`（纯 JS）/ `none`（仅前端） |
 | `backend.entry` | native 必填 | 可执行入口文件名（Windows 自动补 `.exe`，unix 直接执行） |
-| `backend.args` | | 启动附加参数 |
-| `frontend.enabled` `entry` `width` `height` | | 声明前端页面：`entry` 为 `frontend/index.html`，`width/height` 为窗口初始尺寸 |
-| `capabilities` | | 能力声明：`command`（命令面板）/ `frontend`（前端页面）等；有前端页面必须含 `frontend` |
-| `permissions` | | 权限声明：`network` / `filesystem` / `clipboard`，安装时展示 |
-| `commands[]` | | 命令面板条目：`id`（命令唯一标识）/ `title` / `keywords`（搜索关键词）/ `aliases`（别名） |
+| `backend.args` | - | 启动附加参数 |
+| `frontend.enabled` `entry` `width` `height` | - | 声明前端页面：`entry` 为 `frontend/index.html`，`width/height` 为窗口初始尺寸 |
+| `capabilities` | - | 能力声明：`command`（命令面板）/ `frontend`（前端页面）等；有前端页面必须含 `frontend` |
+| `permissions` | - | 权限声明：`network` / `filesystem` / `clipboard`，安装时展示 |
+| `commands[]` | - | 命令面板条目：`id`（命令唯一标识）/ `title` / `keywords`（搜索关键词）/ `aliases`（别名） |
 
 ## 三种 runtime
 
