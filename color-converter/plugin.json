@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.color-converter",
   "name": "颜色工具",
-  "version": "0.3.3",
+  "version": "1.0.0",
   "description": "颜色格式互转（HEX / RGB / HSL）+ 屏幕取色，支持常见英文色名识别",
   "author": "QuickDock",
   "category": "开发者日常",

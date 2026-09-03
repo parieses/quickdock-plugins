@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.port-scanner",
   "name": "端口检查器",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "description": "检查端口占用，显示进程名和 PID",
   "author": "QuickDock",
   "category": "效率工具",

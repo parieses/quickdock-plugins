@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.curl-converter",
   "name": "cURL 转代码",
-  "version": "0.1.1",
+  "version": "1.0.0",
   "description": "把 curl 命令解析成 Python / Go / JavaScript / PHP 请求代码，也支持把 fetch、requests 代码反向转回 curl",
   "author": "QuickDock",
   "icon": "icon.svg",

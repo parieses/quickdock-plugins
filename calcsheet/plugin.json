@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.calcsheet",
   "name": "计算稿纸",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "description": "兼具草稿纸自由度与电子表格智能的多行计算工具，支持行号引用、变量定义、函数计算",
   "author": "QuickDock",
   "icon": "icon.svg",

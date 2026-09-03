@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.dir-buster",
   "name": "目录探测",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "对指定目标 URL 用内置常见路径字典进行轻量探测（自用）：并发受限、可配扩展名，采用异步会话模型实时返回命中的非 404 路径。仅探测你授权的目标，内置字典、不递归",
   "author": "QuickDock",
   "category": "网络工具",

@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.rmb-upper",
   "name": "人民币大写",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "数字金额转中文大写（壹贰叁…），财务报销、开票、合同的刚需小工具",
   "author": "QuickDock",
   "icon": "icon.svg",

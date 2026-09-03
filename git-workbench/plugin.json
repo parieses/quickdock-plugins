@@ -1,8 +1,11 @@
 {
   "id": "io.github.parieses.git-workbench",
   "name": "Git 工作台",
-  "name_i18n": {"zh-CN": "Git 工作台", "en-US": "Git Workbench"},
-  "version": "0.1.0",
+  "name_i18n": {
+    "zh-CN": "Git 工作台",
+    "en-US": "Git Workbench"
+  },
+  "version": "1.0.0",
   "description": "Git 仓库一体化工作台：仓库浏览、二分定位 bug 引入提交、三方合并冲突可视化解决、代码演化时间轴、历史改写（改作者/删敏感文件）、仓库体检与知识孤岛识别。",
   "description_i18n": {
     "zh-CN": "Git 仓库一体化工作台：仓库浏览、二分定位 bug 引入提交、三方合并冲突可视化解决、代码演化时间轴、历史改写（改作者/删敏感文件）、仓库体检与知识孤岛识别。",
@@ -35,11 +38,55 @@
     "network": true
   },
   "commands": [
-    {"id": "repo.open", "title": "打开本地仓库", "title_i18n": {"zh-CN": "打开本地仓库", "en-US": "Open Repository"}, "prefix": "/git", "acceptsInput": true},
-    {"id": "bisect.start", "title": "二分定位", "title_i18n": {"zh-CN": "二分定位", "en-US": "Bisect"}},
-    {"id": "conflict.list", "title": "查看合并冲突", "title_i18n": {"zh-CN": "查看合并冲突", "en-US": "List Conflicts"}},
-    {"id": "timeline.file", "title": "代码演化时间轴", "title_i18n": {"zh-CN": "代码演化时间轴", "en-US": "Code Timeline"}},
-    {"id": "rewrite.preview", "title": "历史改写预览", "title_i18n": {"zh-CN": "历史改写预览", "en-US": "Preview Rewrite"}},
-    {"id": "stats.start", "title": "仓库体检", "title_i18n": {"zh-CN": "仓库体检", "en-US": "Repo Stats"}}
+    {
+      "id": "repo.open",
+      "title": "打开本地仓库",
+      "title_i18n": {
+        "zh-CN": "打开本地仓库",
+        "en-US": "Open Repository"
+      },
+      "prefix": "/git",
+      "acceptsInput": true
+    },
+    {
+      "id": "bisect.start",
+      "title": "二分定位",
+      "title_i18n": {
+        "zh-CN": "二分定位",
+        "en-US": "Bisect"
+      }
+    },
+    {
+      "id": "conflict.list",
+      "title": "查看合并冲突",
+      "title_i18n": {
+        "zh-CN": "查看合并冲突",
+        "en-US": "List Conflicts"
+      }
+    },
+    {
+      "id": "timeline.file",
+      "title": "代码演化时间轴",
+      "title_i18n": {
+        "zh-CN": "代码演化时间轴",
+        "en-US": "Code Timeline"
+      }
+    },
+    {
+      "id": "rewrite.preview",
+      "title": "历史改写预览",
+      "title_i18n": {
+        "zh-CN": "历史改写预览",
+        "en-US": "Preview Rewrite"
+      }
+    },
+    {
+      "id": "stats.start",
+      "title": "仓库体检",
+      "title_i18n": {
+        "zh-CN": "仓库体检",
+        "en-US": "Repo Stats"
+      }
+    }
   ]
 }

@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.hash-calc",
   "name": "文件哈希",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "计算文件的 MD5/SHA1/SHA256/SHA512 摘要，结果一键复制",
   "author": "QuickDock",
   "category": "开发者日常",

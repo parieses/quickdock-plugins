@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.image-studio",
   "name": "图片工坊",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "description": "仿 Squoosh 实时对比：左右预览对比，质量滑块、缩放(锁定比例/百分比/预设)、旋转/翻转、亮度/对比度/饱和度调整，实时预览文件大小与压缩率",
   "author": "QuickDock",
   "category": "文件工具",

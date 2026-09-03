@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.cron-explainer",
   "name": "Crontab 解释器",
-  "version": "0.3.0",
+  "version": "1.0.0",
   "description": "解析 cron 表达式（含义/下次执行/小时分布），并可可视化生成表达式、实时预览下次执行时间",
   "author": "QuickDock",
   "icon": "icon.svg",

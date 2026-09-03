@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.subdomain-enum",
   "name": "子域名枚举",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "description": "被动收集域名子域名（证书透明日志 CertSpotter / crt.sh + HackerTarget + urlscan + rapiddns + AlienVault OTX），可选并发解析 A 记录筛选存活",
   "author": "QuickDock",
   "category": "网络工具",

@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.exif-viewer",
   "name": "EXIF 查看",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "选择图片（JPEG/PNG）查看拍摄时间、相机/镜头、参数与 GPS 经纬度等 EXIF 信息",
   "author": "QuickDock",
   "category": "文件工具",

@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.disk-analyzer",
   "name": "磁盘分析器",
-  "version": "0.1.1",
+  "version": "1.0.0",
   "description": "可视化磁盘空间占用分析工具，类似 SpaceSniffer，支持树图展示目录结构",
   "author": "QuickDock",
   "icon": "icon.svg",

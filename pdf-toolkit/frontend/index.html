@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
+  <link rel="stylesheet" href="qd-theme.css">
+  <link rel="stylesheet" href="components.css">
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>PDF 工具箱</title>
 <style>
@@ -45,6 +47,8 @@
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2)}
 .p-hint{font-size:var(--fs-xs);color:var(--text-placeholder);margin-top:4px}
 </style>
+<svg style="display:none" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><symbol id="icon-box" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></symbol></svg>
+<svg style="display:none" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><symbol id="icon-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></symbol><symbol id="icon-send" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></symbol><symbol id="icon-git-branch" viewBox="0 0 24 24"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></symbol><symbol id="icon-trash-2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></symbol><symbol id="icon-shield-alert" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></symbol><symbol id="icon-hard-drive" viewBox="0 0 24 24"><line x1="2" y1="12" x2="22" y2="12"></line><path d="M17 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></symbol><symbol id="icon-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></symbol><symbol id="icon-file-text" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></symbol><symbol id="icon-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></symbol><symbol id="icon-gauge" viewBox="0 0 24 24"><path d="M12 15l-2-2"></path><path d="M19.07 4.93a10 10 0 1 1-14.14 0"></path><path d="M12 2v4"></path></symbol><symbol id="icon-box" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></symbol></svg>
 </head>
 <body>
 <div class="p-app">
@@ -76,12 +80,12 @@
           <div class="p-field" style="margin-top:var(--sp-2)">
             <label class="p-label">输出目录</label>
             <div style="display:flex;gap:8px">
-              <input type="text" class="p-input wide" id="merge-output" placeholder="输出目录...">
-              <button class="p-btn secondary" id="merge-output-btn">选择目录</button>
+              <input type="text" class="input wide" id="merge-output" placeholder="输出目录...">
+              <button class="btn secondary" id="merge-output-btn">选择目录</button>
             </div>
             <div class="p-hint">合并后的文件将自动命名为 合并文件_时间.pdf</div>
           </div>
-          <button class="p-btn" id="merge-btn">开始合并</button>
+          <button class="btn" id="merge-btn">开始合并</button>
         </div>
         <div id="merge-result" class="p-result" style="display:none"></div>
       </div>
@@ -91,23 +95,23 @@
           <div class="p-field">
             <label class="p-label">输入文件</label>
             <div style="display:flex;gap:8px">
-              <input type="text" class="p-input wide" id="split-input" placeholder="PDF 文件路径...">
-              <button class="p-btn secondary" id="split-input-btn">选择文件</button>
+              <input type="text" class="input wide" id="split-input" placeholder="PDF 文件路径...">
+              <button class="btn secondary" id="split-input-btn">选择文件</button>
             </div>
           </div>
           <div class="p-field">
             <label class="p-label">输出目录</label>
             <div style="display:flex;gap:8px">
-              <input type="text" class="p-input wide" id="split-output" placeholder="输出目录...">
-              <button class="p-btn secondary" id="split-output-btn">选择目录</button>
+              <input type="text" class="input wide" id="split-output" placeholder="输出目录...">
+              <button class="btn secondary" id="split-output-btn">选择目录</button>
             </div>
           </div>
           <div class="p-field">
             <label class="p-label">页码范围</label>
-            <input type="text" class="p-input wide" id="split-pages" placeholder="例如: 1-3,5,8-10 或 all">
+            <input type="text" class="input wide" id="split-pages" placeholder="例如: 1-3,5,8-10 或 all">
             <div class="p-hint">输入 all 表示拆分为单页 PDF</div>
           </div>
-          <button class="p-btn" id="split-btn">开始拆分</button>
+          <button class="btn" id="split-btn">开始拆分</button>
         </div>
         <div id="split-result" class="p-result" style="display:none"></div>
       </div>
@@ -117,19 +121,19 @@
           <div class="p-field">
             <label class="p-label">输入文件</label>
             <div style="display:flex;gap:8px">
-              <input type="text" class="p-input wide" id="compress-input" placeholder="PDF 文件路径...">
-              <button class="p-btn secondary" id="compress-input-btn">选择文件</button>
+              <input type="text" class="input wide" id="compress-input" placeholder="PDF 文件路径...">
+              <button class="btn secondary" id="compress-input-btn">选择文件</button>
             </div>
           </div>
           <div class="p-field">
             <label class="p-label">输出目录</label>
             <div style="display:flex;gap:8px">
-              <input type="text" class="p-input wide" id="compress-output" placeholder="输出目录...">
-              <button class="p-btn secondary" id="compress-output-btn">选择目录</button>
+              <input type="text" class="input wide" id="compress-output" placeholder="输出目录...">
+              <button class="btn secondary" id="compress-output-btn">选择目录</button>
             </div>
             <div class="p-hint">压缩后的文件将自动命名为 compressed.pdf</div>
           </div>
-          <button class="p-btn" id="compress-btn">开始压缩</button>
+          <button class="btn" id="compress-btn">开始压缩</button>
         </div>
         <div id="compress-result" class="p-result" style="display:none"></div>
       </div>
@@ -139,33 +143,33 @@
           <div class="p-field">
             <label class="p-label">输入文件</label>
             <div style="display:flex;gap:8px">
-              <input type="text" class="p-input wide" id="watermark-input" placeholder="PDF 文件路径...">
-              <button class="p-btn secondary" id="watermark-input-btn">选择文件</button>
+              <input type="text" class="input wide" id="watermark-input" placeholder="PDF 文件路径...">
+              <button class="btn secondary" id="watermark-input-btn">选择文件</button>
             </div>
           </div>
           <div class="p-field">
             <label class="p-label">输出目录</label>
             <div style="display:flex;gap:8px">
-              <input type="text" class="p-input wide" id="watermark-output" placeholder="输出目录...">
-              <button class="p-btn secondary" id="watermark-output-btn">选择目录</button>
+              <input type="text" class="input wide" id="watermark-output" placeholder="输出目录...">
+              <button class="btn secondary" id="watermark-output-btn">选择目录</button>
             </div>
             <div class="p-hint">水印后的文件将自动命名为 watermarked.pdf</div>
           </div>
           <div class="p-field">
             <label class="p-label">水印文字</label>
-            <input type="text" class="p-input wide" id="watermark-text" placeholder="水印内容..." value="水印">
+            <input type="text" class="input wide" id="watermark-text" placeholder="水印内容..." value="水印">
           </div>
           <div class="grid2">
             <div class="p-field">
               <label class="p-label">透明度 (0-1)</label>
-              <input type="number" class="p-input" id="watermark-opacity" step="0.1" min="0" max="1" value="0.3">
+              <input type="number" class="input" id="watermark-opacity" step="0.1" min="0" max="1" value="0.3">
             </div>
             <div class="p-field">
               <label class="p-label">字体大小</label>
-              <input type="number" class="p-input" id="watermark-size" value="48">
+              <input type="number" class="input" id="watermark-size" value="48">
             </div>
           </div>
-          <button class="p-btn" id="watermark-btn">添加水印</button>
+          <button class="btn" id="watermark-btn">添加水印</button>
         </div>
         <div id="watermark-result" class="p-result" style="display:none"></div>
       </div>
@@ -175,18 +179,18 @@
           <div class="p-field">
             <label class="p-label">输入文件</label>
             <div style="display:flex;gap:8px">
-              <input type="text" class="p-input wide" id="extract-input" placeholder="PDF 文件路径...">
-              <button class="p-btn secondary" id="extract-input-btn">选择文件</button>
+              <input type="text" class="input wide" id="extract-input" placeholder="PDF 文件路径...">
+              <button class="btn secondary" id="extract-input-btn">选择文件</button>
             </div>
           </div>
           <div class="p-field">
             <label class="p-label">输出目录</label>
             <div style="display:flex;gap:8px">
-              <input type="text" class="p-input wide" id="extract-output" placeholder="输出目录...">
-              <button class="p-btn secondary" id="extract-output-btn">选择目录</button>
+              <input type="text" class="input wide" id="extract-output" placeholder="输出目录...">
+              <button class="btn secondary" id="extract-output-btn">选择目录</button>
             </div>
           </div>
-          <button class="p-btn" id="extract-btn">提取图片</button>
+          <button class="btn" id="extract-btn">提取图片</button>
         </div>
         <div id="extract-result" class="p-result" style="display:none"></div>
       </div>
@@ -196,11 +200,11 @@
           <div class="p-field">
             <label class="p-label">PDF 文件</label>
             <div style="display:flex;gap:8px">
-              <input type="text" class="p-input wide" id="info-input" placeholder="PDF 文件路径...">
-              <button class="p-btn secondary" id="info-input-btn">选择文件</button>
+              <input type="text" class="input wide" id="info-input" placeholder="PDF 文件路径...">
+              <button class="btn secondary" id="info-input-btn">选择文件</button>
             </div>
           </div>
-          <button class="p-btn" id="info-btn">获取信息</button>
+          <button class="btn" id="info-btn">获取信息</button>
         </div>
         <div id="info-result" class="p-result" style="display:none">
           <pre id="info-content"></pre>

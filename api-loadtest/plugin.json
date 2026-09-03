@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.api-loadtest",
   "name": "接口压测",
-  "version": "0.1.1",
+  "version": "1.0.0",
   "description": "功能丰富的 HTTP 接口压测工具：支持并发/时长双模式、自定义 Header 与 Body、实时 QPS 与延迟分布(p50/p90/p95/p99)、状态码分布、错误率统计与结果一键导出",
   "author": "QuickDock",
   "icon": "icon.svg",

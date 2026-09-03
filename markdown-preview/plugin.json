@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.markdown-preview",
   "name": "Markdown 渲染",
-  "version": "0.3.1",
+  "version": "1.0.0",
   "description": "实时渲染 Markdown（GFM：标题/列表/表格/任务列表/引用）+ 代码高亮，一键复制为 HTML",
   "author": "QuickDock",
   "category": "开发者日常",

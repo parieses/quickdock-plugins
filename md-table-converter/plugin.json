@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.md-table",
   "name": "MD 表格转换器",
-  "version": "0.1.1",
+  "version": "1.0.0",
   "description": "Markdown 表格与 CSV / JSON / HTML 四种格式互转，自动识别输入格式，写文档、导数据的顺手小工具",
   "author": "QuickDock",
   "icon": "icon.svg",

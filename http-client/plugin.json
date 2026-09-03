@@ -1,8 +1,11 @@
 {
   "id": "io.github.parieses.http-client",
   "name": "HTTP 客户端",
-  "name_i18n": {"zh-CN": "HTTP 客户端", "en-US": "HTTP Client"},
-  "version": "0.1.0",
+  "name_i18n": {
+    "zh-CN": "HTTP 客户端",
+    "en-US": "HTTP Client"
+  },
+  "version": "1.0.0",
   "description": "轻量 HTTP 请求调试客户端：项目管理请求、目录与文档树、环境变量与 {{var}} 替换、请求历史重放、Postman 集合导入。数据独立存储。",
   "description_i18n": {
     "zh-CN": "轻量 HTTP 请求调试客户端：项目管理请求、目录与文档树、环境变量与 {{var}} 替换、请求历史重放、Postman 集合导入。数据独立存储。",
@@ -36,9 +39,39 @@
     "filesystem": true
   },
   "commands": [
-    {"id": "req.send", "title": "发送请求", "title_i18n": {"zh-CN": "发送请求", "en-US": "Send Request"}, "prefix": "/http", "acceptsInput": true},
-    {"id": "history.list", "title": "请求历史", "title_i18n": {"zh-CN": "请求历史", "en-US": "Request History"}},
-    {"id": "project.list", "title": "项目列表", "title_i18n": {"zh-CN": "项目列表", "en-US": "Projects"}},
-    {"id": "env.resolve", "title": "解析变量", "title_i18n": {"zh-CN": "解析变量", "en-US": "Resolve Variables"}}
+    {
+      "id": "req.send",
+      "title": "发送请求",
+      "title_i18n": {
+        "zh-CN": "发送请求",
+        "en-US": "Send Request"
+      },
+      "prefix": "/http",
+      "acceptsInput": true
+    },
+    {
+      "id": "history.list",
+      "title": "请求历史",
+      "title_i18n": {
+        "zh-CN": "请求历史",
+        "en-US": "Request History"
+      }
+    },
+    {
+      "id": "project.list",
+      "title": "项目列表",
+      "title_i18n": {
+        "zh-CN": "项目列表",
+        "en-US": "Projects"
+      }
+    },
+    {
+      "id": "env.resolve",
+      "title": "解析变量",
+      "title_i18n": {
+        "zh-CN": "解析变量",
+        "en-US": "Resolve Variables"
+      }
+    }
   ]
 }

@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.dup-finder",
   "name": "重复文件查找",
-  "version": "0.1.2",
+  "version": "1.0.0",
   "description": "选择目录后按内容哈希查找重复文件，分组展示并支持一键删除冗余副本",
   "author": "QuickDock",
   "category": "文件工具",

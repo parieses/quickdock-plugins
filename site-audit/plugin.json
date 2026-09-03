@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.site-audit",
   "name": "站点审计箱",
-  "version": "0.1.2",
+  "version": "1.0.0",
   "description": "将 WHOIS 查询、SSL 证书检查、DNS 查询、DNS 传播检查、HTTP 状态码速查、HTTP 安全头审计六个站点工具合并为单一插件，按需切换标签页，共享一个原生子进程",
   "author": "QuickDock",
   "category": "网络工具",
@@ -31,47 +31,131 @@
     {
       "id": "whois-lookup",
       "title": "WHOIS 查询",
-      "keywords": ["whois", "域名", "注册信息", "备案", "registrar"],
-      "aliases": ["域名 WHOIS", "WHOIS 查询", "注册信息查询"],
-      "title_i18n": {"zh-CN": "WHOIS 查询", "en-US": "WHOIS Lookup"}
+      "keywords": [
+        "whois",
+        "域名",
+        "注册信息",
+        "备案",
+        "registrar"
+      ],
+      "aliases": [
+        "域名 WHOIS",
+        "WHOIS 查询",
+        "注册信息查询"
+      ],
+      "title_i18n": {
+        "zh-CN": "WHOIS 查询",
+        "en-US": "WHOIS Lookup"
+      }
     },
     {
       "id": "ssl-check",
       "title": "SSL 证书检查",
-      "keywords": ["ssl", "tls", "cert", "证书", "https", "过期"],
-      "aliases": ["证书检查", "SSL 检查", "TLS 证书"],
-      "title_i18n": {"zh-CN": "SSL 证书检查", "en-US": "SSL Certificate Checker"}
+      "keywords": [
+        "ssl",
+        "tls",
+        "cert",
+        "证书",
+        "https",
+        "过期"
+      ],
+      "aliases": [
+        "证书检查",
+        "SSL 检查",
+        "TLS 证书"
+      ],
+      "title_i18n": {
+        "zh-CN": "SSL 证书检查",
+        "en-US": "SSL Certificate Checker"
+      }
     },
     {
       "id": "dns-lookup",
       "title": "DNS 查询",
-      "keywords": ["dns", "解析", "域名", "record", "mx", "txt", "cname"],
-      "aliases": ["域名解析", "DNS 查", "查询解析记录"],
-      "title_i18n": {"zh-CN": "DNS 查询", "en-US": "DNS Lookup"}
+      "keywords": [
+        "dns",
+        "解析",
+        "域名",
+        "record",
+        "mx",
+        "txt",
+        "cname"
+      ],
+      "aliases": [
+        "域名解析",
+        "DNS 查",
+        "查询解析记录"
+      ],
+      "title_i18n": {
+        "zh-CN": "DNS 查询",
+        "en-US": "DNS Lookup"
+      }
     },
     {
       "id": "dns-propagation",
       "title": "DNS 传播检查",
-      "keywords": ["dns", "propagation", "传播", "解析", "DNS 检查", "全球生效"],
-      "aliases": ["DNS 传播", "DNS 传播检查", "解析一致性"],
-      "title_i18n": {"zh-CN": "DNS 传播检查", "en-US": "DNS Propagation Check"}
+      "keywords": [
+        "dns",
+        "propagation",
+        "传播",
+        "解析",
+        "DNS 检查",
+        "全球生效"
+      ],
+      "aliases": [
+        "DNS 传播",
+        "DNS 传播检查",
+        "解析一致性"
+      ],
+      "title_i18n": {
+        "zh-CN": "DNS 传播检查",
+        "en-US": "DNS Propagation Check"
+      }
     },
     {
       "id": "http-status",
       "title": "HTTP 状态码查询",
-      "keywords": ["status", "http", "状态码", "status code"],
-      "aliases": ["状态码", "http状态码", "状态码查询"],
+      "keywords": [
+        "status",
+        "http",
+        "状态码",
+        "status code"
+      ],
+      "aliases": [
+        "状态码",
+        "http状态码",
+        "状态码查询"
+      ],
       "prefix": "/status",
       "matchPattern": "^\\d{3}$",
       "acceptsInput": true,
-      "title_i18n": {"zh-CN": "HTTP 状态码查询", "en-US": "Lookup HTTP Status"}
+      "title_i18n": {
+        "zh-CN": "HTTP 状态码查询",
+        "en-US": "Lookup HTTP Status"
+      }
     },
     {
       "id": "headers-audit",
       "title": "安全头审计",
-      "keywords": ["headers", "security", "安全头", "响应头", "HSTS", "CSP", "审计", "评分"],
-      "aliases": ["安全头审计", "响应头审计", "HTTP 安全审计"],
-      "title_i18n": {"zh-CN": "安全头审计", "en-US": "HTTP Security Headers Audit"}
+      "keywords": [
+        "headers",
+        "security",
+        "安全头",
+        "响应头",
+        "HSTS",
+        "CSP",
+        "审计",
+        "评分"
+      ],
+      "aliases": [
+        "安全头审计",
+        "响应头审计",
+        "HTTP 安全审计"
+      ],
+      "title_i18n": {
+        "zh-CN": "安全头审计",
+        "en-US": "HTTP Security Headers Audit"
+      }
     }
   ],
   "name_i18n": {

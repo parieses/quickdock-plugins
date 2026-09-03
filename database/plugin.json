@@ -1,8 +1,11 @@
 {
   "id": "io.github.parieses.database",
   "name": "数据库客户端",
-  "name_i18n": {"zh-CN": "数据库客户端", "en-US": "Database Client"},
-  "version": "0.1.0",
+  "name_i18n": {
+    "zh-CN": "数据库客户端",
+    "en-US": "Database Client"
+  },
+  "version": "1.0.0",
   "description": "轻量数据库连接与查询工具：MySQL / SQLite / Redis 连接管理、SQL 与 Redis 命令执行、库表浏览器（库→表/视图→字段、Redis 键树）、结果网格内联行编辑。数据独立存储。",
   "description_i18n": {
     "zh-CN": "轻量数据库连接与查询工具：MySQL / SQLite / Redis 连接管理、SQL 与 Redis 命令执行、库表浏览器（库→表/视图→字段、Redis 键树）、结果网格内联行编辑。数据独立存储。",
@@ -36,10 +39,47 @@
     "filesystem": true
   },
   "commands": [
-    {"id": "conn.list", "title": "连接列表", "title_i18n": {"zh-CN": "连接列表", "en-US": "Connections"}},
-    {"id": "conn.save", "title": "保存连接", "title_i18n": {"zh-CN": "保存连接", "en-US": "Save Connection"}},
-    {"id": "conn.test", "title": "测试连接", "title_i18n": {"zh-CN": "测试连接", "en-US": "Test Connection"}},
-    {"id": "query.run", "title": "执行查询", "title_i18n": {"zh-CN": "执行查询", "en-US": "Run Query"}, "prefix": "/db", "acceptsInput": true},
-    {"id": "tree.list", "title": "库表树", "title_i18n": {"zh-CN": "库表树", "en-US": "Schema Tree"}}
+    {
+      "id": "conn.list",
+      "title": "连接列表",
+      "title_i18n": {
+        "zh-CN": "连接列表",
+        "en-US": "Connections"
+      }
+    },
+    {
+      "id": "conn.save",
+      "title": "保存连接",
+      "title_i18n": {
+        "zh-CN": "保存连接",
+        "en-US": "Save Connection"
+      }
+    },
+    {
+      "id": "conn.test",
+      "title": "测试连接",
+      "title_i18n": {
+        "zh-CN": "测试连接",
+        "en-US": "Test Connection"
+      }
+    },
+    {
+      "id": "query.run",
+      "title": "执行查询",
+      "title_i18n": {
+        "zh-CN": "执行查询",
+        "en-US": "Run Query"
+      },
+      "prefix": "/db",
+      "acceptsInput": true
+    },
+    {
+      "id": "tree.list",
+      "title": "库表树",
+      "title_i18n": {
+        "zh-CN": "库表树",
+        "en-US": "Schema Tree"
+      }
+    }
   ]
 }
