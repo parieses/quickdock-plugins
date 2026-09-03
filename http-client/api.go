@@ -10,7 +10,12 @@ import (
 	"net/url"
 	"strings"
 	"time"
-	httpTimeout = 30 * time.Second
+)
+const (
+	httpClientMaxBody   = 16 << 20
+	httpClientTimeout   = 30 * time.Second
+	httpClientMaxRedirs = 10
+	httpTimeout         = 30 * time.Second
 )
 
 // ---------- 输入结构 ----------
