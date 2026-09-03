@@ -52,7 +52,7 @@ jobs:
             plugins=$(echo "$all_changed" | grep '/plugin.json' | sed 's|/plugin.json$||' | sort -u | tr '\n' ' ' || true)
             
             # 方法2: 检测 .go/.mod/.sum 变化
-            go_changed=$(echo "$all_changed" | grep -E '\.(go|mod|sum)$' | sed 's|/[^/]*$||' | sort -u)
+            go_changed=$(echo "$all_changed" | grep -E '\.(go|mod|sum)$' | sed 's|/[^/]*$||' | sort -u || true)
             for dir in $go_changed; do
               if [ -d "$dir" ] && [ -f "$dir/plugin.json" ]; then
                 plugins="$plugins $dir"
@@ -60,7 +60,7 @@ jobs:
             done
             
             # 方法3: 检测 frontend/ 变化
-            frontend_changed=$(echo "$all_changed" | grep '/frontend/' | sed 's|/frontend/.*||' | sort -u)
+            frontend_changed=$(echo "$all_changed" | grep '/frontend/' | sed 's|/frontend/.*||' | sort -u || true)
             for dir in $frontend_changed; do
               if [ -d "$dir" ] && [ -f "$dir/plugin.json" ]; then
                 plugins="$plugins $dir"
