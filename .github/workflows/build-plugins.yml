@@ -1,15 +1,4 @@
 # 插件自动打包 Workflow（仅 Windows）
-# 触发：push 到 main（仅当插件/build 脚本相关文件变更时）或手动 dispatch。
-# 逻辑：diff 出"本次推送改了哪些插件目录"→ 对每个插件执行 build.py --platform windows。
-#       Go 交叉编译（GOOS=windows），单一 ubuntu runner 即可产出 Windows 安装包。
-#       zip 上传为 Actions artifact。
-# 说明：主程序 QuickDock 目前仅发布 Windows 版本，故插件只打包 windows。需要其他平台时在
-#       build.py 命令后加 --platform all（或 darwin/linux）。
-# 产物：打包出的 zip 会同时上传为 Actions artifact，并发布到名为 latest 的 GitHub Release
-#       （主页下载链接依赖 releases/latest/download/<id>-windows.zip）。
-#
-# 产物命名：<插件ID转-小写>-windows.zip（如 io-github-parieses-disk-analyzer-windows.zip）
-
 name: Build Plugins
 
 on:
@@ -23,25 +12,24 @@ on:
       - '**/go.sum'
       - '**/icon.svg'
       - '**/frontend/**'
-      - '**/README.md'
       - '.github/workflows/build-plugins.yml'
-  workflow_dispatch: {} # 手动触发：全量打包所有插件
+  workflow_dispatch: {}
 
 jobs:
   build:
     name: Package changed plugins (windows)
     runs-on: ubuntu-latest
     permissions:
-      contents: write # 用于创建/更新 GitHub Release 并上传 zip 资产
+      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # 需要历史记录做 diff（首次推送时 before 为全 0，走全量分支）
+          fetch-depth: 0
 
       - uses: actions/setup-go@v5
         with:
           go-version: '1.25.x'
-          cache: false # 多插件目录，不共享缓存的单个 go.mod
+          cache: false
 
       - name: Detect changed plugin dirs
         id: changed
@@ -56,8 +44,30 @@ jobs:
           else
             echo "检测变更文件..."
             all_changed=$(git diff --name-only "$base" HEAD)
+            echo "所有变更文件:"
+            echo "$all_changed"
             echo "变更文件数: $(echo "$all_changed" | wc -l)"
+            
+            # 方法1: 检测 plugin.json 变化
             plugins=$(echo "$all_changed" | grep '/plugin.json' | sed 's|/plugin.json$||' | sort -u | tr '\n' ' ')
+            
+            # 方法2: 检测 .go/.mod/.sum 变化
+            go_changed=$(echo "$all_changed" | grep -E '\.(go|mod|sum)$' | sed 's|/[^/]*$||' | sort -u)
+            for dir in $go_changed; do
+              if [ -d "$dir" ] && [ -f "$dir/plugin.json" ]; then
+                plugins="$plugins $dir"
+              fi
+            done
+            
+            # 方法3: 检测 frontend/ 变化
+            frontend_changed=$(echo "$all_changed" | grep '/frontend/' | sed 's|/frontend/.*||' | sort -u)
+            for dir in $frontend_changed; do
+              if [ -d "$dir" ] && [ -f "$dir/plugin.json" ]; then
+                plugins="$plugins $dir"
+              fi
+            done
+            
+            plugins=$(echo "$plugins" | tr ' ' '\n' | grep -v '^$' | sort -u | tr '\n' ' ')
             echo "检测到的插件: [$plugins]"
           fi
           echo "changed_plugins=$plugins" >> "$GITHUB_OUTPUT"
@@ -66,14 +76,9 @@ jobs:
         if: contains(steps.changed.outputs.changed_plugins, 'pdf-toolkit')
         shell: bash
         run: |
-          # pdf-toolkit 运行时依赖 sibling 的 pdfcpu.exe（merge/split/optimize/watermark/images）。
-          # .gitignore 排除 *.exe，仓库里没有这个文件，CI 必须现场从源码交叉编译，
-          # 否则打出的市场 zip 缺 pdfcpu.exe → 插件所有 PDF 处理功能不可用。
-          # 版本锁定 v0.15.0：main.go 的 CLI 调用语法按该版本编写（optimize/merge 输出在前等）。
           git clone --depth 1 --branch v0.15.0 https://github.com/pdfcpu/pdfcpu.git /tmp/pdfcpu-src
           cd /tmp/pdfcpu-src
-          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath \
-            -o "$GITHUB_WORKSPACE/pdf-toolkit/pdfcpu.exe" ./cmd/pdfcpu
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -o "$GITHUB_WORKSPACE/pdf-toolkit/pdfcpu.exe" ./cmd/pdfcpu
           ls -lh "$GITHUB_WORKSPACE/pdf-toolkit/pdfcpu.exe"
 
       - name: Package plugins (windows)
@@ -105,9 +110,6 @@ jobs:
             echo "has_zip=false" >> "$GITHUB_OUTPUT"
           fi
 
-      # 注意：不删除旧 release。增量打包 + 删除重建会让 latest 只剩本次变更插件的 zip，
-      # 其他插件的市场下载链接（releases/latest/download/<id>-windows.zip）全部 404。
-      # action-gh-release 对已存在的 tag 是追加/覆盖同名资产，未变更插件的历史 zip 得以保留。
       - name: Publish zips to 'latest' release
         if: steps.zips.outputs.has_zip == 'true'
         uses: softprops/action-gh-release@v2
@@ -116,7 +118,6 @@ jobs:
           name: Latest Plugin Builds
           body: |
             Auto-built Windows install packages for QuickDock plugins.
-            Download the zip for your plugin and install via QuickDock → Plugins → Install from file.
           files: dist/*.zip
           make_latest: true
           fail_on_unmatched_files: false
