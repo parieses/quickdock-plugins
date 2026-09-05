@@ -16,15 +16,20 @@
 .p-result{margin:0 10px;padding:6px 10px;border-radius:var(--radius);font-size:12px;flex-shrink:0}
 .p-free{background:rgba(40,200,100,.12);color:var(--success)}
 .p-inuse{background:rgba(226,75,74,.12);color:var(--danger)}
-.p-list{flex:1;overflow-y:auto}
+.p-list{flex:1;overflow:auto}
+.p-head{display:flex;align-items:center;gap:8px;padding:4px 10px;background:var(--bg-tertiary);border-bottom:1px solid var(--border);font-size:11px;color:var(--text-muted);font-weight:600;flex-shrink:0}
+.p-head .p-port,.p-head .p-proto,.p-head .p-v4,.p-head .p-v6,.p-head .p-pid,.p-head .p-name,.p-head .p-path{color:var(--text-muted)}
 .p-item{display:flex;align-items:center;gap:8px;padding:5px 10px;border-bottom:1px solid var(--border);min-height:28px;font-size:12px;cursor:pointer;user-select:none}
 .p-item:hover{background:var(--bg-hover)}
 .p-item.selected{background:var(--accent-soft)}
-.p-port{font-family:var(--font-mono);color:var(--accent);min-width:54px;font-weight:600}
-.p-proto{color:var(--text-muted);min-width:30px;font-size:11px}
-.p-pid{font-family:var(--font-mono);color:var(--text-secondary);min-width:50px;font-size:11px}
-.p-name{color:var(--text-primary);min-width:90px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.p-path{color:var(--text-muted);font-size:11px;font-family:var(--font-mono);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:rtl;text-align:left}
+.p-port{font-family:var(--font-mono);color:var(--accent);min-width:54px;font-weight:600;flex-shrink:0}
+.p-proto{color:var(--text-muted);min-width:30px;font-size:11px;flex-shrink:0}
+.p-v4,.p-v6{font-family:var(--font-mono);font-size:11px;color:var(--text-secondary);min-width:104px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0}
+.p-v6{color:var(--text-muted)}
+.p-v4:empty::before,.p-v6:empty::before{content:"—";color:var(--text-muted)}
+.p-pid{font-family:var(--font-mono);color:var(--text-secondary);min-width:50px;font-size:11px;flex-shrink:0}
+.p-name{color:var(--text-primary);min-width:90px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0}
+.p-path{color:var(--text-muted);font-size:11px;font-family:var(--font-mono);flex:1;min-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:rtl;text-align:left}
 .p-path:hover{color:var(--text-secondary);text-decoration:underline;text-decoration-style:dotted}
 .p-actions{flex-shrink:0;display:flex;gap:2px}
 .p-empty{padding:24px;text-align:center;color:var(--text-muted);font-size:12px}
@@ -46,6 +51,16 @@
     <span id="checkResult" class="p-result" style="display:none"></span>
   </div>
   <div id="filteredHint" class="p-filtered-hint" style="display:none"></div>
+  <div class="p-head">
+    <span class="p-port">端口</span>
+    <span class="p-proto">协议</span>
+    <span class="p-v4">IPv4</span>
+    <span class="p-v6">IPv6</span>
+    <span class="p-pid">PID</span>
+    <span class="p-name">进程</span>
+    <span class="p-path">路径</span>
+    <span class="p-actions"></span>
+  </div>
   <div class="p-list" id="portList"><div class="p-empty">点击刷新加载端口列表</div></div>
 </div>
 <script>
@@ -66,6 +81,8 @@ function applyFilter(items){
       || String(p.process||'').toLowerCase().indexOf(q)>=0
       || String(p.path||'').toLowerCase().indexOf(q)>=0
       || String(p.protocol||'').toLowerCase().indexOf(q)>=0
+      || String(p.addrv4||'').toLowerCase().indexOf(q)>=0
+      || String(p.addrv6||'').toLowerCase().indexOf(q)>=0
   })
 }
 
@@ -77,9 +94,12 @@ else{hint.style.display='none'}
 if(filtered.length===0){list.innerHTML='<div class="p-empty">没有匹配的端口</div>';return}
 list.innerHTML=filtered.map(function(p){
   var port=escapeHtml(p.port),proto=escapeHtml(p.protocol||''),pid=escapeHtml(p.pid||'-'),name=escapeHtml(p.process||p.name||''),path=escapeHtml(p.path||'')
-  return '<div class="p-item" data-pid="'+escapeHtml(p.pid||'')+'" data-port="'+port+'">'
+  var v4=escapeHtml(p.addrv4||''),v6=escapeHtml(p.addrv6||'')
+  return '<div class="p-item" data-pid="'+escapeHtml(p.pid||'')+'" data-port="'+port+'" data-v4="'+v4+'" data-v6="'+v6+'">'
     +'<span class="p-port">'+port+'</span>'
     +'<span class="p-proto">'+proto+'</span>'
+    +'<span class="p-v4" title="'+(v4?v4:'无 IPv4 绑定')+'">'+v4+'</span>'
+    +'<span class="p-v6" title="'+(v6?v6:'无 IPv6 绑定')+'">'+v6+'</span>'
     +'<span class="p-pid">'+pid+'</span>'
     +'<span class="p-name" title="'+escapeHtml(name||'(无)')+'">'+name+'</span>'
     +(path?'<span class="p-path" title="'+escapeHtml(path)+'">'+path+'</span>':'<span class="p-path"></span>')
@@ -98,8 +118,12 @@ if(found){result.className='p-result p-inuse';result.textContent='端口 '+port+
 
 function killRow(row){
   var port=row.dataset.port,pid=row.dataset.pid,name=row.querySelector('.p-name').textContent||'(无)'
+  var v4=row.dataset.v4||'',v6=row.dataset.v6||''
   if(!pid||pid==='-'){qdAlert('该条目没有 PID，无法结束');return}
-  qdConfirm('确定结束占用端口 '+port+' 的进程 '+name+' (PID '+pid+')？').then(function(ok){
+  var addr=''
+  if(v4) addr+=' IPv4 '+v4
+  if(v6) addr+=' IPv6 '+v6
+  qdConfirm('确定结束占用端口 '+port+' 的进程 '+name+' (PID '+pid+')？'+addr).then(function(ok){
     if(!ok) return
     pluginExec('port-kill',{port:parseInt(port,10)}).then(function(){
       refreshPorts()

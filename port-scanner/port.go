@@ -14,7 +14,9 @@ type PortInfo struct {
 	State    string `json:"state"`
 	PID      int    `json:"pid,omitempty"`
 	Process  string `json:"process,omitempty"`
-	Path     string `json:"path,omitempty"` // 进程 exe 绝对路径，wmic 全量缓存，空表示未取到
+	Path     string `json:"path,omitempty"`  // 进程 exe 绝对路径，wmic 全量缓存，空表示未取到
+	AddrV4   string `json:"addrV4,omitempty"` // 本地 IPv4 绑定地址，如 0.0.0.0:8080
+	AddrV6   string `json:"addrV6,omitempty"` // 本地 IPv6 绑定地址，如 [::]:8080
 }
 
 func handlePortCommand(id int64, cmd string, input map[string]interface{}) {
@@ -42,10 +44,18 @@ func portList(id int64) {
 	// exe 路径用 getProcessPath 单值懒查（wmic 全量失败时按 PID syscall 补）。
 	names := getAllProcessNames()
 
-	lines := strings.Split(string(out), "\n")
-	var ports []PortInfo
+	// 先解析出所有原始条目（含本地地址，用于区分 IPv4/IPv6）
+	type rawPort struct {
+		port      int
+		pid       int
+		proto     string
+		state     string
+		localAddr string
+		isV6      bool
+	}
+	var raws []rawPort
 
-	for _, line := range lines {
+	for _, line := range strings.Split(string(out), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
@@ -72,6 +82,9 @@ func portList(id int64) {
 		if p, err := strconv.Atoi(portStr); err == nil {
 			port = p
 		}
+		if port <= 0 {
+			continue
+		}
 
 		pid := 0
 		if len(fields) >= 5 {
@@ -82,18 +95,56 @@ func portList(id int64) {
 		}
 
 		proto := "tcp"
-		if strings.Contains(line, "UDP") || state == "" {
+		if state == "" || strings.Contains(line, "UDP") {
 			proto = "udp"
 		}
 
-		ports = append(ports, PortInfo{
-			Port:     port,
-			Protocol: proto,
-			State:    state,
-			PID: pid,
-			Process:  names[pid],
-			Path:     getProcessPath(pid),
+		raws = append(raws, rawPort{
+			port:      port,
+			pid:       pid,
+			proto:     proto,
+			state:     state,
+			localAddr: localAddr,
+			isV6:      strings.Contains(localAddr, "::"),
 		})
+	}
+
+	// 合并：同一进程 (端口,PID) 在 IPv4/IPv6 双栈各绑定一次时，
+	// netstat 会产生两条本地地址不同、但 (端口,PID) 相同的记录。
+	// 合并为一行，IPv4 地址落入 AddrV4、IPv6 地址落入 AddrV6 分列展示。
+	// 不同 PID 占用同一端口（少见的多进程 SO_REUSEADDR）则保留多条。
+	merged := make(map[string]*PortInfo)
+	var order []string
+	for _, r := range raws {
+		key := strconv.Itoa(r.port) + ":" + strconv.Itoa(r.pid)
+		if m, ok := merged[key]; ok {
+			if r.isV6 && m.AddrV6 == "" {
+				m.AddrV6 = r.localAddr
+			} else if !r.isV6 && m.AddrV4 == "" {
+				m.AddrV4 = r.localAddr
+			}
+			continue
+		}
+		pi := &PortInfo{
+			Port:     r.port,
+			Protocol: r.proto,
+			State:    r.state,
+			PID:      r.pid,
+			Process:  names[r.pid],
+			Path:     getProcessPath(r.pid),
+		}
+		if r.isV6 {
+			pi.AddrV6 = r.localAddr
+		} else {
+			pi.AddrV4 = r.localAddr
+		}
+		merged[key] = pi
+		order = append(order, key)
+	}
+
+	ports := make([]PortInfo, 0, len(order))
+	for _, k := range order {
+		ports = append(ports, *merged[k])
 	}
 
 	respond(id, map[string]interface{}{
@@ -101,6 +152,7 @@ func portList(id int64) {
 		"count": len(ports),
 	})
 }
+
 
 // resolvePositiveInt 从输入中解析正整数参数。
 // 依次尝试传入的 key（如 "port"/"pid"），并兼容命令面板内联匹配时
@@ -152,8 +204,7 @@ func portCheck(id int64, input map[string]interface{}) {
 	}
 }
 
-// findByPort 在 netstat 输出中查找正在监听该端口的条目。
-// 返回监听该端口的第一个进程信息；多进程监听同一端口时只取第一行（罕见）。
+
 func findByPort(port int) (PortInfo, bool) {
 	out, err := hiddenCmd("netstat", "-ano").Output()
 	if err != nil {
@@ -187,14 +238,20 @@ func findByPort(port int) (PortInfo, bool) {
 				if fields[3] == "" || strings.Contains(line, "UDP") {
 					proto = "udp"
 				}
-				return PortInfo{
+				info := PortInfo{
 					Port:     port,
 					Protocol: proto,
 					State:    fields[3],
 					PID:      pid,
 					Process:  names[pid],
 					Path:     getProcessPath(pid),
-				}, true
+				}
+				if strings.Contains(localAddr, "::") {
+					info.AddrV6 = localAddr
+				} else {
+					info.AddrV4 = localAddr
+				}
+				return info, true
 			}
 		}
 	}
