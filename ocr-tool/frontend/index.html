@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>OCR 文字识别</title>
+<link rel="stylesheet" href="qd-theme.css">
+<link rel="stylesheet" href="components.css">
+<style>
+/* ===== 通用 ===== */
+.app{display:flex;flex-direction:column;height:100vh;padding:var(--sp-4);gap:var(--sp-3);box-sizing:border-box;overflow:hidden}
+.bar{display:flex;align-items:center;gap:var(--sp-2);flex-shrink:0}
+.title{font-size:14px;font-weight:600;color:var(--text-primary)}
+.main{display:flex;flex-direction:column;gap:var(--sp-3);flex:1;min-height:0}
+
+/* 图片卡片 */
+.img-card{flex-shrink:0}
+.img-card .card-header{padding:8px 12px}
+.img-card .card-title{font-size:12px;font-weight:600}
+.img-body{display:flex;align-items:center;justify-content:center;height:170px;padding:var(--sp-2);background:var(--bg-primary);overflow:auto;transition:height 150ms}
+.img-card.expanded .img-body{height:420px}
+.drop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;width:100%;height:100%;border:1.5px dashed var(--border-strong);border-radius:var(--radius);color:var(--text-muted);cursor:pointer;text-align:center;transition:border-color 150ms,color 150ms,background 150ms}
+.drop:hover{border-color:var(--accent);color:var(--text-secondary)}
+.drop.dragover{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.drop .ic{font-size:20px;line-height:1;opacity:.85}
+.drop .hint{font-size:12px}
+.drop .sub{font-size:11px;color:var(--text-disabled)}
+
+/* 图片 + 框叠加 */
+.img-wrap{position:relative;display:inline-block;line-height:0;max-width:100%}
+.img-wrap img{display:block;max-width:100%;height:auto;border-radius:var(--radius)}
+.box{position:absolute;border:1.5px solid rgba(255,120,60,.85);background:rgba(255,120,60,.08);border-radius:2px;pointer-events:none;transition:border-color 120ms,background 120ms}
+.box.hi{border-color:var(--accent);background:rgba(120,170,255,.18);z-index:2}
+
+/* 结果卡片 */
+.res-card{flex:1;display:flex;flex-direction:column;min-height:0}
+.res-card .card-header{padding:10px 12px}
+.res-out-wrap{flex:1;min-height:0;display:flex}
+.res-out-wrap .empty-state{padding:20px 16px;gap:8px}
+.res-out-wrap .empty-state-icon{width:40px;height:40px;font-size:18px}
+.res-out-wrap .empty-state-title{font-size:13px}
+.res-out-wrap .empty-state-desc{font-size:12px}
+
+/* 文本行列表（可点击高亮框） */
+.ocr-lines{flex:1;overflow:auto;margin:0;padding:8px 10px;list-style:none}
+.ocr-lines li{display:flex;gap:8px;padding:6px 8px;border-radius:var(--radius);cursor:pointer;font-family:var(--font-mono);font-size:12px;line-height:1.6;color:var(--text-primary);border:1px solid transparent}
+.ocr-lines li:hover{border-color:var(--accent);background:var(--accent-soft)}
+.ocr-lines li .idx{color:var(--text-disabled);min-width:22px;text-align:right;flex-shrink:0}
+.ocr-lines li .txt{flex:1;white-space:pre-wrap;word-break:break-word}
+.ocr-lines li .sc{color:var(--text-muted);flex-shrink:0;font-size:11px}
+.ocr-text{flex:1;overflow:auto;margin:0;padding:12px 14px;font-family:var(--font-mono);font-size:12px;line-height:1.7;white-space:pre-wrap;word-break:break-word;color:var(--text-primary);display:none}
+.ocr-text.show{display:block}
+.toggle{font-size:11px;color:var(--text-muted);cursor:pointer;user-select:none}
+.toggle:hover{color:var(--accent)}
+
+.foot{display:flex;align-items:center;gap:6px;flex-shrink:0;font-size:11px;color:var(--text-muted)}
+.err{display:none;padding:6px 10px;border-radius:var(--radius);background:var(--danger-soft);color:var(--danger);font-size:12px;flex-shrink:0;white-space:pre-wrap}
+.err.show{display:block}
+
+/* 模型准备 / 下载页 */
+.prepare{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;flex:1;text-align:center;padding:20px}
+.prepare .big{font-size:15px;font-weight:600;color:var(--text-primary)}
+.prepare .desc{font-size:12px;color:var(--text-secondary);max-width:420px;line-height:1.7}
+.pbar{width:100%;max-width:420px;height:8px;border-radius:99px;background:var(--bg-tertiary);overflow:hidden}
+.pbar > i{display:block;height:100%;width:0;background:var(--accent);transition:width 300ms}
+.dlfiles{width:100%;max-width:420px;display:flex;flex-direction:column;gap:6px}
+.dlfile{font-size:11px;color:var(--text-secondary)}
+.dlfile .nm{display:flex;justify-content:space-between}
+.dlfile .p{height:5px;border-radius:99px;background:var(--bg-tertiary);overflow:hidden;margin-top:3px}
+.dlfile .p > i{display:block;height:100%;width:0;background:var(--accent)}
+.dlfile.ok .p > i{background:var(--success,#3fb950)}
+.hidden{display:none!important}
+.debug{flex-shrink:0}
+.debug > summary{cursor:pointer;font-size:11px;color:var(--text-muted);user-select:none}
+.debug > summary:hover{color:var(--accent)}
+.debug-raw{max-height:160px;overflow:auto;margin:6px 0;padding:10px;font-family:var(--font-mono);font-size:11px;line-height:1.5;white-space:pre-wrap;word-break:break-word;color:var(--text-secondary);background:var(--bg-tertiary);border:1px solid var(--border);border-radius:var(--radius)}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- 顶部工具条 -->
+  <div class="bar">
+    <span class="title">OCR 文字识别</span>
+    <span class="badge badge-accent" id="engineBadge">PaddleOCR</span>
+    <span class="flex-1"></span>
+    <button id="pickBtn" class="btn btn-sm">选择图片</button>
+    <button id="recognizeBtn" class="btn btn-primary btn-sm" disabled>识别</button>
+  </div>
+
+  <div class="main">
+    <!-- 准备模型页（默认未就绪时显示） -->
+    <div class="card prepare" id="prepareView">
+      <div class="big" id="prepareTitle">首次使用需要下载模型</div>
+      <div class="desc" id="prepareDesc">
+        本插件基于 PaddleOCR (ONNX) 离线识别，首次使用需从 ModelScope 下载约 <b>178&nbsp;MB</b> 模型权重与运行时（det / rec 模型 + 字典 + onnxruntime 动态库）。下载完成后完全离线、支持中英文。
+      </div>
+      <button id="prepareBtn" class="btn btn-primary">准备模型</button>
+      <div class="pbar hidden" id="dlBar"><i></i></div>
+      <div class="dlfiles hidden" id="dlFiles"></div>
+      <div class="desc" style="font-size:11px;color:var(--text-disabled)" id="dlSizeHint"></div>
+    </div>
+
+    <!-- 识别页（就绪后显示） -->
+    <div id="ocrView" class="hidden" style="display:flex;flex-direction:column;gap:var(--sp-3);flex:1;min-height:0">
+      <div class="card img-card" id="imgCard">
+        <div class="card-header">
+          <span class="card-title truncate" id="imgName">预览</span>
+          <span class="badge" id="imgSize" style="display:none"></span>
+          <button id="zoomBtn" class="btn btn-sm" disabled>放大</button>
+          <button id="clearBtn" class="btn btn-sm" disabled>移除</button>
+        </div>
+        <div class="img-body">
+          <div id="dropZone" class="drop">
+            <div class="ic">🖼️</div>
+            <div class="hint">拖拽图片到此处，或点击选择</div>
+            <div class="sub">也支持 Ctrl+V 粘贴截图（Win+Shift+S）</div>
+          </div>
+          <div class="img-wrap hidden" id="imgWrap">
+            <img id="preview" alt="preview" />
+            <div id="boxLayer"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card res-card">
+        <div class="card-header">
+          <span class="card-title">识别结果</span>
+          <span class="badge" id="count" style="display:none"></span>
+          <span class="toggle" id="viewToggle">按行视图</span>
+          <button id="copyBtn" class="btn btn-sm" disabled>复制</button>
+        </div>
+        <div class="res-out-wrap">
+          <div id="resultEmpty" class="empty-state" style="flex:1">
+            <div class="empty-state-icon">📝</div>
+            <div class="empty-state-title">尚未识别</div>
+            <div class="empty-state-desc">选择或粘贴一张含文字的图片，然后点击「识别」</div>
+          </div>
+          <ul id="lines" class="ocr-lines hidden"></ul>
+          <pre id="result" class="ocr-text"></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="err" id="errorbar"></div>
+  <div class="foot">
+    <span class="status-dot online" id="statusDot"></span>
+    <span id="statusText" class="truncate">就绪 · 引擎：PaddleOCR（离线 ONNX）</span>
+  </div>
+
+  <details id="debugBox" class="debug">
+    <summary>调试信息（识别异常时把这里的内容发给我）</summary>
+    <div class="debug-raw" id="debugRaw">（暂无）</div>
+    <button id="copyDebugBtn" class="btn btn-sm">复制调试信息</button>
+  </details>
+</div>
+
+<input type="file" id="fileInput" accept="image/*" style="display:none" />
+
+<script>
+/* QuickDock sandbox 剪贴板桥接：iframe 内 navigator.clipboard 常被 Permissions-Policy 禁用 */
+window.__cpSeq = 0
+window.execCopyFallback = function (t) {
+  try {
+    var a = document.createElement('textarea'); a.value = t
+    a.style.position = 'fixed'; a.style.opacity = '0'; a.style.top = '0'
+    document.body.appendChild(a); a.select()
+    var ok = document.execCommand('copy'); document.body.removeChild(a); return ok
+  } catch (e) { return false }
+}
+window.copyViaHost = function (t, cb) {
+  var id = 'cp_' + (++window.__cpSeq), done = false
+  function onMsg(e) {
+    var d = e && e.data
+    if (d && d.type === 'plugin:copy-result' && d.id === id) {
+      done = true; window.removeEventListener('message', onMsg); cb && cb(!!d.ok)
+    }
+  }
+  window.addEventListener('message', onMsg)
+  parent.postMessage({ type: 'plugin:copy', id: id, text: t }, '*')
+  setTimeout(function () { if (!done) { window.removeEventListener('message', onMsg); cb && cb(window.execCopyFallback(t)) } }, 300)
+}
+</script>
+<script>
+// ---- 插件 RPC 桥接 ----
+function pluginExec(command, data) {
+  return new Promise(function (resolve, reject) {
+    var id = Date.now() + '_' + Math.random().toString(36).slice(2, 6)
+    var timer = setTimeout(function () {
+      window.removeEventListener('message', handler)
+      reject(new Error('响应超时，请检查插件状态'))
+    }, 60000)
+    var handler = function (e) {
+      if (e.data && e.data.type === 'plugin:result') {
+        window.removeEventListener('message', handler)
+        clearTimeout(timer)
+        if (e.data.error) { reject(new Error(e.data.error)) }
+        else { resolve(e.data.data) }
+      }
+    }
+    window.addEventListener('message', handler)
+    window.parent.postMessage({
+      type: 'plugin:execute',
+      id: id,
+      command: command,
+      input: { text: JSON.stringify(data || {}) }
+    }, '*')
+  })
+}
+
+var $ = function (id) { return document.getElementById(id) }
+var state = { ready: false, downloading: false, taskId: null, lines: [], view: 'line' }
+
+// ---- 初始状态检查 ----
+function boot() {
+  setStatus('正在检查模型状态…')
+  pollStatus()
+}
+
+function pollStatus() {
+  pluginExec('ocr-status', {}).then(function (r) {
+    state.ready = !!r.ready
+    state.downloading = !!r.downloading
+    if (r.download && r.download.errMsg) {
+      setError('下载出错：' + r.download.errMsg)
+    } else { setError(null) }
+
+    if (state.ready) {
+      showOcrView()
+      setStatus('就绪 · 引擎：PaddleOCR（离线 ONNX）')
+      return
+    }
+    showPrepareView()
+    if (state.downloading) {
+      renderDownload(r.download)
+      setStatus('正在下载模型…')
+      setTimeout(pollStatus, 600)
+    } else {
+      setStatus('需要准备模型后才能识别')
+    }
+  }).catch(function (e) {
+    setError('状态检查失败：' + (e.message || e))
+    setTimeout(pollStatus, 2000)
+  })
+}
+
+function showPrepareView() {
+  $('prepareView').classList.remove('hidden')
+  $('ocrView').classList.add('hidden')
+  if (state.downloading) { $('prepareBtn').disabled = true }
+  else { $('prepareBtn').disabled = false }
+}
+function showOcrView() {
+  $('prepareView').classList.add('hidden')
+  $('ocrView').classList.remove('hidden')
+}
+
+function renderDownload(dl) {
+  dl = dl || {}
+  $('dlBar').classList.remove('hidden')
+  $('dlFiles').classList.remove('hidden')
+  var cur = dl.current || 0, total = dl.total || 0
+  var pct = total ? Math.round((cur / total) * 100) : 0
+  $('dlBar').firstElementChild.style.width = pct + '%'
+  var html = ''
+  var files = dl.files || []
+  for (var i = 0; i < files.length; i++) {
+    var f = files[i]
+    var fp = 0
+    if (f.size > 0) fp = Math.min(100, Math.round((f.done / f.size) * 100))
+    else if (f.ok) fp = 100
+    var sizeTxt = f.size > 0 ? (f.size / 1048576).toFixed(1) + ' MB' : ''
+    var doneTxt = f.done > 0 ? (f.done / 1048576).toFixed(1) + ' MB' : ''
+    html += '<div class="dlfile' + (f.ok ? ' ok' : '') + '"><div class="nm"><span>' +
+      f.name + '</span><span>' + (f.ok ? '✓' : (doneTxt + (sizeTxt ? ' / ' + sizeTxt : ''))) +
+      '</span></div><div class="p"><i style="width:' + fp + '%"></i></div></div>'
+  }
+  $('dlFiles').innerHTML = html
+}
+
+$('prepareBtn').addEventListener('click', function () {
+  setError(null)
+  $('prepareBtn').disabled = true
+  $('prepareTitle').textContent = '正在准备模型…'
+  pluginExec('ocr-prepare', {}).then(function (r) {
+    if (r && r.alreadyReady) { state.ready = true; showOcrView(); return }
+    state.downloading = true
+    pollStatus()
+  }).catch(function (e) {
+    setError('准备失败：' + (e.message || e))
+    $('prepareBtn').disabled = false
+  })
+})
+
+// ---- 图片选择 / 拖拽 / 粘贴 ----
+var currentBase64 = null, currentName = 'image'
+var dropZone = $('dropZone'), preview = $('preview'), imgWrap = $('imgWrap')
+var imgName = $('imgName'), imgSize = $('imgSize')
+var pickBtn = $('pickBtn'), recognizeBtn = $('recognizeBtn'), copyBtn = $('copyBtn')
+var zoomBtn = $('zoomBtn'), clearBtn = $('clearBtn')
+var resultEl = $('result'), resultEmpty = $('resultEmpty'), countEl = $('count')
+var statusText = $('statusText'), errorbar = $('errorbar'), engineBadge = $('engineBadge')
+var linesEl = $('lines'), viewToggle = $('viewToggle'), boxLayer = $('boxLayer'), imgCard = $('imgCard')
+
+function setError(msg) {
+  if (!msg) { errorbar.classList.remove('show'); errorbar.textContent = ''; return }
+  errorbar.classList.add('show'); errorbar.textContent = msg
+}
+function setStatus(msg) { statusText.textContent = msg }
+
+function clearImage() {
+  currentBase64 = null; currentName = 'image'
+  imgWrap.classList.add('hidden'); dropZone.style.display = ''
+  preview.removeAttribute('src')
+  imgCard.classList.remove('expanded'); zoomBtn.textContent = '放大'
+  imgName.textContent = '预览'; imgSize.style.display = 'none'
+  recognizeBtn.disabled = true; copyBtn.disabled = true
+  zoomBtn.disabled = true; clearBtn.disabled = true
+  countEl.style.display = 'none'; linesEl.classList.add('hidden'); resultEl.classList.remove('show')
+  resultEmpty.style.display = ''; boxLayer.innerHTML = ''
+  setError(null); setStatus('就绪 · 引擎：PaddleOCR（离线 ONNX）')
+}
+
+function loadImage(dataUrl, name) {
+  if (!dataUrl) { setError('图片数据为空'); return }
+  applyDataUrl(dataUrl, name)
+}
+function applyDataUrl(dataUrl, name) {
+  var comma = dataUrl.indexOf(',')
+  currentBase64 = dataUrl.slice(comma + 1)
+  currentName = name || 'image'
+  preview.onload = function () {
+    imgSize.textContent = preview.naturalWidth + '×' + preview.naturalHeight
+    imgSize.style.display = ''
+  }
+  preview.src = dataUrl
+  imgWrap.classList.remove('hidden'); dropZone.style.display = 'none'
+  imgName.textContent = currentName
+  recognizeBtn.disabled = false; zoomBtn.disabled = false; clearBtn.disabled = false
+  copyBtn.disabled = true; setError(null); setStatus('已载入图片，点击「识别」')
+}
+
+function pickViaHost() {
+  if (!window.qdPickFile || !window.qdReadFile) { fileInput.click(); return }
+  window.qdPickFile({ title: '选择要识别的图片', filter: '图片文件', pattern: '*.png;*.jpg;*.jpeg;*.bmp;*.gif' })
+    .then(function (path) {
+      if (!path) return
+      window.qdReadFile(path).then(function (res) {
+        if (!res || res.error) { setError('读取文件失败'); return }
+        var a = path.split(/[\\/]/); currentName = a[a.length - 1] || 'image'
+        loadImage(res.content, currentName)
+      }, function () { setError('读取文件失败') })
+    })
+}
+function readFileObject(file) {
+  var reader = new FileReader()
+  reader.onload = function () { loadImage(reader.result, file.name) }
+  reader.onerror = function () { setError('读取文件失败') }
+  reader.readAsDataURL(file)
+}
+
+pickBtn.addEventListener('click', pickViaHost)
+dropZone.addEventListener('click', pickViaHost)
+fileInput.addEventListener('change', function () {
+  if (fileInput.files && fileInput.files[0]) readFileObject(fileInput.files[0])
+})
+clearBtn.addEventListener('click', clearImage)
+zoomBtn.addEventListener('click', function () {
+  var on = imgCard.classList.toggle('expanded')
+  zoomBtn.textContent = on ? '收起' : '放大'
+})
+
+;['dragenter', 'dragover'].forEach(function (ev) {
+  dropZone.addEventListener(ev, function (e) { e.preventDefault(); dropZone.classList.add('dragover') })
+})
+;['dragleave', 'drop'].forEach(function (ev) {
+  dropZone.addEventListener(ev, function (e) { e.preventDefault(); dropZone.classList.remove('dragover') })
+})
+dropZone.addEventListener('drop', function (e) {
+  var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]
+  if (f) readFileObject(f)
+})
+window.addEventListener('paste', function (e) {
+  var items = (e.clipboardData && e.clipboardData.items) || []
+  for (var i = 0; i < items.length; i++) {
+    if (items[i].type && items[i].type.indexOf('image') === 0) {
+      var f = items[i].getAsFile()
+      if (f) { readFileObject(f); e.preventDefault(); return }
+    }
+  }
+})
+
+// ---- 识别 ----
+recognizeBtn.addEventListener('click', function () {
+  if (!currentBase64) return
+  recognizeBtn.disabled = true
+  recognizeBtn.innerHTML = '<span class="spinner spinner-sm"></span> 识别中…'
+  setError(null); setStatus('正在识别…')
+  linesEl.classList.add('hidden'); resultEl.classList.remove('show'); resultEmpty.style.display = ''
+  boxLayer.innerHTML = ''
+
+  pluginExec('ocr-image', { data: currentBase64 }).then(function (r) {
+    if (!r || !r.taskId) { throw new Error('未返回任务 ID') }
+    state.taskId = r.taskId
+    pollTask(r.taskId)
+  }).catch(function (e) {
+    var msg = (e && e.message) ? e.message : String(e)
+    setError('识别失败：' + msg)
+    recognizeBtn.innerHTML = '识别'; recognizeBtn.disabled = false
+  })
+})
+
+function pollTask(taskId) {
+  pluginExec('ocr-task', { taskId: taskId }).then(function (r) {
+    if (!r) throw new Error('空响应')
+    if (r.state === 'pending' || r.state === 'running' || !r.state) {
+      setStatus('正在识别…（' + ((r.phase || 'processing')) + '）')
+      setTimeout(function () { pollTask(taskId) }, 400)
+      return
+    }
+    if (r.state === 'error') {
+      setError('识别失败：' + (r.error || '未知错误'))
+      recognizeBtn.innerHTML = '识别'; recognizeBtn.disabled = false
+      updateDebug(false, r)
+      return
+    }
+    // done
+    renderResult(r.result)
+    recognizeBtn.innerHTML = '识别'; recognizeBtn.disabled = false
+    updateDebug(true, r)
+  }).catch(function (e) {
+    setError('识别失败：' + ((e && e.message) || e))
+    recognizeBtn.innerHTML = '识别'; recognizeBtn.disabled = false
+  })
+}
+
+function renderResult(res) {
+  res = res || {}
+  var lines = res.lines || []
+  state.lines = lines
+  var text = res.text || ''
+  var w = res.width || 0, h = res.height || 0
+  if (w && h) { imgSize.textContent = w + '×' + h; imgSize.style.display = '' }
+
+  if (!text) {
+    resultEmpty.style.display = ''
+    resultEmpty.querySelector('.empty-state-title').textContent = '未识别到文字'
+    resultEmpty.querySelector('.empty-state-desc').textContent = '请确认图片含清晰文字、分辨率足够。'
+    linesEl.classList.add('hidden'); resultEl.classList.remove('show')
+    countEl.style.display = 'none'; copyBtn.disabled = true
+    setStatus('识别完成，但未提取到文字')
+    return
+  }
+
+  // 行视图
+  linesEl.innerHTML = ''
+  for (var i = 0; i < lines.length; i++) {
+    var li = document.createElement('li')
+    li.dataset.idx = i
+    var sc = lines[i].score != null ? (lines[i].score * 100).toFixed(0) + '%' : ''
+    li.innerHTML = '<span class="idx">' + (i + 1) + '</span><span class="txt"></span><span class="sc">' + sc + '</span>'
+    li.querySelector('.txt').textContent = lines[i].text
+    li.addEventListener('mouseenter', (function (idx) { return function () { highlightBox(idx, true) } })(i))
+    li.addEventListener('mouseleave', (function (idx) { return function () { highlightBox(idx, false) } })(i))
+    linesEl.appendChild(li)
+  }
+  resultEl.textContent = text
+
+  if (state.view === 'line') {
+    linesEl.classList.remove('hidden'); resultEl.classList.remove('show')
+  } else {
+    linesEl.classList.add('hidden'); resultEl.classList.add('show')
+  }
+  resultEmpty.style.display = 'none'
+  copyBtn.disabled = false
+  countEl.textContent = lines.length + ' 行 · ' + text.length + ' 字'
+  countEl.style.display = ''
+  setStatus('识别完成 · 引擎 PaddleOCR · 耗时 ' + (res.elapsedMs || 0) + 'ms')
+  drawBoxes()
+}
+
+viewToggle.addEventListener('click', function () {
+  if (state.view === 'line') {
+    state.view = 'text'
+    viewToggle.textContent = '按文本框'
+    linesEl.classList.add('hidden'); resultEl.classList.add('show')
+  } else {
+    state.view = 'line'
+    viewToggle.textContent = '按行视图'
+    linesEl.classList.remove('hidden'); resultEl.classList.remove('show')
+  }
+})
+
+function drawBoxes() {
+  boxLayer.innerHTML = ''
+  var natW = preview.naturalWidth, natH = preview.naturalHeight
+  if (!natW || !natH) return
+  for (var i = 0; i < state.lines.length; i++) {
+    var b = state.lines[i].box
+    if (!b || b.length < 4) continue
+    var d = document.createElement('div')
+    d.className = 'box'; d.dataset.idx = i
+    d.style.left = (b[0] / natW * 100) + '%'
+    d.style.top = (b[1] / natH * 100) + '%'
+    d.style.width = ((b[2] - b[0]) / natW * 100) + '%'
+    d.style.height = ((b[3] - b[1]) / natH * 100) + '%'
+    boxLayer.appendChild(d)
+  }
+}
+function highlightBox(idx, on) {
+  var el = boxLayer.querySelector('.box[data-idx="' + idx + '"]')
+  if (el) el.classList.toggle('hi', on)
+}
+
+// ---- 复制 ----
+copyBtn.addEventListener('click', function () {
+  var text = state.view === 'text' ? (resultEl.textContent || '') : (state.lines.map(function (l) { return l.text }).join('\n'))
+  if (!text) return
+  window.copyViaHost(text, function (ok) { setStatus(ok ? '已复制到剪贴板' : '复制失败，请手动选中复制') })
+})
+
+// ---- 调试面板 ----
+var debugBox = $('debugBox'), debugRaw = $('debugRaw'), copyDebugBtn = $('copyDebugBtn')
+function updateDebug(ok, payload) {
+  debugRaw.textContent = JSON.stringify({ time: new Date().toLocaleString(), ok: ok, payload: payload }, null, 2)
+  debugBox.open = true
+}
+copyDebugBtn.addEventListener('click', function () {
+  var txt = debugRaw.textContent || ''
+  if (!txt || txt === '（暂无）') return
+  window.copyViaHost(txt, function (ok) { copyDebugBtn.textContent = ok ? '已复制' : '复制失败' })
+})
+
+if (!window.qdPickFile) { pickBtn.textContent = '选择文件' }
+boot()
+</script>
+</body>
+</html>

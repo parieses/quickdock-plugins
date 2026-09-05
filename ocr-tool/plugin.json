@@ -1,0 +1,66 @@
+{
+  "id": "io.github.parieses.ocr-tool",
+  "name": "OCR 文字识别",
+  "version": "2.0.0",
+  "description": "基于 PaddleOCR (ONNX) 的离线文字识别，支持中英文，首次使用自动下载约 178MB 模型（ModelScope 镜像），之后完全离线运行，跨 Windows / macOS / Linux。",
+  "author": "QuickDock",
+  "category": "效率工具",
+  "icon": "icon.svg",
+  "backend": {
+    "runtime": "native",
+    "entry": "ocr-tool",
+    "args": []
+  },
+  "commands": [
+    {
+      "id": "ocr-image",
+      "title": "识别图片文字",
+      "keywords": [
+        "ocr",
+        "识别",
+        "文字",
+        "图片",
+        "截图",
+        "提取",
+        "paddle"
+      ],
+      "aliases": [
+        "图片转文字",
+        "文字识别"
+      ],
+      "prefix": "/ocr",
+      "title_i18n": {
+        "zh-CN": "识别图片文字",
+        "en-US": "OCR Image"
+      }
+    }
+  ],
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 760,
+    "height": 680
+  },
+  "permissions": {
+    "filesystem": true,
+    "clipboard": true,
+    "network": true
+  },
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "name_i18n": {
+    "zh-CN": "OCR 文字识别",
+    "en-US": "OCR Text"
+  },
+  "description_i18n": {
+    "zh-CN": "基于 PaddleOCR (ONNX) 的离线文字识别，支持中英文，首次使用自动下载模型后完全离线运行，跨 Windows / macOS / Linux。",
+    "en-US": "Offline OCR powered by PaddleOCR (ONNX). Chinese/English. Auto-downloads ~178MB model on first use, then fully offline. Cross-platform."
+  },
+  "platforms": [
+    "windows",
+    "darwin",
+    "linux"
+  ]
+}

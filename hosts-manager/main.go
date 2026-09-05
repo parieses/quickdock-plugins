@@ -6,7 +6,8 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	"syscall"
+
+	"quickdock/internal/sysutil"
 )
 
 // ---- JSON-RPC structures ----
@@ -139,6 +140,5 @@ func mustMarshal(v interface{}) json.RawMessage {
 // visibleCmd 创建一个正常显示的 exec.Command（用于需要显式控制台交互的命令）
 func hiddenCmd(name string, arg ...string) *exec.Cmd {
 	cmd := exec.Command(name, arg...)
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-	return cmd
+	return sysutil.Hide(cmd)
 }
