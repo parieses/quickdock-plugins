@@ -169,7 +169,7 @@ function handleExecute(params) {
 **特点：**
 - 无需安装 Node.js，内嵌 Goja 引擎（纯 Go，无 CGO）
 - 支持 ES5.1 + 大部分 ES6 特性
-- 通过 `api.log()` 输出日志
+- 通过 `api.log()`（INFO）/ `api.warn()`（WARN）/ `api.error()`（ERROR）输出日志
 - 无宿主 `api.crypto`：md5/sha/base64/url/html 等需在插件内纯 JS 自实现（参考 text-encoder 的 main.js 自带 crypto 库）
 - 导出 `handleInitialize()` 和 `handleExecute()` 函数供主程序调用
 
@@ -223,6 +223,7 @@ native 插件在收到请求后，可以通过 stdout 向主程序发起回调�
 | 方法 | 说明 | 所需权限 |
 |---|---|---|
 | `log.info` | 记录日志 | 无需权限 |
+| `log.warn` | 记录告警日志 | 无需权限 |
 | `log.error` | 记录错误日志 | 无需权限 |
 | `host.notify` | 弹出系统通知 | 无需权限 |
 | `host.clipboard.read` | 读取剪贴板文本 | `clipboard: true` |
@@ -236,6 +237,42 @@ native 插件在收到请求后，可以通过 stdout 向主程序发起回调�
 // 主程序 → 插件（响应）
 {"jsonrpc":"2.0","id":101,"result":{"success":true}}
 ```
+
+#### 通过 RPC 写日志（native 插件推荐，精确控制级别）
+
+写日志与上面的 `host.clipboard.write` 是同一条通道、同一个格式，方法名换成 `log.info` / `log.warn` / `log.error` 即可。宿主收到后落盘到 `<dataDir>/logs/plugin-YYYYMMDD.log`，行首自动带 `[plugin:<id>]` 前缀，与应用主日志分离：
+
+```json
+// 插件 → 主程序：写一条 INFO 日志（级别换 log.warn / log.error 即告警 / 错误）
+{"jsonrpc":"2.0","id":102,"method":"log.info","params":{"message":"任务完成"}}
+```
+
+- 参数只有 `{"message": "..."}` 一个字段，三种级别均**免权限**（plugin.json 无需声明）。
+- 宿主**先落盘、后回响应**，插件可以不等响应直接继续；等到的响应为 `{"result": null}`。
+- ⚠️ **必须带 `id`**：宿主对不带 `id` 的"通知"（notification）会**静默丢弃**——不执行 handler、不落盘（与 JSON-RPC 2.0 规范"通知应执行但不响应"不一致，属宿主当前已知行为，勿依赖）。统一按"回调请求"带自增 id 发送即可。
+
+封装参考（复用模板里现成的 `sendJSON` / `respond` / `hostCall` 写 stdout 函数）：
+
+```go
+var hostReqID int64 // 进程内自增 id
+
+func hostLog(level, format string, args ...interface{}) {
+	id := atomic.AddInt64(&hostReqID, 1)
+	p, _ := json.Marshal(map[string]string{"message": fmt.Sprintf(format, args...)})
+	sendJSON(map[string]interface{}{
+		"jsonrpc": "2.0",
+		"id":      id,
+		"method":  "log." + level,
+		"params":  json.RawMessage(p), // 必须是 RawMessage，否则 []byte 会被 base64 编码
+	})
+}
+
+hostLog("info", "开始处理 %s", file) // → plugin-*.log 的 I 级
+hostLog("warn", "重试第 %d 次", n)    // → W 级
+hostLog("error", "处理失败: %v", err) // → E 级
+```
+
+> 与 stderr / stdout 散行的区别：直接写 `os.Stderr` 也会被宿主收进插件日志，但**固定记为 WARN** 且无法分级；协议外的 stdout 散行虽已被宿主以 `[stdout]` 前缀捕获（不破坏通信），但超大单行会被截断。**正式日志请一律走 `log.*`**，stderr 仅用于宿主侧无法收口时的兜底。
 
 ### 超时与通信约束（native 插件必看）
 
@@ -503,22 +540,23 @@ window.addEventListener('message', (e) => {
 
 ### 查看日志
 
-- `goja` 插件：使用 `api.log('message')` 输出日志
-- `native` 插件：stderr 输出会显示在主程序日志中
-- 所有插件均可通过 `log.info` / `log.error` Host Method 输出日志
+插件日志统一写入 **`<dataDir>/logs/plugin-YYYYMMDD.log`**（按日滚动；与应用主日志 `<dataDir>/logs/quickdock-YYYYMMDD.log` 分离；行首带 `[plugin:<id>]` 前缀，可按插件过滤）：
+
+- `goja` 插件：`api.log(msg)`（INFO）/ `api.warn(msg)`（WARN）/ `api.error(msg)`（ERROR）
+- `native` 插件：通过 `log.info` / `log.warn` / `log.error` Host Method 主动输出（`params: {"message": "..."}`）
+- 插件进程 **stderr** 输出自动记为该插件 WARN；未被 JSON-RPC 解析的 **stdout 散行**（如 console.log）不再静默丢失，自动以 `[stdout]` 前缀记 INFO
 
 ### 调试建议
 
 1. 先用模板创建项目，确认基础通信正常
 2. 新插件建议使用 `goja` runtime（无需编译，修改 JS 后重启插件即可）
-3. 用 `api.log` 输出调试信息
-4. 检查 `~/.quickdock/plugins/` 目录确认插件已安装
+3. 用 `api.log` / `log.info` 输出调试信息，重现场景后查 `plugin-*.log`
 
 ---
 
 ## 注意事项
 
-1. **native 插件 stdout 专用于 JSON-RPC**: 不要用 `fmt.Println` / `console.log` 输出非 JSON 内容到 stdout，这会破坏通信协议
+1. **native 插件 stdout 主通道专用于 JSON-RPC**: 协议外的散行（`fmt.Println` / `console.log` 落到 stdout）虽已被宿主捕获进插件日志（`[stdout]` 前缀，不破坏通信），但超大单行会被截断、多行 JSON 无法解析——调试输出请统一走 `log.info` / `log.warn` / `log.error`（或 stderr）
 2. **错误处理**: 始终用 JSON-RPC 错误响应返回错误
 3. **热键冲突**: 如果多个插件声明相同热键，后安装的插件注册会失败
 4. **存储隔离**: 插件的 `db.*` Host Method 只能读写自己 `plugin_id` 的数据

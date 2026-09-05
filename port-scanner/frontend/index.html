@@ -6,61 +6,151 @@
 <link rel="stylesheet" href="qd-theme.css">
   <link rel="stylesheet" href="components.css">
 <style>
+.p-app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+.p-toolbar{display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0}
+.p-toolbar .input{padding:4px 8px;font-size:12px;width:160px}
+.p-toolbar .p-search{flex:1;min-width:0}
+.p-toolbar .p-count{font-size:11px;color:var(--text-muted);white-space:nowrap}
 .p-check{display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0}
 .p-check .p-input{width:100px;font-family:var(--font-mono);font-size:13px}
 .p-result{margin:0 10px;padding:6px 10px;border-radius:var(--radius);font-size:12px;flex-shrink:0}
 .p-free{background:rgba(40,200,100,.12);color:var(--success)}
 .p-inuse{background:rgba(226,75,74,.12);color:var(--danger)}
 .p-list{flex:1;overflow-y:auto}
-.p-item{display:flex;align-items:center;gap:8px;padding:4px 10px;border-bottom:1px solid var(--border);min-height:28px;font-size:12px}
+.p-item{display:flex;align-items:center;gap:8px;padding:5px 10px;border-bottom:1px solid var(--border);min-height:28px;font-size:12px;cursor:pointer;user-select:none}
 .p-item:hover{background:var(--bg-hover)}
-.p-port{font-family:var(--font-mono);color:var(--accent);min-width:60px}
-.p-proto{color:var(--text-muted);min-width:30px}
-.p-pid{font-family:var(--font-mono);color:var(--text-secondary);min-width:50px}
-.p-name{color:var(--text-primary);flex:1}
-.p-state{font-size:10px;padding:1px 6px;border-radius:4px;background:rgba(40,200,100,.12);color:var(--success)}
-.p-count{font-size:11px;color:var(--text-muted)}
+.p-item.selected{background:var(--accent-soft)}
+.p-port{font-family:var(--font-mono);color:var(--accent);min-width:54px;font-weight:600}
+.p-proto{color:var(--text-muted);min-width:30px;font-size:11px}
+.p-pid{font-family:var(--font-mono);color:var(--text-secondary);min-width:50px;font-size:11px}
+.p-name{color:var(--text-primary);min-width:90px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.p-path{color:var(--text-muted);font-size:11px;font-family:var(--font-mono);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:rtl;text-align:left}
+.p-path:hover{color:var(--text-secondary);text-decoration:underline;text-decoration-style:dotted}
+.p-actions{flex-shrink:0;display:flex;gap:2px}
+.p-empty{padding:24px;text-align:center;color:var(--text-muted);font-size:12px}
+.p-filtered-hint{padding:6px 10px;font-size:11px;color:var(--text-muted);background:var(--bg-tertiary);border-bottom:1px solid var(--border)}
 </style>
-<svg style="display:none" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><symbol id="icon-box" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></symbol></svg>
-<svg style="display:none" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><symbol id="icon-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></symbol><symbol id="icon-send" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></symbol><symbol id="icon-git-branch" viewBox="0 0 24 24"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></symbol><symbol id="icon-trash-2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></symbol><symbol id="icon-shield-alert" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></symbol><symbol id="icon-hard-drive" viewBox="0 0 24 24"><line x1="2" y1="12" x2="22" y2="12"></line><path d="M17 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></symbol><symbol id="icon-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></symbol><symbol id="icon-file-text" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></symbol><symbol id="icon-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></symbol><symbol id="icon-gauge" viewBox="0 0 24 24"><path d="M12 15l-2-2"></path><path d="M19.07 4.93a10 10 0 1 1-14.14 0"></path><path d="M12 2v4"></path></symbol><symbol id="icon-box" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></symbol></svg>
 </head>
 <body>
 <div class="p-app">
   <div class="p-toolbar">
-    <button class="btn p-btn-primary" id="btnRefresh">↻ 刷新列表</button>
-    <span class="p-muted" id="countLabel">0 个端口</span>
-    <span class="p-spacer"></span>
-    <button class="btn" id="btnKill">🔪 结束进程</button>
+    <button class="btn" id="btnRefresh" title="Ctrl+R">↻ 刷新</button>
+    <input type="text" class="input p-search" id="searchInput" placeholder="按端口/PID/进程名/路径搜索…" spellcheck="false">
+    <button class="btn btn-icon btn-ghost" id="btnClearSearch" title="清空搜索" style="display:none">×</button>
+    <span class="p-count" id="countLabel">0 个端口</span>
   </div>
   <div class="p-check">
     <span class="p-label">检查端口：</span>
-    <input type="text" class="input" id="portInput" placeholder="如 8080" spellcheck="false">
+    <input type="text" class="input p-input" id="portInput" placeholder="如 8080" spellcheck="false">
     <button class="btn" id="btnCheck">检查</button>
     <span id="checkResult" class="p-result" style="display:none"></span>
   </div>
+  <div id="filteredHint" class="p-filtered-hint" style="display:none"></div>
   <div class="p-list" id="portList"><div class="p-empty">点击刷新加载端口列表</div></div>
 </div>
 <script>
-var cmdQueue=[],cmdRunning=false,netstatData=[]
+var cmdQueue=[],cmdRunning=false,netstatData=[],filterText=''
 function $(id){return document.getElementById(id)}
-function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
+function escapeHtml(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
 function pluginExec(cmd,data){return new Promise(function(resolve,reject){cmdQueue.push({cmd:cmd,data:data||{},resolve:resolve,reject:reject});if(!cmdRunning)nextCmd()})}
 function nextCmd(){if(cmdQueue.length===0){cmdRunning=false;return}cmdRunning=true;var task=cmdQueue.shift(),timer=setTimeout(function(){window.removeEventListener('message',handler);cmdRunning=false;task.reject(new Error('响应超时，请检查插件状态'))},20000);window.parent.postMessage({type:'plugin:execute',id:Date.now(),command:task.cmd,input:{text:JSON.stringify(task.data)}},'*');var handler=function(e){if(e.data&&e.data.type==='plugin:result'){clearTimeout(timer);window.removeEventListener('message',handler);if(e.data.error){task.reject(new Error(e.data.error))}else{task.resolve(e.data.data)}setTimeout(nextCmd,50)}};window.addEventListener('message',handler)}
-function refreshPorts(){var list=$('portList');list.innerHTML='<div class="p-empty">扫描中…</div>';pluginExec('port-list',{}).then(function(data){try{var obj=typeof data==='string'?JSON.parse(data):data;netstatData=obj.ports||obj||[];renderPorts(netstatData)}catch(e){netstatData=[];list.innerHTML='<div class="p-empty">解析失败: '+escapeHtml(e.message)+'</div>'}}).catch(function(e){netstatData=[];list.innerHTML='<div class="p-empty">扫描失败: '+escapeHtml(e.message)+'</div>'})}
-function renderPorts(ports){var list=$('portList'),count=$('countLabel');if(!ports||ports.length===0){list.innerHTML='<div class="p-empty">没有找到监听端口</div>';count.textContent='0 个端口';return}
-count.textContent=ports.length+' 个端口';list.innerHTML=ports.map(function(p){return'<div class="p-item" data-pid="'+escapeHtml(p.pid||'')+'"><span class="p-port">'+escapeHtml(p.port)+'</span><span class="p-proto">'+escapeHtml(p.protocol||'')+'</span><span class="p-pid">'+escapeHtml(p.pid||'-')+'</span><span class="p-name">'+escapeHtml(p.process||p.name||'')+'</span><span class="p-state">'+escapeHtml(p.state||'LISTENING')+'</span></div>'}).join('')}
+
+function refreshPorts(){var list=$('portList'),hint=$('filteredHint');list.innerHTML='<div class="p-empty">扫描中…</div>';hint.style.display='none';pluginExec('port-list',{}).then(function(data){try{var obj=typeof data==='string'?JSON.parse(data):data;netstatData=obj.ports||obj||[];renderPorts()}catch(e){netstatData=[];list.innerHTML='<div class="p-empty">解析失败: '+escapeHtml(e.message)+'</div>'}}).catch(function(e){netstatData=[];list.innerHTML='<div class="p-empty">扫描失败: '+escapeHtml(e.message)+'</div>'})}
+
+function applyFilter(items){
+  var q=filterText.toLowerCase().trim()
+  if(!q) return items.slice()
+  return items.filter(function(p){
+    return String(p.port||'').indexOf(q)>=0
+      || String(p.pid||'').indexOf(q)>=0
+      || String(p.process||'').toLowerCase().indexOf(q)>=0
+      || String(p.path||'').toLowerCase().indexOf(q)>=0
+      || String(p.protocol||'').toLowerCase().indexOf(q)>=0
+  })
+}
+
+function renderPorts(){var list=$('portList'),count=$('countLabel'),hint=$('filteredHint');if(!netstatData||netstatData.length===0){list.innerHTML='<div class="p-empty">没有找到监听端口</div>';count.textContent='0 个端口';hint.style.display='none';return}
+var filtered=applyFilter(netstatData)
+count.textContent=netstatData.length+' 个端口'+(filtered.length!==netstatData.length?'（显示 '+filtered.length+'）':'')
+if(filterText&&filtered.length!==netstatData.length){hint.style.display='block';hint.textContent='筛选「'+filterText+'」: '+filtered.length+' / '+netstatData.length}
+else{hint.style.display='none'}
+if(filtered.length===0){list.innerHTML='<div class="p-empty">没有匹配的端口</div>';return}
+list.innerHTML=filtered.map(function(p){
+  var port=escapeHtml(p.port),proto=escapeHtml(p.protocol||''),pid=escapeHtml(p.pid||'-'),name=escapeHtml(p.process||p.name||''),path=escapeHtml(p.path||'')
+  return '<div class="p-item" data-pid="'+escapeHtml(p.pid||'')+'" data-port="'+port+'">'
+    +'<span class="p-port">'+port+'</span>'
+    +'<span class="p-proto">'+proto+'</span>'
+    +'<span class="p-pid">'+pid+'</span>'
+    +'<span class="p-name" title="'+escapeHtml(name||'(无)')+'">'+name+'</span>'
+    +(path?'<span class="p-path" title="'+escapeHtml(path)+'">'+path+'</span>':'<span class="p-path"></span>')
+    +'<span class="p-actions">'
+    +'<button class="btn btn-sm btn-danger p-kill" title="结束占用 '+port+' 的进程 (Del)">✕</button>'
+    +'</span>'
+    +'</div>'
+}).join('')
+}
+
 function checkPort(){var port=$('portInput').value.trim(),result=$('checkResult');if(!port){result.style.display='none';return}
 result.style.display='flex'
-if(!netstatData||netstatData.length===0){result.className='p-result p-free';result.textContent='端口 '+port+' — 数据加载中，先点击刷新...';refreshPorts();return}
+if(!netstatData||netstatData.length===0){result.className='p-result p-free';result.textContent='端口 '+port+' — 数据加载中，先点击刷新…';refreshPorts();return}
 var found=netstatData.some(function(p){return String(p.port)===port||String(p.port)===String(parseInt(port))})
 if(found){result.className='p-result p-inuse';result.textContent='端口 '+port+' — 已被占用'}else{result.className='p-result p-free';result.textContent='端口 '+port+' — 可用'}}
+
+function killRow(row){
+  var port=row.dataset.port,pid=row.dataset.pid,name=row.querySelector('.p-name').textContent||'(无)'
+  if(!pid||pid==='-'){qdAlert('该条目没有 PID，无法结束');return}
+  qdConfirm('确定结束占用端口 '+port+' 的进程 '+name+' (PID '+pid+')？').then(function(ok){
+    if(!ok) return
+    pluginExec('port-kill',{port:parseInt(port,10)}).then(function(){
+      refreshPorts()
+    }).catch(function(e){
+      qdAlert('结束失败: '+e.message)
+      // 即便失败也刷新一次：taskkill 可能已成功但 RPC 报错
+      refreshPorts()
+    })
+  })
+}
+
+document.addEventListener('click',function(e){
+  var killBtn=e.target.closest && e.target.closest('.p-kill')
+  if(killBtn){e.stopPropagation();var row=killBtn.closest('.p-item');if(row)killRow(row);return}
+  var row=e.target.closest && e.target.closest('.p-item')
+  document.querySelectorAll('.p-item.selected').forEach(function(el){el.classList.toggle('selected',el===row)})
+})
+
+document.addEventListener('dblclick',function(e){
+  var row=e.target.closest && e.target.closest('.p-item')
+  if(row)killRow(row)
+})
+
+document.addEventListener('keydown',function(e){
+  var ae=document.activeElement,editing=ae&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA')
+  if(e.key==='Delete'&&!editing){var sel=document.querySelector('.p-item.selected');if(sel){e.preventDefault();killRow(sel)}}
+  if(e.key==='Enter'&&!editing){var sel2=document.querySelector('.p-item.selected');if(sel2){e.preventDefault();killRow(sel2)}}
+  if((e.ctrlKey||e.metaKey)&&e.key==='r'&&!editing){e.preventDefault();refreshPorts()}
+})
+
 $('btnRefresh').addEventListener('click',refreshPorts)
 $('btnCheck').addEventListener('click',checkPort)
 $('portInput').addEventListener('keydown',function(e){if(e.key==='Enter')checkPort()})
-$('btnKill').addEventListener('click',function(){var sel=document.querySelector('.p-item.selected');if(sel){var pid=sel.dataset.pid;if(pid){qdConfirm('确定结束 PID '+pid+' 的进程？').then(function(ok){if(ok){pluginExec('port-kill',{pid:pid}).then(function(){refreshPorts()}).catch(function(e){qdAlert('结束失败: '+e.message)})}})}else{qdAlert('请先点击选择一个端口')}}})
-document.addEventListener('click',function(e){document.querySelectorAll('.p-item').forEach(function(el){el.classList.toggle('selected',el===e.target.closest('.p-item'))})})
-window.addEventListener('message',function(e){if(e.data&&e.data.type==='plugin:init'){refreshPorts();if(e.data.data&&e.data.data.text){var m=e.data.data.text.match(/(\d+)/);if(m){$('portInput').value=m[1];checkPort()}}}})
-if(!window.parent)setTimeout(refreshPorts,500) // fallback
+$('portInput').addEventListener('input',function(){if(this.value.trim())checkPort()})
+$('searchInput').addEventListener('input',function(){$('btnClearSearch').style.display=this.value?'inline-flex':'none';filterText=this.value;renderPorts()})
+$('searchInput').addEventListener('keydown',function(e){if(e.key==='Escape'){this.value='';this.dispatchEvent(new Event('input'));this.blur()}})
+$('btnClearSearch').addEventListener('click',function(){$('searchInput').value='';filterText='';renderPorts();$('searchInput').focus()})
+
+window.addEventListener('message',function(e){
+  if(!e.data||e.data.type!=='plugin:init') return
+  refreshPorts()
+  if(e.data.data&&e.data.data.text){
+    var m=String(e.data.data.text).match(/(?:^|\s)(\d{1,5})\s*$/)
+    if(m){$('portInput').value=m[1];checkPort()}
+  }
+})
+
+// 自初始化：宿主若直接打开而非通过命令面板（少见）
+setTimeout(function(){
+  if(netstatData.length===0) refreshPorts()
+},300)
 </script>
 </body>
 </html>
