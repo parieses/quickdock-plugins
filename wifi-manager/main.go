@@ -7,7 +7,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"quickdock/internal/sysutil"
+	"system-tools/sysutil"
 )
 
 // ---- JSON-RPC structures ----

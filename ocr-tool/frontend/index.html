@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<html lang="zh-CN" data-page-node-id="VLKI8EVLo1hFy0YmbeVLKs">
+<head data-page-node-id="ZE6VfdHT1zd0nWoUVsMxEW">
+<meta charset="UTF-8" data-page-node-id="ZXFpBWtbLOD618vwdP0CMx">
+<meta name="viewport" content="width=device-width,initial-scale=1.0" data-page-node-id="7rN29Z5NNKqqcoLTcoVKAX">
 <title>OCR 文字识别</title>
-<link rel="stylesheet" href="qd-theme.css">
-<link rel="stylesheet" href="components.css">
+<link rel="stylesheet" href="qd-theme.css" data-page-node-id="FFCM3F5jJF7jYHzDJdRDBe">
+<link rel="stylesheet" href="components.css" data-page-node-id="WLPSSqjFekmqXGYFaoBSuo">
 <style>
 /* ===== 通用 ===== */
 .app{display:flex;flex-direction:column;height:100vh;padding:var(--sp-4);gap:var(--sp-3);box-sizing:border-box;overflow:hidden}
@@ -70,92 +70,82 @@
 .dlfile .p > i{display:block;height:100%;width:0;background:var(--accent)}
 .dlfile.ok .p > i{background:var(--success,#3fb950)}
 .hidden{display:none!important}
-.debug{flex-shrink:0}
-.debug > summary{cursor:pointer;font-size:11px;color:var(--text-muted);user-select:none}
-.debug > summary:hover{color:var(--accent)}
-.debug-raw{max-height:160px;overflow:auto;margin:6px 0;padding:10px;font-family:var(--font-mono);font-size:11px;line-height:1.5;white-space:pre-wrap;word-break:break-word;color:var(--text-secondary);background:var(--bg-tertiary);border:1px solid var(--border);border-radius:var(--radius)}
 </style>
 </head>
-<body>
-<div class="app">
+<body data-page-node-id="Lwwo0MyjOt3qIVPKDdexMv">
+<div class="app" data-page-node-id="quw3UXfuVz5pqNrQASEckO">
   <!-- 顶部工具条 -->
-  <div class="bar">
-    <span class="title">OCR 文字识别</span>
-    <span class="badge badge-accent" id="engineBadge">PaddleOCR</span>
-    <span class="flex-1"></span>
-    <button id="pickBtn" class="btn btn-sm">选择图片</button>
-    <button id="recognizeBtn" class="btn btn-primary btn-sm" disabled>识别</button>
+  <div class="bar" data-page-node-id="PFDPB0fjt4izFXfQrdYtNd">
+    <span class="title" data-page-node-id="BxqzpztVa0jMy9PXM7ache">OCR 文字识别</span>
+    <span class="badge badge-accent" id="engineBadge" data-page-node-id="diaHXJ3aVTFAcSbv2kAbz6">PaddleOCR</span>
+    <span class="flex-1" data-page-node-id="LBf2L6ylGq0eBTzr8LRzAw"></span>
+    <button id="pickBtn" class="btn btn-sm" data-page-node-id="JpdYKv6uiLQxuIsMCEGzJL">选择图片</button>
+    <button id="recognizeBtn" class="btn btn-primary btn-sm" disabled data-page-node-id="u8C5HC1DU1gWau3jCRcElE">识别</button>
   </div>
 
-  <div class="main">
+  <div class="main" data-page-node-id="nDCoHC9ykHbsgF3lk7BDtG">
     <!-- 准备模型页（默认未就绪时显示） -->
-    <div class="card prepare" id="prepareView">
-      <div class="big" id="prepareTitle">首次使用需要下载模型</div>
-      <div class="desc" id="prepareDesc">
-        本插件基于 PaddleOCR (ONNX) 离线识别，首次使用需从 ModelScope 下载约 <b>178&nbsp;MB</b> 模型权重与运行时（det / rec 模型 + 字典 + onnxruntime 动态库）。下载完成后完全离线、支持中英文。
+    <div class="card prepare" id="prepareView" data-page-node-id="2wtxwc9qql4daNvEnmT5cl">
+      <div class="big" id="prepareTitle" data-page-node-id="0gl45zykVLElDDJYRblQ3P">首次使用需要下载模型</div>
+      <div class="desc" id="prepareDesc" data-page-node-id="dPqnCoWKb1pu0yyEIAtKfp">
+        本插件基于 PaddleOCR (ONNX) 离线识别，首次使用需从 ModelScope 下载约 <b data-page-node-id="HYCMXy7aJ75i5HUBjE3rlE">178&nbsp;MB</b> 模型权重与运行时（det / rec 模型 + 字典 + onnxruntime 动态库）。下载完成后完全离线、支持中英文。
       </div>
-      <button id="prepareBtn" class="btn btn-primary">准备模型</button>
-      <div class="pbar hidden" id="dlBar"><i></i></div>
-      <div class="dlfiles hidden" id="dlFiles"></div>
-      <div class="desc" style="font-size:11px;color:var(--text-disabled)" id="dlSizeHint"></div>
+      <button id="prepareBtn" class="btn btn-primary" data-page-node-id="ECiHlhhc5a7w9gFnjCsu1W">准备模型</button>
+      <div class="pbar hidden" id="dlBar" data-page-node-id="7ENZG4vr04lDXBN9JknTSB"><i data-page-node-id="DPueYZFdohn0VHQbqO4dzD"></i></div>
+      <div class="dlfiles hidden" id="dlFiles" data-page-node-id="iGDXmZ2jf85ydXxxlW9ToK"></div>
+      <div class="desc" style="font-size:11px;color:var(--text-disabled)" id="dlSizeHint" data-page-node-id="mlAd0jW7wZastsBCZmvLVC"></div>
     </div>
 
     <!-- 识别页（就绪后显示） -->
-    <div id="ocrView" class="hidden" style="display:flex;flex-direction:column;gap:var(--sp-3);flex:1;min-height:0">
-      <div class="card img-card" id="imgCard">
-        <div class="card-header">
-          <span class="card-title truncate" id="imgName">预览</span>
-          <span class="badge" id="imgSize" style="display:none"></span>
-          <button id="zoomBtn" class="btn btn-sm" disabled>放大</button>
-          <button id="clearBtn" class="btn btn-sm" disabled>移除</button>
+    <div id="ocrView" class="hidden" style="display:flex;flex-direction:column;gap:var(--sp-3);flex:1;min-height:0" data-page-node-id="E2qiFnLkPVeDsWlSHEqyOJ">
+      <div class="card img-card" id="imgCard" data-page-node-id="LSLAAyg6LJfZvBrr6eg31M">
+        <div class="card-header" data-page-node-id="9Se4gTfgDvQuTyRZTHpCFl">
+          <span class="card-title truncate" id="imgName" data-page-node-id="JOJp43U9lz8L8BosJrOzc7">预览</span>
+          <span class="badge" id="imgSize" style="display:none" data-page-node-id="us5Jr9bXbGVgJDP2iu9zE6"></span>
+          <button id="zoomBtn" class="btn btn-sm" disabled data-page-node-id="oUGkmmwAgGAWKqcG2BGbDq">放大</button>
+          <button id="clearBtn" class="btn btn-sm" disabled data-page-node-id="6ETKjcmJiOKmkWg7ILGzwH">移除</button>
         </div>
-        <div class="img-body">
-          <div id="dropZone" class="drop">
-            <div class="ic">🖼️</div>
-            <div class="hint">拖拽图片到此处，或点击选择</div>
-            <div class="sub">也支持 Ctrl+V 粘贴截图（Win+Shift+S）</div>
+        <div class="img-body" data-page-node-id="tkpanX3RR1IwFMUUj1smWC">
+          <div id="dropZone" class="drop" data-page-node-id="5bpoJ8NKLAXOcP28Ln4dvt">
+            <div class="ic" data-page-node-id="5KWxQgIN3qYp2lPnehxpan">🖼️</div>
+            <div class="hint" data-page-node-id="V32iCo2PigysnVgTR5Nln8">拖拽图片到此处，或点击选择</div>
+            <div class="sub" data-page-node-id="LfUQhzkoKil2PWuyDQ40In">也支持 Ctrl+V 粘贴截图（Win+Shift+S）</div>
           </div>
-          <div class="img-wrap hidden" id="imgWrap">
-            <img id="preview" alt="preview" />
-            <div id="boxLayer"></div>
+          <div class="img-wrap hidden" id="imgWrap" data-page-node-id="pEDKTQA9grCElH6f6CUffp">
+            <img id="preview" alt="preview" data-page-node-id="TNJgNYbwByT4aGYUF1gEbJ" />
+            <div id="boxLayer" data-page-node-id="aV7FntRdhko7R42m11CAqf"></div>
           </div>
         </div>
       </div>
 
-      <div class="card res-card">
-        <div class="card-header">
-          <span class="card-title">识别结果</span>
-          <span class="badge" id="count" style="display:none"></span>
-          <span class="toggle" id="viewToggle">按行视图</span>
-          <button id="copyBtn" class="btn btn-sm" disabled>复制</button>
+      <div class="card res-card" data-page-node-id="zbi21nRQzDwvzfq2D2RVJ5">
+        <div class="card-header" data-page-node-id="903s0MPk2S12KnmD5Fghux">
+          <span class="card-title" data-page-node-id="nkCGjKET36OCESXeYG3OdD">识别结果</span>
+          <span class="badge" id="count" style="display:none" data-page-node-id="l2gTnZ177LNrwEwipgdNBA"></span>
+          <span class="toggle" id="viewToggle" data-page-node-id="AEkX4BjiUt3DLZoM4z4FnQ">按行视图</span>
+          <button id="copyBtn" class="btn btn-sm" disabled data-page-node-id="cKMuLE4XRfckVvpUFAPZuH">复制</button>
         </div>
-        <div class="res-out-wrap">
-          <div id="resultEmpty" class="empty-state" style="flex:1">
-            <div class="empty-state-icon">📝</div>
-            <div class="empty-state-title">尚未识别</div>
-            <div class="empty-state-desc">选择或粘贴一张含文字的图片，然后点击「识别」</div>
+        <div class="res-out-wrap" data-page-node-id="7KMb8g3SmDWPfAtoWqHeV9">
+          <div id="resultEmpty" class="empty-state" style="flex:1" data-page-node-id="deScv6v4auv8uLOFI0LPxw">
+            <div class="empty-state-icon" data-page-node-id="MAcfb0plGL3JAm0nnkRhxU">📝</div>
+            <div class="empty-state-title" data-page-node-id="kjrQVZsWq17RYNaAkksGbl">尚未识别</div>
+            <div class="empty-state-desc" data-page-node-id="qKD7WQ2KFAPU9fPEopIs7H">选择或粘贴一张含文字的图片，然后点击「识别」</div>
           </div>
-          <ul id="lines" class="ocr-lines hidden"></ul>
-          <pre id="result" class="ocr-text"></pre>
+          <ul id="lines" class="ocr-lines hidden" data-page-node-id="SOQQmsUtUQqSR6QrMS6GsV"></ul>
+          <pre id="result" class="ocr-text" data-page-node-id="KD4TggdHX2O0tvIMwcQsDD"></pre>
         </div>
       </div>
     </div>
   </div>
 
-  <div class="err" id="errorbar"></div>
-  <div class="foot">
-    <span class="status-dot online" id="statusDot"></span>
-    <span id="statusText" class="truncate">就绪 · 引擎：PaddleOCR（离线 ONNX）</span>
+  <div class="err" id="errorbar" data-page-node-id="ET46bGe1Aqaegj0whUJJJf"></div>
+  <div class="foot" data-page-node-id="EtqEofzy9d6uZgvyFn0NQ1">
+    <span class="status-dot online" id="statusDot" data-page-node-id="L0WH0SLRjnxrCmt1629Fst"></span>
+    <span id="statusText" class="truncate" data-page-node-id="ZpDh2mT3FT2bATqaMJ9EgT">就绪 · 引擎：PaddleOCR（离线 ONNX）</span>
   </div>
-
-  <details id="debugBox" class="debug">
-    <summary>调试信息（识别异常时把这里的内容发给我）</summary>
-    <div class="debug-raw" id="debugRaw">（暂无）</div>
-    <button id="copyDebugBtn" class="btn btn-sm">复制调试信息</button>
-  </details>
 </div>
 
-<input type="file" id="fileInput" accept="image/*" style="display:none" />
+<input type="file" id="fileInput" accept="image/*" style="display:none" data-page-node-id="E0eRSkazRoEIZ1nRhBUAUK" />
 
 <script>
 /* QuickDock sandbox 剪贴板桥接：iframe 内 navigator.clipboard 常被 Permissions-Policy 禁用 */
@@ -209,7 +199,7 @@ function pluginExec(command, data) {
 }
 
 var $ = function (id) { return document.getElementById(id) }
-var state = { ready: false, downloading: false, taskId: null, lines: [], view: 'line' }
+var state = { ready: false, downloading: false, prepareStarted: false, taskId: null, lines: [], view: 'line' }
 
 // ---- 初始状态检查 ----
 function boot() {
@@ -235,6 +225,17 @@ function pollStatus() {
       renderDownload(r.download)
       setStatus('正在下载模型…')
       setTimeout(pollStatus, 600)
+    } else if (!state.prepareStarted) {
+      // 首次打开且未就绪：自动开始下载模型（约 178MB），无需手动点击「准备模型」。
+      state.prepareStarted = true
+      setStatus('正在准备模型…')
+      pluginExec('ocr-prepare', {}).then(function (pr) {
+        if (pr && pr.alreadyReady) { state.ready = true; showOcrView(); return }
+        pollStatus()
+      }).catch(function () {
+        setStatus('需要准备模型后才能识别')
+        setTimeout(pollStatus, 2000)
+      })
     } else {
       setStatus('需要准备模型后才能识别')
     }
@@ -405,7 +406,15 @@ recognizeBtn.addEventListener('click', function () {
     pollTask(r.taskId)
   }).catch(function (e) {
     var msg = (e && e.message) ? e.message : String(e)
-    setError('识别失败：' + msg)
+    if (msg.indexOf('未就绪') >= 0 || msg.indexOf('模型') >= 0) {
+      state.ready = false
+      state.prepareStarted = true
+      showPrepareView()
+      setStatus('尚未下载 PaddleOCR 模型，正在自动准备…')
+      pluginExec('ocr-prepare', {}).then(pollStatus).catch(function () { setStatus('需要准备模型后才能识别') })
+    } else {
+      setError('识别失败：' + msg)
+    }
     recognizeBtn.innerHTML = '识别'; recognizeBtn.disabled = false
   })
 })
@@ -421,13 +430,11 @@ function pollTask(taskId) {
     if (r.state === 'error') {
       setError('识别失败：' + (r.error || '未知错误'))
       recognizeBtn.innerHTML = '识别'; recognizeBtn.disabled = false
-      updateDebug(false, r)
       return
     }
     // done
     renderResult(r.result)
     recognizeBtn.innerHTML = '识别'; recognizeBtn.disabled = false
-    updateDebug(true, r)
   }).catch(function (e) {
     setError('识别失败：' + ((e && e.message) || e))
     recognizeBtn.innerHTML = '识别'; recognizeBtn.disabled = false
@@ -517,18 +524,6 @@ copyBtn.addEventListener('click', function () {
   var text = state.view === 'text' ? (resultEl.textContent || '') : (state.lines.map(function (l) { return l.text }).join('\n'))
   if (!text) return
   window.copyViaHost(text, function (ok) { setStatus(ok ? '已复制到剪贴板' : '复制失败，请手动选中复制') })
-})
-
-// ---- 调试面板 ----
-var debugBox = $('debugBox'), debugRaw = $('debugRaw'), copyDebugBtn = $('copyDebugBtn')
-function updateDebug(ok, payload) {
-  debugRaw.textContent = JSON.stringify({ time: new Date().toLocaleString(), ok: ok, payload: payload }, null, 2)
-  debugBox.open = true
-}
-copyDebugBtn.addEventListener('click', function () {
-  var txt = debugRaw.textContent || ''
-  if (!txt || txt === '（暂无）') return
-  window.copyViaHost(txt, function (ok) { copyDebugBtn.textContent = ok ? '已复制' : '复制失败' })
 })
 
 if (!window.qdPickFile) { pickBtn.textContent = '选择文件' }
