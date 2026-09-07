@@ -2,9 +2,9 @@ package main
 
 import (
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -39,12 +39,24 @@ type ocrTask struct {
 	total    int
 	result   OcrResult
 	errMsg   string
+	created  time.Time // 用于 LRU 回收
 }
 
+const (
+	taskStatePending = "pending"
+	taskStateDone    = "done"
+	taskStateError   = "error"
+)
+
+const (
+	// 任务超出此数时按 created 升序淘汰最旧的，避免 tasks map 无限增长。
+	maxOcrTasks = 32
+)
+
 var (
-	tasks    = map[string]*ocrTask{}
-	taskMu   sync.Mutex
-	taskSeq  int64
+	tasks   = map[string]*ocrTask{}
+	taskMu  sync.Mutex
+	taskSeq int64
 )
 
 func handleOcrCommand(id int64, cmd string, input map[string]interface{}) {
@@ -62,7 +74,6 @@ func handleOcrCommand(id int64, cmd string, input map[string]interface{}) {
 	}
 }
 
-// ocrStatus 返回引擎/模型就绪状态与下载进度（前端轮询用）。
 func ocrStatus(id int64) {
 	ready := allAssetsPresent(modelsDir())
 	dl.mu.Lock()
@@ -84,7 +95,6 @@ func ocrStatus(id int64) {
 	})
 }
 
-// ocrPrepare 触发后台下载（幂等）。已就绪则直接返回 alreadyReady。
 func ocrPrepare(id int64) {
 	if allAssetsPresent(modelsDir()) {
 		respond(id, map[string]interface{}{"accepted": true, "alreadyReady": true, "modelsDir": modelsDir()})
@@ -96,23 +106,17 @@ func ocrPrepare(id int64) {
 
 // ocrImage 解码图片（base64 或路径）后提交异步识别任务，返回 taskId。
 // 未就绪时返回明确错误码，引导用户先下载模型。
+//
+// 注意：handleExecute 已经在 main.go 里把 input.text 自动解包到 input 顶层，
+// 此处不需要再次解包，避免外层 path/data 被覆盖的歧义。
 func ocrImage(id int64, input map[string]interface{}) {
 	if !allAssetsPresent(modelsDir()) {
 		respondError(id, -32001, "模型未就绪：请先在界面点击「准备模型」下载 PaddleOCR 权重（约 178MB）")
 		return
 	}
 
-	params := input
-	if s, ok := input["text"].(string); ok && s != "" {
-		var dec map[string]interface{}
-		if json.Unmarshal([]byte(s), &dec) == nil {
-			params = dec
-		}
-	}
-
 	var raw []byte
-	if s, ok := params["data"].(string); ok && s != "" {
-		// 兼容可能带 "data:image/png;base64," 前缀的情况
+	if s, ok := input["data"].(string); ok && s != "" {
 		if idx := strings.Index(s, ","); idx >= 0 && strings.HasPrefix(s, "data:") {
 			s = s[idx+1:]
 		}
@@ -122,7 +126,7 @@ func ocrImage(id int64, input map[string]interface{}) {
 			return
 		}
 		raw = decoded
-	} else if p, ok := params["path"].(string); ok && p != "" {
+	} else if p, ok := input["path"].(string); ok && p != "" {
 		data, err := os.ReadFile(p)
 		if err != nil {
 			respondError(id, -1, "读取图片失败: "+err.Error())
@@ -146,12 +150,24 @@ func ocrImage(id int64, input map[string]interface{}) {
 		return
 	}
 	tmpPath := tmp.Name()
-	_, _ = tmp.Write(raw)
-	_ = tmp.Close()
-	// 注意：临时文件在 runOcrTask 结束后删除，这里不 defer（函数已返回）。
+	if _, err := tmp.Write(raw); err != nil {
+		tmp.Close()
+		os.Remove(tmpPath)
+		respondError(id, -1, "写入临时文件失败: "+err.Error())
+		return
+	}
+	if err := tmp.Close(); err != nil {
+		os.Remove(tmpPath)
+		respondError(id, -1, "关闭临时文件失败: "+err.Error())
+		return
+	}
 
 	taskID := newTaskID()
-	t := &ocrTask{state: "pending", phase: "preparing"}
+	t := &ocrTask{
+		state:   taskStatePending,
+		phase:   "preparing",
+		created: time.Now(),
+	}
 	taskMu.Lock()
 	tasks[taskID] = t
 	taskMu.Unlock()
@@ -162,8 +178,22 @@ func ocrImage(id int64, input map[string]interface{}) {
 }
 
 // runOcrTask 后台执行识别，更新任务状态供轮询。
+// 用 defer-recover 兜住 engine panic：标记 task 为 error 让前端停止轮询，
+// 同时确保 tmp 文件一定被清理。
 func runOcrTask(t *ocrTask, imgPath string) {
 	defer os.Remove(imgPath)
+	defer func() {
+		if r := recover(); r != nil {
+			msg := fmt.Sprintf("OCR panic: %v", r)
+			t.mu.Lock()
+			t.state = taskStateError
+			t.errMsg = msg
+			t.mu.Unlock()
+			logf("runOcrTask: %s", msg)
+			hostLog("error", "%s", msg)
+		}
+	}()
+
 	start := time.Now()
 	t.setPhase("loading-engine")
 
@@ -172,21 +202,23 @@ func runOcrTask(t *ocrTask, imgPath string) {
 
 	t.mu.Lock()
 	if err != nil {
-		t.state = "error"
+		t.state = taskStateError
 		t.errMsg = err.Error()
 		t.mu.Unlock()
+		// 同时记录到本地日志与宿主日志，方便用户两种方式都能查到
+		logf("runOcrTask: OCR 失败 path=%s err=%v", imgPath, err)
 		hostLog("error", "OCR 失败: %v", err)
 		return
 	}
 	res.ElapsedMs = elapsed
 	res.LogPath = backendLogPath
 	t.result = res
-	t.state = "done"
+	t.state = taskStateDone
 	t.mu.Unlock()
+	logf("runOcrTask: OCR 完成 path=%s 行数=%d 耗时=%dms", imgPath, res.LineCount, elapsed)
 	hostLog("info", "OCR 完成 行数=%d 耗时=%dms", res.LineCount, elapsed)
 }
 
-// ocrTaskPoll 返回指定任务的状态/进度/结果。
 func ocrTaskPoll(id int64, input map[string]interface{}) {
 	tid, _ := input["taskId"].(string)
 	if tid == "" {
@@ -203,20 +235,51 @@ func ocrTaskPoll(id int64, input map[string]interface{}) {
 
 	t.mu.Lock()
 	resp := map[string]interface{}{
-		"taskId": tid,
-		"state":  t.state,
-		"phase":  t.phase,
+		"taskId":   tid,
+		"state":    t.state,
+		"phase":    t.phase,
 		"progress": t.progress,
 		"total":    t.total,
 	}
-	if t.state == "done" {
+	if t.state == taskStateDone {
 		resp["result"] = t.result
 	}
-	if t.state == "error" {
+	if t.state == taskStateError {
 		resp["error"] = t.errMsg
 	}
 	t.mu.Unlock()
 	respond(id, resp)
+}
+
+// newTaskID 分配新 taskId（自增 + ns 后缀），任务 map 容量超出 LRU 时淘汰最旧。
+func newTaskID() string {
+	taskMu.Lock()
+	defer taskMu.Unlock()
+	taskSeq++
+	id := fmt.Sprintf("t%d-%d", taskSeq, time.Now().UnixNano())
+	evictOldTasksLocked()
+	return id
+}
+
+func evictOldTasksLocked() {
+	if len(tasks) <= maxOcrTasks {
+		return
+	}
+	type kv struct {
+		id string
+		ts time.Time
+	}
+	all := make([]kv, 0, len(tasks))
+	for id, t := range tasks {
+		all = append(all, kv{id: id, ts: t.created})
+	}
+	// 从最旧开始淘汰，保留 maxOcrTasks 个
+	sort.Slice(all, func(i, j int) bool { return all[i].ts.Before(all[j].ts) })
+	toEvict := len(all) - maxOcrTasks
+	for i := 0; i < toEvict; i++ {
+		delete(tasks, all[i].id)
+	}
+	logf("evictOldTasksLocked: 淘汰 %d 个旧任务", toEvict)
 }
 
 // detectImageExt 根据文件头判断图片格式，决定临时文件扩展名。
@@ -234,14 +297,6 @@ func detectImageExt(b []byte) string {
 		return ".bmp"
 	}
 	return ".png"
-}
-
-func newTaskID() string {
-	taskMu.Lock()
-	taskSeq++
-	s := fmt.Sprintf("t%d-%d", taskSeq, time.Now().UnixNano())
-	taskMu.Unlock()
-	return s
 }
 
 func (t *ocrTask) setPhase(p string) {

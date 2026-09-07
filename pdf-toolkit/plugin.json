@@ -15,9 +15,7 @@
   "icon": "icon.svg",
   "category": "办公效率",
   "platforms": [
-    "windows",
-    "darwin",
-    "linux"
+    "windows"
   ],
   "backend": {
     "runtime": "native",

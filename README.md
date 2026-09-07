@@ -71,10 +71,10 @@ QuickDock 内置「在线市场」标签页，让用户免下载直接安装/升
 ## 快速开始
 
 ```bash
-# 打包（Windows 安装包，输出到根目录 dist/）
-python build.py disk-analyzer            # 默认只打包 windows（主程序目前仅 Windows）
-python build.py disk-analyzer --platform windows   # 显式指定（默认即此）
-python build.py disk-analyzer --platform all       # 需要其他平台时全平台打包
+# 打包（输出到根目录 dist/，按平台区分 zip）
+python build.py disk-analyzer            # 默认按 plugin.json 的 platforms 字段逐一打包
+python build.py disk-analyzer --platform windows   # 仅打指定平台（须在插件 platforms 内）
+python build.py disk-analyzer --platform all       # 全平台（windows/darwin/linux，取与 platforms 交集）
 python build.py disk-analyzer --skip-build         # 跳过编译仅打包
 
 # 生成插件中心主页 + 市场索引（扫描各插件 plugin.json）
@@ -307,11 +307,11 @@ JS 侧注册方法（参考主仓库内置插件 json-toolbox 等的实现方式
 1. 改 `plugin.json` 的 `version`（并相应更新代码）。
 2. `git add . && git commit && git push`
 3. 推送后 **CI 自动完成发布**，无需手工操作：
-   - `build-plugins.yml`：diff 出本次变更的插件目录 → `build.py --platform windows` 打包 → 发布到名为 `latest` 的 GitHub Release，资产即 `releases/latest/download/<id-小写横线>-windows.zip`。
+   - `build-plugins.yml`：diff 出本次变更的插件目录 → `build.py` 按各插件 `plugin.json` 的 `platforms` 字段逐一打包 → 发布到名为 `latest` 的 GitHub Release，资产即 `releases/latest/download/<id-小写横线>-<platform>.zip`（如 `io-github-parieses-disk-analyzer-windows.zip` / `-darwin.zip` / `-linux.zip`）。
    - `pages.yml`：运行 `gen_site.py` 重新生成 `site/index.html` + `site/index.json` → 部署到 GitHub Pages（即 `https://parieses.github.io/quickdock-plugins/`）。
 4. 应用内「在线市场」与插件中心主页会随之更新（GitHub Pages 有缓存，通常几十秒到几分钟内生效）。
 
-> 注：主程序 QuickDock 目前仅发布 Windows 版本，故插件默认只打包 windows（`gen_site.py` 的 `PLATFORMS` 也仅含 `windows`）。需要其他平台时：在 `build.py` 命令后加 `--platform all`（或 `darwin`/`linux`），并同步把目标平台加进 `gen_site.py` 的 `PLATFORMS` 与插件 `plugin.json` 的 `platforms`，否则在线市场不会列出该平台下载。
+> 平台说明：`build.py` 默认按各插件 `plugin.json` 的 `platforms` 字段打包，`gen_site.py` 据此生成对应平台的下载项（`downloads` 与下载按钮）。`platforms` 声明了 darwin/linux 的插件必须有对应的可交叉编译源码（否则 `go build` 会在 CI 失败）——因此**多平台声明的 native 插件必须真正能跨平台编译**；纯 Windows 功能（如依赖 Windows 注册表/专属二进制的插件）请把 `platforms` 收敛为 `["windows"]`。临时只打某平台用 `python build.py <dir> --platform <plat>`。
 
 ## 开发约定
 

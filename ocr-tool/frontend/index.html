@@ -317,8 +317,11 @@ function clearImage() {
   imgName.textContent = '预览'; imgSize.style.display = 'none'
   recognizeBtn.disabled = true; copyBtn.disabled = true
   zoomBtn.disabled = true; clearBtn.disabled = true
-  countEl.style.display = 'none'; linesEl.classList.add('hidden'); resultEl.classList.remove('show')
+  countEl.style.display = 'none'; viewToggle.style.display = ''
+  linesEl.classList.add('hidden'); resultEl.classList.remove('show')
   resultEmpty.style.display = ''; boxLayer.innerHTML = ''
+  resultEmpty.querySelector('.empty-state-title').textContent = '尚未识别'
+  resultEmpty.querySelector('.empty-state-desc').textContent = '选择或粘贴一张含文字的图片，然后点击「识别」'
   setError(null); setStatus('就绪 · 引擎：PaddleOCR（离线 ONNX）')
 }
 
@@ -415,29 +418,41 @@ recognizeBtn.addEventListener('click', function () {
     } else {
       setError('识别失败：' + msg)
     }
-    recognizeBtn.innerHTML = '识别'; recognizeBtn.disabled = false
+    restoreBtn()
   })
 })
 
+// 后端 task state 枚举（与 ocr.go 常量保持一致）
+var KNOWN_RUNNING_STATES = {
+  pending: 1, preparing: 1, 'loading-engine': 1, detecting: 1, recognizing: 1
+}
+var FINAL_STATES = { done: 1, error: 1 }
+
+function restoreBtn() {
+  recognizeBtn.innerHTML = '识别'
+  recognizeBtn.disabled = false
+}
+
 function pollTask(taskId) {
   pluginExec('ocr-task', { taskId: taskId }).then(function (r) {
-    if (!r) throw new Error('空响应')
-    if (r.state === 'pending' || r.state === 'running' || !r.state) {
-      setStatus('正在识别…（' + ((r.phase || 'processing')) + '）')
+    if (!r || typeof r !== 'object') throw new Error('空响应')
+    if (FINAL_STATES[r.state]) {
+      if (r.state === 'done') renderResult(r.result)
+      else setError('识别失败：' + (r.error || '未知错误'))
+      restoreBtn()
+      return
+    }
+    if (KNOWN_RUNNING_STATES[r.state]) {
+      setStatus('正在识别…（' + (r.phase || r.state) + '）')
       setTimeout(function () { pollTask(taskId) }, 400)
       return
     }
-    if (r.state === 'error') {
-      setError('识别失败：' + (r.error || '未知错误'))
-      recognizeBtn.innerHTML = '识别'; recognizeBtn.disabled = false
-      return
-    }
-    // done
-    renderResult(r.result)
-    recognizeBtn.innerHTML = '识别'; recognizeBtn.disabled = false
+    // 未知 state（后端崩 / 数据损坏 / 类型不对）→ 立刻停止轮询，避免无限循环
+    setError('识别状态异常：state=' + JSON.stringify(r.state) + '，请重试')
+    restoreBtn()
   }).catch(function (e) {
     setError('识别失败：' + ((e && e.message) || e))
-    recognizeBtn.innerHTML = '识别'; recognizeBtn.disabled = false
+    restoreBtn()
   })
 }
 
@@ -455,9 +470,11 @@ function renderResult(res) {
     resultEmpty.querySelector('.empty-state-desc').textContent = '请确认图片含清晰文字、分辨率足够。'
     linesEl.classList.add('hidden'); resultEl.classList.remove('show')
     countEl.style.display = 'none'; copyBtn.disabled = true
+    viewToggle.style.display = 'none'  // C7: 空态没必要切换视图
     setStatus('识别完成，但未提取到文字')
     return
   }
+  viewToggle.style.display = ''  // 有结果时显示视图切换
 
   // 行视图
   linesEl.innerHTML = ''

@@ -28,3 +28,4 @@ service-fingerprint/FEASIBILITY.md
 # Compiled binaries
 !.github/
 # Dist artifacts
+.workbuddy/memory/2026-09-07.md

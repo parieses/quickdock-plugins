@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 )
@@ -17,6 +18,7 @@ var (
 
 // initLog 初始化落盘日志：写入插件可执行文件同目录的 ocr-tool.log，
 // 并把内置 OCR 脚本另存为 ocr-tool.script.ps1 便于核对实际执行的 PowerShell。
+// 顺带扫一次上一次进程被强杀遗留的 qd-ocr-*.tmp 图，避免 %TEMP% 越积越多。
 func initLog() {
 	logPath = logFilePath()
 	backendLogPath = logPath
@@ -36,6 +38,27 @@ func initLog() {
 	logf("===== OCR plugin process start %s =====", time.Now().Format("2006-01-02 15:04:05"))
 	logf("exe=%s", exePath())
 	logf("log=%s", logPath)
+	logf("清扫历史 tmp: %d", cleanupStaleTmp())
+}
+
+// cleanupStaleTmp 扫描 os.TempDir() 删除上一进程异常退出遗留的 qd-ocr-* 文件。
+// 正常路径下 runOcrTask defer 已清理；只在强杀/崩溃后才有遗留。
+func cleanupStaleTmp() int {
+	dir := os.TempDir()
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return 0
+	}
+	n := 0
+	for _, e := range entries {
+		name := e.Name()
+		if strings.HasPrefix(name, "qd-ocr-") {
+			if err := os.Remove(filepath.Join(dir, name)); err == nil {
+				n++
+			}
+		}
+	}
+	return n
 }
 
 func exePath() string {

@@ -2,15 +2,16 @@
 """QuickDock 插件一键打包工具（默认仅 Windows）
 
 用法:
-    cd <plugin_dir> && python build.py                    # 默认只打包 windows（主程序目前仅 Windows 版本）
-    python build.py disk-analyzer                         # 指定插件目录，打包 windows
-    python build.py disk-analyzer --platform windows      # 仅打指定平台
+    cd <plugin_dir> && python build.py                    # 按 plugin.json platforms 字段逐一打包
+    python build.py disk-analyzer                         # 指定插件目录，按 platforms 字段打包
+    python build.py disk-analyzer --platform windows      # 仅打指定平台（须在插件 platforms 内）
     python build.py disk-analyzer --platform all          # 全平台（windows/darwin/linux）
     python build.py disk-analyzer --skip-build            # 跳过编译仅打包
 
 产物: <插件ID>-<platform>.zip（按平台区分，如 io-github-parieses-disk-analyzer-windows.zip）
-native 运行时依赖 Go 交叉编译（GOOS 指定目标平台）。主程序目前仅发布 Windows 版本，默认只产出
-Windows 安装包；需要其他平台时用 --platform 指定（如 --platform all）。
+native 运行时依赖 Go 交叉编译（GOOS 指定目标平台）。默认（不传 --platform）读取各插件
+plugin.json 的 platforms 字段逐一打包；插件未声明 platforms 则按全平台打包。
+每个平台的 zip 只包含该平台对应的编译产物（windows 含 .exe，darwin/linux 无后缀可执行文件）。
 """
 
 import argparse
@@ -22,8 +23,8 @@ import zipfile
 from pathlib import Path
 
 PLATFORMS = ["windows", "darwin", "linux"]
-# 主程序目前仅发布 Windows 版本，默认只打包 windows；需要其他平台时用 --platform 指定
-DEFAULT_PLATFORMS = ["windows"]
+# 插件未声明 platforms 时的回退集合（与文档约定一致：未声明 = 全平台）
+FALLBACK_PLATFORMS = PLATFORMS
 
 
 def load_manifest(plugin_dir: Path) -> dict:
@@ -49,6 +50,42 @@ def validate_manifest(manifest: dict) -> None:
     if runtime == "native" and not manifest["backend"].get("entry"):
         print("❌ native runtime 必须指定 backend.entry")
         sys.exit(1)
+
+
+def declared_platforms(manifest: dict) -> list:
+    """插件在 plugin.json platforms 字段声明的平台集合（去重、校验合法值）。
+    未声明或声明非法 → 返回空列表，由调用方决定回退。"""
+    declared = manifest.get("platforms")
+    if not isinstance(declared, list) or not declared:
+        return []
+    invalid = [p for p in declared if p not in PLATFORMS]
+    if invalid:
+        print(f"⚠️  插件 platforms 含非法平台值: {invalid}，已忽略")
+    return [p for p in PLATFORMS if p in declared]
+
+
+def resolve_platforms(manifest: dict, platform_arg) -> list:
+    """确定本次要打包的平台集合（顺序稳定为 PLATFORMS 顺序）。
+
+    规则:
+      - platform_arg == "all"   → 插件声明平台与全平台的交集；未声明则为全平台
+      - platform_arg == 具体平台 → 严格校验该平台必须在插件 platforms 声明内，否则报错退出
+      - platform_arg == None    → 读取 plugin.json platforms 字段，为该字段声明的每个平台各打一个 zip；
+                                  未声明则回退全平台
+    """
+    declared = declared_platforms(manifest)
+    effective = declared if declared else FALLBACK_PLATFORMS
+
+    if platform_arg is None:
+        return effective
+    if platform_arg == "all":
+        return [p for p in PLATFORMS if p in effective]
+    if platform_arg in effective:
+        return [platform_arg]
+    # 显式指定了插件未声明的平台
+    hint = "（插件未声明 platforms 时默认全平台）" if not declared else f"（插件 platforms: {declared}）"
+    print(f"❌ 平台 {platform_arg} 不在插件 platforms 声明内 {hint}")
+    sys.exit(1)
 
 
 def platform_binary_name(entry: str, platform: str) -> str:
@@ -188,7 +225,7 @@ def main():
     parser.add_argument("-o", "--output", help="输出 zip 路径（仅单平台时可用）")
     parser.add_argument("-d", "--output-dir", help="输出目录（默认仓库根 dist/）")
     parser.add_argument("--platform", choices=PLATFORMS + ["all"], default=None,
-                        help="目标平台（默认取 plugin.json platforms 字段，全部打）")
+                        help="目标平台（默认按 plugin.json platforms 字段逐一打包）")
     parser.add_argument("--skip-build", action="store_true", help="跳过编译步骤")
     args = parser.parse_args()
 
@@ -211,12 +248,10 @@ def main():
     safe_name = plugin_id.replace(".", "-").lower()
 
     # 确定目标平台集合
-    if args.platform == "all":
-        targets = PLATFORMS
-    elif args.platform:
-        targets = [args.platform]
-    else:
-        targets = DEFAULT_PLATFORMS
+    targets = resolve_platforms(manifest, args.platform)
+    if not targets:
+        print("❌ 无可打包平台：插件 platforms 为空且未回退到全平台")
+        sys.exit(1)
 
     print(f"\n📋 插件信息:")
     print(f"   ID:      {plugin_id}")

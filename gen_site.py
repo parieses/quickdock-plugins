@@ -30,8 +30,19 @@ REL_BASE = f"{REPO_URL}/releases/latest/download"
 # Releases 页面链接：/releases/latest/download 只是"最新资产"下载直链前缀，单独打开会 404
 REL_PAGE = f"{REPO_URL}/releases/tag/latest"
 
-# 主程序目前仅发布 Windows 版本，主页只展示 Windows 下载
-PLATFORMS = [("windows", "Windows")]
+# 可打包/展示的平台的元数据（key 与 build.py/Release zip 命名一致）
+ALL_PLATFORMS = [("windows", "Windows"), ("darwin", "macOS"), ("linux", "Linux")]
+# 插件未声明 platforms 时的回退集合（未声明 = 全平台）
+FALLBACK_PLATFORM_KEYS = [k for k, _ in ALL_PLATFORMS]
+
+
+def plugin_platforms(mf):
+    """插件实际可下载平台（key 列表，顺序稳定为 ALL_PLATFORMS 顺序）。
+    取 plugin.json platforms ∩ ALL_PLATFORMS；未声明/为空则回退全平台。"""
+    declared = mf.get("platforms")
+    if isinstance(declared, list) and declared:
+        return [k for k, _ in ALL_PLATFORMS if k in declared]
+    return FALLBACK_PLATFORM_KEYS
 
 # 分类 emoji（按子串匹配，未命中回退 🧩）
 CATEGORY_ICONS = [("网络", "🌐"), ("系统", "🗂️"), ("办公", "📄"), ("效率", "⚡"), ("开发", "🛠️")]
@@ -259,7 +270,7 @@ TEMPLATE = r"""<!DOCTYPE html>
     <div class="stats">
       <span><b>__PLUGIN_COUNT__</b> 个插件</span><span class="sep"></span>
       <span><b>__CAT_COUNT__</b> 个分类</span><span class="sep"></span>
-      <span>Windows 就绪</span><span class="sep"></span>
+      <span>多平台就绪</span><span class="sep"></span>
       <span class="live"><span class="pulse"></span>应用内一键更新</span>
     </div>
   </section>
@@ -292,7 +303,7 @@ __CARDS__
   <section class="howto">
     <h2>📦 如何安装</h2>
     <ol>
-      <li>点击卡片上的 <b>Windows</b> 按钮下载 zip 安装包；</li>
+      <li>点击卡片上对应你系统的平台按钮（Windows / macOS / Linux）下载 zip 安装包；</li>
       <li>打开 QuickDock → <b>插件管理</b> → <b>从文件安装</b>，选择下载的 zip（也可以直接把 zip 拖进插件管理页）；</li>
       <li>完成！之后可在应用内「插件市场」一键升级。</li>
     </ol>
@@ -478,7 +489,8 @@ def build_cards(plugins):
         icon_url = f"{RAW_BASE}/{urllib.parse.quote(pdir)}/{urllib.parse.quote(icon)}" if icon else ICON_FALLBACK
 
         downloads = []
-        for plat, label in PLATFORMS:
+        for plat in plugin_platforms(mf):
+            label = next((l for k, l in ALL_PLATFORMS if k == plat), plat)
             href = f"{REL_BASE}/{safe_id}-{plat}.zip"
             downloads.append(DOWNLOAD_TEMPLATE.replace("@HREF@", href).replace("@LABEL@", label))
         downloads_html = "".join(downloads)
@@ -514,7 +526,7 @@ def build_index(plugins):
     """构建机器可读的插件市场索引（供 QuickDock 应用内"在线安装"拉取）。
 
     字段对齐 plugin.json，并补充每个平台的下载直链（releases/latest/download）。
-    downloads 只包含 PLATFORMS 里声明的平台（主程序目前仅 Windows）。
+    downloads 按各插件 platforms 声明生成（未声明 = 全平台）；主程序据此取当前平台对应直链。
     """
     items = []
     for p in plugins:
@@ -525,9 +537,9 @@ def build_index(plugins):
         icon = mf.get("icon", "")
         icon_url = f"{RAW_BASE}/{urllib.parse.quote(pdir)}/{urllib.parse.quote(icon)}" if icon else ""
 
-        # 下载直链：仅 PLATFORMS 声明的平台
+        # 下载直链：按插件声明的 platforms（∩ ALL_PLATFORMS）生成对应平台直链
         downloads = {}
-        for plat, _ in PLATFORMS:
+        for plat in plugin_platforms(mf):
             downloads[plat] = f"{REL_BASE}/{safe_id}-{plat}.zip"
 
         items.append({

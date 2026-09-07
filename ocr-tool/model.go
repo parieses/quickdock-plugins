@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -162,6 +164,7 @@ func startDownload() {
 }
 
 // downloadAsset 下载单个资产：先下到 .part，完成后原子 rename。边下边更新进度。
+// 30 分钟总墙钟 + 2 分钟静默无进展即 abort（用 context + stallTimer 实现）。
 func downloadAsset(dir string, a assetFile, idx int) error {
 	url := modelRepoBase + a.repoRel
 	dest := filepath.Join(dir, a.repoRel)
@@ -170,14 +173,26 @@ func downloadAsset(dir string, a assetFile, idx int) error {
 	}
 	part := dest + ".part"
 
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+	defer cancel()
+
+	// 静默超时：每读到一个 chunk 就 Reset；超过 stallThreshold 没有新数据就 cancel 整个请求
+	stallThreshold := 2 * time.Minute
+	stallTimer := time.AfterFunc(stallThreshold, func() {
+		cancel()
+	})
+	defer stallTimer.Stop()
+
 	f, err := os.Create(part)
 	if err != nil {
 		return err
 	}
 
 	client := &http.Client{Timeout: 30 * time.Minute}
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
+		f.Close()
+		os.Remove(part)
 		return err
 	}
 	req.Header.Set("User-Agent", "QuickDock-OCR-Plugin/2.0")
@@ -189,6 +204,8 @@ func downloadAsset(dir string, a assetFile, idx int) error {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
+		// 早返回前排空 body，让 keepalive socket 能复用
+		_, _ = io.Copy(io.Discard, resp.Body)
 		f.Close()
 		os.Remove(part)
 		return fmt.Errorf("HTTP %d", resp.StatusCode)
@@ -198,11 +215,16 @@ func downloadAsset(dir string, a assetFile, idx int) error {
 	dl.files[idx].Size = resp.ContentLength
 	dl.mu.Unlock()
 
+	stallTimer.Stop() // 收到首字节后再启动定时器
+	stallTimer = time.AfterFunc(stallThreshold, func() { cancel() })
+	defer stallTimer.Stop()
+
 	buf := make([]byte, 64*1024)
 	var done int64
 	for {
 		n, rerr := resp.Body.Read(buf)
 		if n > 0 {
+			stallTimer.Reset(stallThreshold)
 			if _, werr := f.Write(buf[:n]); werr != nil {
 				f.Close()
 				os.Remove(part)
@@ -220,6 +242,14 @@ func downloadAsset(dir string, a assetFile, idx int) error {
 			f.Close()
 			os.Remove(part)
 			return rerr
+		}
+		if ctx.Err() != nil {
+			f.Close()
+			os.Remove(part)
+			if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+				return fmt.Errorf("下载停滞超过 %s，已中止", stallThreshold)
+			}
+			return ctx.Err()
 		}
 	}
 	if err := f.Close(); err != nil {

@@ -1,4 +1,4 @@
-# 插件自动打包 Workflow（仅 Windows）
+# 插件自动打包 Workflow（按各插件 plugin.json platforms 字段多平台打包）
 name: Build Plugins
 
 on:
@@ -22,7 +22,7 @@ on:
 
 jobs:
   build:
-    name: Package changed plugins (windows)
+    name: Package changed plugins (per platforms)
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -92,7 +92,7 @@ jobs:
           GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -o "$GITHUB_WORKSPACE/pdf-toolkit/pdfcpu.exe" ./cmd/pdfcpu
           ls -lh "$GITHUB_WORKSPACE/pdf-toolkit/pdfcpu.exe"
 
-      - name: Package plugins (windows)
+      - name: Package plugins (per platforms)
         shell: bash
         run: |
           changed="${{ steps.changed.outputs.changed_plugins }}"
@@ -103,8 +103,8 @@ jobs:
           fi
           for dir in $changed; do
             if [ -f "$dir/plugin.json" ]; then
-              echo "==> 打包插件: $dir（windows）"
-              python3 build.py "$dir" --platform windows
+              echo "==> 打包插件: $dir（按 plugin.json platforms 字段逐一打包）"
+              python3 build.py "$dir"
             else
               echo "==> 跳过 $dir（plugin.json 不存在）"
             fi
@@ -128,7 +128,7 @@ jobs:
           tag_name: latest
           name: Latest Plugin Builds
           body: |
-            Auto-built Windows install packages for QuickDock plugins.
+            Auto-built install packages for QuickDock plugins (platforms per each plugin.json).
           files: dist/*.zip
           make_latest: true
           fail_on_unmatched_files: false

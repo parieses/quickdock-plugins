@@ -6,9 +6,7 @@
   "author": "QuickDock",
   "category": "开发者日常",
   "platforms": [
-    "windows",
-    "darwin",
-    "linux"
+    "windows"
   ],
   "icon": "icon.svg",
   "backend": {

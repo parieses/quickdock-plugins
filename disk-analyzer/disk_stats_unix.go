@@ -19,9 +19,13 @@ func getDiskStats(path string) (*diskStats, error) {
 	if err := syscall.Statfs(path, &stat); err != nil {
 		return nil, fmt.Errorf("获取磁盘信息失败: %v", err)
 	}
-	total := uint64(stat.Blocks) * uint64(stat.Bsize)
-	free := uint64(stat.Bfree) * uint64(stat.Bsize)
-	used := total - free
+	// 对齐 coreutils df 口径：used = Blocks-Bfree、avail = Bavail、total = used+avail。
+	// 直接用 Blocks 当总容量、Bfree 当可用，会把 Linux 的 root 保留块（约 5%）
+	// 算进可用空间，导致 Linux 上显示的可用容量比 mac 偏大。
+	bs := uint64(stat.Bsize)
+	used := (uint64(stat.Blocks) - uint64(stat.Bfree)) * bs
+	free := uint64(stat.Bavail) * bs
+	total := used + free
 	var pct float64
 	if total > 0 {
 		pct = float64(used) / float64(total) * 100
