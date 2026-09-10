@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"runtime/debug"
 	"net/http"
 	"os"
 	"strings"
@@ -157,6 +158,11 @@ func (s *session) run(candidates []string, timeoutMs int) {
 		wg.Add(1)
 		go func(path string) {
 			defer wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Fprintf(os.Stderr, "[panic] dir-buster worker: %v\n%s\n", r, debug.Stack())
+				}
+			}()
 			sem <- struct{}{}
 			defer func() { <-sem }()
 			s.probe(client, path)
@@ -278,7 +284,18 @@ func handleStart(id int64, input map[string]interface{}) {
 	sessions[sid] = s
 	sessMu.Unlock()
 
-	go s.run(candidates, timeoutMs)
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				fmt.Fprintf(os.Stderr, "[panic] dir-buster run: %v\n%s\n", r, debug.Stack())
+				s.mu.Lock()
+				s.errMsg = fmt.Sprintf("panic: %v", r)
+				s.running = false
+				s.mu.Unlock()
+			}
+		}()
+		s.run(candidates, timeoutMs)
+	}()
 
 	respond(id, map[string]interface{}{
 		"sessionId": sid,
@@ -381,6 +398,15 @@ func main() {
 		wg.Add(1)
 		go func(raw string) {
 			defer wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Fprintf(os.Stderr, "[panic] dir-buster dispatch: %v\n%s\n", r, debug.Stack())
+					var req rpcRequest
+					if err := json.Unmarshal([]byte(raw), &req); err == nil && req.ID != 0 {
+						respondError(req.ID, -32603, "internal error")
+					}
+				}
+			}()
 			dispatch(raw)
 		}(data)
 	}

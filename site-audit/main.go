@@ -23,6 +23,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"runtime/debug"
 	"sort"
 	"strconv"
 	"strings"
@@ -91,6 +92,25 @@ func respondError(id int64, code int, msg string) {
 		"error": map[string]interface{}{"code": code, "message": msg},
 	})
 	fmt.Println(string(out))
+}
+
+// recoverAndLog 记录 panic 到 stderr（不污染 stdout JSON-RPC 流），含完整堆栈。
+func recoverAndLog(where string, r interface{}) {
+	fmt.Fprintf(os.Stderr, "[site-audit][panic:%s] %v\n%s\n", where, r, debug.Stack())
+}
+
+// safeDispatch 包裹 dispatch，捕获 panic 防止 os.Exit 杀进程；
+// 若能在请求中取到 id，则回 JSON-RPC error（不重复回包）。
+func safeDispatch(raw string) {
+	defer func() {
+		if rec := recover(); rec != nil {
+			var req rpcRequest
+			_ = json.Unmarshal([]byte(raw), &req)
+			respondError(req.ID, -32603, fmt.Sprintf("internal plugin error: %v", rec))
+			recoverAndLog("dispatch", rec)
+		}
+	}()
+	dispatch(raw)
 }
 
 /* ==================== WHOIS ==================== */
@@ -487,6 +507,11 @@ func handlePropagation(id int64, input map[string]interface{}) {
 		wg.Add(1)
 		go func(i int, r resolver) {
 			defer wg.Done()
+			defer func() {
+				if rec := recover(); rec != nil {
+					recoverAndLog("propagation.resolver", rec)
+				}
+			}()
 			results[i] = queryResolver(r, domain, qtype)
 		}(i, r)
 	}
@@ -1009,7 +1034,7 @@ func main() {
 		wg.Add(1)
 		go func(raw string) {
 			defer wg.Done()
-			dispatch(raw)
+			safeDispatch(raw)
 		}(data)
 	}
 	wg.Wait()

@@ -18,6 +18,7 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strings"
 
 	_ "golang.org/x/image/bmp"
@@ -276,8 +277,12 @@ func boolFrom(input map[string]interface{}, key string) bool {
 	return false
 }
 
+// answered 标记当前请求是否已回包，用于 dispatch 层 panic recover 避免重复回包。
+var answered bool
+
 func respond(id int64, result interface{}) {
 	out, _ := json.Marshal(map[string]interface{}{"jsonrpc": "2.0", "id": id, "result": result})
+	answered = true
 	fmt.Println(string(out))
 }
 
@@ -286,6 +291,7 @@ func respondError(id int64, code int, msg string) {
 		"jsonrpc": "2.0", "id": id,
 		"error": map[string]interface{}{"code": code, "message": msg},
 	})
+	answered = true
 	fmt.Println(string(out))
 }
 
@@ -432,6 +438,24 @@ func main() {
 		if data == "" {
 			continue
 		}
-		dispatch(data)
+
+		// 解析请求 id 以便在 panic 时回 JSON-RPC error（避免重复回包由 answered 控制）。
+		var rid struct {
+			ID int64 `json:"id"`
+		}
+		_ = json.Unmarshal([]byte(data), &rid)
+
+		answered = false
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Fprintf(os.Stderr, "image-studio dispatch panic: id=%d err=%v\n%s\n", rid.ID, r, debug.Stack())
+					if !answered && rid.ID != 0 {
+						respondError(rid.ID, -32603, fmt.Sprintf("internal panic: %v", r))
+					}
+				}
+			}()
+			dispatch(data)
+		}()
 	}
 }

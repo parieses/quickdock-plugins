@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
 	"sync"
 	"time"
 )
@@ -136,6 +137,17 @@ func startDownload() {
 
 	go func() {
 		defer func() {
+			if r := recover(); r != nil {
+				logf("startDownload panic: %v\n%s", r, debug.Stack())
+				fmt.Fprintf(os.Stderr, "ocr-tool startDownload panic: %v\n", r)
+				dl.mu.Lock()
+				dl.active = false
+				dl.errMsg = fmt.Sprintf("下载线程崩溃: %v", r)
+				dl.mu.Unlock()
+				hostLog("error", "模型下载线程崩溃: %v", r)
+			}
+		}()
+		defer func() {
 			dl.mu.Lock()
 			dl.active = false
 			dl.mu.Unlock()
@@ -179,6 +191,7 @@ func downloadAsset(dir string, a assetFile, idx int) error {
 	// 静默超时：每读到一个 chunk 就 Reset；超过 stallThreshold 没有新数据就 cancel 整个请求
 	stallThreshold := 2 * time.Minute
 	stallTimer := time.AfterFunc(stallThreshold, func() {
+		defer func() { _ = recover() }()
 		cancel()
 	})
 	defer stallTimer.Stop()
@@ -216,7 +229,10 @@ func downloadAsset(dir string, a assetFile, idx int) error {
 	dl.mu.Unlock()
 
 	stallTimer.Stop() // 收到首字节后再启动定时器
-	stallTimer = time.AfterFunc(stallThreshold, func() { cancel() })
+	stallTimer = time.AfterFunc(stallThreshold, func() {
+		defer func() { _ = recover() }()
+		cancel()
+	})
 	defer stallTimer.Stop()
 
 	buf := make([]byte, 64*1024)

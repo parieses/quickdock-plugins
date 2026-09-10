@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strings"
 	"sync"
 )
@@ -176,7 +177,22 @@ func main() {
 		wg.Add(1)
 		go func(raw string) {
 			defer wg.Done()
+			var pre struct {
+				ID int64 `json:"id"`
+			}
+			_ = json.Unmarshal([]byte(raw), &pre)
+			reqID := pre.ID
+			panicked := true
+			defer func() {
+				if panicked {
+					if r := recover(); r != nil {
+						fmt.Fprintf(os.Stderr, "[panic] http-client dispatch: %v\n%s\n", r, debug.Stack())
+						respondError(reqID, -32603, "internal error")
+					}
+				}
+			}()
 			dispatch(raw)
+			panicked = false
 		}(data)
 	}
 	wg.Wait()

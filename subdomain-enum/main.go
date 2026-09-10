@@ -15,20 +15,47 @@
 package main
 
 import (
-	"context"
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"net/http"
 	"os"
 	"regexp"
+	"runtime/debug"
 	"sort"
 	"strings"
 	"sync"
 	"time"
 )
+
+/* ==================== panic 防护 ==================== */
+
+// answeredMu / answeredIDs 记录已应答的请求 id，避免主循环 recover 后重复回包。
+var (
+	answeredMu  sync.Mutex
+	answeredIDs = map[int64]bool{}
+)
+
+func markAnswered(id int64) {
+	answeredMu.Lock()
+	answeredIDs[id] = true
+	answeredMu.Unlock()
+}
+
+func isAnswered(id int64) bool {
+	answeredMu.Lock()
+	defer answeredMu.Unlock()
+	return answeredIDs[id]
+}
+
+// recoverLog 打印 panic 堆栈到 stderr（绝不写 stdout，避免污染 JSON-RPC 协议流）。
+func recoverLog(tag string, r interface{}) {
+	log.Printf("[panic] %s: %v\n%s", tag, r, debug.Stack())
+}
 
 /* ==================== 数据源 ==================== */
 
@@ -400,6 +427,11 @@ func (s *session) add(name, source string) {
 
 func (s *session) run() {
 	defer func() {
+		if r := recover(); r != nil {
+			recoverLog("run", r)
+		}
+	}()
+	defer func() {
 		s.mu.Lock()
 		s.running = false
 		s.mu.Unlock()
@@ -410,6 +442,11 @@ func (s *session) run() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		defer func() {
+			if r := recover(); r != nil {
+				recoverLog("run.crtsh", r)
+			}
+		}()
 		s.mu.Lock(); s.sources["crt.sh"] = "running"; s.mu.Unlock()
 		// 大域名单次响应实测 24s+，超时给到 30s（异步模型下不受宿主 20s 限制）
 		names, err := fetchCRT(s.Domain, 30*time.Second)
@@ -428,6 +465,11 @@ func (s *session) run() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		defer func() {
+			if r := recover(); r != nil {
+				recoverLog("run.certspotter", r)
+			}
+		}()
 		s.mu.Lock(); s.sources["certspotter"] = "running"; s.mu.Unlock()
 		names, err := fetchCertSpotter(s.Domain, 15*time.Second)
 		s.mu.Lock()
@@ -445,6 +487,11 @@ func (s *session) run() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		defer func() {
+			if r := recover(); r != nil {
+				recoverLog("run.hackertarget", r)
+			}
+		}()
 		s.mu.Lock(); s.sources["hackertarget"] = "running"; s.mu.Unlock()
 		names, err := fetchHackerTarget(s.Domain, 10*time.Second)
 		s.mu.Lock()
@@ -462,6 +509,11 @@ func (s *session) run() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		defer func() {
+			if r := recover(); r != nil {
+				recoverLog("run.urlscan", r)
+			}
+		}()
 		s.mu.Lock(); s.sources["urlscan"] = "running"; s.mu.Unlock()
 		names, err := fetchURLScan(s.Domain, 15*time.Second)
 		s.mu.Lock()
@@ -479,6 +531,11 @@ func (s *session) run() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		defer func() {
+			if r := recover(); r != nil {
+				recoverLog("run.rapiddns", r)
+			}
+		}()
 		s.mu.Lock(); s.sources["rapiddns"] = "running"; s.mu.Unlock()
 		names, err := fetchRapidDNS(s.Domain, 15*time.Second)
 		s.mu.Lock()
@@ -496,6 +553,11 @@ func (s *session) run() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		defer func() {
+			if r := recover(); r != nil {
+				recoverLog("run.otx", r)
+			}
+		}()
 		s.mu.Lock(); s.sources["otx"] = "running"; s.mu.Unlock()
 		names, err := fetchOTX(s.Domain, 15*time.Second)
 		s.mu.Lock()
@@ -533,6 +595,11 @@ func (s *session) run() {
 		rwg.Add(1)
 		go func(name string) {
 			defer rwg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					recoverLog("run.resolve", r)
+				}
+			}()
 			sem <- struct{}{}
 			ips, err := net.LookupIP(name)
 			<-sem
@@ -619,11 +686,13 @@ func boolFrom(m map[string]interface{}, key string, def bool) bool {
 }
 
 func respond(id int64, result interface{}) {
+	markAnswered(id)
 	out, _ := json.Marshal(map[string]interface{}{"jsonrpc": "2.0", "id": id, "result": result})
 	fmt.Println(string(out))
 }
 
 func respondError(id int64, code int, msg string) {
+	markAnswered(id)
 	out, _ := json.Marshal(map[string]interface{}{
 		"jsonrpc": "2.0", "id": id,
 		"error": map[string]interface{}{"code": code, "message": msg},
@@ -760,7 +829,16 @@ func main() {
 		}
 		wg.Add(1)
 		go func(raw string) {
-			defer wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					recoverLog("dispatch", r)
+					var req rpcRequest
+					if err := json.Unmarshal([]byte(raw), &req); err == nil && req.ID != 0 && !isAnswered(req.ID) {
+						respondError(req.ID, -32603, "internal error (recovered from panic)")
+					}
+				}
+				wg.Done()
+			}()
 			dispatch(raw)
 		}(data)
 	}

@@ -13,6 +13,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
@@ -123,6 +124,9 @@ func (s *session) snapshot() map[string]interface{} {
 
 func (s *session) run() {
 	defer func() {
+		if r := recover(); r != nil {
+			fmt.Fprintf(os.Stderr, "PANIC in session.run: %v\n%s", r, debug.Stack())
+		}
 		s.mu.Lock()
 		s.running = false
 		s.mu.Unlock()
@@ -131,6 +135,11 @@ func (s *session) run() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				fmt.Fprintf(os.Stderr, "PANIC in session stop-watcher: %v\n%s", r, debug.Stack())
+			}
+		}()
 		select {
 		case <-s.stopCh:
 			cancel()
@@ -301,6 +310,15 @@ func handleStop(id int64, input map[string]interface{}) {
 }
 
 func dispatch(raw string) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Fprintf(os.Stderr, "PANIC in dispatch: %v\n%s", r, debug.Stack())
+			var req rpcRequest
+			if err := json.Unmarshal([]byte(raw), &req); err == nil && req.ID != 0 {
+				respondError(req.ID, -32603, "internal error: panic recovered")
+			}
+		}
+	}()
 	var req rpcRequest
 	if err := json.Unmarshal([]byte(raw), &req); err != nil {
 		respondError(0, -32700, "parse error: "+err.Error())

@@ -4,7 +4,9 @@ package sysutil
 
 import (
 	"errors"
+	"log"
 	"os/exec"
+	"runtime/debug"
 	"strings"
 	"syscall"
 )
@@ -74,7 +76,14 @@ func StartDetached(cmd *exec.Cmd) error {
 }
 
 func reap(cmd *exec.Cmd) {
-	go func() { _ = cmd.Wait() }()
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("sysutil reap panic: %v\n%s", r, debug.Stack())
+			}
+		}()
+		_ = cmd.Wait()
+	}()
 }
 
 // OpenDetached 以“系统默认方式”打开一个目标，并让被打开的进程独立于父进程存活。

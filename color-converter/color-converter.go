@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"runtime/debug"
 	"strings"
 	"sync"
 )
@@ -80,7 +81,15 @@ func main() {
 			// 无 method 的帧 = 宿主对插件回调请求（host.*）的响应，fire-and-forget，静默丢弃
 			continue
 		}
-		handleRequest(req)
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Fprintf(os.Stderr, "color-converter dispatch panic: %v\n%s\n", r, debug.Stack())
+					respondError(req.ID, -32000, fmt.Sprintf("internal error: %v", r))
+				}
+			}()
+			handleRequest(req)
+		}()
 	}
 }
 

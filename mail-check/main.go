@@ -531,6 +531,11 @@ func checkValidity(email string) validityResult {
 	}
 	mxDone := make(chan struct{})
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				_, _ = fmt.Fprintf(os.Stderr, "PANIC in checkValidity mx lookup: %v\n%s", r, debug.Stack())
+			}
+		}()
 		defer close(mxDone)
 		mxs, err := net.LookupMX(domain)
 		if err == nil {
@@ -694,6 +699,11 @@ func runProbes(ctx context.Context, client *http.Client, email, domain string, o
 	for i, s := range siteList {
 		wg.Add(1)
 		go func(i int, s siteConfig) {
+			defer func() {
+				if r := recover(); r != nil {
+					_, _ = fmt.Fprintf(os.Stderr, "PANIC in runProbes worker (%s): %v\n%s", s.Key, r, debug.Stack())
+				}
+			}()
 			defer wg.Done()
 			st, detail := probeSite(ctx, client, s, email, domain)
 			r := map[string]interface{}{
@@ -743,6 +753,12 @@ func handleCheck(id int64, input map[string]interface{}) {
 	prog := &checkProgress{}
 	t.Progress = prog
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				_, _ = fmt.Fprintf(os.Stderr, "PANIC in handleCheck task: %v\n%s", r, debug.Stack())
+				finishTask(t, nil, fmt.Errorf("internal panic: %v", r))
+			}
+		}()
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 		client := newProbeClient(12 * time.Second)
@@ -751,6 +767,12 @@ func handleCheck(id int64, input map[string]interface{}) {
 		// validity 并行推进（DNS/SMTP 可能较慢，完成后写入进度）
 		vch := make(chan validityResult, 1)
 		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					_, _ = fmt.Fprintf(os.Stderr, "PANIC in handleCheck validity probe: %v\n%s", r, debug.Stack())
+					vch <- validityResult{}
+				}
+			}()
 			v := checkValidity(email)
 			prog.mu.Lock()
 			prog.validity = &v
@@ -850,6 +872,12 @@ func handleDiag(id int64, input map[string]interface{}) {
 	}
 	t := startTask()
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				_, _ = fmt.Fprintf(os.Stderr, "PANIC in handleDiag task: %v\n%s", r, debug.Stack())
+				finishTask(t, nil, fmt.Errorf("internal panic: %v", r))
+			}
+		}()
 		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancel()
 		client := newProbeClient(8 * time.Second)
@@ -866,6 +894,11 @@ func handleDiag(id int64, input map[string]interface{}) {
 			wg.Add(1)
 			sem <- struct{}{}
 			go func(s siteConfig) {
+				defer func() {
+					if r := recover(); r != nil {
+						_, _ = fmt.Fprintf(os.Stderr, "PANIC in handleDiag worker (%s): %v\n%s", s.Key, r, debug.Stack())
+					}
+				}()
 				defer wg.Done()
 				defer func() { <-sem }()
 				d := diagProbe(ctx, client, s, email, domain)
@@ -950,12 +983,15 @@ func main() {
 }
 
 func dispatch(raw string) {
+	var req rpcRequest
 	defer func() {
 		if r := recover(); r != nil {
 			_, _ = fmt.Fprintf(os.Stderr, "PANIC %v\n%s", r, debug.Stack())
+			if req.ID != 0 {
+				respondError(req.ID, -32603, "internal error: panic recovered")
+			}
 		}
 	}()
-	var req rpcRequest
 	if err := json.Unmarshal([]byte(raw), &req); err != nil {
 		respondError(0, -32700, "parse error: "+err.Error())
 		return

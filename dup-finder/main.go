@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
 	"sort"
 	"strings"
 	"sync"
@@ -210,41 +211,62 @@ func scanDuplicates(root string, includeHidden bool, sp *scanProgress) []map[str
 	dirs := make(chan string, 4096)
 	var pending sync.WaitGroup
 	pending.Add(1)
-	go func() { dirs <- root }()
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				fmt.Fprintf(os.Stderr, "[dup-finder] seed goroutine panic: %v\n%s\n", r, debug.Stack())
+			}
+		}()
+		dirs <- root
+	}()
 
 	for i := 0; i < workers; i++ {
 		go func() {
-		for dir := range dirs {
-			sp.current.Store(dir)
-			atomic.AddInt64(&sp.dirs, 1)
-			entries, err := os.ReadDir(dir)
-				if err == nil {
-					for _, d := range entries {
-						name := d.Name()
-						if !includeHidden && strings.HasPrefix(name, ".") {
-							continue
+			for dir := range dirs {
+				func() {
+					defer pending.Done()
+					defer func() {
+						if r := recover(); r != nil {
+							fmt.Fprintf(os.Stderr, "[dup-finder] scan worker panic: %v\n%s\n", r, debug.Stack())
 						}
-						child := filepath.Join(dir, name)
-						if d.IsDir() {
-							// 独立 goroutine 发送子目录，避免队列满时阻塞把 pending 计数卡死
-							pending.Add(1)
-							go func(c string) { dirs <- c }(child)
-							continue
+					}()
+					sp.current.Store(dir)
+					atomic.AddInt64(&sp.dirs, 1)
+					entries, err := os.ReadDir(dir)
+					if err == nil {
+						for _, d := range entries {
+							name := d.Name()
+							if !includeHidden && strings.HasPrefix(name, ".") {
+								continue
+							}
+							child := filepath.Join(dir, name)
+							if d.IsDir() {
+								// 独立 goroutine 发送子目录，避免队列满时阻塞把 pending 计数卡死
+								pending.Add(1)
+								go func(c string) {
+									defer func() {
+										if r := recover(); r != nil {
+											fmt.Fprintf(os.Stderr, "[dup-finder] scan child-send panic: %v\n%s\n", r, debug.Stack())
+										}
+									}()
+									dirs <- c
+								}(child)
+								continue
+							}
+							if d.Type()&os.ModeSymlink != 0 {
+								continue // 跳过符号链接，防循环引用
+							}
+							fi, e := d.Info()
+							if e != nil || fi.Size() == 0 {
+								continue
+							}
+							mu.Lock()
+							sizeMap[fi.Size()] = append(sizeMap[fi.Size()], child)
+							mu.Unlock()
+							atomic.AddInt64(&sp.files, 1)
 						}
-						if d.Type()&os.ModeSymlink != 0 {
-							continue // 跳过符号链接，防循环引用
-						}
-						fi, e := d.Info()
-						if e != nil || fi.Size() == 0 {
-							continue
-						}
-						mu.Lock()
-						sizeMap[fi.Size()] = append(sizeMap[fi.Size()], child)
-						mu.Unlock()
-						atomic.AddInt64(&sp.files, 1)
 					}
-				}
-				pending.Done()
+				}()
 			}
 		}()
 	}
@@ -270,6 +292,11 @@ func scanDuplicates(root string, includeHidden bool, sp *scanProgress) []map[str
 		hwg.Add(1)
 		go func() {
 			defer hwg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Fprintf(os.Stderr, "[dup-finder] hash worker panic: %v\n%s\n", r, debug.Stack())
+				}
+			}()
 			for f := range jobs {
 				h, e := fileHash(f)
 				if e != nil {
@@ -311,7 +338,9 @@ func scanDuplicates(root string, includeHidden bool, sp *scanProgress) []map[str
 		})
 	}
 	sort.Slice(groups, func(i, j int) bool {
-		return groups[i]["size"].(int64) > groups[j]["size"].(int64)
+		si, _ := groups[i]["size"].(int64)
+		sj, _ := groups[j]["size"].(int64)
+		return si > sj
 	})
 	return groups
 }
@@ -336,6 +365,11 @@ func handleScan(id int64, input map[string]interface{}) {
 	// 进度上报：每 150ms 把当前计数写进任务，前端轮询时展示，避免界面"一动不动"
 	done := make(chan struct{})
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				fmt.Fprintf(os.Stderr, "[dup-finder] progress ticker panic: %v\n%s\n", r, debug.Stack())
+			}
+		}()
 		tick := time.NewTicker(150 * time.Millisecond)
 		defer tick.Stop()
 		for {
@@ -350,15 +384,24 @@ func handleScan(id int64, input map[string]interface{}) {
 	}()
 
 	go func() {
+		defer close(done)
+		defer func() {
+			if r := recover(); r != nil {
+				fmt.Fprintf(os.Stderr, "[dup-finder] scan task panic: %v\n%s\n", r, debug.Stack())
+				finishTask(t, nil, fmt.Errorf("panic: %v", r))
+			}
+		}()
 		groups := scanDuplicates(path, includeHidden, sp)
 		// 先把结果落库（status=done），再通知进度 ticker 退出，
 		// 保证前端轮询能立即读到完成态，避免 100% 后再空等一个轮询周期。
 		totalFiles := 0
 		wasted := int64(0)
 		for _, g := range groups {
-			files := g["files"].([]string)
+			files, _ := g["files"].([]string)
 			totalFiles += len(files)
-			wasted += g["size"].(int64) * int64(len(files)-1)
+			if sz, ok := g["size"].(int64); ok {
+				wasted += sz * int64(len(files)-1)
+			}
 		}
 		finishTask(t, map[string]interface{}{
 			"groups":     groups,
@@ -366,7 +409,6 @@ func handleScan(id int64, input map[string]interface{}) {
 			"totalFiles": totalFiles,
 			"wasted":     wasted,
 		}, nil)
-		close(done)
 	}()
 	respond(id, map[string]interface{}{"async": true, "taskId": t.ID})
 }
@@ -440,6 +482,15 @@ func main() {
 		wg.Add(1)
 		go func(raw string) {
 			defer wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Fprintf(os.Stderr, "[dup-finder] dispatch panic: %v\n%s\n", r, debug.Stack())
+					var req rpcRequest
+					if err := json.Unmarshal([]byte(raw), &req); err == nil && req.ID != 0 {
+						respondError(req.ID, -32603, fmt.Sprintf("internal panic: %v", r))
+					}
+				}
+			}()
 			dispatch(raw)
 		}(data)
 	}

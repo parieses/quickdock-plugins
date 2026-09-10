@@ -23,6 +23,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -280,7 +281,18 @@ func main() {
 		if data == "" {
 			continue
 		}
-		go dispatch(data)
+		go func(raw string) {
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Fprintf(os.Stderr, "[api-loadtest] dispatch panic: %v\n%s\n", r, debug.Stack())
+					var req rpcRequest
+					if err := json.Unmarshal([]byte(raw), &req); err == nil && req.ID != 0 {
+						respondError(req.ID, -32603, fmt.Sprintf("internal panic: %v", r))
+					}
+				}
+			}()
+			dispatch(raw)
+		}(data)
 	}
 }
 
@@ -525,6 +537,11 @@ func (r *benchRun) run() {
 		r.stopTime = time.Now()
 		r.done.Store(true)
 	}()
+	defer func() {
+		if rec := recover(); rec != nil {
+			fmt.Fprintf(os.Stderr, "[api-loadtest] bench run panic: %v\n%s\n", rec, debug.Stack())
+		}
+	}()
 
 	client := &http.Client{
 		Timeout: time.Duration(r.cfg.TimeoutMs) * time.Millisecond,
@@ -540,6 +557,11 @@ func (r *benchRun) run() {
 	// 时长模式：到期自动停止
 	if r.mode == "duration" {
 		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Fprintf(os.Stderr, "[api-loadtest] duration watcher panic: %v\n%s\n", r, debug.Stack())
+				}
+			}()
 			time.Sleep(time.Duration(r.cfg.DurationSec) * time.Second)
 			r.stopped.Store(true)
 		}()
@@ -585,6 +607,11 @@ launched:
 
 func (r *benchRun) worker(client *http.Client, ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Fprintf(os.Stderr, "[api-loadtest] worker panic: %v\n%s\n", r, debug.Stack())
+		}
+	}()
 	for {
 		if r.stopped.Load() {
 			return

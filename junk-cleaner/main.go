@@ -290,6 +290,22 @@ func finishTask(t *pdfTask, result map[string]interface{}, err error) {
 	}
 }
 
+// runTask 在独立 goroutine 内执行异步任务体 fn；recover 捕获 panic，
+// 将任务标记为 error 并记录堆栈，避免 goroutine panic 直接杀死 native 进程
+// （此前 handleScan/handleClean/handleScanEmpty 的 goroutine 裸奔无保护，是
+// 「扫描中插件进程突然退出」的头号嫌疑）。
+func runTask(t *pdfTask, name string, fn func(t *pdfTask)) {
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				diagLogf("TASK PANIC [%s] %v\n%s", name, r, debug.Stack())
+				finishTask(t, nil, fmt.Errorf("任务内部错误: %v", r))
+			}
+		}()
+		fn(t)
+	}()
+}
+
 // ---- 诊断日志（静默降级）----
 
 var (
@@ -452,6 +468,7 @@ func dispatchWithDiag(raw string) {
 }
 
 func handleRequest(req rpcRequest) {
+	diagLogf("RPC recv method=%s id=%d", req.Method, req.ID)
 	switch req.Method {
 	case "initialize":
 		respond(req.ID, map[string]interface{}{"status": "ready", "name": "QuickDock Junk Cleaner"})
@@ -473,6 +490,7 @@ func handleExecute(req rpcRequest) {
 		}
 	}
 	cmd := strings.ToLower(strings.TrimSpace(params.Command))
+	diagLogf("execute command=%s id=%d", cmd, req.ID)
 	switch cmd {
 	case "categories":
 		handleCategories(req.ID)
@@ -509,7 +527,7 @@ func handleCategories(id int64) {
 
 func handleScan(id int64, input map[string]interface{}) {
 	t := startTask()
-	go func() {
+	runTask(t, "scan", func(t *pdfTask) {
 		results := make([]map[string]interface{}, 0, len(junkCategories))
 		var totalSize int64
 		var totalFiles int64
@@ -531,16 +549,16 @@ func handleScan(id int64, input map[string]interface{}) {
 				"sizeBytes": size,
 				"fileCount": count,
 			})
-		totalSize += size
-		totalFiles += count
-	}
+			totalSize += size
+			totalFiles += count
+		}
 
 		finishTask(t, map[string]interface{}{
 			"categories": results,
 			"totalSize":  totalSize,
 			"totalFiles": totalFiles,
 		}, nil)
-	}()
+	})
 	respond(id, map[string]interface{}{"async": true, "taskId": t.ID})
 }
 
@@ -594,7 +612,7 @@ func handleClean(id int64, input map[string]interface{}) {
 	}
 
 	t := startTask()
-	go func() {
+	runTask(t, "clean", func(t *pdfTask) {
 		perCat := make([]map[string]interface{}, 0, len(valid))
 		var totalFreed int64
 		var totalDeleted int64
@@ -639,7 +657,7 @@ func handleClean(id int64, input map[string]interface{}) {
 			"totalFreed":    totalFreed,
 			"totalDeleted":  totalDeleted,
 		}, nil)
-	}()
+	})
 	respond(id, map[string]interface{}{"async": true, "taskId": t.ID})
 }
 
@@ -707,7 +725,7 @@ func handleScanEmpty(id int64, input map[string]interface{}) {
 		mode = "both"
 	}
 	t := startTask()
-	go func() {
+	runTask(t, "scan-empty", func(t *pdfTask) {
 		var dirs, files []string
 		if mode == "dir" || mode == "both" {
 			dirs = findEmptyDirs(root)
@@ -721,7 +739,7 @@ func handleScanEmpty(id int64, input map[string]interface{}) {
 			"dirCount":  len(dirs),
 			"fileCount": len(files),
 		}, nil)
-	}()
+	})
 	respond(id, map[string]interface{}{"async": true, "taskId": t.ID})
 }
 

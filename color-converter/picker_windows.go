@@ -4,6 +4,8 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"runtime/debug"
 	"syscall"
 	"time"
 	"unsafe"
@@ -69,6 +71,11 @@ func isKeyDown(vk uint32) bool {
 // 边沿检测（上轮未按 + 本轮按下才触发）避免按住不放重复取色；
 // epoch 与全局代数不符时静默退出（被新一轮 start 取代）。
 func waitPickLoop(epoch int) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Fprintf(os.Stderr, "color-converter waitPickLoop panic: %v\n%s\n", r, debug.Stack())
+		}
+	}()
 	const waitTimeout = 60 * time.Second
 	deadline := time.Now().Add(waitTimeout)
 	var f8WasDown, escWasDown bool

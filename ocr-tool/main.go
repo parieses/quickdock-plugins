@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
 	"strings"
 	"sync/atomic"
 )
@@ -42,6 +43,10 @@ type ExecuteParams struct {
 // modelsDirCache 由 initialize 解析的 pluginDir 拼接 /models 得到，模型存储于此。
 var modelsDirCache string
 
+// answered 标记当前请求是否已回包，用于 dispatch 层 panic recover 避免重复回包。
+// 主循环是单 goroutine 顺序处理，使用包级变量安全。
+var answered bool
+
 func main() {
 	initLog()
 	scanner := bufio.NewScanner(os.Stdin)
@@ -59,7 +64,19 @@ func main() {
 			continue
 		}
 
-		handleRequest(req)
+		answered = false
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					logf("dispatch panic: %v\n%s", r, debug.Stack())
+					fmt.Fprintf(os.Stderr, "ocr-tool dispatch panic: method=%s id=%d err=%v\n", req.Method, req.ID, r)
+					if !answered && req.ID != 0 {
+						respondError(req.ID, -32603, fmt.Sprintf("internal panic: %v", r))
+					}
+				}
+			}()
+			handleRequest(req)
+		}()
 	}
 	// stdin 关闭（宿主退出/卸载）时主循环结束，进程自然退出，避免成为孤儿进程。
 }
@@ -142,6 +159,7 @@ func respond(id int64, result interface{}) {
 	})
 	logf("respond id=%d resultLen=%d", id, len(data))
 	data = append(data, '\n')
+	answered = true
 	os.Stdout.Write(data)
 }
 
@@ -153,6 +171,7 @@ func respondError(id int64, code int, msg string) {
 		Error:   &RPCError{Code: code, Message: msg},
 	})
 	data = append(data, '\n')
+	answered = true
 	os.Stdout.Write(data)
 }
 

@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
@@ -44,6 +45,12 @@ var (
 	connSeq int64
 )
 
+// responded 记录每个请求 id 是否已回包，panic recover 时据此避免重复回包污染 JSON-RPC 流
+var (
+	respondedMu sync.Mutex
+	responded   = map[int64]bool{}
+)
+
 func strFrom(m map[string]interface{}, key string) string {
 	if v, ok := m[key].(string); ok {
 		return v
@@ -52,11 +59,17 @@ func strFrom(m map[string]interface{}, key string) string {
 }
 
 func respond(id int64, result interface{}) {
+	respondedMu.Lock()
+	responded[id] = true
+	respondedMu.Unlock()
 	out, _ := json.Marshal(map[string]interface{}{"jsonrpc": "2.0", "id": id, "result": result})
 	fmt.Println(string(out))
 }
 
 func respondError(id int64, code int, msg string) {
+	respondedMu.Lock()
+	responded[id] = true
+	respondedMu.Unlock()
 	out, _ := json.Marshal(map[string]interface{}{
 		"jsonrpc": "2.0", "id": id,
 		"error": map[string]interface{}{"code": code, "message": msg},
@@ -83,6 +96,11 @@ func handleConnect(id int64, input map[string]interface{}) {
 	connsMu.Unlock()
 
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				fmt.Fprintf(os.Stderr, "PANIC in ws read loop %s: %v\n%s\n", cid, r, debug.Stack())
+			}
+		}()
 		for {
 			mt, data, err := c.ReadMessage()
 			connsMu.Lock()
@@ -241,6 +259,20 @@ func main() {
 		wg.Add(1)
 		go func(raw string) {
 			defer wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Fprintf(os.Stderr, "PANIC in dispatch: %v\n%s\n", r, debug.Stack())
+					var req rpcRequest
+					if err := json.Unmarshal([]byte(raw), &req); err == nil {
+						respondedMu.Lock()
+						already := responded[req.ID]
+						respondedMu.Unlock()
+						if !already {
+							respondError(req.ID, -32603, "internal panic: "+fmt.Sprintf("%v", r))
+						}
+					}
+				}
+			}()
 			dispatch(raw)
 		}(data)
 	}

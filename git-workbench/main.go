@@ -18,7 +18,9 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
+	"runtime/debug"
 	"strings"
 	"sync"
 )
@@ -197,6 +199,17 @@ func main() {
 		wg.Add(1)
 		go func(raw string) {
 			defer wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					log.Printf("git-workbench: panic in request handler: %v\n%s", r, debug.Stack())
+					var rq rpcRequest
+					id := int64(0)
+					if json.Unmarshal([]byte(raw), &rq) == nil {
+						id = rq.ID
+					}
+					respondError(id, -32000, fmt.Sprintf("internal error: %v", r))
+				}
+			}()
 			dispatch(raw)
 		}(data)
 	}

@@ -25,6 +25,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"runtime/debug"
 	"io"
 	"net/http"
 	"net/url"
@@ -499,6 +500,11 @@ func runSession(s *session) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Fprintf(os.Stderr, "[panic] login-tester worker: %v\n%s\n", r, debug.Stack())
+				}
+			}()
 			for {
 				select {
 				case <-s.stop:
@@ -625,7 +631,18 @@ func handleStart(id int64, input map[string]interface{}) {
 	sessions[s.id] = s
 	sessionsMu.Unlock()
 
-	go runSession(s)
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				fmt.Fprintf(os.Stderr, "[panic] login-tester runSession: %v\n%s\n", r, debug.Stack())
+				s.mu.Lock()
+				s.status = "error"
+				s.errMsg = fmt.Sprintf("panic: %v", r)
+				s.mu.Unlock()
+			}
+		}()
+		runSession(s)
+	}()
 
 	respond(id, map[string]interface{}{
 		"ok":     true,
@@ -735,6 +752,15 @@ func main() {
 		wg.Add(1)
 		go func(raw string) {
 			defer wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Fprintf(os.Stderr, "[panic] login-tester dispatch: %v\n%s\n", r, debug.Stack())
+					var req rpcRequest
+					if err := json.Unmarshal([]byte(raw), &req); err == nil && req.ID != 0 {
+						respondError(req.ID, -32603, "internal error")
+					}
+				}
+			}()
 			dispatch(raw)
 		}(data)
 	}

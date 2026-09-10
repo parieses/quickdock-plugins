@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
@@ -239,6 +240,11 @@ func handleQuery(id int64, input map[string]interface{}) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Fprintf(os.Stderr, "[package-check][panic:query.%s] %v\n%s\n", kind, r, debug.Stack())
+				}
+			}()
 			info := fn()
 			mu.Lock()
 			result[kind] = info
@@ -298,6 +304,15 @@ func main() {
 		wg.Add(1)
 		go func(raw string) {
 			defer wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Fprintf(os.Stderr, "[package-check][panic:dispatch] %v\n%s\n", r, debug.Stack())
+					var req rpcRequest
+					if json.Unmarshal([]byte(raw), &req) == nil {
+						respondError(req.ID, -32603, fmt.Sprintf("internal error: %v", r))
+					}
+				}
+			}()
 			dispatch(raw)
 		}(data)
 	}

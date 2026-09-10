@@ -1,6 +1,9 @@
 package main
 
 import (
+	"fmt"
+	"log"
+	"runtime/debug"
 	"sort"
 	"time"
 
@@ -57,6 +60,12 @@ func handleStatsStart(id int64, input map[string]interface{}) {
 }
 
 func runStats(t *asyncTask, repo *git.Repository, limit int) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("git-workbench: panic in stats task %s: %v\n%s", t.ID, r, debug.Stack())
+			t.fail(fmt.Errorf("panic: %v", r))
+		}
+	}()
 	t.setProgress(3, "读取提交历史")
 
 	iter, err := repo.Log(&git.LogOptions{Order: git.LogOrderCommitterTime})

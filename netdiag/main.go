@@ -22,10 +22,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"net/http"
 	"os"
 	"regexp"
+	"runtime/debug"
 	"sort"
 	"strconv"
 	"strings"
@@ -35,6 +37,31 @@ import (
 	"time"
 	"unsafe"
 )
+
+/* ==================== panic 防护 ==================== */
+
+// answeredMu / answeredIDs 记录已应答的请求 id，避免主循环 recover 后重复回包。
+var (
+	answeredMu  sync.Mutex
+	answeredIDs = map[int64]bool{}
+)
+
+func markAnswered(id int64) {
+	answeredMu.Lock()
+	answeredIDs[id] = true
+	answeredMu.Unlock()
+}
+
+func isAnswered(id int64) bool {
+	answeredMu.Lock()
+	defer answeredMu.Unlock()
+	return answeredIDs[id]
+}
+
+// recoverLog 打印 panic 堆栈到 stderr（绝不写 stdout，避免污染 JSON-RPC 协议流）。
+func recoverLog(tag string, r interface{}) {
+	log.Printf("[panic] %s: %v\n%s", tag, r, debug.Stack())
+}
 
 /* ==================== 共享 RPC 层 ==================== */
 
@@ -100,11 +127,13 @@ func intSliceFrom(m map[string]interface{}, key string) []int {
 }
 
 func respond(id int64, result interface{}) {
+	markAnswered(id)
 	out, _ := json.Marshal(map[string]interface{}{"jsonrpc": "2.0", "id": id, "result": result})
 	fmt.Println(string(out))
 }
 
 func respondError(id int64, code int, msg string) {
+	markAnswered(id)
 	out, _ := json.Marshal(map[string]interface{}{
 		"jsonrpc": "2.0", "id": id,
 		"error": map[string]interface{}{"code": code, "message": msg},
@@ -283,6 +312,11 @@ func (s *pingSession) pingOnce(seq, timeoutMs, port int) pingResult {
 }
 
 func (s *pingSession) run(intervalMs, count int) {
+	defer func() {
+		if r := recover(); r != nil {
+			recoverLog("ping.run", r)
+		}
+	}()
 	defer func() {
 		s.mu.Lock()
 		s.running = false
@@ -490,6 +524,12 @@ var (
 func resolveHost(ip string, timeoutMs int) string {
 	ch := make(chan string, 1)
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				recoverLog("lan.resolveHost", r)
+				ch <- ""
+			}
+		}()
 		names, err := net.LookupAddr(ip)
 		if err == nil && len(names) > 0 {
 			ch <- strings.TrimSuffix(names[0], ".")
@@ -516,6 +556,12 @@ func probeHop(destIP net.IP, ttl, probes, timeoutMs int) hopResult {
 	ch := make(chan pr, probes)
 	for i := 0; i < probes; i++ {
 		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					recoverLog("trace.probeHop", r)
+					ch <- pr{}
+				}
+			}()
 			r, err := icmpEcho(destIP, ttl, timeoutMs)
 			if err != nil {
 				ch <- pr{err: err}
@@ -547,6 +593,11 @@ func probeHop(destIP net.IP, ttl, probes, timeoutMs int) hopResult {
 }
 
 func (s *traceSession) run(maxHops, probes, timeoutMs int, resolve bool) {
+	defer func() {
+		if r := recover(); r != nil {
+			recoverLog("trace.run", r)
+		}
+	}()
 	defer func() {
 		s.mu.Lock()
 		s.running = false
@@ -833,6 +884,12 @@ func probeHost(ip string, ports []int, timeoutMs int, useICMP bool) hostResult {
 	ch := make(chan probeRes, n)
 	if useICMP {
 		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					recoverLog("lan.icmpProbe", r)
+					ch <- probeRes{}
+				}
+			}()
 			if r, err := icmpEcho(net.ParseIP(ip), 64, timeoutMs); err == nil && r.Status == ipSuccess {
 				ch <- probeRes{alive: true, rtt: float64(r.RoundTripTime)}
 			} else {
@@ -841,9 +898,21 @@ func probeHost(ip string, ports []int, timeoutMs int, useICMP bool) hostResult {
 		}()
 	}
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				recoverLog("lan.tcpProbe", r)
+				ch <- probeRes{}
+			}
+		}()
 		pch := make(chan probeRes, len(ports))
 		for _, p := range ports {
 			go func(port int) {
+				defer func() {
+					if r := recover(); r != nil {
+						recoverLog("lan.portProbe", r)
+						pch <- probeRes{}
+					}
+				}()
 				start := time.Now()
 				c, err := net.DialTimeout("tcp", net.JoinHostPort(ip, strconv.Itoa(port)),
 					time.Duration(timeoutMs)*time.Millisecond)
@@ -1001,7 +1070,9 @@ func lanHandleStart(id int64, input map[string]interface{}) {
 	if cidr == "" {
 		subs := localSubnets()
 		if len(subs) > 0 {
-			cidr, _ = subs[0]["cidr"].(string)
+			if c, ok := subs[0]["cidr"].(string); ok {
+				cidr = c
+			}
 		} else if _, inferred := defaultLocalCIDR(); inferred != "" {
 			cidr = inferred
 		}
@@ -1052,6 +1123,11 @@ func lanHandleStart(id int64, input map[string]interface{}) {
 
 	go func() {
 		defer func() {
+			if r := recover(); r != nil {
+				recoverLog("lan.run", r)
+			}
+		}()
+		defer func() {
 			s.mu.Lock()
 			s.running = false
 			s.mu.Unlock()
@@ -1063,6 +1139,11 @@ func lanHandleStart(id int64, input map[string]interface{}) {
 			wg.Add(1)
 			go func(ip string) {
 				defer wg.Done()
+				defer func() {
+					if r := recover(); r != nil {
+						recoverLog("lan.probeHost", r)
+					}
+				}()
 				sem <- struct{}{}
 				defer func() { <-sem }()
 				r := probeHost(ip, ports, timeoutMs, useICMP)
@@ -1631,6 +1712,11 @@ func (s *fpSession) stopped() bool {
 
 func (s *fpSession) run(timeoutMs, conc int) {
 	defer func() {
+		if r := recover(); r != nil {
+			recoverLog("fp.run", r)
+		}
+	}()
+	defer func() {
 		s.mu.Lock()
 		s.running = false
 		s.mu.Unlock()
@@ -1647,6 +1733,11 @@ func (s *fpSession) run(timeoutMs, conc int) {
 		wg.Add(1)
 		go func(port int) {
 			defer wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					recoverLog("fp.scanPort", r)
+				}
+			}()
 			sem <- struct{}{}
 			defer func() { <-sem }()
 			conn, err := dialTCP(s.IP, port, dur)
@@ -1677,6 +1768,11 @@ func (s *fpSession) run(timeoutMs, conc int) {
 		wg.Add(1)
 		go func(port int) {
 			defer wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					recoverLog("fp.probePort", r)
+				}
+			}()
 			sem2 <- struct{}{}
 			defer func() { <-sem2 }()
 			banner, scheme := probePort(s.Host, s.IP, port, dur)
@@ -1929,7 +2025,16 @@ func main() {
 		}
 		wg.Add(1)
 		go func(raw string) {
-			defer wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					recoverLog("dispatch", r)
+					var req rpcRequest
+					if err := json.Unmarshal([]byte(raw), &req); err == nil && req.ID != 0 && !isAnswered(req.ID) {
+						respondError(req.ID, -32603, "internal error (recovered from panic)")
+					}
+				}
+				wg.Done()
+			}()
 			dispatch(raw)
 		}(data)
 	}

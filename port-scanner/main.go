@@ -3,8 +3,10 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
+	"runtime/debug"
 	"strings"
 
 	"system-tools/sysutil"
@@ -53,7 +55,15 @@ func main() {
 			continue
 		}
 
-		handleRequest(req)
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Fprintf(os.Stderr, "port-scanner dispatch panic: %v\n%s\n", r, debug.Stack())
+					respondError(req.ID, -32000, fmt.Sprintf("internal error: %v", r))
+				}
+			}()
+			handleRequest(req)
+		}()
 	}
 }
 

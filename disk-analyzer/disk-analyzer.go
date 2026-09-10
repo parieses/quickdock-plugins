@@ -24,11 +24,13 @@ import (
 	"bufio"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
 	"sort"
 	"strconv"
 	"strings"
@@ -176,7 +178,15 @@ func main() {
 			respondError(0, -32700, "parse error: "+err.Error())
 			continue
 		}
-		handleRequest(req)
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Fprintf(os.Stderr, "disk-analyzer dispatch panic: %v\n%s\n", r, debug.Stack())
+					respondError(req.ID, -32000, fmt.Sprintf("internal error: %v", r))
+				}
+			}()
+			handleRequest(req)
+		}()
 	}
 }
 
@@ -514,6 +524,15 @@ func handleScanStatus(id int64, input map[string]interface{}) {
 // ---- 后台扫描实现 ----
 
 func (j *scanJob) run() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Fprintf(os.Stderr, "disk-analyzer scanJob.run panic: %v\n%s\n", r, debug.Stack())
+			j.mu.Lock()
+			j.done = true
+			j.version++
+			j.mu.Unlock()
+		}
+	}()
 	root := &dirNode{Path: j.path, Name: displayName(j.path), Size: 0}
 	// 若是卷内路径，附加所在卷的容量（总/已用/剩余/使用率），供前端统计栏显示。
 	// getDiskStats 对任意卷内路径都有效（返回所在卷容量），非卷根也适用。
@@ -620,6 +639,11 @@ func (j *scanJob) walk(path string, node *dirNode, depth int) {
 		wg.Add(1)
 		go func(i int, d os.DirEntry) {
 			defer wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Fprintf(os.Stderr, "disk-analyzer walk worker panic: %v\n%s\n", r, debug.Stack())
+				}
+			}()
 			sem <- struct{}{}
 			defer func() { <-sem }()
 			p2 := filepath.Join(path, d.Name())
@@ -635,7 +659,14 @@ func (j *scanJob) walk(path string, node *dirNode, depth int) {
 			j.version++
 			j.mu.Unlock()
 			if !trunc && depth+1 < j.maxDepth {
-				go j.walk(p2, ph, depth+1)
+				go func() {
+					defer func() {
+						if r := recover(); r != nil {
+							fmt.Fprintf(os.Stderr, "disk-analyzer walk panic: %v\n%s\n", r, debug.Stack())
+						}
+					}()
+					j.walk(p2, ph, depth+1)
+				}()
 			}
 		}(i, d)
 	}
@@ -713,6 +744,11 @@ func scanLevelR(path string, depth, limit int, deadline time.Time, rootStarted t
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Fprintf(os.Stderr, "disk-analyzer scanLevelR worker panic: %v\n%s\n", r, debug.Stack())
+				}
+			}()
 			sem <- struct{}{}
 			defer func() { <-sem }()
 			childPath := filepath.Join(path, name)

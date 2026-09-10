@@ -3,8 +3,10 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
+	"runtime/debug"
 	"strings"
 
 	"system-tools/sysutil"
@@ -53,7 +55,18 @@ func main() {
 			continue
 		}
 
-		handleRequest(req)
+		answered = false
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Fprintf(os.Stderr, "hosts-manager dispatch panic: method=%s id=%d err=%v\n%s\n", req.Method, req.ID, r, debug.Stack())
+					if !answered && req.ID != 0 {
+						respondError(req.ID, -32603, fmt.Sprintf("internal panic: %v", r))
+					}
+				}
+			}()
+			handleRequest(req)
+		}()
 	}
 }
 
@@ -110,6 +123,9 @@ func handleExecute(req RPCRequest) {
 	}
 }
 
+// answered 标记当前请求是否已回包，用于 dispatch 层 panic recover 避免重复回包。
+var answered bool
+
 func respond(id int64, result interface{}) {
 	data, _ := json.Marshal(RPCResponse{
 		JSONRPC: "2.0",
@@ -117,6 +133,7 @@ func respond(id int64, result interface{}) {
 		Result:  mustMarshal(result),
 	})
 	data = append(data, '\n')
+	answered = true
 	os.Stdout.Write(data)
 }
 
@@ -127,6 +144,7 @@ func respondError(id int64, code int, msg string) {
 		Error:   &RPCError{Code: code, Message: msg},
 	})
 	data = append(data, '\n')
+	answered = true
 	os.Stdout.Write(data)
 }
 

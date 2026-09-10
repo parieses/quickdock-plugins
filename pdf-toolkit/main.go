@@ -317,6 +317,12 @@ func handleMerge(id int64, input map[string]interface{}) {
 	// 异步执行：立即返回 taskId，避免宿主 20s 超时判定 unresponsive
 	t := startPDFTask()
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				diagLogf("PANIC in merge task %s: %v\n%s", t.ID, r, debug.Stack())
+				finishPDFTask(t, nil, fmt.Errorf("panic: %v", r))
+			}
+		}()
 		err := mergePDFs(paths, outPath)
 		if err != nil {
 			finishPDFTask(t, nil, fmt.Errorf("合并失败: %w", err))
@@ -361,6 +367,12 @@ func handleSplit(id int64, input map[string]interface{}) {
 	// 异步执行：立即返回 taskId，避免宿主 20s 超时判定 unresponsive
 	t := startPDFTask()
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				diagLogf("PANIC in split task %s: %v\n%s", t.ID, r, debug.Stack())
+				finishPDFTask(t, nil, fmt.Errorf("panic: %v", r))
+			}
+		}()
 		outPaths, err := splitPDF(inputPath, outDir, pageRanges)
 		if err != nil {
 			finishPDFTask(t, nil, fmt.Errorf("拆分失败: %w", err))
@@ -391,6 +403,12 @@ func handleCompress(id int64, input map[string]interface{}) {
 	// 异步执行：立即返回 taskId，避免宿主 20s 超时判定 unresponsive
 	t := startPDFTask()
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				diagLogf("PANIC in compress task %s: %v\n%s", t.ID, r, debug.Stack())
+				finishPDFTask(t, nil, fmt.Errorf("panic: %v", r))
+			}
+		}()
 		err := compressPDF(inputPath, outPath)
 		if err != nil {
 			finishPDFTask(t, nil, fmt.Errorf("压缩失败: %w", err))
@@ -437,6 +455,12 @@ func handleWatermark(id int64, input map[string]interface{}) {
 	// 异步执行：立即返回 taskId，避免宿主 20s 超时判定 unresponsive
 	t := startPDFTask()
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				diagLogf("PANIC in watermark task %s: %v\n%s", t.ID, r, debug.Stack())
+				finishPDFTask(t, nil, fmt.Errorf("panic: %v", r))
+			}
+		}()
 		err := addWatermark(inputPath, outPath, text, opacity, size)
 		if err != nil {
 			finishPDFTask(t, nil, fmt.Errorf("添加水印失败: %w", err))
@@ -465,6 +489,12 @@ func handleExtractImages(id int64, input map[string]interface{}) {
 	// 异步执行：立即返回 taskId，避免宿主 20s 超时判定 unresponsive
 	t := startPDFTask()
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				diagLogf("PANIC in extract task %s: %v\n%s", t.ID, r, debug.Stack())
+				finishPDFTask(t, nil, fmt.Errorf("panic: %v", r))
+			}
+		}()
 		imgPaths, err := extractImages(inputPath, outDir)
 		if err != nil {
 			finishPDFTask(t, nil, fmt.Errorf("提取图片失败: %w", err))
