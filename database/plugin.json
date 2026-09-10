@@ -5,7 +5,7 @@
     "zh-CN": "数据库客户端",
     "en-US": "Database Client"
   },
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "轻量数据库连接与查询工具：MySQL / SQLite / Redis 连接管理、SQL 与 Redis 命令执行、库表浏览器（库→表/视图→字段、Redis 键树）、结果网格内联行编辑。数据独立存储。",
   "description_i18n": {
     "zh-CN": "轻量数据库连接与查询工具：MySQL / SQLite / Redis 连接管理、SQL 与 Redis 命令执行、库表浏览器（库→表/视图→字段、Redis 键树）、结果网格内联行编辑。数据独立存储。",

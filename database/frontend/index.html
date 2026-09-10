@@ -215,7 +215,7 @@
             </div>
             <div class="db-field" style="max-width:120px;">
               <label>端口</label>
-              <input class="p-input" v-model="connForm.port" placeholder="3306" />
+              <input class="p-input" v-model="connForm.port" :placeholder="connForm.dbType==='redis' ? '6379' : '3306'" />
             </div>
           </div>
           <div class="db-field">
@@ -511,6 +511,13 @@
             toast('已删除','ok')
           }).catch(function(e){ toast('删除失败: '+(e.message||e),'err') })
         })
+      }
+    },
+    watch: {
+      // 切换数据库类型时联动默认端口，避免选 Redis 仍留 MySQL 的 3306
+      'connForm.dbType': function (t) {
+        if (t === 'redis') this.connForm.port = 6379
+        else if (t === 'mysql') this.connForm.port = 3306
       }
     },
     mounted: function(){ this.loadConns() }

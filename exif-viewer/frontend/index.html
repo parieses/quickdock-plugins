@@ -95,7 +95,7 @@ function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;
         html+='<div class="top"><div><div class="big">'+esc(r.datetime)+'</div><div class="sub">拍摄时间</div></div>'
         if(r.gps){
           var lat=r.gps.lat,lng=r.gps.lng
-          var url='https://www.openstreetmap.org/?mlat='+' + EH(lat) + ''&mlon='+lng+'#map=15/'+' + EH(lat) + ''/'+lng
+          var url='https://www.openstreetmap.org/?mlat='+lat+'&mlon='+lng+'#map=15/'+lat+'/'+lng
           html+='<div><div class="big"><span class="gps" data-url="'+esc(url)+'">'+lat.toFixed(6)+', '+lng.toFixed(6)+'</span></div><div class="sub">GPS 经纬度（点击查看地图）</div></div>'
         }
         html+='</div>'

@@ -5,7 +5,7 @@
     "zh-CN": "HTTP 客户端",
     "en-US": "HTTP Client"
   },
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "轻量 HTTP 请求调试客户端：项目管理请求、目录与文档树、环境变量与 {{var}} 替换、请求历史重放、Postman 集合导入。数据独立存储。",
   "description_i18n": {
     "zh-CN": "轻量 HTTP 请求调试客户端：项目管理请求、目录与文档树、环境变量与 {{var}} 替换、请求历史重放、Postman 集合导入。数据独立存储。",

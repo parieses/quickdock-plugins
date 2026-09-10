@@ -375,7 +375,7 @@ function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;
   var stColorMap={'信息':'info','成功':'success','重定向':'redirect','客户端错误':'client','服务器错误':'server'}
   function stRenderTabs(){
     document.getElementById('st-tabs').innerHTML=stCategories.map(function(c){
-      return '<button class="tab'+(c===stActiveCat?' active':'')+'" data-cat="'+' + EH(c) + ''">'+' + EH(c) + ''</button>'
+      return '<button class="tab'+(c===stActiveCat?' active':'')+'" data-cat="'+escapeHtml(c)+'">'+escapeHtml(c)+'</button>'
     }).join('')
   }
   function stSetCat(c){ stActiveCat=c; document.getElementById('st-search').value=''; stRenderTabs(); stRender() }
@@ -388,10 +388,10 @@ function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;
     if(!items.length){grid.innerHTML='<div class="empty" style="width:100%">未找到匹配的状态码</div>';return}
     grid.innerHTML = items.map(function(s){
       var c=stColorMap[s.category]||'info'
-      return '<div class="st-card st-card-'+' + EH(c) + ''" data-code="'+s.code+'">'+
+      return '<div class="st-card st-card-'+escapeHtml(c)+'" data-code="'+s.code+'">'+
         '<div class="st-code">'+s.code+'</div><div class="st-label">'+s.label+'</div>'+
         '<div class="st-desc">'+s.desc+'</div>'+
-        '<span class="st-cat cat-'+' + EH(c) + ''">'+s.category+'</span></div>'
+        '<span class="st-cat cat-'+escapeHtml(c)+'">'+s.category+'</span></div>'
     }).join('')
   }
   function stFilter(){ stRender() }

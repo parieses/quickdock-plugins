@@ -231,7 +231,7 @@ function applyStaticL10n() {
           '<span class="p-vis-dot '+(active?'p-vis-active':'p-vis-inactive')+'"></span></div>'
       }
     }
-    output.textContent = html
+    output.innerHTML = html
   }
   function describe(f){
     var parts=[]
@@ -428,7 +428,7 @@ function applyStaticL10n() {
     var html='<div style="color:var(--accent);font-weight:500;margin-bottom:6px">📋 '+escapeHtml(desc)+'</div>'
     html+='<div style="color:var(--text-muted);margin:4px 0">'+L('⏰ 下次执行:')+'</div>'
     for(var i=0;i<next.length;i++)html+='<div>  '+(i+1)+'. '+escapeHtml(next[i])+'</div>'
-    pv.textContent = html
+    pv.innerHTML = html
   }
 
   // 预设点击：把表达式反解回填生成器，停留在生成页即时预览（不再跳到解释页）

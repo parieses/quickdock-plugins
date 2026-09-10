@@ -490,7 +490,7 @@ function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;
     if(r.history && r.history.length){
       $('bs-history').innerHTML=r.history.map(function(h){
         var c = h.mark==='good'?'p-tag-ok':h.mark==='bad'?'p-tag-warn':'p-tag-neutral'
-        return '<div class="it"><span class="p-tag '+' + EH(c) + ''">'+esc(h.mark)+'</span><span class="gw-mono">'+esc(h.hash)+'</span><span>'+esc(h.title)+'</span><span class="gw-hint">'+esc(h.time)+'</span></div>'
+        return '<div class="it"><span class="p-tag '+c+'">'+esc(h.mark)+'</span><span class="gw-mono">'+esc(h.hash)+'</span><span>'+esc(h.title)+'</span><span class="gw-hint">'+esc(h.time)+'</span></div>'
       }).join('')
     }
   }
@@ -577,7 +577,7 @@ function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;
     if(r.lines && r.lines.length){
       lb.innerHTML = r.lines.map(function(l){
         var c=colorFor(l.author||'?')
-        return '<tr><td class="ln">'+l.no+'</td><td class="au"><span class="gw-au-chip" style="background:'+' + EH(c) + ''">'+esc(l.author)+'</span></td><td class="hs gw-mono">'+esc(l.hash)+'</td><td class="tx">'+esc(l.text)+'</td></tr>'
+        return '<tr><td class="ln">'+l.no+'</td><td class="au"><span class="gw-au-chip" style="background:'+c+'">'+esc(l.author)+'</span></td><td class="hs gw-mono">'+esc(l.hash)+'</td><td class="tx">'+esc(l.text)+'</td></tr>'
       }).join('')
     }
     var ab=$('tl-authors')
@@ -624,7 +624,7 @@ function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;
     if(r.files && r.files.length){
       fb.innerHTML=r.files.slice(0,30).map(function(f){
         var risk=f.soleRisk?' <span class="p-tag p-tag-warn">孤岛</span>':''
-        return '<tr><td class="gw-mono">'+esc(f.path)+'</td><td>'+f.changes+'</td><td>'+esc((f.authors||[]).join(', '))+' + EH(risk) + ''</td></tr>'
+        return '<tr><td class="gw-mono">'+esc(f.path)+'</td><td>'+f.changes+'</td><td>'+esc((f.authors||[]).join(', '))+risk+'</td></tr>'
       }).join('')
     }
     var ib=$('st-islands')

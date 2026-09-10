@@ -117,7 +117,7 @@ function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;
     lastCount=list.length
     msgs.innerHTML = list.map(function(m){
       var cls=m.dir==='send'?'send':'recv'
-      return '<div class="msg '+' + EH(cls) + ''"><span class="ts">'+esc(m.ts||'')+'</span>'+
+      return '<div class="msg '+cls+'"><span class="ts">'+esc(m.ts||'')+'</span>'+
         '<span class="dir">'+(m.dir==='send'?'▶':'◀')+'</span>'+
         '<span class="data">'+esc(m.data)+'</span></div>'
     }).join('')

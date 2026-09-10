@@ -507,9 +507,6 @@
       reqs: function(){ return this.requests.filter(function(r){ return r.folderId===this.folder.id }.bind(this)) },
       docsInFolder: function(){ return this.docs.filter(function(d){ return d.folderId===this.folder.id }.bind(this)) }
     },
-    methods: {
-      toggle: function(){ var s=this.expandedFolders; if(s.has(this.folder.id)) s.delete(this.folder.id); else s.add(this.folder.id) }
-    },
     template: [
       '<div class="ht-node">',
       '  <div class="ht-row ht-folder" :class="{active: expandedFolders.has(folder.id)}" @click="toggle">',
@@ -609,7 +606,11 @@
         Promise.all([
           send('project.list'), send('folder.list', {}), send('req.list'), send('doc.list', {}), send('env.list', {})
         ]).then(function(r){
-          self.projects = r[0] || []; self.folders = r[1] || []; self.requests = r[2] || []; self.docs = r[3] || []; self.environments = r[4] || []
+          self.projects = Array.isArray(r[0]) ? r[0] : [];
+          self.folders = Array.isArray(r[1]) ? r[1] : [];
+          self.requests = Array.isArray(r[2]) ? r[2] : [];
+          self.docs = Array.isArray(r[3]) ? r[3] : [];
+          self.environments = Array.isArray(r[4]) ? r[4] : []
         }).catch(function(e){ toast('加载失败: ' + (e.message||e), 'err') })
       },
       toggleProj: function(id){ var s=this.expandedProjects; if(s.has(id)) s.delete(id); else s.add(id) },
@@ -845,6 +846,23 @@
     closeList()
     return html
   }
+
+  // 渲染/运行时错误兜底：出错时在页面显示错误，避免整个界面白屏且便于定位
+  function showFatal(err, where){
+    var msg = (err && (err.stack || err.message)) || String(err)
+    try { console.error('[http-client]' + (where||''), err) } catch (e) {}
+    var box = document.getElementById('hcFatal')
+    if (!box) {
+      box = document.createElement('div')
+      box.id = 'hcFatal'
+      box.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:9999;max-height:40vh;overflow:auto;padding:8px 12px;background:#7f1d1d;color:#fff;font:12px/1.5 monospace;white-space:pre-wrap'
+      document.body.appendChild(box)
+    }
+    box.textContent = '插件内部错误' + (where ? '（' + where + '）' : '') + '：\n' + msg
+  }
+  app.config.errorHandler = function(err, vm, info){ showFatal(err, info) }
+  window.addEventListener('error', function(e){ showFatal(e.error || e.message, 'window') })
+  window.addEventListener('unhandledrejection', function(e){ showFatal(e.reason, 'promise') })
 
   app.mount('#app')
 })()

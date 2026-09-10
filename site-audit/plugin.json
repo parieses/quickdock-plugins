@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.site-audit",
   "name": "站点审计箱",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "将 WHOIS 查询、SSL 证书检查、DNS 查询、DNS 传播检查、HTTP 状态码速查、HTTP 安全头审计六个站点工具合并为单一插件，按需切换标签页，共享一个原生子进程",
   "author": "QuickDock",
   "category": "网络工具",
