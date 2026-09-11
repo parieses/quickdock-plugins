@@ -1,0 +1,72 @@
+{
+  "id": "io.github.parieses.image-uploader",
+  "name": "图床上传",
+  "version": "1.0.0",
+  "description": "选择本地图片，读取后通过宿主网络能力上传到图床（freeimage.host / imgbb），返回可访问的图片链接，链接可一键复制。不上传任何其它文件。",
+  "author": "QuickDock",
+  "icon": "icon.svg",
+  "category": "文件工具",
+  "platforms": [
+    "windows",
+    "darwin",
+    "linux"
+  ],
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "permissions": {
+    "filesystem": {
+      "read": [
+        "~/Downloads",
+        "~/Desktop",
+        "~/Documents",
+        "~/Pictures"
+      ]
+    },
+    "network": [
+      "https://freeimage.host",
+      "https://api.imgbb.com"
+    ]
+  },
+  "backend": {
+    "runtime": "none"
+  },
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 680,
+    "height": 560
+  },
+  "commands": [
+    {
+      "id": "image-upload",
+      "title": "图床上传",
+      "keywords": [
+        "image",
+        "upload",
+        "图床",
+        "上传图片",
+        "image host",
+        "图床上传"
+      ],
+      "aliases": [
+        "上传图片",
+        "图片上传",
+        "图床"
+      ],
+      "title_i18n": {
+        "zh-CN": "图床上传",
+        "en-US": "Image Uploader"
+      }
+    }
+  ],
+  "name_i18n": {
+    "zh-CN": "图床上传",
+    "en-US": "Image Uploader"
+  },
+  "description_i18n": {
+    "zh-CN": "选择本地图片上传到图床，返回图片链接",
+    "en-US": "Pick a local image and upload it to an image host, get a shareable URL."
+  }
+}

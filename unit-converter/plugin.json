@@ -1,0 +1,68 @@
+{
+  "id": "io.github.parieses.unit-converter",
+  "name": "单位换算器",
+  "version": "1.0.0",
+  "description": "长度 / 面积 / 体积 / 重量 / 温度 / 速度 / 数据存储 / 时间 / 压力 / 能量 / 功率 / 角度 共 12 类单位实时互转，输入一个值即列出该类别全部换算结果",
+  "author": "QuickDock",
+  "icon": "icon.svg",
+  "category": "办公效率",
+  "platforms": [
+    "windows",
+    "darwin",
+    "linux"
+  ],
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "permissions": {
+    "clipboard": true
+  },
+  "backend": {
+    "runtime": "none"
+  },
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 620,
+    "height": 560
+  },
+  "commands": [
+    {
+      "id": "unit-convert",
+      "title": "单位换算",
+      "keywords": [
+        "unit",
+        "convert",
+        "单位",
+        "换算",
+        "转换",
+        "长度",
+        "重量",
+        "温度"
+      ],
+      "aliases": [
+        "单位换算",
+        "单位转换",
+        "换算器",
+        "dw",
+        "dwhs"
+      ],
+      "prefix": "/uc",
+      "matchPattern": "[-+]?[\\d.,]+\\s*[a-zA-Z\\u00b5\\u00b0\\u4e00-\\u9fa5/\\u00b2\\u00b3]{1,6}",
+      "acceptsInput": true,
+      "title_i18n": {
+        "zh-CN": "单位换算",
+        "en-US": "Unit Conversion"
+      }
+    }
+  ],
+  "name_i18n": {
+    "zh-CN": "单位换算器",
+    "en-US": "Unit Converter"
+  },
+  "description_i18n": {
+    "zh-CN": "12 类常用单位实时互转，输入一个值即列出该类别全部换算结果",
+    "en-US": "Convert between 12 categories of units in real time; one input lists every unit in the category."
+  }
+}

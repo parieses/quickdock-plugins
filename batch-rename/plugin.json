@@ -1,0 +1,74 @@
+{
+  "id": "io.github.parieses.batch-rename",
+  "name": "批量重命名",
+  "version": "1.0.0",
+  "description": "选择一个文件夹，按前缀/后缀/查找替换/正则/序号/扩展名/大小写规则预览并重命名文件，全部通过宿主文件系统能力执行，不离开本机",
+  "author": "QuickDock",
+  "icon": "icon.svg",
+  "category": "文件工具",
+  "platforms": [
+    "windows",
+    "darwin",
+    "linux"
+  ],
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "permissions": {
+    "filesystem": {
+      "read": [
+        "~/Downloads",
+        "~/Desktop",
+        "~/Documents",
+        "~/Pictures"
+      ],
+      "write": [
+        "~/Downloads",
+        "~/Desktop",
+        "~/Documents",
+        "~/Pictures"
+      ]
+    }
+  },
+  "backend": {
+    "runtime": "none"
+  },
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 720,
+    "height": 640
+  },
+  "commands": [
+    {
+      "id": "batch-rename",
+      "title": "批量重命名",
+      "keywords": [
+        "rename",
+        "批量重命名",
+        "重命名",
+        "改名",
+        "文件改名",
+        "rename files"
+      ],
+      "aliases": [
+        "批量改名",
+        "文件重命名",
+        "renamer"
+      ],
+      "title_i18n": {
+        "zh-CN": "批量重命名",
+        "en-US": "Batch Rename"
+      }
+    }
+  ],
+  "name_i18n": {
+    "zh-CN": "批量重命名",
+    "en-US": "Batch Rename"
+  },
+  "description_i18n": {
+    "zh-CN": "选择文件夹，按多种规则预览并重命名文件，通过宿主文件系统能力执行",
+    "en-US": "Pick a folder and rename files by prefix/suffix/find-replace/regex/sequence with a live preview, executed through the host file-system capability."
+  }
+}

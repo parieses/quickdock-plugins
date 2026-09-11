@@ -10,6 +10,17 @@
 //   tree.objects   按需展开某个库下的 表/视图/字段
 //   row.update     以主键定位单行提交 UPDATE（MySQL/SQLite）
 //
+// Redis 可视化管理（dbType=redis 时可用）：
+//   redis.keyGet       读取单 key 详情（类型/TTL/值，按类型序列化）
+//   redis.keySet       新建或整体覆盖 key（按类型写入，ttl<0 永久）
+//   redis.keyDelete    批量删除 key
+//   redis.keyRename    重命名 key
+//   redis.keyExpire    设置 TTL（seconds<0 即 PERSIST 永不过期）
+//   redis.hashFieldSet / redis.hashFieldDel   hash 字段级增删
+//   redis.listPush / redis.listElemDel        list 头尾追加 / 按值删除元素
+//   redis.setMemberAdd / redis.setMemberDel    set 成员增删
+//   redis.zsetMemberSet / redis.zsetMemberDel  zset 成员 score 设置 / 删除
+//
 // 存储：插件自带 SQLite（modernc.org/sqlite，纯 Go），DB 文件在 <插件目录>/data/。
 // 数据独立存储，不读取旧主程序 quickdock.db。
 // 外库驱动：go-sql-driver/mysql、modernc.org/sqlite、redis/go-redis/v9。
@@ -184,6 +195,33 @@ func handleCommand(id int64, p executeParams) {
 		handleTreeList(id, p.Input)
 	case "tree.objects":
 		handleTreeObjects(id, p.Input)
+	// Redis 可视化管理
+	case "redis.keyGet":
+		redisKeyGet(id, p.Input)
+	case "redis.keySet":
+		redisKeySet(id, p.Input)
+	case "redis.keyDelete":
+		redisKeyDelete(id, p.Input)
+	case "redis.keyRename":
+		redisKeyRename(id, p.Input)
+	case "redis.keyExpire":
+		redisKeyExpire(id, p.Input)
+	case "redis.hashFieldSet":
+		redisHashFieldSet(id, p.Input)
+	case "redis.hashFieldDel":
+		redisHashFieldDel(id, p.Input)
+	case "redis.listPush":
+		redisListPush(id, p.Input)
+	case "redis.listElemDel":
+		redisListElemDel(id, p.Input)
+	case "redis.setMemberAdd":
+		redisSetMemberAdd(id, p.Input)
+	case "redis.setMemberDel":
+		redisSetMemberDel(id, p.Input)
+	case "redis.zsetMemberSet":
+		redisZSetMemberSet(id, p.Input)
+	case "redis.zsetMemberDel":
+		redisZSetMemberDel(id, p.Input)
 	// 行编辑
 	case "row.update":
 		handleRowUpdate(id, p.Input)

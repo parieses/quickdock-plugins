@@ -1,0 +1,80 @@
+{
+  "id": "io.github.parieses.file-search",
+  "name": "本地文件搜索",
+  "version": "1.0.0",
+  "description": "选择一个文件夹，按名称/通配符/扩展名/大小搜索文件，或按内容哈希查找重复文件（支持子目录递归），删除冗余副本走宿主回收站，不离开本机",
+  "author": "QuickDock",
+  "icon": "icon.svg",
+  "category": "文件工具",
+  "platforms": [
+    "windows",
+    "darwin",
+    "linux"
+  ],
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "permissions": {
+    "filesystem": {
+      "read": [
+        "~/Downloads",
+        "~/Desktop",
+        "~/Documents",
+        "~/Pictures",
+        "~/Movies",
+        "~/Music"
+      ],
+      "write": [
+        "~/Downloads",
+        "~/Desktop",
+        "~/Documents",
+        "~/Pictures",
+        "~/Movies",
+        "~/Music"
+      ]
+    }
+  },
+  "backend": {
+    "runtime": "none"
+  },
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 820,
+    "height": 660
+  },
+  "commands": [
+    {
+      "id": "file-search",
+      "title": "本地文件搜索",
+      "keywords": [
+        "search",
+        "搜索",
+        "查找文件",
+        "文件搜索",
+        "重复文件",
+        "duplicate",
+        "去重"
+      ],
+      "aliases": [
+        "文件查找",
+        "找文件",
+        "重复文件查找",
+        "文件去重"
+      ],
+      "title_i18n": {
+        "zh-CN": "本地文件搜索",
+        "en-US": "Local File Search"
+      }
+    }
+  ],
+  "name_i18n": {
+    "zh-CN": "本地文件搜索",
+    "en-US": "Local File Search"
+  },
+  "description_i18n": {
+    "zh-CN": "按名称/通配符/扩展名/大小搜索，或按内容哈希查找重复文件（支持递归）",
+    "en-US": "Search files by name/glob/extension/size, or find duplicates by content hash (recursive)."
+  }
+}

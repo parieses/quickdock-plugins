@@ -194,7 +194,13 @@ func handleTreeList(id int64, input map[string]interface{}) {
 		}
 		respond(id, map[string]interface{}{"nodes": tree, "dbType": conn.kind})
 	case "redis":
-		keys, e := listRedisKeys(conn.redis, parseRedisDB(saved.Database),
+		dbIndex := parseRedisDB(saved.Database)
+		if v, ok := input["dbIndex"]; ok {
+			if n, ok := v.(float64); ok && int(n) >= 0 {
+				dbIndex = int(n)
+			}
+		}
+		keys, e := listRedisKeys(conn.redis, dbIndex,
 			strFrom(input, "pattern"), intFrom(input, "limit", 300))
 		if e != nil {
 			respondError(id, -32000, "读取键失败: "+e.Error())

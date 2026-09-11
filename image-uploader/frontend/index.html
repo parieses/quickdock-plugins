@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>图床上传</title>
+<link rel="stylesheet" href="qd-theme.css">
+<link rel="stylesheet" href="components.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+.app{display:flex;flex-direction:column;height:100vh;font-size:13px}
+.toolbar{padding:10px 12px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pathbox{flex:1;min-width:120px;padding:7px 10px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pathbox.has{color:var(--text-primary)}
+.body{flex:1;min-height:0;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:12px}
+.card{background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius);padding:12px}
+.card-t{font-size:12px;font-weight:600;color:var(--accent);margin-bottom:10px}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.inp,.sel{height:30px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-primary);color:var(--text-primary);font-size:12.5px;outline:none}
+.inp:focus,.sel:focus{border-color:var(--accent)}
+.chk{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary);cursor:pointer}
+.chk input{width:14px;height:14px;accent-color:var(--accent);cursor:pointer}
+.preview{display:flex;gap:12px;align-items:center}
+.thumb{width:96px;height:96px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-primary);object-fit:cover;flex-shrink:0}
+.meta{font-size:12px;color:var(--text-secondary);line-height:1.6}
+.result{border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-primary);padding:12px}
+.url{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.url code{flex:1;min-width:0;font:12px var(--font-mono);word-break:break-all;color:var(--accent);cursor:pointer}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;background:var(--success-soft);color:var(--success)}
+.tag.err{background:var(--danger-soft);color:var(--danger)}
+.empty{padding:24px;text-align:center;color:var(--text-muted);font-size:12.5px}
+.status{flex-shrink:0;padding:6px 12px;font-size:11.5px;color:var(--text-muted);border-top:1px solid var(--border);background:var(--bg-secondary);min-height:28px;white-space:pre-wrap}
+.status.err{color:var(--danger)}
+.status.ok{color:var(--success)}
+.hint{font-size:11px;color:var(--text-muted);line-height:1.5}
+.warn{padding:10px 12px;border-radius:var(--radius);background:var(--danger-soft);color:var(--danger);font-size:12px;border:1px solid var(--danger);display:none}
+.warn.show{display:block}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="toolbar">
+    <div id="pathBox" class="pathbox">未选择图片</div>
+    <button id="btnPick" class="btn btn-ghost btn-sm">选择图片</button>
+  </div>
+
+  <div class="body">
+    <div id="scopeWarn" class="warn"></div>
+
+    <div class="card">
+      <div class="card-t">上传设置</div>
+      <div class="row" style="margin-bottom:8px">
+        <span class="hint">图床</span>
+        <select id="endpoint" class="sel">
+          <option value="freeimage">freeimage.host（免注册，公共 Key）</option>
+          <option value="imgbb">imgbb（需 API Key）</option>
+          <option value="custom">自定义端点</option>
+        </select>
+      </div>
+      <div class="row" id="keyRow" style="display:none;margin-bottom:8px">
+        <span class="hint">API Key</span>
+        <input id="apiKey" class="inp" type="text" placeholder="imgbb API Key" style="flex:1;min-width:160px">
+      </div>
+      <div class="row" id="customRow" style="display:none;margin-bottom:8px">
+        <span class="hint">URL</span>
+        <input id="customUrl" class="inp" type="text" placeholder="https://your-host/upload" style="flex:1;min-width:160px">
+      </div>
+      <div class="row" id="customBodyRow" style="display:none">
+        <span class="hint">Body</span>
+        <input id="customBody" class="inp" type="text" value="source={{b64}}" style="flex:1;min-width:160px">
+        <span class="hint">POST，{{b64}} 占位；以 x-www-form-urlencoded 发送</span>
+      </div>
+      <div class="hint" id="quotaHint" style="margin-top:6px"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-t">图片预览</div>
+      <div class="preview">
+        <img id="thumb" class="thumb" alt="" style="display:none">
+        <div class="meta" id="imgMeta">尚未选择图片</div>
+      </div>
+    </div>
+
+    <button id="btnUpload" class="btn btn-primary btn-sm" disabled style="align-self:flex-start">上传图片</button>
+
+    <div id="result" class="result" style="display:none"></div>
+  </div>
+
+  <div id="status" class="status"></div>
+</div>
+
+<script>
+(function(){
+'use strict';
+var qdHostCall = window.qdHostCall;
+var qdPickFile = window.qdPickFile;
+
+var pickedPath='';
+var b64='';
+var FREEIMAGE_KEY='6d207e084459f7c3efff4e9a732875b4'; // freeimage.host 公开演示 Key
+
+function $(id){return document.getElementById(id)}
+function status(msg,cls){var el=$('status');el.textContent=msg||'';el.className='status'+(cls?' '+cls:'')}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+
+function copyText(t){
+  return new Promise(function(res){
+    var id='cp_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
+    function onMsg(e){var d=e.data;if(d&&d.type==='plugin:copy-result'&&d.id===id){window.removeEventListener('message',onMsg);res(!!d.ok)}}
+    window.addEventListener('message',onMsg);
+    parent.postMessage({type:'plugin:copy',id:id,text:t},'*');
+    setTimeout(function(){window.removeEventListener('message',onMsg);res(false)},400);
+  });
+}
+
+function fmtSize(n){if(n==null)return'';if(n<1024)return n+' B';if(n<1048576)return(n/1024).toFixed(1)+' KB';return(n/1048576).toFixed(2)+' MB'}
+
+// ---- 选择图片 ----
+$('btnPick').addEventListener('click',function(){
+  qdPickFile({title:'选择图片',filter:'图片',pattern:'*.jpg;*.jpeg;*.png;*.gif;*.webp;*.bmp'}).then(function(p){
+    if(!p){status('已取消');return}
+    pickedPath=p;$('pathBox').textContent=p;$('pathBox').className='pathbox has';
+    $('scopeWarn').className='warn';
+    readImage(p);
+  }).catch(function(e){status('选择失败：'+(e&&e.message||e),'err')});
+});
+
+function readImage(p){
+  status('读取图片中…');
+  qdHostCall('host.fs.read',{path:p}).then(function(r){
+    if(!r||r.content==null)throw new Error('读取为空');
+    if((r.size||0)>8*1024*1024){throw new Error('图片超过 8 MiB 读取上限，请压缩后再上传')}
+    b64=r.content; // 二进制经宿主返回为 base64
+    $('thumb').src='data:image;base64,'+b64;
+    $('thumb').style.display='block';
+    $('imgMeta').innerHTML='<div>'+esc(p.split(/[\\\/]/).pop())+'</div><div>'+fmtSize(r.size)+'</div>';
+    $('btnUpload').disabled=false;
+    status('已就绪，点击上传');
+  }).catch(function(e){
+    var msg=e&&e.message?e.message:String(e);
+    $('scopeWarn').className='warn show';
+    $('scopeWarn').textContent='无法读取该图片：'+msg+'。若提示「不在 permissions.filesystem 白名单内」，请将其所在目录加入插件 plugin.json 的 permissions.filesystem.read 后重新安装。';
+    status('读取失败：'+msg,'err');
+  });
+}
+
+// ---- 构建请求 ----
+function buildRequest(){
+  var ep=$('endpoint').value;
+  if(ep==='freeimage'){
+    return {url:'https://freeimage.host/api/1/upload',
+      body:'key='+encodeURIComponent(FREEIMAGE_KEY)+'&source='+encodeURIComponent(b64),
+      contentType:'application/x-www-form-urlencoded'};
+  }
+  if(ep==='imgbb'){
+    var key=$('apiKey').value.trim();
+    if(!key){status('请填写 imgbb API Key','err');return null}
+    return {url:'https://api.imgbb.com/1/upload?key='+encodeURIComponent(key),
+      body:'image='+encodeURIComponent(b64),
+      contentType:'application/x-www-form-urlencoded'};
+  }
+  // custom
+  var u=$('customUrl').value.trim();
+  if(!u){status('请填写自定义上传 URL','err');return null}
+  var tpl=$('customBody').value.replace(/\{\{\s*b64\s*\}\}/g,encodeURIComponent(b64));
+  return {url:u, body:tpl, contentType:'application/x-www-form-urlencoded'};
+}
+
+function extractUrl(obj){
+  if(!obj)return null;
+  if(obj.data&&obj.data.image&&obj.data.image.url)return obj.data.image.url;
+  if(obj.data&&obj.data.url)return obj.data.url;
+  if(obj.data&&obj.data.link)return obj.data.link;
+  if(obj.url)return obj.url;
+  if(obj.data&&obj.delete_url)return obj.data.delete_url;
+  return null;
+}
+
+function doUpload(){
+  if(!b64){status('请先选择图片','err');return}
+  var req=buildRequest();if(!req)return;
+  $('btnUpload').disabled=true;status('上传中…');
+  qdHostCall('http.post',{url:req.url,body:req.body,contentType:req.contentType,headers:{}}).then(function(r){
+    if(!r||!r.ok){throw new Error('HTTP '+((r&&r.status)||'?')+': '+((r&&r.body)||'').slice(0,200))}
+    var obj=null;try{obj=JSON.parse(r.body)}catch(e){}
+    var url=extractUrl(obj);
+    showResult(url, r.body, obj);
+    if(url)status('上传成功','ok');else status('已收到响应，但未解析到图片链接（见下方原始响应）','err');
+  }).catch(function(e){
+    status('上传失败：'+(e&&e.message||e),'err');
+  }).then(function(){$('btnUpload').disabled=!b64});
+}
+
+function showResult(url, raw, obj){
+  var box=$('result');box.style.display='block';
+  if(url){
+    box.innerHTML='<div class="url"><code title="'+esc(url)+'">'+esc(url)+'</code>'+
+      '<span class="tag">成功</span></div>'+
+      '<div class="row"><button id="btnCopy" class="btn btn-ghost btn-sm">复制链接</button>'+
+      (obj&&obj.data&&obj.data.delete_url?'<button id="btnCopyDel" class="btn btn-ghost btn-sm">复制删除链接</button>':'')+
+      '</div>';
+    $('btnCopy').addEventListener('click',function(){copyText(url).then(function(ok){status(ok?'已复制链接':'复制失败')})});
+    if(obj&&obj.data&&obj.data.delete_url){
+      $('btnCopyDel').addEventListener('click',function(){copyText(obj.data.delete_url).then(function(ok){status(ok?'已复制删除链接':'复制失败')})});
+    }
+  }else{
+    box.innerHTML='<div class="url"><span class="tag err">未解析到链接</span></div>'+
+      '<pre style="white-space:pre-wrap;word-break:break-all;font:11.5px var(--font-mono);color:var(--text-secondary);max-height:200px;overflow:auto">'+esc((raw||'').slice(0,2000))+'</pre>';
+  }
+}
+
+// ---- 端点切换 ----
+function syncEndpoint(){
+  var ep=$('endpoint').value;
+  $('keyRow').style.display=ep==='imgbb'?'':'none';
+  $('customRow').style.display=ep==='custom'?'':'none';
+  $('customBodyRow').style.display=ep==='custom'?'':'none';
+  $('quotaHint').textContent = ep==='freeimage'
+    ? 'freeimage.host 公共演示 Key 有每日额度限制，仅适合偶尔使用；生产请改用 imgbb 或自定义端点。'
+    : ep==='imgbb' ? '在 https://api.imgbb.com 免费注册获取 API Key。' : '自定义端点须先在插件 plugin.json 的 permissions.network 中加入该域名后重新安装。';
+}
+$('endpoint').addEventListener('change',syncEndpoint);
+$('btnUpload').addEventListener('click',doUpload);
+syncEndpoint();
+status('请选择一张图片开始');
+})();
+</script>
+</body>
+</html>

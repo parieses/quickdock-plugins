@@ -131,7 +131,54 @@ my-plugin/
 - 不启动子进程，零资源开销
 - 所有逻辑在浏览器 JS 中执行
 - 通过 `parent.postMessage` 与主程序通信（经由 PluginPage 中转）
-- 数据持久化使用 `localStorage`
+- 调宿主能力用 `qdHostCall` / `qdHttp`（见「前端开发 → 与主程序通信」）：
+  网络请求、剪贴板、系统通知、文件对话框、宿主 MCP 工具、插件私有 KV 都能直接用，
+  **不需要后端进程**。`localStorage` 仍可用，但按 `plugin_id` 隔离的 `db.*` 更稳。
+
+#### none 插件最小骨架
+
+宿主会向每个插件前端页面注入桥接脚本（见「前端开发 → 调用宿主能力」），因此 none 插件的 `frontend/index.html` 可以直接调用 `qdHostCall` / `qdHttp` / `qdPickFile` / `qdPickFolder` 等全局，无需自己 `postMessage`：
+
+```html
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <!-- 样式自包含：随插件带 qd-theme.css（common.css 副本），不依赖宿主注入 -->
+  <link rel="stylesheet" href="qd-theme.css">
+  <title>我的 none 插件</title>
+</head>
+<body>
+  <button id="pick">选择文件</button>
+  <pre id="out"></pre>
+  <script>
+    // qdPickFile / qdPickFolder / qdHostCall / qdHttp 均由宿主注入，直接可用
+    document.getElementById('pick').onclick = async () => {
+      const p = await qdPickFile({ filter: '文本', pattern: '*.txt' })
+      if (!p) return                                  // 用户取消
+      // host.fs.read 在 permissions.filesystem.read scope 内返回文件内容
+      const r = await qdHostCall('host.fs.read', { path: p })
+      document.getElementById('out').textContent =
+        r.encoding === 'base64' ? atob(r.content) : r.content
+    }
+  </script>
+</body>
+</html>
+```
+
+> ⚠️ **none 插件没有后端进程**，`host.fs.*` / `http.*` 的权限校验**完全依赖 `plugin.json` 的 `permissions` 白名单**——选了 scope 外的路径会直接拿到 `-32001`。开发时把需要读写的目录预先写进 `permissions.filesystem` 再重装。
+
+#### 三个官方 none 插件：Host API 端到端范式
+
+这三个插件是 `runtime:none` 调用宿主能力的标准样板，源码可直接复用：
+
+| 插件 | 调用链路 | 演示点 |
+|---|---|---|
+| `batch-rename` | `qdPickFolder()` → `host.fs.list` → 规则链 → `host.fs.move` | 目录选择 + 批量改名（冲突跳过） |
+| `file-search` | `host.fs.list`（递归）→ `host.fs.read` → SHA-256 去重 → `host.fs.remove`（回收站） | 递归遍历 + 内容哈希 + 安全删除 |
+| `image-uploader` | `qdPickFile()` → `host.fs.read`（base64）→ `http.post`（图床） | 文件读取 + 绕过 iframe CORS 的上传 |
+
+完整源码见 `plugins/external/{batch-rename,file-search,image-uploader}/frontend/index.html`。
 
 ---
 
@@ -172,6 +219,19 @@ function handleExecute(params) {
 - 通过 `api.log()`（INFO）/ `api.warn()`（WARN）/ `api.error()`（ERROR）输出日志
 - 无宿主 `api.crypto`：md5/sha/base64/url/html 等需在插件内纯 JS 自实现（参考 text-encoder 的 main.js 自带 crypto 库）
 - 导出 `handleInitialize()` 和 `handleExecute()` 函数供主程序调用
+
+**调用宿主能力（`api.host`）：**
+```javascript
+function handleExecute(params) {
+    // 需在 plugin.json 声明 "permissions": { "network": true }，否则返回权限错误
+    var r = api.host('http.get', { url: 'https://example.com' })
+    return { status: r.status, body: r.body }
+}
+```
+- `api.host(method, params)` 转发到**与 native 完全相同的 Host Method 注册表**，权限校验一致，因此 `http.get` / `http.post`、`host.notify`、`host.dialog.*`、`host.clipboard.*`、`db.*`、`host.mcp.call` 都可以直接调用；方法不存在会抛错，权限不足会抛错，调用方按需 try/catch
+- 想复用宿主的检索/待办/环境等能力，用 `api.host('host.mcp.call', { tool: 'todo_list', args: {} })`，无需自己实现（工具清单见「Host Methods」）
+- `api.db.exec(sql, args)` / `api.db.query(sql, args)` 是插件私有 SQLite（`<dataDir>/data.db`）的**裸 SQL**。注意它与 native 的 `db.*` **不是同一套存储**——后者是宿主库中按 plugin_id 隔离的 KV
+- ⚠️ `api.host` 是**同步阻塞**调用，受 `handleExecute` 的 20s 超时约束。`host.dialog.*` 这类需要用户操作的方法，在用户完成选择前就可能被打断，不宜依赖；长耗时任务请走 taskId + 轮询的异步范式
 
 ---
 
@@ -218,17 +278,41 @@ function handleExecute(params) {
 
 #### Host Methods（插件可调用的主程序 API）
 
-native 插件在收到请求后，可以通过 stdout 向主程序发起回调请求：
+Host Method 是宿主注册的能力表。**三种运行时共用同一张表、同一套权限校验**，
+只是调用通道不同（native 走 JSON-RPC、goja 走 `api.host`、none 走 `qdHostCall`）。
 
 | 方法 | 说明 | 所需权限 |
 |---|---|---|
-| `log.info` | 记录日志 | 无需权限 |
-| `log.warn` | 记录告警日志 | 无需权限 |
-| `log.error` | 记录错误日志 | 无需权限 |
+| `log.info` / `log.warn` / `log.error` | 写插件日志（落 `<dataDir>/logs/plugin-YYYYMMDD.log`） | 无需权限 |
+| `host.ping` | 存活探测，返回 `{pong, time}` | 无需权限 |
 | `host.notify` | 弹出系统通知 | 无需权限 |
 | `host.clipboard.read` | 读取剪贴板文本 | `clipboard: true` |
 | `host.clipboard.write` | 写入剪贴板文本 | `clipboard: true` |
-| `host.dialog.open` / `host.dialog.save` | 文件/保存对话框（**前端桥接层拦截**，见「文件与目录选择」） | 无需权限（前端拦截） |
+| `host.dialog.open` / `host.dialog.save` | 打开 / 保存文件对话框 → `{canceled, path}` | `filesystem: true` 或 scope 对象 ⚠️见下 |
+| `host.fs.read` | 读文件 → `{path, size, encoding, content}`；合法 UTF-8 用 `utf8` 直出，否则 `base64`；>8 MiB **报错**（不截断） | `filesystem.read` scope |
+| `host.fs.write` | 原子写（同目录临时文件 + rename），`content` + 可选 `encoding: utf8\|base64`；>8 MiB 报错。**不自动建父目录** | `filesystem.write` scope |
+| `host.fs.list` | 列目录（不递归）→ `{path, entries:[{name,path,isDir,size,mtime}], truncated}`；上限 2000 条 | `filesystem.read` scope |
+| `host.fs.stat` | 元信息 → `{path, exists, isDir, size, mtime, mode}`；不存在时返回 `exists:false` 而非报错 | `filesystem.read` scope |
+| `host.fs.exists` | 存在性 → `{path, exists}` | `filesystem.read` scope |
+| `host.fs.mkdir` | 建目录；`parents: true` 时递归创建 | `filesystem.write` scope |
+| `host.fs.remove` | 删文件或目录 → 进入**系统回收站**（不是永久删除）；`{path, removed, trash}` | `filesystem.write` scope |
+| `host.fs.move` | 改名 / 移动 → `{from, to, moved}`；**目标已存在即报错（不覆盖）**，不支持跨盘符 | `from` 与 `to` **都要**在 `filesystem.write` scope 内 |
+| `http.get` | GET，超时 15s、响应上限 2 MiB → `{status, ok, headers, body, truncated}` | `network` 域名白名单（如 `["https://api.github.com"]`）；`true` 全放行 |
+| `http.post` | POST，参数同上，另支持 `body` / `contentType`；重定向目标仍受白名单二次校验 | `network` 域名白名单 |
+| `host.shell.open` | 打开 URL / 文件 / 目录（走 `sysutil.OpenDetached`，禁裸 exec）→ `{"success":true}` | `shell` 目标前缀白名单（如 `["file:///C:/Users/me","https://docs.example.com"]`）；`true` 全放行 |
+| `host.process.list` | 列出全部进程 → `{processes:[{pid,name,memBytes}], count}`（CPU 单样本无意义，留 0） | 无需权限 |
+| `host.process.kill` | 结束进程 → `{success, pid}` | `processKill: true`（显式开关，默认拒绝） |
+| `host.mcp.call` | 调用宿主内置 MCP 工具 → `{tool, result}` | 无需权限（等级门见下） |
+| `db.get` / `db.set` / `db.delete` / `db.list` | 插件私有 KV，按 `plugin_id` 强隔离，单值 ≤256 KiB | 无需权限 |
+
+> ⚠️ **`host.dialog.*` 有两条路径，权限要求不同——别搞混：**
+>
+> | 调用方式 | 是否要 `filesystem: true` | 说明 |
+> |---|---|---|
+> | 经 Host Method：native JSON-RPC / goja `api.host` / none `qdHostCall('host.dialog.open')` | **要** | 落到后端 `checkPermission`，未声明即被拒（-32001） |
+> | none 插件走 `plugin:execute`，命令名设为 `host.dialog.open` / `host.dialog.save` | **不要** | 由**宿主前端直接拦截**并调 Wails `Dialogs.OpenFile()`，**不进后端、不做权限校验**。闸门是「用户自己选了哪个文件」 |
+>
+> 后者是 none 插件的历史推荐用法（见「文件与目录选择」），也是唯一不需要 `filesystem` 的取文件路径。
 
 ```json
 // 插件 → 主程序（回调请求）
@@ -237,6 +321,114 @@ native 插件在收到请求后，可以通过 stdout 向主程序发起回调�
 // 主程序 → 插件（响应）
 {"jsonrpc":"2.0","id":101,"result":{"success":true}}
 ```
+
+#### host.mcp.call：直接复用宿主的 MCP 工具（免重复实现）
+
+宿主内置了一个 MCP Server，把一批业务能力注册成了工具。插件通过 `host.mcp.call`
+可以直接复用，**不必自己再实现一遍检索/查询**，而且与 AI 客户端拿到的是同一能力面
+（返回结构、错误信息、等级判定完全一致）。
+
+```json
+// 插件 → 主程序
+{"jsonrpc":"2.0","id":102,"method":"host.mcp.call","params":{"tool":"item_search","args":{"q":"周报"}}}
+```
+
+已注册工具（共 29 个，`services/mcp/service.go`）：
+
+| 类别 | 工具 |
+|---|---|
+| 内容检索 | `item_search` / `item_open` · `recent_items` · `workspace_list` |
+| 笔记 | `note_search` / `note_create` / `note_update` / `note_quick` |
+| 待办 | `todo_list` / `todo_create` / `todo_done` |
+| 剪贴板 | `clipboard_recent` / `clipboard_copy` |
+| 环境编排 | `env_list` / `env_status` / `env_log` / `env_versions` / `env_start` / `env_stop` / `env_restart` |
+| 日志与崩溃 | `log_list` / `log_read` / `crash_list` / `crash_read` / `plugin_list` |
+| 系统信息 | `port_list` / `app_info` |
+| ⚠️ 高危（默认拒绝） | `process_kill` / `system_command` |
+
+**无需在 `permissions` 里声明任何东西**，安全边界由宿主的 MCP 等级门统一把关：
+默认最高等级是「低危写」（`LevelRead` + `LevelWrite` 共 27 个），上表最后两个
+`LevelRisk` 工具**在用户于「环境管理页」手动开启高危等级之前一律被拒绝**
+（返回错误，不会静默放行）。调用方按需 `try/catch` 即可。
+
+#### 文件系统访问（`host.fs.*`）：必须声明路径 scope
+
+文件读写**不是**靠 `filesystem: true` 打开的——那只是「能弹文件对话框」。要读写文件，
+必须把 `permissions.filesystem` 写成带白名单的对象：
+
+```json
+"permissions": {
+  "filesystem": {
+    "read":  ["~/Documents/**", "D:/data/*.csv"],
+    "write": ["~/Downloads/**"]
+  }
+}
+```
+
+| 写法 | 含义 |
+|---|---|
+| `"filesystem": true` | **仅**文件对话框（老插件的写法，升级后权限不变） |
+| `"filesystem": { "read": [...] }` | 对话框 + 白名单内可读（`host.fs.read/list/stat/exists`） |
+| `"filesystem": { "read": [...], "write": [...] }` | 再加白名单内可写（`host.fs.write/mkdir/remove/move`） |
+
+**scope 条目规则**
+
+| 写法 | 匹配范围 |
+|---|---|
+| `~/Documents` | 该目录**及其整个子树**（等价于 `~/Documents/**`） |
+| `~/Documents/**` | 同上，`**` 跨任意多级 |
+| `~/Downloads/*` | 只匹配 `~/Downloads` 的**直接**子项，`*` 不跨目录分隔符 |
+| `D:/data/*.csv` | 段内通配：只匹配 `D:/data` 下的 csv |
+| `../etc/**` / `Documents/**` | ❌ 清单校验直接失败——**必须绝对路径或以 `~` 开头** |
+
+**三条必须知道的约束**
+
+1. **先解析链接再判定。** 宿主会把请求路径解析为绝对真实路径（展开 `~`、消除 `..`、
+   展开符号链接**与 Windows 目录联接 junction**）后才与白名单比对。所以
+   `~/Documents/link`（软链到 `/etc`）不会被放行，写穿悬空链接同样落在正确的判定下。
+2. **读写分离。** `read` 权限不蕴含 `write`，反之亦然。跨目录搬迁这类操作需要
+   两侧都在对应白名单内。
+3. **`host.fs.*` 是白名单制，表外方法一律拒绝。** 新增文件能力会先在宿主侧登记，
+   插件没见过的 `host.fs.xxx` 会拿到 `-32601`（未知方法），不会静默放行。
+
+```javascript
+// none 插件示例：读一个 scope 内文件、改完写回
+const st = await window.qdHostCall('host.fs.stat', { path: '~/Documents/a.txt' })
+if (st.exists) {
+  const r = await window.qdHostCall('host.fs.read', { path: '~/Documents/a.txt' })
+  await window.qdHostCall('host.fs.write', {
+    path: '~/Documents/a.txt',
+    content: r.content.replace(/foo/g, 'bar'),
+    encoding: r.encoding, // 原样带回，二进制文件才不会写坏
+  })
+}
+```
+
+> ⚠️ `host.fs.write` **不会自动创建父目录**，目录不存在会明确报错——
+> 先调 `host.fs.mkdir`（需要 `write` scope），少一条隐式建目录的路径就少一处越权面。
+
+**删除与移动**
+
+```javascript
+// 删除：进系统回收站（Windows 回收站 / macOS 废纸篓 / Linux XDG Trash），可恢复
+await window.qdHostCall('host.fs.remove', { path: '~/Downloads/old.zip' })
+
+// 改名 / 移动：两侧都要在 write scope 内
+await window.qdHostCall('host.fs.move', {
+  from: '~/Downloads/a.txt',
+  to:   '~/Downloads/b.txt',
+})
+```
+
+三条会直接报错（**不会**退化成永久删除或静默覆盖，插件可据此判断操作真的没发生）：
+
+| 情况 | 结果 |
+|---|---|
+| 目标已存在 | 报错，`host.fs.move` 不覆盖——先 `remove` 再 `move` |
+| 跨盘符 / 跨文件系统移动 | 报错（`os.Rename` 的限制）；跨卷请自行 read + write + remove |
+| 删除网络驱动器 / U 盘 / 光驱上的文件，或路径超过 MAX_PATH | 报错。这些位置上的删除不可恢复，宿主直接拒绝而不是「假装进了回收站」 |
+
+`host.fs.remove` 也不会接受卷根（`C:\` / `/`）这类路径。
 
 #### 通过 RPC 写日志（native 插件推荐，精确控制级别）
 
@@ -359,11 +551,27 @@ if (!path) return            // 用户取消
 
 ```json
 "permissions": {
-  "network": false,    // 能否发起 HTTP 请求
-  "filesystem": false, // 能否访问文件对话框
-  "clipboard": true    // 能否读写剪贴板
+  "network": false,                              // false=无网络；true=全放行；数组=域名白名单
+  "filesystem": false,                           // 文件对话框；要读写文件需写成 {"read": [...], "write": [...]}
+  "clipboard": true,                             // 能否读写剪贴板
+  "shell": false,                               // false=无；true=全放行；数组=目标前缀白名单
+  "processKill": false                          // 是否允许结束进程（高危，默认关）
 }
 ```
+
+`network` / `shell` 支持 **bool 或数组**（`true` = 全放行，数组 = 白名单）；`processKill` 是独立 bool 开关；`filesystem` 支持 **bool 或对象**（语义不同，别混用）：
+
+```json
+"network":   ["https://api.github.com", "*.example.com"]   // 仅这两个域名放行；重定向目标也受校验
+"shell":     ["file:///C:/Users/me", "https://docs.example.com"]  // 仅这些前缀目标可打开
+"filesystem": true                                    // 只能弹文件/保存对话框
+"filesystem": { "read": ["~/Documents/**"], "write": ["~/Downloads/**"] }  // 对话框 + 按 scope 读写
+```
+
+> 老插件里普遍存在的 `"filesystem": true` 一律按「仅对话框」解释，**升级后不会凭空
+> 获得任何读写能力**。路径 scope 的匹配规则见「文件系统访问（`host.fs.*`）」。
+>
+> ⚠️ **`network` / `shell` / `processKill` 是「清单静态声明」，不是「运行时按对话框授权」**：宿主没有「用户选了某路径/点了某链接就临时放行」的机制。插件要访问的路径/域名必须**预先写进 `plugin.json` 的白名单**后重新安装——这是有意的 fail-closed，保证最小权限可审计。
 
 ### 安全边界
 
@@ -372,12 +580,13 @@ if (!path) return            // 用户取消
 | 层级 | 防护措施 |
 |---|---|
 | **进程隔离** | native 插件运行在独立子进程，崩溃不影响主程序 |
-| **JS 沙箱** | goja 引擎纯 Go 实现，无文件系统/网络能力，仅暴露受限 `api.*` |
+| **JS 沙箱** | goja 引擎纯 Go 实现，不直接提供文件系统/网络 API；需要时经 `api.host('http.get' / 'host.dialog.open' / ...)` 转发到宿主注册表，受 `permissions` 管控 |
 | **权限声明** | `plugin.json` 声明所需权限，Host Method 层运行时校验 |
+| **路径 scope** | 文件读写按 `filesystem.read/write` 白名单判定；判定前先把路径解析为绝对真实路径（展开 `~`、消除 `..`、解析符号链接**与 Windows 目录联接**），阻断借链接/相对路径逃出白名单 |
 | **Nonce 握手** | iframe postMessage 携带随机 nonce，防止跨源消息伪造 |
 | **存储隔离** | 每个插件只能读写 `plugin_data` 中自己 `plugin_id` 的数据 |
 | **ZIP 安全** | Zip Slip 路径穿越防护、100MB 解压上限、50MB 单文件上限、回滚机制 |
-| **前端沙箱** | iframe `sandbox="allow-scripts allow-same-origin allow-modals"` |
+| **前端沙箱** | iframe `sandbox="allow-scripts allow-modals allow-downloads"`——**刻意不含 `allow-same-origin`**，插件页因此处于不透明源：拿不到父窗口与 Wails 运行时对象，只能 `postMessage`（宿主能力一律经桥转发） |
 | **崩溃恢复** | 子进程崩溃后自动重启，最多 3 次 + 指数退避 |
 
 > 插件**不能**越权访问其他插件数据、不能绕过权限调用 Host API；需要某能力时，先确认 `plugin.json` 已声明对应 `permissions`。
@@ -399,6 +608,37 @@ window.parent.postMessage(
   '*'
 )
 ```
+
+#### 调用宿主能力：`qdHostCall` / `qdHttp`（推荐）
+
+iframe 内**没有 `fetch` 的出路**——插件页跑在 `sandbox="allow-scripts allow-modals allow-downloads"`
+的 iframe 里（无 `allow-same-origin`），是独立不透明源，任何跨域请求都会被拦死；同时它也
+拿不到 Wails 运行时，无法直接调宿主绑定。
+
+宿主为此注入了两个全局函数（**三种运行时里只有 `none` 能直接用**，因为它们就住在插件页里）：
+
+```javascript
+// 通用转发：method 即 Host Method 名，params 是参数对象，返回 Promise
+const r = await qdHostCall('host.mcp.call', { tool: 'todo_list', args: {} })
+
+// HTTP 便捷封装（需 permissions.network）
+const r = await qdHttp({ url: 'https://api.example.com/list', method: 'GET', headers: { Authorization: 'Bearer x' } })
+// 传对象 body 会自动 JSON.stringify 并补 Content-Type
+await qdHttp({ url: 'https://api.example.com/create', method: 'POST', body: { title: 'hi' } })
+
+// 复用宿主 MCP 工具，拿到待办/笔记/剪贴板/环境等能力
+const todos = await qdHostCall('host.mcp.call', { tool: 'todo_list', args: {} })
+
+// 插件私有 KV（按 plugin_id 隔离，比 localStorage 更稳）
+await qdHostCall('db.set', { key: 'lastQuery', value: 'abc' })
+```
+
+- `qdHttp` 返回 `{status, ok, headers, body, truncated}`，`ok` 表示 2xx；响应体上限 2 MiB，超限 `truncated=true`
+- 权限不足 / 插件未声明对应能力 / 宿主执行失败都会 **reject**，务必 `try/catch`
+- **新增宿主能力时前端桥不需要改**——直接用 `qdHostCall('新方法名', {...})` 即可
+
+> ⚠️ 插件身份（`pluginID`）由**宿主侧状态**决定，不是插件自报的。你用 `qdHostCall`
+> 只能以「当前这个插件」的身份调用宿主能力，无法冒充其它插件读写其数据。
 
 ### 从命令面板接收输入（acceptsInput）
 
@@ -588,40 +828,81 @@ window.addEventListener('message', (e) => {
 
 以下能力均已有现成外部插件（位于 `plugins/external/`，ID 为 `io.github.parieses.*`），开发新插件前先确认是否已覆盖。2026-08-24 起**内置插件已全部外置**，`plugins/builtin/` 仅保留 `common.css` / `common.js` 骨架（宿主向后兼容注入用）：
 
-**Goja 插件（有后端逻辑）**
+**Goja 插件（`backend.runtime: "goja"`，内嵌 JS 引擎，有后端逻辑）** — 共 9 个
 
 | 插件 ID | 功能 |
 |---|---|
-| calcsheet | 计算表格 |
-| formatter | 代码格式化 |
-| json-toolbox | JSON 处理（格式化/校验/转换） |
-| regex-extractor | 正则提取 |
-| text-encoder | 文本编码/哈希（Base64/URL/HTML/MD5/SHA1/SHA256） |
+| calcsheet | 计算稿纸（行号引用/变量/函数） |
+| compare | 文件/图片对比 + 文本 Diff |
+| cron-explainer | cron 表达式解析与可视化生成 |
+| formatter | 代码压缩/美化 + SQL 格式化 |
+| json-toolbox | JSON 编辑/转换 |
+| jwt-decoder | JWT 解码 |
+| regex-extractor | 正则提取与替换 |
+| text-encoder | Base64/URL/HTML 编解码 + 哈希/HMAC |
 | time-converter | 时间戳/时区转换 |
 
-**Pure Frontend 插件（runtime: none）**
+**Pure Frontend 插件（`runtime: none`，纯前端经宿主桥接调 Host API）** — 共 13 个
+
+| 插件 ID | 功能 | 演示的宿主能力 |
+|---|---|---|
+| batch-rename | 批量重命名 | `qdPickFolder` → `host.fs.list` → `host.fs.move` |
+| code-card | 代码分享卡片 | 纯前端 + 导出 PNG |
+| crypto-toolbox | 密码/加密工具箱 | 纯前端（AES/RSA/PBKDF2 自实现） |
+| curl-converter | curl ↔ 代码转换 | 纯前端 |
+| emoji-search | Emoji 搜索 | 纯前端 |
+| file-search | 本地文件搜索 + 去重 | `host.fs.list` 递归 + `host.fs.read` + SHA-256 + `host.fs.remove` |
+| image-uploader | 图床上传 | `qdPickFile` → `host.fs.read` → `http.post` |
+| markdown-preview | Markdown 预览 | 纯前端 |
+| md-table-converter | Markdown 表格互转 | 纯前端 |
+| mindmap | 思维导图 | 纯前端 |
+| qrcode | 二维码生成/识别 | 纯前端 |
+| rmb-upper | 金额大写 | 纯前端 |
+| unit-converter | 单位换算 | 纯前端 |
+
+**Native 插件（`runtime: native`，自带 Go 源码 + 编译产物）** — 共 25 个
 
 | 插件 ID | 功能 |
 |---|---|
-| emoji-search | Emoji 搜索 |
-| jwt-decoder | JWT 解码 |
-| markdown-preview | Markdown 预览 |
-| qrcode | 二维码生成/识别 |
+| api-loadtest | HTTP 接口压测 |
+| color-converter | 颜色格式互转 + 屏幕取色 |
+| database | 数据库连接与查询 |
+| dir-buster | 路径字典探测 |
+| disk-analyzer | 磁盘空间分析 |
+| dup-finder | 重复文件查找 |
+| exif-viewer | EXIF 信息查看 |
+| git-workbench | Git 工作台 |
+| hash-calc | 文件哈希计算 |
+| hosts-manager | hosts 管理（vendor Go 源码） |
+| http-client | HTTP 调试客户端 |
+| image-studio | 图片压缩对比 |
+| junk-cleaner | 系统垃圾清理 |
+| login-tester | 登录接口自检 |
+| mail-check | 邮箱足迹检查 |
+| netdiag | 网络诊断五合一 |
+| ocr-tool | PaddleOCR 离线识别 |
+| package-check | 包仓库查询 |
+| pdf-toolkit | PDF 工具箱（自带 pdfcpu.exe） |
+| port-scanner | 端口扫描（vendor Go 源码） |
+| site-audit | 站点审计六合一 |
+| speed-test | 网络测速 |
+| subdomain-enum | 子域名被动收集 |
+| wifi-manager | WiFi 管理（vendor Go 源码） |
+| ws-tester | WebSocket 测试 |
 
-**Native 插件（自带 Go 源码 + system-tools.exe）**
-
-| 插件 ID | 功能 |
-|---|---|
-| hosts-manager | hosts 文件管理（system-tools.exe，源码已 vendor 进插件目录） |
-| port-scanner | 端口扫描（同上） |
-| wifi-manager | WiFi 管理（同上） |
-
-> 原内置插件已全部迁至 `plugins/external/`（ID 改为 `io.github.parieses.*`），代码可直接复用——goja/none 插件演示「零宿主依赖、纯 JS 自包含」的外部化样板；native 三件套演示「Go 源码 vendor + 自编译 entry exe」模式（`build.py` 直接在插件目录 `go build`）。完整 goja 模板见上文「完整示例」。
+> 以上 47 个插件均已迁至 `plugins/external/`（ID 改为 `io.github.parieses.*`），代码可直接复用。goja/none 插件演示「零宿主依赖、纯 JS 自包含」的外部化样板；native 插件演示「Go 源码 vendor + 自编译 entry exe」模式（`build.py` 直接在插件目录 `go build`）。完整 goja 模板见上文「完整示例」。
 
 > 样式自包含（2026-08-24 约定）：外部插件的 `frontend/` 下必须自带 `qd-theme.css`（即 `common.css` 的副本，改名以绕开宿主对 `common.css` 后缀的拦截改写），页面用 `<link rel="stylesheet" href="qd-theme.css">` 引用——zip 解压到任何环境都有完整样式，不依赖宿主注入。宿主仍会向页面注入 `PluginsDir/builtin/common.css/js` 以兼容历史已安装的旧版插件，但新插件不得依赖该注入。
 
 ## 完整示例
 
-参见 `plugins/templates/goja/` 目录下的 Goja 模板项目。
-以及 `plugins/external/calcsheet/` 目录下的计算稿纸插件（`none` runtime）。
-**外部 native 插件完整范例**：`plugins/external/pdf-toolkit/` —— 含合并/拆分/压缩/水印/提取图片/PDF 信息，演示了「多选文件选择 + 目录输出 + 自带 pdfcpu.exe + pickFolder 后端命令」全套实战模式；`plugins/external/hosts-manager/` —— 演示 native 插件「vendor Go 源码 + build.py 自动编译 entry exe」模式。
+- **Goja 模板**：`plugins/templates/goja/` 目录下的 Goja 模板项目（含 `main.js` 骨架）。
+- **none 插件范式**（纯前端经宿主桥接调 Host API）：
+  - `plugins/external/batch-rename/` —— `qdPickFolder` → `host.fs.list` → 规则链 → `host.fs.move` 批量改名（冲突跳过）。
+  - `plugins/external/file-search/` —— `host.fs.list` 递归遍历 + `host.fs.read` 取内容 + SHA-256 去重 + `host.fs.remove` 安全删除。
+  - `plugins/external/image-uploader/` —— `qdPickFile` → `host.fs.read`（base64）→ `http.post` 图床上传，演示绕过 iframe CORS 的上传。
+  - `plugins/external/calcsheet/` —— 纯前端计算稿纸（`none` runtime）最小样板。
+- **native 插件完整范例**：
+  - `plugins/external/pdf-toolkit/` —— 含合并/拆分/压缩/水印/提取图片/PDF 信息，演示了「多选文件选择 + 目录输出 + 自带 pdfcpu.exe + pickFolder 后端命令」全套实战模式。
+  - `plugins/external/hosts-manager/` —— 演示 native 插件「vendor Go 源码 + build.py 自动编译 entry exe」模式。
+  - `plugins/external/ocr-tool/` —— 演示 native 插件调用大模型/外部推理后端（`PaddleOCR` ONNX）的离线识别模式。

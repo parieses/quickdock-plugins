@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>本地文件搜索</title>
+<link rel="stylesheet" href="qd-theme.css">
+<link rel="stylesheet" href="components.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+.app{display:flex;flex-direction:column;height:100vh;font-size:13px}
+.toolbar{padding:10px 12px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pathbox{flex:1;min-width:120px;padding:7px 10px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pathbox.has{color:var(--text-primary)}
+.tabs{display:flex;gap:2px}
+.tab{padding:6px 12px;border:1px solid var(--border);border-bottom:none;background:var(--bg-primary);color:var(--text-secondary);font-size:12.5px;cursor:pointer;border-radius:var(--radius) var(--radius) 0 0}
+.tab.active{background:var(--bg-secondary);color:var(--accent);font-weight:600}
+.body{flex:1;min-height:0;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:12px}
+.card{background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius);padding:12px}
+.card-t{font-size:12px;font-weight:600;color:var(--accent);margin-bottom:10px}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.inp,.sel{height:30px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-primary);color:var(--text-primary);font-size:12.5px;outline:none}
+.inp:focus,.sel:focus{border-color:var(--accent)}
+.chk{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary);cursor:pointer}
+.chk input{width:14px;height:14px;accent-color:var(--accent);cursor:pointer}
+.list{flex:1;min-height:0;overflow:auto;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-primary)}
+.item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--border);font-size:12px}
+.item:hover{background:var(--bg-hover)}
+.item .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-primary)}
+.item .sz{color:var(--text-muted);font-size:11.5px;white-space:nowrap}
+.item .meta{color:var(--text-muted);font-size:11px;white-space:nowrap}
+.item .act{flex-shrink:0;font-size:11px;color:var(--accent);cursor:pointer;padding:2px 6px;border:1px solid var(--border);border-radius:var(--radius)}
+.dgrp{margin-bottom:10px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.dgrp-h{padding:6px 10px;background:var(--bg-secondary);font-size:11.5px;color:var(--text-muted);display:flex;justify-content:space-between;align-items:center}
+.empty{padding:24px;text-align:center;color:var(--text-muted);font-size:12.5px}
+.status{flex-shrink:0;padding:6px 12px;font-size:11.5px;color:var(--text-muted);border-top:1px solid var(--border);background:var(--bg-secondary);min-height:28px;white-space:pre-wrap}
+.status.err{color:var(--danger)}
+.status.ok{color:var(--success)}
+.warn{padding:10px 12px;border-radius:var(--radius);background:var(--danger-soft);color:var(--danger);font-size:12px;border:1px solid var(--danger);display:none}
+.warn.show{display:block}
+.hint{font-size:11px;color:var(--text-muted);line-height:1.5}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="toolbar">
+    <div id="pathBox" class="pathbox">未选择文件夹</div>
+    <button id="btnPick" class="btn btn-ghost btn-sm">选择文件夹</button>
+    <div class="tabs">
+      <button class="tab active" data-mode="search">搜索</button>
+      <button class="tab" data-mode="dup">重复文件</button>
+    </div>
+  </div>
+
+  <div class="body">
+    <div id="scopeWarn" class="warn"></div>
+
+    <div class="card" id="searchCard">
+      <div class="card-t">搜索条件</div>
+      <div class="row" style="margin-bottom:8px">
+        <input id="q" class="inp" type="text" placeholder="文件名包含…（如 report）" style="flex:1;min-width:160px">
+        <label class="chk"><input id="qGlob" type="checkbox"> 通配符(* ?)</label>
+        <label class="chk"><input id="qCase" type="checkbox"> 区分大小写</label>
+      </div>
+      <div class="row">
+        <span class="hint">扩展名</span>
+        <input id="qExt" class="inp" type="text" placeholder="如 jpg,png（留空=全部）" style="width:180px">
+        <span class="hint">最小</span>
+        <input id="qMin" class="inp" type="number" value="0" min="0" style="width:80px">
+        <select id="qMinUnit" class="sel"><option value="1">B</option><option value="1024">KB</option><option value="1048576" selected>MB</option><option value="1073741824">GB</option></select>
+        <button id="btnSearch" class="btn btn-primary btn-sm">搜索</button>
+      </div>
+    </div>
+
+    <div class="card" id="dupCard" style="display:none">
+      <div class="card-t">重复文件查找（按内容 SHA-256 哈希）</div>
+      <div class="row">
+        <button id="btnScan" class="btn btn-primary btn-sm">扫描重复文件</button>
+        <span class="hint">先按大小分组，再对同大小文件做内容哈希；大于 8&nbsp;MiB 的文件受宿主读取上限限制不纳入哈希（仅提示）。</span>
+      </div>
+    </div>
+
+    <div id="resultList" class="list"><div class="empty">请选择文件夹后开始</div></div>
+  </div>
+
+  <div id="status" class="status"></div>
+</div>
+
+<script>
+(function(){
+'use strict';
+var qdHostCall = window.qdHostCall;
+var qdPickFolder = window.qdPickFolder;
+
+var folder='';
+var mode='search';
+var MAX_FILES=8000, MAX_DEPTH=14;
+
+function $(id){return document.getElementById(id)}
+function status(msg,cls){var el=$('status');el.textContent=msg||'';el.className='status'+(cls?' '+cls:'')}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function fmtSize(n){if(n==null)return'';if(n<1024)return n+' B';if(n<1048576)return(n/1024).toFixed(1)+' KB';if(n<1073741824)return(n/1048576).toFixed(1)+' MB';return(n/1073741824).toFixed(2)+' GB'}
+
+function copyText(t){
+  return new Promise(function(res){
+    var id='cp_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
+    function onMsg(e){var d=e.data;if(d&&d.type==='plugin:copy-result'&&d.id===id){window.removeEventListener('message',onMsg);res(!!d.ok)}}
+    window.addEventListener('message',onMsg);
+    parent.postMessage({type:'plugin:copy',id:id,text:t},'*');
+    setTimeout(function(){window.removeEventListener('message',onMsg);res(false)},400);
+  });
+}
+
+// ---- 递归遍历目录（受 scope 与预算约束）----
+async function walk(root){
+  var files=[];var dirs=[{path:root,depth:0}];var scannedDirs=0;
+  while(dirs.length){
+    var d=dirs.shift();scannedDirs++;
+    if(files.length>MAX_FILES){status('已达到文件数上限 '+MAX_FILES+'，停止遍历','err');break}
+    if(d.depth>=MAX_DEPTH){status('已达最大深度 '+MAX_DEPTH+'，部分子目录未扫描','err');continue}
+    var r;
+    try{ r=await qdHostCall('host.fs.list',{path:d.path}) }
+    catch(e){ status('读取 '+d.path+' 失败：'+(e&&e.message||e),'err'); continue }
+    if(!r||!r.entries)continue;
+    for(var i=0;i<r.entries.length;i++){
+      var e=r.entries[i];
+      if(e.isDir){ dirs.push({path:e.path,depth:d.depth+1}) }
+      else { files.push(e); if(files.length%200===0)status('已扫描 '+files.length+' 个文件…') }
+    }
+  }
+  return files;
+}
+
+// ---- 搜索 ----
+function matchName(name){
+  var q=$('q').value;if(!q)return true;
+  if($('qGlob').checked){
+    try{return !!globMatch(q,name)}catch(e){return name.toLowerCase().indexOf(q.toLowerCase())>=0}
+  }
+  return $('qCase').checked ? name.indexOf(q)>=0 : name.toLowerCase().indexOf(q.toLowerCase())>=0;
+}
+function globMatch(pat,s){
+  // 简易 glob：* 多字符 ? 单字符
+  var re='^'+pat.replace(/[.+^${}()|[\]\\]/g,'\\$&').replace(/\*/g,'[^/]*').replace(/\?/g,'[^/]')+'$';
+  return new RegExp(re,$('qCase').checked?'':'i').test(s);
+}
+function doSearch(){
+  if(!folder){status('请先选择文件夹','err');return}
+  status('遍历目录中…');
+  walk(folder).then(function(files){
+    var exts=$('qExt').value.split(',').map(function(x){return x.trim().toLowerCase().replace(/^\.+/,'');}).filter(Boolean);
+    var min=parseInt($('qMin').value,10)||0;var unit=parseInt($('qMinUnit').value,10)||1;var minBytes=min*unit;
+    var res=files.filter(function(f){
+      if(!matchName(f.name))return false;
+      if(exts.length){var e=f.name.split('.').pop().toLowerCase();if(exts.indexOf(e)<0)return false}
+      if((f.size||0)<minBytes)return false;
+      return true;
+    });
+    renderList(res.map(function(f){return {name:f.name,path:f.path,size:f.size}}),'搜索到 '+res.length+' 个匹配文件');
+  }).catch(function(e){status('搜索失败：'+(e&&e.message||e),'err')});
+}
+
+// ---- 重复文件 ----
+async function scanDup(){
+  if(!folder){status('请先选择文件夹','err');return}
+  status('遍历目录并收集文件…');
+  var files=await walk(folder);
+  status('按大小分组…');
+  var bySize={};
+  files.forEach(function(f){ if(f.size==null)return; (bySize[f.size]=bySize[f.size]||[]).push(f); });
+  var cand=Object.keys(bySize).filter(function(k){return bySize[k].length>1}).map(function(k){return bySize[k]}).reduce(function(a,b){return a.concat(b)},[]);
+  status('对 '+cand.length+' 个同大小文件做内容哈希…');
+  var byHash={};var skippedBig=0;
+  for(var i=0;i<cand.length;i++){
+    var f=cand[i];
+    if((f.size||0)>8*1024*1024){skippedBig++;continue}
+    try{
+      var rd=await qdHostCall('host.fs.read',{path:f.path});
+      var bytes=b64ToBytes(rd.content);
+      var h=await crypto.subtle.digest('SHA-256',bytes);
+      var hex=bufHex(h);
+      (byHash[hex]=byHash[hex]||[]).push(f);
+    }catch(e){ status('哈希失败 '+f.name+'：'+(e&&e.message||e),'err') }
+    if(i%50===0)status('哈希中… '+i+'/'+cand.length);
+  }
+  var groups=Object.keys(byHash).map(function(k){return byHash[k]}).filter(function(g){return g.length>1});
+  groups.sort(function(a,b){return b.length-a.length});
+  renderDupGroups(groups,skippedBig);
+}
+function b64ToBytes(b64){var s=atob(String(b64).replace(/\s/g,''));var a=new Uint8Array(s.length);for(var i=0;i<s.length;i++)a[i]=s.charCodeAt(i);return a}
+function bufHex(buf){var b=new Uint8Array(buf);var s='';for(var i=0;i<b.length;i++)s+=('0'+(b[i]&0xff).toString(16)).slice(-2);return s}
+
+// ---- 渲染 ----
+function renderList(items,headline){
+  $('resultList').innerHTML='';
+  if(!items.length){$('resultList').innerHTML='<div class="empty">'+esc(headline||'无结果')+'</div>';status(headline||'无结果');return}
+  var box=$('resultList');
+  status(headline+'（双击复制路径）');
+  items.slice(0,2000).forEach(function(it){
+    var div=document.createElement('div');div.className='item';
+    div.innerHTML='<span class="nm" title="'+esc(it.path)+'">'+esc(it.name)+'</span><span class="sz">'+fmtSize(it.size)+'</span>';
+    div.addEventListener('dblclick',function(){copyText(it.path).then(function(ok){if(ok)status('已复制路径')})});
+    box.appendChild(div);
+  });
+  if(items.length>2000){var m=document.createElement('div');m.className='empty';m.textContent='仅显示前 2000 条，共 '+items.length+' 条';box.appendChild(m);}
+}
+function renderDupGroups(groups,skippedBig){
+  var box=$('resultList');box.innerHTML='';
+  if(!groups.length){box.innerHTML='<div class="empty">未发现重复文件'+(skippedBig?'（'+skippedBig+' 个大文件因读取上限未纳入）':'')+'</div>';status('未发现重复文件');return}
+  var total=groups.reduce(function(a,g){return a+g.length},0);
+  status('发现 '+groups.length+' 组重复（共 '+total+' 个文件）'+(skippedBig?'，'+skippedBig+' 个大文件未纳入':''));
+  groups.forEach(function(g,gi){
+    var card=document.createElement('div');card.className='dgrp';
+    var bytes=g[0].size||0;
+    var h=document.createElement('div');h.className='dgrp-h';
+    h.innerHTML='<span>第 '+(gi+1)+' 组 · '+g.length+' 个副本 · 每组 '+fmtSize(bytes)+'</span>';
+    var btn=document.createElement('span');btn.className='act';btn.textContent='删除其余（保留第1个）';
+    btn.addEventListener('click',function(){deleteRedundant(g,btn)});
+    h.appendChild(btn);card.appendChild(h);
+    g.forEach(function(f){
+      var it=document.createElement('div');it.className='item';
+      it.innerHTML='<span class="nm" title="'+esc(f.path)+'">'+esc(f.name)+'</span><span class="meta">'+esc(shortPath(f.path))+'</span>';
+      it.addEventListener('dblclick',function(){copyText(f.path).then(function(ok){if(ok)status('已复制路径')})});
+      card.appendChild(it);
+    });
+    box.appendChild(card);
+  });
+}
+function shortPath(p){var ps=p.split(/[\\\/]/);return ps.length>3?'…/'+ps.slice(-3).join('/'):p}
+
+async function deleteRedundant(group,btn){
+  if(!window.confirm('将删除该组的 '+(group.length-1)+' 个冗余副本（移入回收站，可恢复）。确认？'))return;
+  btn.textContent='删除中…';btn.style.pacity=.6;
+  var fail=0;
+  for(var i=1;i<group.length;i++){
+    try{ await qdHostCall('host.fs.remove',{path:group[i].path}) }
+    catch(e){ fail++; status('删除失败 '+group[i].name+'：'+(e&&e.message||e),'err') }
+  }
+  btn.textContent='已删除';status('完成：成功 '+(group.length-1-fail)+' · 失败 '+fail+(fail?'':'（已移入回收站）'),'ok');
+  if(!fail)btn.closest('.dgrp').style.display='none';
+}
+
+// ---- 事件 ----
+document.querySelectorAll('.tab').forEach(function(b){b.addEventListener('click',function(){
+  document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});b.classList.add('active');
+  mode=b.dataset.mode;
+  $('searchCard').style.display=mode==='search'?'':'none';
+  $('dupCard').style.display=mode==='dup'?'':'none';
+  $('resultList').innerHTML='<div class="empty">请选择文件夹后开始</div>';
+})});
+$('btnPick').addEventListener('click',function(){
+  qdPickFolder().then(function(p){
+    if(!p){status('已取消');return}
+    folder=p;$('pathBox').textContent=p;$('pathBox').className='pathbox has';$('scopeWarn').className='warn';
+    status('已选择文件夹，可开始搜索或扫描');
+  }).catch(function(e){status('选择失败：'+(e&&e.message||e),'err')});
+});
+$('btnSearch').addEventListener('click',doSearch);
+$('q').addEventListener('keydown',function(e){if(e.key==='Enter')doSearch()});
+$('btnScan').addEventListener('click',scanDup);
+
+status('请选择文件夹开始');
+})();
+</script>
+</body>
+</html>

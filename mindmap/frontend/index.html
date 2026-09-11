@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>思维导图</title>
+<link rel="stylesheet" href="qd-theme.css">
+<link rel="stylesheet" href="components.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+.p-app{display:flex;flex-direction:column;height:100vh}
+.p-toolbar{display:flex;align-items:center;gap:6px;padding:7px 10px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap}
+.mm-lbl{font-size:11.5px;color:var(--text-muted);white-space:nowrap}
+.mm-zoom{min-width:46px;text-align:center;font-size:12px;color:var(--text-secondary);font-family:var(--font-mono)}
+.mm-main{flex:1;display:flex;min-height:0}
+.mm-left{width:308px;flex-shrink:0;display:flex;flex-direction:column;border-right:1px solid var(--border);background:var(--bg-secondary)}
+.mm-left-t{padding:6px 10px;font-size:11px;color:var(--text-muted);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.mm-ta{flex:1;width:100%;resize:none;border:none;outline:none;padding:10px 12px;background:var(--bg-primary);color:var(--text-primary);font:12.5px/1.75 var(--font-mono)}
+.mm-right{flex:1;min-width:0;position:relative;display:flex;flex-direction:column;background:var(--bg-primary)}
+.mm-canvas{flex:1;overflow:auto;padding:0}
+#mmSvg{display:block}
+.mm-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:12.5px;pointer-events:none}
+.mm-node{cursor:pointer}
+.mm-node:hover rect{stroke-width:2}
+.mm-status{flex-shrink:0;padding:5px 12px;font-size:11.5px;color:var(--text-muted);border-top:1px solid var(--border);background:var(--bg-secondary);min-height:26px}
+.mm-status.err{color:var(--danger)}
+</style>
+<script>
+/* QuickDock sandbox 剪贴板桥接：iframe 内 navigator.clipboard 被 Permissions-Policy 禁用 */
+window.__cpSeq=0;
+window.copyViaHost=function(t,cb){var id='cp_'+(++window.__cpSeq),done=false;function onMsg(e){var d=e&&e.data;if(d&&d.type==='plugin:copy-result'&&d.id===id){done=true;window.removeEventListener('message',onMsg);cb&&cb(!!d.ok)}}window.addEventListener('message',onMsg);parent.postMessage({type:'plugin:copy',id:id,text:t},'*');setTimeout(function(){if(!done){window.removeEventListener('message',onMsg);cb&&cb(false)}},300)};
+</script>
+</head>
+<body>
+<div class="p-app">
+  <div class="p-toolbar">
+    <span class="mm-lbl" id="lblZoom">缩放</span>
+    <button class="btn btn-sm" id="zOut" style="width:28px;padding:0">−</button>
+    <span class="mm-zoom" id="zVal">100%</span>
+    <button class="btn btn-sm" id="zIn" style="width:28px;padding:0">+</button>
+    <button class="btn btn-sm" id="zFit">适应</button>
+    <button class="btn btn-sm" id="zReset">100%</button>
+    <div style="flex:1"></div>
+    <span class="mm-lbl" id="lblHint">点节点可折叠</span>
+    <button class="btn btn-sm" id="exPng">导出 PNG</button>
+    <button class="btn btn-sm" id="exSvg">导出 SVG</button>
+  </div>
+
+  <div class="mm-main">
+    <div class="mm-left">
+      <div class="mm-left-t">
+        <span id="lblIn">Markdown 大纲（缩进或 # 分层）</span>
+        <span id="btnDemo" style="cursor:pointer;color:var(--accent)">示例</span>
+      </div>
+      <textarea class="mm-ta" id="src" spellcheck="false" placeholder="中心主题&#10;  分支一&#10;    子项&#10;  分支二"></textarea>
+    </div>
+    <div class="mm-right">
+      <div class="mm-canvas" id="canvas">
+        <svg xmlns="http://www.w3.org/2000/svg" id="mmSvg" font-family="system-ui,-apple-system,'Segoe UI','Microsoft YaHei',sans-serif"></svg>
+      </div>
+      <div class="mm-empty" id="empty">在左侧输入大纲，右侧实时生成导图</div>
+    </div>
+  </div>
+  <div class="mm-status" id="status"></div>
+</div>
+<script>
+(function(){
+'use strict';
+
+// ==================== i18n ====================
+var L10N = { 'en-US': {
+  '缩放':'Zoom','适应':'Fit','点节点可折叠':'Click a node to collapse',
+  '导出 PNG':'Export PNG','导出 SVG':'Export SVG','示例':'Demo',
+  'Markdown 大纲（缩进或 # 分层）':'Markdown outline','在左侧输入大纲，右侧实时生成导图':'Type an outline on the left',
+  '已导出 PNG':'PNG exported','已导出 SVG':'SVG exported','导出失败：':'Export failed: ',
+  '节点':'nodes','纵深':'depth','已折叠':'collapsed','已展开':'expanded'
+}};
+function isEn(){ var l = document.documentElement.getAttribute('lang') || ''; return l.indexOf('en') === 0 }
+function L(s){ return isEn() ? ((L10N['en-US'] && L10N['en-US'][s]) || s) : s }
+
+function $(id){ return document.getElementById(id) }
+function status(msg, err){ var el = $('status'); el.textContent = msg; el.className = 'mm-status' + (err ? ' err' : ''); }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') }
+function cssVar(n, fb){
+  var v = getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  return v || fb;
+}
+
+var DEMO = 'QuickDock 插件中心\n' +
+'  已有能力\n' +
+'    网络诊断\n' +
+'    文件处理\n' +
+'    开发辅助\n' +
+'  待补空白\n' +
+'    多媒体\n' +
+'    安全加密\n' +
+'    MCP / AI 集成\n' +
+'  技术底座\n' +
+'    前端 Web Crypto\n' +
+'    原生 Go 子进程';
+
+// ==================== 布局常量 ====================
+var NS = 'http://www.w3.org/2000/svg';
+var NODE_H = 28, VGAP = 9, HGAP = 44, PAD = 28, MAXW = 232, PADX = 11;
+var PALETTE = ['#3b82f6','#8b5cf6','#ec4899','#f59e0b','#10b981','#06b6d4','#f97316','#84cc16'];
+
+var svgEl = $('mmSvg'), canvas = $('canvas');
+var root = null, nodeMap = {}, seq = 0;
+var baseW = 0, baseH = 0, zoom = 1;
+
+// ==================== 文本度量 ====================
+function textW(s, fs){
+  var w = 0;
+  for (var i = 0; i < s.length; i++) w += (s.charCodeAt(i) > 255 ? fs : fs * 0.57);
+  return w;
+}
+function trunc(s, fs, maxW){
+  if (textW(s, fs) <= maxW) return s;
+  var w = 0, out = '';
+  for (var i = 0; i < s.length; i++){
+    var cw = s.charCodeAt(i) > 255 ? fs : fs * 0.57;
+    if (w + cw > maxW - 9) return out + '…';
+    w += cw; out += s[i];
+  }
+  return out;
+}
+
+// ==================== 解析大纲 ====================
+function parseOutline(text){
+  var lines = String(text).replace(/\r\n?/g, '\n').split('\n');
+  var items = [];
+  lines.forEach(function(line){
+    if (!line.trim()) return;
+    var m = line.match(/^(\s*)(#{1,6})\s+(.*)$/);
+    var depth, label;
+    if (m){
+      depth = m[2].length - 1;
+      label = m[3].trim();
+    } else {
+      var ind = (line.match(/^[ \t]*/) || [''])[0].replace(/\t/g, '    ').length;
+      depth = Math.floor(ind / 2);
+      label = line.trim().replace(/^([-*+·]|\d+[.)])\s+/, '').trim();
+    }
+    if (label) items.push({ depth: depth, text: label });
+  });
+  if (!items.length) return null;
+
+  // 压缩断层：深度步进不超过 1
+  var prev = -1;
+  items.forEach(function(it){
+    if (it.depth > prev + 1) it.depth = prev + 1;
+    if (it.depth < 0) it.depth = 0;
+    prev = it.depth;
+  });
+
+  var rootNode = { text: '', children: [], depth: -1, id: seq++ };
+  var stack = [rootNode];
+  items.forEach(function(it){
+    while (stack.length > it.depth + 1) stack.pop();
+    var node = { text: it.text, children: [], id: seq++, _collapsed: false };
+    stack[stack.length - 1].children.push(node);
+    stack.push(node);
+  });
+  return rootNode;
+}
+
+// ==================== 布局 ====================
+function layout(node, depth, levels, parentColor, accent){
+  node._depth = depth;
+  if (depth === 0) node._color = accent;
+  else if (depth === 1) node._color = PALETTE[(node._ci || 0) % PALETTE.length];
+  else node._color = parentColor || accent;
+
+  node.children.forEach(function(c, i){ c._ci = i });
+
+  var kids = node._collapsed ? [] : node.children;
+  if (!kids.length){
+    node._h = NODE_H;
+  } else {
+    var h = 0;
+    kids.forEach(function(c){ h += layout(c, depth + 1, levels, node._color, accent) + VGAP });
+    node._h = Math.max(NODE_H, h - VGAP);
+  }
+  var fs = depth === 0 ? 13.5 : 12.5;
+  var label = trunc(node.text, fs, MAXW);
+  node._label = label;
+  node._fs = fs;
+  node._w = Math.max(Math.min(MAXW, textW(label, fs) + PADX * 2), depth === 0 ? 80 : 46);
+  levels[depth] = Math.max(levels[depth] || 0, node._w);
+  return node._h;
+}
+function assignY(node, top){
+  node._y = top + node._h / 2;
+  var cy = top;
+  (node._collapsed ? [] : node.children).forEach(function(c){
+    assignY(c, cy);
+    cy += c._h + VGAP;
+  });
+}
+function countDesc(node){
+  var n = 0;
+  node.children.forEach(function(c){ n += 1 + countDesc(c) });
+  return n;
+}
+
+// ==================== 渲染 ====================
+function collect(node, fn){
+  fn(node);
+  (node._collapsed ? [] : node.children).forEach(function(c){ collect(c, fn) });
+}
+function render(){
+  nodeMap = {};
+  if (!root || !root.children.length){
+    svgEl.innerHTML = '';
+    svgEl.setAttribute('width', 0);
+    svgEl.setAttribute('height', 0);
+    $('empty').style.display = 'flex';
+    return;
+  }
+  $('empty').style.display = 'none';
+
+  var accent = cssVar('--accent', '#3b82f6');
+  var bg = cssVar('--bg-primary', '#ffffff');
+  var txt = cssVar('--text-primary', '#111111');
+  var border = cssVar('--border', '#dddddd');
+
+  var levels = [];
+  layout(root, 0, levels, accent, accent);
+  assignY(root, 0);
+
+  var xs = [], acc = 0;
+  levels.forEach(function(w, i){ xs[i] = acc; acc += (w || 0) + HGAP });
+  baseW = acc - HGAP + PAD * 2;
+  baseH = root._h + PAD * 2;
+
+  var links = [], nodes = [];
+  collect(root, function(n){
+    nodeMap[n.id] = n;
+    var x = PAD + xs[n._depth], y = PAD + n._y, w = n._w, h = NODE_H;
+    var col = n._color;
+
+    // 节点
+    nodes.push('<g class="mm-node" data-id="' + n.id + '">');
+    if (n._depth === 0){
+      nodes.push('<rect x="' + x + '" y="' + (y - h/2) + '" width="' + w + '" height="' + h + '" rx="' + (h/2) + '" fill="' + col + '"/>');
+      nodes.push('<text x="' + (x + w/2) + '" y="' + (y + 4.8) + '" text-anchor="middle" font-size="13.5" font-weight="500" fill="#fff">' + esc(n._label) + '</text>');
+    } else if (n._depth === 1){
+      nodes.push('<rect x="' + x + '" y="' + (y - h/2) + '" width="' + w + '" height="' + h + '" rx="6" fill="' + col + '" opacity="0.13"/>');
+      nodes.push('<rect x="' + x + '" y="' + (y - h/2) + '" width="' + w + '" height="' + h + '" rx="6" fill="none" stroke="' + col + '" stroke-width="1.4"/>');
+      nodes.push('<text x="' + (x + w/2) + '" y="' + (y + 4.4) + '" text-anchor="middle" font-size="12.5" fill="' + col + '">' + esc(n._label) + '</text>');
+    } else {
+      nodes.push('<rect x="' + x + '" y="' + (y - h/2) + '" width="' + w + '" height="' + h + '" rx="5" fill="' + bg + '" stroke="' + border + '" stroke-width="1"/>');
+      nodes.push('<text x="' + (x + w/2) + '" y="' + (y + 4.4) + '" text-anchor="middle" font-size="12.5" fill="' + txt + '">' + esc(n._label) + '</text>');
+    }
+    if (n.children.length && n._collapsed){
+      var cx = x + w + 11, cy = y;
+      nodes.push('<circle cx="' + cx + '" cy="' + cy + '" r="9.5" fill="' + col + '" opacity="0.18"/>');
+      nodes.push('<text x="' + cx + '" y="' + (cy + 3.8) + '" text-anchor="middle" font-size="10" fill="' + col + '">+' + countDesc(n) + '</text>');
+    }
+    nodes.push('</g>');
+
+    // 连线
+    (n._collapsed ? [] : n.children).forEach(function(c){
+      var x1 = PAD + xs[n._depth] + n._w, y1 = PAD + n._y;
+      var x2 = PAD + xs[c._depth], y2 = PAD + c._y;
+      var dx = Math.max(16, (x2 - x1) / 2);
+      links.push('<path d="M' + x1 + ' ' + y1 + 'C' + (x1 + dx) + ' ' + y1 + ',' + (x2 - dx) + ' ' + y2 + ',' + x2 + ' ' + y2 +
+                 '" fill="none" stroke="' + c._color + '" stroke-width="1.8" opacity="0.72"/>');
+    });
+  });
+
+  svgEl.setAttribute('viewBox', '0 0 ' + Math.round(baseW) + ' ' + Math.round(baseH));
+  svgEl.innerHTML = links.join('') + nodes.join('');
+  applyZoom();
+
+  var cnt = 0, maxD = 0;
+  collect(root, function(n){ if (n._depth > 0) cnt++; if (n._depth > maxD) maxD = n._depth });
+  status(cnt + ' ' + L('节点') + ' · ' + L('纵深') + ' ' + maxD);
+}
+
+// ==================== 缩放 ====================
+function applyZoom(){
+  svgEl.setAttribute('width', Math.round(baseW * zoom));
+  svgEl.setAttribute('height', Math.round(baseH * zoom));
+  $('zVal').textContent = Math.round(zoom * 100) + '%';
+}
+function setZoom(v){
+  zoom = Math.max(0.2, Math.min(3, v));
+  applyZoom();
+}
+function fitZoom(){
+  var pad = 24;
+  var cw = canvas.clientWidth - pad, ch = canvas.clientHeight - pad;
+  if (!baseW || !baseH) return;
+  setZoom(Math.min(cw / baseW, ch / baseH, 1.6));
+}
+$('zIn').addEventListener('click', function(){ setZoom(zoom * 1.15) });
+$('zOut').addEventListener('click', function(){ setZoom(zoom / 1.15) });
+$('zReset').addEventListener('click', function(){ setZoom(1) });
+$('zFit').addEventListener('click', fitZoom);
+canvas.addEventListener('wheel', function(e){
+  if (!e.ctrlKey) return;
+  e.preventDefault();
+  setZoom(zoom * (e.deltaY < 0 ? 1.1 : 0.9));
+}, { passive: false });
+
+// ==================== 折叠交互 ====================
+svgEl.addEventListener('click', function(e){
+  var g = e.target.closest ? e.target.closest('.mm-node') : null;
+  if (!g) return;
+  var n = nodeMap[g.getAttribute('data-id')];
+  if (!n || !n.children.length) return;
+  n._collapsed = !n._collapsed;
+  var keep = zoom;
+  render();
+  zoom = keep;
+  applyZoom();
+});
+
+// ==================== 导出 ====================
+function download(href, name){
+  var a = document.createElement('a');
+  a.download = name; a.href = href;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+$('exSvg').addEventListener('click', function(){
+  if (!baseW) return;
+  try {
+    var clone = svgEl.cloneNode(true);
+    clone.setAttribute('xmlns', NS);
+    clone.setAttribute('width', Math.round(baseW));
+    clone.setAttribute('height', Math.round(baseH));
+    var s = new XMLSerializer().serializeToString(clone);
+    var url = URL.createObjectURL(new Blob([s], { type: 'image/svg+xml;charset=utf-8' }));
+    download(url, 'mindmap-' + Date.now() + '.svg');
+    setTimeout(function(){ URL.revokeObjectURL(url) }, 4000);
+    status(L('已导出 SVG'));
+  } catch (err){ status(L('导出失败：') + (err.message || err), true) }
+});
+$('exPng').addEventListener('click', function(){
+  if (!baseW) return;
+  try {
+    var clone = svgEl.cloneNode(true);
+    clone.setAttribute('xmlns', NS);
+    var s = new XMLSerializer().serializeToString(clone);
+    var svgUrl = URL.createObjectURL(new Blob([s], { type: 'image/svg+xml;charset=utf-8' }));
+    var img = new Image();
+    img.onload = function(){
+      try {
+        var k = 2;
+        var cv = document.createElement('canvas');
+        cv.width = Math.round(baseW * k);
+        cv.height = Math.round(baseH * k);
+        var ctx = cv.getContext('2d');
+        ctx.fillStyle = cssVar('--bg-primary', '#ffffff');
+        ctx.fillRect(0, 0, cv.width, cv.height);
+        ctx.setTransform(k, 0, 0, k, 0, 0);
+        ctx.drawImage(img, 0, 0, baseW, baseH);
+        URL.revokeObjectURL(svgUrl);
+        download(cv.toDataURL('image/png'), 'mindmap-' + Date.now() + '.png');
+        status(L('已导出 PNG'));
+      } catch (err){ status(L('导出失败：') + (err.message || err), true) }
+    };
+    img.onerror = function(){ URL.revokeObjectURL(svgUrl); status(L('导出失败：') + 'SVG render error', true) };
+    img.src = svgUrl;
+  } catch (err){ status(L('导出失败：') + (err.message || err), true) }
+});
+
+// ==================== 主流程 ====================
+var timer = null;
+function rebuild(){
+  var text = $('src').value;
+  root = parseOutline(text);
+  render();
+}
+$('src').addEventListener('input', function(){
+  clearTimeout(timer);
+  timer = setTimeout(rebuild, 220);
+});
+$('btnDemo').addEventListener('click', function(){
+  $('src').value = DEMO;
+  rebuild();
+});
+
+window.addEventListener('message', function(e){
+  var d = e.data;
+  if (!d) return;
+  if (d.type === 'plugin:init' && d.data){
+    if (d.data.locale) document.documentElement.setAttribute('lang', d.data.locale);
+    if (d.data.text) $('src').value = d.data.text;
+    rebuild();
+    return;
+  }
+  if (d.type === 'plugin:theme' && d.data){
+    if (d.data.locale) document.documentElement.setAttribute('lang', d.data.locale);
+    render();
+  }
+});
+
+// ==================== 启动 ====================
+$('src').value = DEMO;
+rebuild();
+setTimeout(fitZoom, 60);
+})();
+</script>
+</body>
+</html>

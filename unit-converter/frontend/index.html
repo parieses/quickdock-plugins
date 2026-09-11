@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>单位换算器</title>
+<link rel="stylesheet" href="qd-theme.css">
+<link rel="stylesheet" href="components.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+.p-app{display:flex;flex-direction:column;height:100vh}
+.p-toolbar{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap}
+.uc-lbl{font-size:11.5px;color:var(--text-muted)}
+.uc-swap{width:30px;height:30px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-primary);color:var(--text-secondary);cursor:pointer;font-size:15px;line-height:1;flex-shrink:0}
+.uc-swap:hover{background:var(--bg-hover);color:var(--accent)}
+.uc-main{padding:10px 12px 8px;display:flex;flex-direction:column;gap:8px;flex-shrink:0}
+.uc-row{display:flex;gap:8px;align-items:center}
+.uc-val{flex:1;min-width:0;height:42px;padding:0 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-primary);color:var(--text-primary);font:600 19px/1 var(--font-mono);outline:none}
+.uc-val:focus{border-color:var(--accent)}
+.uc-val.uc-ro{background:var(--bg-tertiary);border-style:dashed;cursor:default}
+.uc-u{height:42px;min-width:150px;max-width:190px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-primary);color:var(--text-primary);font-size:12.5px;outline:none}
+.uc-head{display:flex;justify-content:space-between;align-items:baseline;padding:6px 12px 4px;flex-shrink:0}
+.uc-head-t{font-size:11.5px;color:var(--text-muted)}
+.uc-list{flex:1;min-height:0;overflow:auto;padding:0 8px 8px}
+.uc-item{display:grid;grid-template-columns:118px 1fr 46px;gap:8px;align-items:center;padding:7px 8px;border-radius:var(--radius);cursor:pointer;border:1px solid transparent}
+.uc-item:hover{background:var(--bg-hover)}
+.uc-item.cur{background:var(--accent-soft);border-color:var(--accent)}
+.uc-item.cur .uc-u{color:var(--accent)}
+.uc-u{font-size:12.5px;color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.uc-n{font:13px var(--font-mono);color:var(--text-primary);text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.uc-item.cur .uc-n{color:var(--accent);font-weight:500}
+.uc-cp{font-size:11px;color:var(--text-muted);text-align:right;opacity:0;transition:opacity .12s}
+.uc-item:hover .uc-cp{opacity:1}
+.uc-status{flex-shrink:0;padding:5px 12px;font-size:11.5px;color:var(--text-muted);border-top:1px solid var(--border);background:var(--bg-secondary);min-height:26px}
+.uc-status.err{color:var(--danger)}
+</style>
+<script>
+/* QuickDock sandbox 剪贴板桥接：iframe 内 navigator.clipboard 被 Permissions-Policy 禁用 */
+window.__cpSeq=0;
+window.execCopyFallback=function(t){try{var a=document.createElement('textarea');a.value=t;a.style.position='fixed';a.style.opacity='0';a.style.top='0';document.body.appendChild(a);a.select();var ok=document.execCommand('copy');document.body.removeChild(a);return ok}catch(e){return false}};
+window.copyViaHost=function(t,cb){var id='cp_'+(++window.__cpSeq),done=false;function onMsg(e){var d=e&&e.data;if(d&&d.type==='plugin:copy-result'&&d.id===id){done=true;window.removeEventListener('message',onMsg);cb&&cb(!!d.ok)}}window.addEventListener('message',onMsg);parent.postMessage({type:'plugin:copy',id:id,text:t},'*');setTimeout(function(){if(!done){window.removeEventListener('message',onMsg);cb&&cb(window.execCopyFallback(t))}},300)};
+</script>
+</head>
+<body>
+<div class="p-app">
+  <div class="p-toolbar">
+    <span class="uc-lbl" id="lblCat">类别</span>
+    <select class="uc-u" id="catSel" style="height:30px;min-width:130px;max-width:170px"></select>
+    <div style="flex:1"></div>
+    <span class="uc-lbl" id="lblHint">点结果行即复制</span>
+  </div>
+
+  <div class="uc-main">
+    <div class="uc-row">
+      <input class="uc-val" id="valIn" type="text" inputmode="decimal" spellcheck="false" value="1" autocomplete="off">
+      <select class="uc-u" id="fromSel"></select>
+    </div>
+    <div class="uc-row">
+      <input class="uc-val uc-ro" id="valOut" type="text" readonly tabindex="-1">
+      <select class="uc-u" id="toSel"></select>
+      <button class="uc-swap" id="swapBtn" title="交换">⇅</button>
+    </div>
+  </div>
+
+  <div class="uc-head">
+    <span class="uc-head-t" id="lblAll">全部换算</span>
+    <span class="uc-head-t" id="lblBase"></span>
+  </div>
+  <div class="uc-list" id="list"></div>
+  <div class="uc-status" id="status"></div>
+</div>
+<script>
+// ==================== i18n ====================
+var L10N = {
+  'en-US': {
+    '类别': 'Category', '点结果行即复制': 'Click a row to copy', '全部换算': 'All units',
+    '已复制': 'Copied', '复制': 'Copy', '请输入数字': 'Enter a number',
+    '未识别单位': 'Unknown unit: ', '基准单位': 'base unit'
+  }
+};
+function isEn(){ var l = document.documentElement.getAttribute('lang') || ''; return l.indexOf('en') === 0 }
+function L(s){ return isEn() ? ((L10N['en-US'] && L10N['en-US'][s]) || s) : s }
+
+// ==================== 单位数据 ====================
+// [符号, 中文名, 相对基准单位的系数]
+var CATS = [
+ { k:'length', zh:'长度', en:'Length', base:'m', units:[
+   ['m','米',1],['km','千米',1000],['dm','分米',0.1],['cm','厘米',0.01],['mm','毫米',0.001],
+   ['µm','微米',1e-6],['nm','纳米',1e-9],
+   ['in','英寸',0.0254],['ft','英尺',0.3048],['yd','码',0.9144],['mi','英里',1609.344],['nmi','海里',1852],
+   ['里','市里',500],['丈','丈',3.3333333333],['尺','市尺',0.3333333333],['寸','市寸',0.0333333333],
+   ['AU','天文单位',149597870700],['ly','光年',9.4607304725808e15]
+ ]},
+ { k:'area', zh:'面积', en:'Area', base:'m²', units:[
+   ['m²','平方米',1],['km²','平方千米',1e6],['dm²','平方分米',0.01],['cm²','平方厘米',1e-4],['mm²','平方毫米',1e-6],
+   ['ha','公顷',10000],['a','公亩',100],['亩','亩',666.6666666667],
+   ['ft²','平方英尺',0.09290304],['in²','平方英寸',0.00064516],['yd²','平方码',0.83612736],
+   ['acre','英亩',4046.8564224],['mi²','平方英里',2589988.110336]
+ ]},
+ { k:'volume', zh:'体积', en:'Volume', base:'L', units:[
+   ['L','升',1],['mL','毫升',0.001],['m³','立方米',1000],['cm³','立方厘米',0.001],
+   ['in³','立方英寸',0.016387064],['ft³','立方英尺',28.316846592],
+   ['gal','加仑(美)',3.785411784],['qt','夸脱(美)',0.946352946],['pt','品脱(美)',0.473176473],
+   ['cup','杯(美)',0.2365882365],['floz','液盎司(美)',0.0295735295625],
+   ['galUK','加仑(英)',4.54609],['ptUK','品脱(英)',0.56826125]
+ ]},
+ { k:'mass', zh:'重量', en:'Mass', base:'kg', units:[
+   ['kg','千克',1],['g','克',0.001],['mg','毫克',1e-6],['µg','微克',1e-9],['t','吨',1000],
+   ['lb','磅',0.45359237],['oz','盎司',0.028349523125],['st','英石',6.35029318],['gr','格令',6.479891e-5],
+   ['斤','市斤',0.5],['两','市两',0.05],['钱','市钱',0.005]
+ ]},
+ { k:'temperature', zh:'温度', en:'Temperature', base:'°C', special:'temp', units:[
+   ['°C','摄氏度'],['°F','华氏度'],['K','开尔文'],['°R','兰氏度']
+ ]},
+ { k:'speed', zh:'速度', en:'Speed', base:'m/s', units:[
+   ['m/s','米每秒',1],['km/h','千米每小时',0.2777777778],['mi/h','英里每小时',0.44704],
+   ['kn','节',0.5144444444],['ft/s','英尺每秒',0.3048],['mach','马赫',340.29]
+ ]},
+ { k:'data', zh:'数据存储', en:'Data', base:'B', units:[
+   ['bit','比特',0.125],['B','字节',1],['KB','千字节',1000],['MB','兆字节',1e6],['GB','吉字节',1e9],
+   ['TB','太字节',1e12],['PB','拍字节',1e15],
+   ['KiB','KiB',1024],['MiB','MiB',1048576],['GiB','GiB',1073741824],['TiB','TiB',1099511627776]
+ ]},
+ { k:'time', zh:'时间', en:'Time', base:'s', units:[
+   ['ns','纳秒',1e-9],['µs','微秒',1e-6],['ms','毫秒',0.001],['s','秒',1],
+   ['min','分钟',60],['h','小时',3600],['d','天',86400],['wk','周',604800],['yr','年',31557600]
+ ]},
+ { k:'pressure', zh:'压力', en:'Pressure', base:'Pa', units:[
+   ['Pa','帕斯卡',1],['hPa','百帕',100],['kPa','千帕',1000],['MPa','兆帕',1e6],
+   ['bar','巴',1e5],['mbar','毫巴',100],['atm','标准大气压',101325],
+   ['mmHg','毫米汞柱',133.322387415],['psi','磅力/平方英寸',6894.757293168],['kgf/cm²','千克力/平方厘米',98066.5]
+ ]},
+ { k:'energy', zh:'能量', en:'Energy', base:'J', units:[
+   ['J','焦耳',1],['kJ','千焦',1000],['cal','卡',4.184],['kcal','千卡',4184],
+   ['Wh','瓦时',3600],['kWh','千瓦时',3.6e6],['eV','电子伏',1.602176634e-19],['BTU','英热单位',1055.05585262]
+ ]},
+ { k:'power', zh:'功率', en:'Power', base:'W', units:[
+   ['W','瓦',1],['kW','千瓦',1000],['MW','兆瓦',1e6],
+   ['hp','机械马力',745.6998715823],['PS','米制马力',735.49875]
+ ]},
+ { k:'angle', zh:'角度', en:'Angle', base:'°', units:[
+   ['°','度',1],['rad','弧度',57.29577951308232],['grad','百分度',0.9]
+ ]}
+];
+
+// ==================== 换算核心 ====================
+function tempTo(v, from, to){
+  var c;
+  if (from === '°C') c = v;
+  else if (from === '°F') c = (v - 32) * 5 / 9;
+  else if (from === 'K') c = v - 273.15;
+  else c = (v - 491.67) * 5 / 9;
+  if (to === '°C') return c;
+  if (to === '°F') return c * 9 / 5 + 32;
+  if (to === 'K') return c + 273.15;
+  return (c + 273.15) * 9 / 5;
+}
+function unitFactor(cat, sym){
+  for (var i = 0; i < cat.units.length; i++) if (cat.units[i][0] === sym) return cat.units[i][2];
+  return 1;
+}
+function convert(cat, v, from, to){
+  if (cat.special === 'temp') return tempTo(v, from, to);
+  return v * unitFactor(cat, from) / unitFactor(cat, to);
+}
+function fmtNum(v){
+  if (!isFinite(v)) return '—';
+  if (v === 0) return '0';
+  var a = Math.abs(v);
+  if (a >= 1e15 || a < 1e-6){
+    var e = v.toExponential(6);
+    return e.replace(/\.?0+e/, 'e').replace('e+', 'e');
+  }
+  var s = v.toPrecision(10);
+  if (s.indexOf('e') >= 0) return v.toExponential(6).replace('e+', 'e');
+  if (s.indexOf('.') >= 0) s = s.replace(/0+$/, '').replace(/\.$/, '');
+  return s;
+}
+
+// ==================== 单位识别（命令面板输入） ====================
+function parseUnitStr(raw){
+  var s = String(raw).trim();
+  if (!s) return null;
+  var norm = s.toLowerCase().replace(/2$/, '²').replace(/3$/, '³');
+  for (var ci = 0; ci < CATS.length; ci++){
+    var cat = CATS[ci];
+    for (var ui = 0; ui < cat.units.length; ui++){
+      var u = cat.units[ui];
+      if (u[0].toLowerCase() === norm || u[0] === s || u[1] === s) return { cat: cat, sym: u[0] };
+    }
+  }
+  return null;
+}
+function parseInput(text){
+  var m = String(text).trim().match(/^([-+]?[\d.,]+)\s*(.+)$/);
+  if (!m) return null;
+  var num = parseFloat(m[1].replace(/,/g, ''));
+  if (isNaN(num)) return null;
+  var hit = parseUnitStr(m[2]);
+  if (!hit) return { num: num, unit: null };
+  return { num: num, unit: hit };
+}
+
+// ==================== 状态 ====================
+var cur = { cat: CATS[0], from: 'm', to: 'km' };
+var lastVal = 1;
+
+function $(id){ return document.getElementById(id) }
+function status(msg, err){ var el = $('status'); el.textContent = msg; el.className = 'uc-status' + (err ? ' err' : ''); }
+
+function fillUnitSelects(){
+  var cat = cur.cat;
+  var opts = cat.units.map(function(u){
+    return '<option value="' + u[0] + '">' + u[0] + ' · ' + u[1] + '</option>';
+  }).join('');
+  $('fromSel').innerHTML = opts;
+  $('toSel').innerHTML = opts;
+  if (cat.units.some(function(u){ return u[0] === cur.from })) $('fromSel').value = cur.from;
+  else { $('fromSel').value = cat.units[0][0]; cur.from = cat.units[0][0]; }
+  if (cat.units.some(function(u){ return u[0] === cur.to })) $('toSel').value = cur.to;
+  else { $('toSel').value = cat.units[1] ? cat.units[1][0] : cat.units[0][0]; cur.to = $('toSel').value; }
+}
+function fillCatSelect(){
+  $('catSel').innerHTML = CATS.map(function(c){
+    return '<option value="' + c.k + '">' + (isEn() ? c.en : c.zh) + '</option>';
+  }).join('');
+  $('catSel').value = cur.cat.k;
+}
+
+function render(){
+  var raw = $('valIn').value.trim();
+  var list = $('list');
+  $('lblCat').textContent = L('类别');
+  $('lblHint').textContent = L('点结果行即复制');
+  $('lblAll').textContent = L('全部换算');
+  $('lblBase').textContent = L('基准单位') + ' ' + cur.cat.base;
+
+  if (raw === ''){ $('valOut').value = ''; list.innerHTML = ''; status(L('请输入数字')); return; }
+  var v = parseFloat(raw.replace(/,/g, ''));
+  if (isNaN(v)){ $('valOut').value = '—'; list.innerHTML = ''; status(L('请输入数字'), true); return; }
+  lastVal = v;
+
+  var main = convert(cur.cat, v, cur.from, cur.to);
+  $('valOut').value = fmtNum(main);
+
+  list.innerHTML = cur.cat.units.map(function(u){
+    var sym = u[0];
+    var out = convert(cur.cat, v, cur.from, sym);
+    var mark = (sym === cur.from) ? ' cur' : '';
+    return '<div class="uc-item' + mark + '" data-sym="' + sym + '" data-out="' + out + '">' +
+             '<span class="uc-u">' + u[1] + ' (' + sym + ')</span>' +
+             '<span class="uc-n" title="' + out + '">' + fmtNum(out) + '</span>' +
+             '<span class="uc-cp">' + L('复制') + '</span>' +
+           '</div>';
+  }).join('');
+  status(raw + ' ' + cur.from + ' → ' + fmtNum(main) + ' ' + cur.to);
+}
+
+function bind(){
+  $('catSel').addEventListener('change', function(){
+    var k = this.value;
+    for (var i = 0; i < CATS.length; i++) if (CATS[i].k === k) cur.cat = CATS[i];
+    var u = cur.cat.units;
+    cur.from = u[0][0];
+    cur.to = u[1] ? u[1][0] : u[0][0];
+    fillUnitSelects(); render();
+  });
+  $('fromSel').addEventListener('change', function(){ cur.from = this.value; render(); });
+  $('toSel').addEventListener('change', function(){ cur.to = this.value; render(); });
+  $('valIn').addEventListener('input', render);
+  $('swapBtn').addEventListener('click', function(){
+    var t = cur.from; cur.from = cur.to; cur.to = t;
+    $('fromSel').value = cur.from; $('toSel').value = cur.to;
+    var shown = $('valOut').value;
+    if (shown && shown !== '—') $('valIn').value = shown;
+    render();
+  });
+  $('list').addEventListener('click', function(e){
+    var item = e.target.closest ? e.target.closest('.uc-item') : null;
+    if (!item) return;
+    var txt = fmtNum(parseFloat(item.dataset.out)) + ' ' + item.dataset.sym;
+    window.copyViaHost(txt, function(){ status(L('已复制') + ': ' + txt); });
+  });
+}
+
+// ==================== 命令面板带入 ====================
+var pendingText = '';
+function applyText(text){
+  if (!text) return;
+  pendingText = text;
+  var r = parseInput(text);
+  if (!r){ $('valIn').value = String(text); render(); status(L('未识别单位') + text, true); return; }
+  if (r.unit){
+    cur.cat = r.unit.cat;
+    cur.from = r.unit.sym;
+    cur.to = r.unit.cat.units.filter(function(u){ return u[0] !== r.unit.sym })[0][0];
+    $('catSel').value = cur.cat.k;
+    fillUnitSelects();
+  }
+  $('valIn').value = String(r.num);
+  render();
+}
+
+window.addEventListener('message', function(e){
+  var d = e.data;
+  if (!d) return;
+  if (d.type === 'plugin:init' && d.data){
+    if (d.data.locale) document.documentElement.setAttribute('lang', d.data.locale);
+    if (d.data.text) applyText(d.data.text);
+    return;
+  }
+  if (d.type === 'plugin:theme' && d.data){
+    if (d.data.locale) document.documentElement.setAttribute('lang', d.data.locale);
+    fillCatSelect();
+    render();
+  }
+});
+
+// ==================== 启动 ====================
+fillCatSelect();
+fillUnitSelects();
+bind();
+render();
+</script>
+</body>
+</html>

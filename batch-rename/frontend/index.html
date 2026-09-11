@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>批量重命名</title>
+<link rel="stylesheet" href="qd-theme.css">
+<link rel="stylesheet" href="components.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+.app{display:flex;flex-direction:column;height:100vh;font-size:13px}
+.toolbar{padding:10px 12px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pathbox{flex:1;min-width:120px;padding:7px 10px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pathbox.has{color:var(--text-primary)}
+.count{font-size:12px;color:var(--text-muted);white-space:nowrap}
+.body{flex:1;min-height:0;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:12px}
+.card{background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius);padding:12px}
+.card-t{font-size:12px;font-weight:600;color:var(--accent);margin-bottom:10px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px 16px}
+.field{display:flex;flex-direction:column;gap:4px}
+.field>label{font-size:11.5px;color:var(--text-muted)}
+.inp,.sel{height:30px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-primary);color:var(--text-primary);font-size:12.5px;outline:none}
+.inp:focus,.sel:focus{border-color:var(--accent)}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.chk{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary);cursor:pointer}
+.chk input{width:14px;height:14px;accent-color:var(--accent);cursor:pointer}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);vertical-align:middle}
+th{color:var(--text-muted);font-weight:600;font-size:11.5px;position:sticky;top:0;background:var(--bg-secondary)}
+td code{font:12px var(--font-mono);word-break:break-all}
+.arrow{color:var(--text-muted);padding:0 4px}
+tr.skip td{opacity:.5}
+.tag{display:inline-block;padding:1px 6px;border-radius:10px;font-size:10.5px;background:var(--danger-soft);color:var(--danger)}
+.tag.ok{background:var(--success-soft);color:var(--success)}
+.empty{padding:24px;text-align:center;color:var(--text-muted);font-size:12.5px}
+.status{flex-shrink:0;padding:6px 12px;font-size:11.5px;color:var(--text-muted);border-top:1px solid var(--border);background:var(--bg-secondary);min-height:28px;white-space:pre-wrap}
+.status.err{color:var(--danger)}
+.status.ok{color:var(--success)}
+.hint{font-size:11px;color:var(--text-muted);line-height:1.5}
+.warn{padding:10px 12px;border-radius:var(--radius);background:var(--danger-soft);color:var(--danger);font-size:12px;border:1px solid var(--danger);display:none}
+.warn.show{display:block}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="toolbar">
+    <div id="pathBox" class="pathbox">未选择文件夹</div>
+    <button id="btnPick" class="btn btn-ghost btn-sm">选择文件夹</button>
+    <button id="btnRefresh" class="btn btn-ghost btn-sm" disabled>刷新</button>
+    <span id="count" class="count"></span>
+  </div>
+
+  <div class="body">
+    <div id="scopeWarn" class="warn"></div>
+
+    <div class="card">
+      <div class="card-t">重命名规则</div>
+      <div class="grid">
+        <div class="field">
+          <label>前缀</label>
+          <input id="optPrefix" class="inp" type="text" placeholder="如 IMG_">
+        </div>
+        <div class="field">
+          <label>后缀（扩展名前）</label>
+          <input id="optSuffix" class="inp" type="text" placeholder="如 _final">
+        </div>
+        <div class="field">
+          <label>查找</label>
+          <input id="optFind" class="inp" type="text" placeholder="要替换的文本 / 正则">
+        </div>
+        <div class="field">
+          <label>替换为</label>
+          <input id="optReplace" class="inp" type="text" placeholder="新文本（空=删除）">
+        </div>
+        <div class="field">
+          <label>序号</label>
+          <div class="row">
+            <select id="optSeq" class="sel">
+              <option value="none">不编号</option>
+              <option value="prefix">前缀编号</option>
+              <option value="suffix">后缀编号</option>
+            </select>
+            <input id="optSeqStart" class="inp" type="number" value="1" min="0" style="width:54px">
+            <input id="optSeqStep" class="inp" type="number" value="1" min="1" style="width:48px" title="步长">
+            <input id="optSeqPad" class="inp" type="number" value="3" min="0" max="8" style="width:46px" title="补零位数">
+          </div>
+        </div>
+        <div class="field">
+          <label>扩展名</label>
+          <select id="optExt" class="sel">
+            <option value="keep">保持不变</option>
+            <option value="lower">转小写</option>
+            <option value="upper">转大写</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>文件名大小写</label>
+          <select id="optCase" class="sel">
+            <option value="keep">保持不变</option>
+            <option value="upper">全大写</option>
+            <option value="lower">全小写</option>
+            <option value="title">首字母大写</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>选项</label>
+          <div class="row">
+            <label class="chk"><input id="optRegex" type="checkbox"> 正则查找</label>
+            <label class="chk"><input id="optIcase" type="checkbox"> 区分大小写</label>
+            <label class="chk"><input id="optFilesOnly" type="checkbox" checked> 仅文件</label>
+            <label class="chk"><input id="optConflicts" type="checkbox"> 仅看冲突</label>
+          </div>
+        </div>
+      </div>
+      <div class="hint" style="margin-top:8px">规则按 前缀 → 后缀 → 查找替换 → 序号 → 大小写 → 扩展名 依次应用。目标已存在或与其它项重名会被标记为冲突并跳过，避免覆盖。</div>
+    </div>
+
+    <div class="card" style="flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden">
+      <div class="card-t">预览 <span id="previewMeta" class="hint" style="font-weight:400"></span></div>
+      <div style="flex:1;min-height:0;overflow:auto">
+        <table id="tbl">
+          <thead><tr><th style="width:38%">原名称</th><th style="width:38%">新名称</th><th style="width:24%">状态</th></tr></thead>
+          <tbody id="tbody"><tr><td colspan="3" class="empty">请先选择文件夹</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="toolbar" style="border-top:1px solid var(--border);border-bottom:none;justify-content:space-between">
+    <span id="summary" class="count"></span>
+    <button id="btnRun" class="btn btn-primary btn-sm" disabled>执行重命名</button>
+  </div>
+
+  <div id="status" class="status"></div>
+</div>
+
+<script>
+(function(){
+'use strict';
+// 宿主注入桥（injectPluginBridge）已提供 qdHostCall / qdPickFolder 等全局函数。
+var qdHostCall = window.qdHostCall;
+var qdPickFolder = window.qdPickFolder;
+
+var folder='';
+var entries=[]; // {name,path,isDir,size}
+
+function $(id){return document.getElementById(id)}
+function status(msg,cls){var el=$('status');el.textContent=msg||'';el.className='status'+(cls?' '+cls:'')}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+
+// 复制文本：桥未提供 qdCopy，自行 post plugin:copy 并监听 plugin:copy-result（宿主侧已处理）
+function copyText(t){
+  return new Promise(function(res){
+    var id='cp_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
+    function onMsg(e){var d=e.data;if(d&&d.type==='plugin:copy-result'&&d.id===id){window.removeEventListener('message',onMsg);res(!!d.ok)}}
+    window.addEventListener('message',onMsg);
+    parent.postMessage({type:'plugin:copy',id:id,text:t},'*');
+    setTimeout(function(){window.removeEventListener('message',onMsg);res(false)},400);
+  });
+}
+
+// ---- 重命名计算 ----
+function splitName(name){
+  var dot=name.lastIndexOf('.');
+  if(dot<=0) return {base:name,ext:''};
+  return {base:name.slice(0,dot),ext:name.slice(dot)}; // ext 含点
+}
+function applyCase(s,mode){
+  if(mode==='upper')return s.toUpperCase();
+  if(mode==='lower')return s.toLowerCase();
+  if(mode==='title')return s.replace(/(^|[\s_\-]+)([a-z\u4e00-\u9fa5])/g,function(_,p,c){return p+c.toUpperCase()});
+  return s;
+}
+function computeNewName(name,idx){
+  var sp=splitName(name), base=sp.base, ext=sp.ext;
+  if($('optPrefix').value) base=$('optPrefix').value+base;
+  if($('optSuffix').value) base=base+$('optSuffix').value;
+  var find=$('optFind').value;
+  if(find){
+    var repl=$('optReplace').value;
+    if($('optRegex').checked){
+      try{var rx=new RegExp(find,$('optIcase').checked?'':'i');base=base.replace(rx,repl)}catch(e){status('正则无效：'+e.message,'err')}
+    }else{
+      if($('optIcase').checked){var i=base.indexOf(find);while(i>=0){base=base.slice(0,i)+repl+base.slice(i+find.length);i=base.indexOf(find,i+repl.length)}}
+      else{base=base.split(find).join(repl)}
+    }
+  }
+  var seqMode=$('optSeq').value;
+  if(seqMode!=='none'){
+    var start=parseInt($('optSeqStart').value,10)||0;
+    var step=Math.max(1,parseInt($('optSeqStep').value,10)||1);
+    var pad=Math.max(0,parseInt($('optSeqPad').value,10)||0);
+    var num=String(start+idx*step);
+    if(pad>0)num=('00000000'+num).slice(-pad);
+    if(seqMode==='prefix')base=num+'_'+base;else base=base+'_'+num;
+  }
+  base=applyCase(base,$('optCase').value);
+  var extMode=$('optExt').value;
+  if(extMode==='lower')ext=ext.toLowerCase();
+  else if(extMode==='upper')ext=ext.toUpperCase();
+  return base+ext;
+}
+
+// ---- 加载目录 ----
+function load(){
+  if(!folder)return;
+  status('读取目录中…');
+  qdHostCall('host.fs.list',{path:folder}).then(function(r){
+    if(!r||!r.entries){throw new Error('返回为空')}
+    entries=r.entries.filter(function(e){return $('optFilesOnly').checked?!e.isDir:true});
+    entries.sort(function(a,b){return a.name.localeCompare(b.name)});
+    $('scopeWarn').className='warn';
+    render();
+  }).catch(function(e){
+    var msg=e&&e.message?e.message:String(e);
+    $('scopeWarn').className='warn show';
+    $('scopeWarn').textContent='无法读取该文件夹：'+msg+'。若提示「不在 permissions.filesystem.write 白名单内」，请在插件 plugin.json 的 permissions.filesystem.write 中加入该目录后重新安装。';
+    $('tbody').innerHTML='<tr><td colspan="3" class="empty">读取失败</td></tr>';
+    status('读取失败：'+msg,'err');
+  });
+}
+
+// ---- 预览渲染 ----
+function render(){
+  var newNames={};
+  entries.forEach(function(e,i){var n=computeNewName(e.name,i);newNames[n]=(newNames[n]||0)+1});
+  var existing=new Set(entries.map(function(e){return e.name}));
+  var rows='';var changed=0,conflicts=0;
+  var onlyConf=$('optConflicts').checked;
+  entries.forEach(function(e,i){
+    var nn=computeNewName(e.name,i);
+    var same=nn===e.name;
+    var conflict=!same&&(newNames[nn]>1||existing.has(nn));
+    if(same)return; if(conflict)conflicts++; else changed++;
+    if(onlyConf&&!conflict)return;
+    rows+='<tr class="'+(conflict?'skip':'')+'"><td><code>'+esc(e.name)+'</code></td>'+
+      '<td><code>'+esc(nn)+'</code></td>'+
+      '<td>'+(conflict?'<span class="tag">冲突</span>':(same?'<span class="tag ok">不变</span>':''))+'</td></tr>';
+  });
+  if(!rows)rows='<tr><td colspan="3" class="empty">没有可重命名的项（或已被过滤）</td></tr>';
+  $('tbody').innerHTML=rows;
+  $('count').textContent=entries.length+' 项';
+  $('previewMeta').textContent='';
+  $('summary').textContent='将改名 '+changed+' 项 · 冲突 '+conflicts+' 项';
+  $('btnRun').disabled=changed===0||conflicts>0;
+  status('预览已更新');
+}
+
+// ---- 执行 ----
+function run(){
+  var newNames={};entries.forEach(function(e,i){var n=computeNewName(e.name,i);newNames[n]=(newNames[n]||0)+1});
+  var existing=new Set(entries.map(function(e){return e.name}));
+  var plan=[];
+  entries.forEach(function(e,i){
+    var nn=computeNewName(e.name,i);
+    if(nn===e.name)return;
+    if(newNames[nn]>1||existing.has(nn))return; // 跳过冲突
+    plan.push({from:e.path,to:folder.replace(/[\\\/]$/,'')+'/'+nn});
+  });
+  if(!plan.length){status('没有可执行的项（全部冲突或不变）','err');return}
+  if(!window.confirm('确认重命名 '+plan.length+' 个文件？此操作直接改名（不可自动撤销），冲突项已自动跳过。'))return;
+  $('btnRun').disabled=true;status('执行中…');
+  var done=0,fail=0;
+  plan.reduce(function(p,task){
+    return p.then(function(){
+      return qdHostCall('host.fs.move',{from:task.from,to:task.to}).then(function(){done++;})
+        .catch(function(e){fail++;status('失败：'+(e&&e.message||e),'err')});
+    });
+  },Promise.resolve()).then(function(){
+    status('完成：成功 '+done+' · 失败 '+fail,'ok');
+    load();
+  });
+}
+
+// ---- 事件 ----
+$('btnPick').addEventListener('click',function(){
+  qdPickFolder().then(function(p){
+    if(!p){status('已取消');return}
+    folder=p;$('pathBox').textContent=p;$('pathBox').className='pathbox has';
+    $('btnRefresh').disabled=false;load();
+  }).catch(function(e){status('选择失败：'+(e&&e.message||e),'err')});
+});
+$('btnRefresh').addEventListener('click',load);
+$('btnRun').addEventListener('click',run);
+['optPrefix','optSuffix','optFind','optReplace','optSeq','optSeqStart','optSeqStep','optSeqPad','optExt','optCase','optRegex','optIcase','optFilesOnly','optConflicts']
+  .forEach(function(id){$(id).addEventListener('input',function(){if(folder)render()});$(id).addEventListener('change',function(){if(folder)render()})});
+
+// 双击复制新名
+$('tbody').addEventListener('dblclick',function(e){
+  var c=e.target.closest('code');if(c)copyText(c.textContent).then(function(ok){if(ok)status('已复制新名称')});
+});
+
+status('请选择文件夹开始');
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>密码与加密工具箱</title>
+<link rel="stylesheet" href="qd-theme.css">
+<link rel="stylesheet" href="components.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+.p-app{display:flex;flex-direction:column;height:100vh}
+.p-toolbar{padding:0 10px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0}
+.ct-tabs{display:flex;gap:2px;overflow-x:auto}
+.ct-tab{padding:9px 13px;border:none;background:none;color:var(--text-secondary);font-size:12.5px;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap}
+.ct-tab:hover{color:var(--text-primary)}
+.ct-tab.ct-active{color:var(--accent);border-bottom-color:var(--accent)}
+.ct-body{flex:1;min-height:0;overflow:auto;padding:12px}
+.ct-pane{display:none}
+.ct-pane.ct-show{display:block}
+.ct-form{display:flex;flex-direction:column;gap:10px}
+.ct-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ct-lbl{font-size:12px;color:var(--text-secondary);min-width:56px}
+.ct-num{width:78px;height:28px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-primary);color:var(--text-primary);font-size:12.5px;outline:none}
+.ct-num:focus{border-color:var(--accent)}
+select.ct-sel,.ct-inp{height:30px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-primary);color:var(--text-primary);font-size:12.5px;outline:none}
+select.ct-sel:focus,.ct-inp:focus{border-color:var(--accent)}
+.ct-inp{flex:1;min-width:0}
+.ct-checks{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px 12px}
+.ct-checks label{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-secondary);cursor:pointer}
+.ct-checks input{width:14px;height:14px;accent-color:var(--accent);cursor:pointer}
+.ct-meter{height:6px;border-radius:3px;background:var(--bg-tertiary);overflow:hidden}
+.ct-meter-bar{height:100%;width:0;background:var(--danger);transition:width .18s,background .18s}
+.ct-meta{font-size:11.5px;color:var(--text-muted);min-height:16px}
+.ct-out{display:flex;flex-direction:column;gap:3px}
+.ct-out-item{display:flex;align-items:center;gap:8px;padding:6px 9px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-primary);cursor:pointer}
+.ct-out-item:hover{background:var(--bg-hover);border-color:var(--border-strong)}
+.ct-out-item code{flex:1;min-width:0;font:12.5px var(--font-mono);color:var(--text-primary);word-break:break-all}
+.ct-out-item .ct-cp{font-size:11px;color:var(--text-muted);flex-shrink:0}
+.ct-io{width:100%;min-height:86px;resize:vertical;padding:9px 11px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-primary);color:var(--text-primary);font:12.5px/1.55 var(--font-mono);outline:none}
+.ct-io:focus{border-color:var(--accent)}
+.ct-sec{border-top:1px solid var(--border);padding-top:10px;margin-top:2px}
+.ct-sec-t{font-size:11.5px;color:var(--text-muted);margin-bottom:6px}
+.ct-status{flex-shrink:0;padding:5px 12px;font-size:11.5px;color:var(--text-muted);border-top:1px solid var(--border);background:var(--bg-secondary);min-height:26px}
+.ct-status.err{color:var(--danger)}
+.ct-status.ok{color:var(--success)}
+.ct-warn{padding:9px 11px;border-radius:var(--radius);background:var(--danger-soft);color:var(--danger);font-size:12px;border:1px solid var(--danger)}
+</style>
+<script>
+/* QuickDock sandbox 剪贴板桥接：iframe 内 navigator.clipboard 被 Permissions-Policy 禁用 */
+window.__cpSeq=0;
+window.execCopyFallback=function(t){try{var a=document.createElement('textarea');a.value=t;a.style.position='fixed';a.style.opacity='0';a.style.top='0';document.body.appendChild(a);a.select();var ok=document.execCommand('copy');document.body.removeChild(a);return ok}catch(e){return false}};
+window.copyViaHost=function(t,cb){var id='cp_'+(++window.__cpSeq),done=false;function onMsg(e){var d=e&&e.data;if(d&&d.type==='plugin:copy-result'&&d.id===id){done=true;window.removeEventListener('message',onMsg);cb&&cb(!!d.ok)}}window.addEventListener('message',onMsg);parent.postMessage({type:'plugin:copy',id:id,text:t},'*');setTimeout(function(){if(!done){window.removeEventListener('message',onMsg);cb&&cb(window.execCopyFallback(t))}},300)};
+</script>
+</head>
+<body>
+<div class="p-app">
+  <div class="p-toolbar">
+    <div class="ct-tabs">
+      <button class="ct-tab ct-active" data-tab="pw">密码生成</button>
+      <button class="ct-tab" data-tab="phrase">口令生成</button>
+      <button class="ct-tab" data-tab="aes">AES 加解密</button>
+      <button class="ct-tab" data-tab="rsa">RSA 加解密</button>
+      <button class="ct-tab" data-tab="kdf">密钥派生</button>
+    </div>
+  </div>
+
+  <div class="ct-body">
+    <!-- ========== 密码生成 ========== -->
+    <section class="ct-pane ct-show" id="pane-pw">
+      <div class="ct-form">
+        <div class="ct-row">
+          <span class="ct-lbl" id="lblLen">长度</span>
+          <input type="range" id="pwLen" min="4" max="128" value="24" style="flex:1;min-width:160px">
+          <span class="ct-num" id="pwLenVal" style="width:52px;text-align:center;line-height:28px">24</span>
+        </div>
+        <div class="ct-checks">
+          <label><input type="checkbox" id="pwUpper" checked> <span id="lblUpper">大写 A-Z</span></label>
+          <label><input type="checkbox" id="pwLower" checked> <span id="lblLower">小写 a-z</span></label>
+          <label><input type="checkbox" id="pwDigit" checked> <span id="lblDigit">数字 0-9</span></label>
+          <label><input type="checkbox" id="pwSymbol" checked> <span id="lblSymbol">符号 !@#$%&amp;*</span></label>
+          <label><input type="checkbox" id="pwNoAmb"> <span id="lblNoAmb">排除易混淆 0O1lI|</span></label>
+          <label><input type="checkbox" id="pwEach" checked> <span id="lblEach">每类至少一个</span></label>
+        </div>
+        <div class="ct-row">
+          <span class="ct-lbl" id="lblCount">数量</span>
+          <input class="ct-num" type="number" id="pwCount" value="5" min="1" max="50">
+          <div style="flex:1"></div>
+          <button class="btn btn-primary btn-sm" id="pwGen">生成密码</button>
+        </div>
+        <div class="ct-meter"><div class="ct-meter-bar" id="pwBar"></div></div>
+        <div class="ct-meta" id="pwMeta"></div>
+        <div class="ct-out" id="pwOut"></div>
+      </div>
+    </section>
+
+    <!-- ========== 口令生成 ========== -->
+    <section class="ct-pane" id="pane-phrase">
+      <div class="ct-form">
+        <div class="ct-row">
+          <span class="ct-lbl" id="lblWords">词数</span>
+          <input type="range" id="phWords" min="3" max="10" value="5" style="flex:1;min-width:160px">
+          <span class="ct-num" id="phWordsVal" style="width:52px;text-align:center;line-height:28px">5</span>
+        </div>
+        <div class="ct-row">
+          <span class="ct-lbl" id="lblSep">分隔符</span>
+          <select class="ct-sel" id="phSep">
+            <option value="-">- 短横线</option>
+            <option value="_">_ 下划线</option>
+            <option value=".">. 点号</option>
+            <option value=" ">空格</option>
+            <option value="">无</option>
+          </select>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-secondary);cursor:pointer">
+            <input type="checkbox" id="phCap" checked style="width:14px;height:14px;accent-color:var(--accent)"> <span id="lblCap">首字母大写</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-secondary);cursor:pointer">
+            <input type="checkbox" id="phNum" checked style="width:14px;height:14px;accent-color:var(--accent)"> <span id="lblNumTail">末尾加两位数字</span>
+          </label>
+        </div>
+        <div class="ct-row">
+          <span class="ct-lbl" id="lblCount2">数量</span>
+          <input class="ct-num" type="number" id="phCount" value="5" min="1" max="50">
+          <div style="flex:1"></div>
+          <button class="btn btn-primary btn-sm" id="phGen">生成口令</button>
+        </div>
+        <div class="ct-meter"><div class="ct-meter-bar" id="phBar"></div></div>
+        <div class="ct-meta" id="phMeta"></div>
+        <div class="ct-out" id="phOut"></div>
+      </div>
+    </section>
+
+    <!-- ========== AES ========== -->
+    <section class="ct-pane" id="pane-aes">
+      <div class="ct-form">
+        <div class="ct-row">
+          <span class="ct-lbl" id="lblMode">模式</span>
+          <select class="ct-sel" id="aesMode">
+            <option value="GCM">AES-256-GCM（推荐，带认证）</option>
+            <option value="CBC">AES-256-CBC</option>
+          </select>
+          <span class="ct-lbl" id="lblIter">迭代</span>
+          <input class="ct-num" type="number" id="aesIter" value="200000" min="1000" step="1000">
+        </div>
+        <div class="ct-row">
+          <span class="ct-lbl" id="lblPass">口令</span>
+          <input class="ct-inp ct-sel" type="text" id="aesPass" placeholder="用于派生密钥的口令，请自行保管">
+        </div>
+        <div>
+          <div class="ct-sec-t" id="lblPlain">明文</div>
+          <textarea class="ct-io" id="aesPlain" placeholder="要加密的文本…"></textarea>
+        </div>
+        <div class="ct-row">
+          <button class="btn btn-primary btn-sm" id="aesEnc">加密 ↑</button>
+          <button class="btn btn-sm" id="aesDec">解密 ↓</button>
+          <div style="flex:1"></div>
+          <span class="ct-meta" id="lblAesNote">密文格式：模式.迭代.盐.IV.密文</span>
+        </div>
+        <div>
+          <div class="ct-sec-t" id="lblCipher">密文</div>
+          <textarea class="ct-io" id="aesCipher" placeholder="加密结果，或粘贴密文后点「解密 ↓」"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== RSA ========== -->
+    <section class="ct-pane" id="pane-rsa">
+      <div class="ct-form">
+        <div class="ct-row">
+          <span class="ct-lbl" id="lblBits">位数</span>
+          <select class="ct-sel" id="rsaBits">
+            <option value="2048">2048 位</option>
+            <option value="4096">4096 位</option>
+          </select>
+          <button class="btn btn-primary btn-sm" id="rsaGen">生成密钥对</button>
+          <span class="ct-meta" id="lblRsaHint">RSA-OAEP / SHA-256，仅用于加解密</span>
+        </div>
+        <div class="ct-sec">
+          <div class="ct-sec-t" id="lblPub">公钥（PEM）</div>
+          <textarea class="ct-io" id="rsaPub" style="min-height:74px" placeholder="-----BEGIN PUBLIC KEY-----…"></textarea>
+        </div>
+        <div class="ct-sec">
+          <div class="ct-sec-t" id="lblPriv">私钥（PEM）</div>
+          <textarea class="ct-io" id="rsaPriv" style="min-height:74px" placeholder="-----BEGIN PRIVATE KEY-----…"></textarea>
+        </div>
+        <div class="ct-sec">
+          <div class="ct-sec-t" id="lblRsaIn">输入</div>
+          <textarea class="ct-io" id="rsaIn" placeholder="明文（公钥加密）或 Base64 密文（私钥解密）"></textarea>
+          <div class="ct-row" style="margin-top:8px">
+            <button class="btn btn-sm" id="rsaEnc">公钥加密 ↑</button>
+            <button class="btn btn-sm" id="rsaDec">私钥解密 ↓</button>
+            <span class="ct-meta" id="lblRsaLimit"></span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== KDF ========== -->
+    <section class="ct-pane" id="pane-kdf">
+      <div class="ct-form">
+        <div class="ct-row">
+          <span class="ct-lbl" id="lblKdfAlg">算法</span>
+          <select class="ct-sel" id="kdfHash">
+            <option value="SHA-256">PBKDF2-HMAC-SHA256</option>
+            <option value="SHA-512">PBKDF2-HMAC-SHA512</option>
+          </select>
+          <span class="ct-lbl" id="lblKdfIter">迭代</span>
+          <input class="ct-num" type="number" id="kdfIter" value="200000" min="1000" step="1000">
+          <span class="ct-lbl" id="lblKdfLen">长度</span>
+          <input class="ct-num" type="number" id="kdfLen" value="32" min="1" max="64">
+        </div>
+        <div class="ct-row">
+          <span class="ct-lbl" id="lblKdfPass">口令</span>
+          <input class="ct-inp ct-sel" type="text" id="kdfPass" placeholder="要派生的口令">
+        </div>
+        <div class="ct-row">
+          <span class="ct-lbl" id="lblSalt">盐</span>
+          <input class="ct-inp ct-sel" type="text" id="kdfSalt" placeholder="留空则随机生成（会一并输出）">
+          <button class="btn btn-primary btn-sm" id="kdfRun">派生密钥</button>
+        </div>
+        <div>
+          <div class="ct-sec-t" id="lblKdfOut">派生结果</div>
+          <textarea class="ct-io" id="kdfOut" placeholder="hex 编码的派生密钥"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <div id="capWarn" style="display:none;margin-top:10px" class="ct-warn">
+      <span id="capWarnTxt">当前环境不支持 Web Crypto API，AES / RSA / 密钥派生不可用。</span>
+    </div>
+  </div>
+
+  <div class="ct-status" id="status"></div>
+</div>
+<script>
+(function(){
+'use strict';
+
+// ==================== i18n ====================
+var L10N = { 'en-US': {
+  '密码生成':'Passwords','口令生成':'Passphrases','AES 加解密':'AES','RSA 加解密':'RSA','密钥派生':'Key derivation',
+  '长度':'Length','大写 A-Z':'Uppercase','小写 a-z':'Lowercase','数字 0-9':'Digits','符号':'Symbols',
+  '排除易混淆 0O1lI|':'Exclude look-alikes','每类至少一个':'At least one per set','数量':'Count','生成密码':'Generate',
+  '词数':'Words','分隔符':'Separator','短横线':'hyphen','下划线':'underscore','点号':'dot','空格':'space','无':'none',
+  '首字母大写':'Capitalize','末尾加两位数字':'Append 2 digits','生成口令':'Generate',
+  '模式':'Mode','迭代':'Iterations','口令':'Passphrase','明文':'Plaintext','密文':'Ciphertext',
+  '加密 ↑':'Encrypt ↑','解密 ↓':'Decrypt ↓','密文格式：模式.迭代.盐.IV.密文':'Format: mode.iters.salt.iv.ct',
+  '位数':'Bits','生成密钥对':'Generate keypair','公钥（PEM）':'Public key (PEM)','私钥（PEM）':'Private key (PEM)',
+  '输入':'Input','公钥加密 ↑':'Encrypt ↑','私钥解密 ↓':'Decrypt ↓','算法':'Algorithm','盐':'Salt',
+  '留空则随机生成（会一并输出）':'Empty = random salt (printed)','派生密钥':'Derive','派生结果':'Derived key',
+  '复制':'Copy','已复制':'Copied','请输入口令':'Enter a passphrase','请输入明文':'Enter plaintext',
+  '请先生成或粘贴密钥':'Generate or paste a key first','解密失败：口令错误或密文已损坏':'Decrypt failed: wrong passphrase or corrupted data',
+  '请至少勾选一类字符':'Select at least one character set','生成中…':'Working…'
+}};
+function isEn(){ var l = document.documentElement.getAttribute('lang') || ''; return l.indexOf('en') === 0 }
+function L(s){ return isEn() ? ((L10N['en-US'] && L10N['en-US'][s]) || s) : s }
+
+function $(id){ return document.getElementById(id) }
+function status(msg, cls){ var el = $('status'); el.textContent = msg; el.className = 'ct-status' + (cls ? ' ' + cls : ''); }
+
+// ==================== 编解码 ====================
+function bufToB64(buf){
+  var b = new Uint8Array(buf), s = '';
+  for (var i = 0; i < b.length; i++) s += String.fromCharCode(b[i]);
+  return btoa(s);
+}
+function b64ToBuf(b64){
+  var s = atob(String(b64).replace(/\s/g, ''));
+  var b = new Uint8Array(s.length);
+  for (var i = 0; i < s.length; i++) b[i] = s.charCodeAt(i);
+  return b;
+}
+function bufToHex(buf){
+  var b = new Uint8Array(buf), s = '';
+  for (var i = 0; i < b.length; i++) s += ('0' + b[i].toString(16)).slice(-2);
+  return s;
+}
+function pemToBuf(pem){
+  return b64ToBuf(String(pem).replace(/-----[^-]+-----/g, ''));
+}
+function enc(str){ return new TextEncoder().encode(str) }
+function dec(buf){ return new TextDecoder().decode(buf) }
+
+var HAS_SUBTLE = !!(window.crypto && window.crypto.subtle);
+var rng = function(n){ var a = new Uint8Array(n); crypto.getRandomValues(a); return a };
+
+// 无偏随机整数 [0, max)
+function randomInt(max){
+  if (max <= 0) return 0;
+  if (max <= 256){
+    var limit = Math.floor(256 / max) * max, a = new Uint8Array(1);
+    for (;;){ crypto.getRandomValues(a); if (a[0] < limit) return a[0] % max; }
+  }
+  var lim = Math.floor(4294967296 / max) * max, w = new Uint32Array(1);
+  for (;;){ crypto.getRandomValues(w); if (w[0] < lim) return w[0] % max; }
+}
+
+// ==================== 复制 ====================
+function bindCopy(container, getText){
+  container.addEventListener('click', function(e){
+    var item = e.target.closest ? e.target.closest('.ct-out-item') : null;
+    if (!item) return;
+    var txt = getText(item);
+    if (!txt) return;
+    window.copyViaHost(txt, function(){ status(L('已复制')); });
+  });
+}
+
+// ==================== Tab ====================
+document.querySelectorAll('.ct-tab').forEach(function(b){
+  b.addEventListener('click', function(){
+    document.querySelectorAll('.ct-tab').forEach(function(x){ x.classList.remove('ct-active') });
+    document.querySelectorAll('.ct-pane').forEach(function(x){ x.classList.remove('ct-show') });
+    b.classList.add('ct-active');
+    $('pane-' + b.dataset.tab).classList.add('ct-show');
+  });
+});
+
+// ==================== 密码生成 ====================
+var SYM = '!@#$%^&*()-_=+[]{};:,.<>?/~';
+function pwSets(){
+  var sets = [];
+  if ($('pwUpper').checked) sets.push('ABCDEFGHIJKLMNOPQRSTUVWXYZ');
+  if ($('pwLower').checked) sets.push('abcdefghijklmnopqrstuvwxyz');
+  if ($('pwDigit').checked) sets.push('0123456789');
+  if ($('pwSymbol').checked) sets.push(SYM);
+  if ($('pwNoAmb').checked) sets = sets.map(function(s){ return s.replace(/[0O1lI|]/g, '') }).filter(function(s){ return s });
+  return sets;
+}
+function genPassword(len, sets, each){
+  var all = sets.join('');
+  if (!all) return '';
+  var out = [];
+  if (each) for (var i = 0; i < sets.length && out.length < len; i++) out.push(sets[i][randomInt(sets[i].length)]);
+  while (out.length < len) out.push(all[randomInt(all.length)]);
+  for (var j = out.length - 1; j > 0; j--){ var k = randomInt(j + 1), t = out[j]; out[j] = out[k]; out[k] = t; }
+  return out.join('');
+}
+function strength(bits, barEl){
+  var pct = Math.max(4, Math.min(100, Math.round(bits / 120 * 100)));
+  var color = 'var(--danger)', label = '弱';
+  if (bits >= 90){ color = 'var(--success)'; label = '极强' }
+  else if (bits >= 65){ color = 'var(--success)'; label = '强' }
+  else if (bits >= 45){ color = 'var(--warning)'; label = '一般' }
+  barEl.style.width = pct + '%';
+  barEl.style.background = color;
+  return label;
+}
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') }
+function renderOut(box, list){
+  box.innerHTML = list.map(function(p){
+    return '<div class="ct-out-item" data-v="' + encodeURIComponent(p) + '"><code>' + esc(p) + '</code><span class="ct-cp">' + L('复制') + '</span></div>';
+  }).join('');
+}
+function doGenPw(){
+  var len = parseInt($('pwLen').value, 10) || 24;
+  var cnt = Math.max(1, Math.min(50, parseInt($('pwCount').value, 10) || 5));
+  var sets = pwSets();
+  if (!sets.length){ status(L('请至少勾选一类字符'), 'err'); return; }
+  var each = $('pwEach').checked;
+  var list = [], one = '';
+  for (var i = 0; i < cnt; i++){ one = genPassword(len, sets, each); list.push(one) }
+  var bits = len * Math.log(sets.join('').length) / Math.LN2;
+  var lv = strength(bits, $('pwBar'));
+  $('pwMeta').textContent = '字符集 ' + sets.join('').length + ' · 长度 ' + len + ' · 熵 ≈ ' + bits.toFixed(1) + ' bit · ' + lv;
+  renderOut($('pwOut'), list);
+  status('生成 ' + cnt + ' 条密码 · ' + lv);
+}
+$('pwLen').addEventListener('input', function(){ $('pwLenVal').textContent = this.value; doGenPw() });
+['pwUpper', 'pwLower', 'pwDigit', 'pwSymbol', 'pwNoAmb', 'pwEach'].forEach(function(id){
+  $(id).addEventListener('change', doGenPw);
+});
+$('pwCount').addEventListener('change', doGenPw);
+$('pwGen').addEventListener('click', doGenPw);
+bindCopy($('pwOut'), function(el){ return decodeURIComponent(el.dataset.v) });
+
+// ==================== 口令生成 ====================
+var WORDS = ('apple anchor arrow basket beacon bridge bucket butter cactus camera candle canyon carrot castle cherry circus cloud coffee ' +
+'copper coral cotton crayon crystal daisy desert doctor dolphin dragon eagle ember engine fabric falcon feather forest fossil ' +
+'fountain galaxy garden ginger glacier granite guitar hammer harbor helmet honey horizon hunter island ivory jacket jaguar jungle ' +
+'kettle kingdom kitchen ladder lagoon lantern lemon leopard library lizard lobster magnet marble meadow melon meteor mirror monkey ' +
+'mountain muffin nectar needle nickel ocean olive orange orchid otter oyster palace panda paper parrot pebble penguin pepper piano ' +
+'pillar pilot planet pocket prairie pumpkin puzzle quartz rabbit radar rainbow ranger ribbon river rocket rubber sailor salmon ' +
+'sapphire school shadow shelter silver sketch socket spark spider spring squid statue stone storm sugar sunset tiger timber ' +
+'tomato tower tunnel turtle valley velvet violet walnut wander willow window wizard yellow zebra').split(' ');
+function doGenPhrase(){
+  var n = parseInt($('phWords').value, 10) || 5;
+  var sep = $('phSep').value;
+  var cap = $('phCap').checked, num = $('phNum').checked;
+  var cnt = Math.max(1, Math.min(50, parseInt($('phCount').value, 10) || 5));
+  var list = [];
+  for (var i = 0; i < cnt; i++){
+    var parts = [];
+    for (var j = 0; j < n; j++){
+      var w = WORDS[randomInt(WORDS.length)];
+      if (cap) w = w.charAt(0).toUpperCase() + w.slice(1);
+      parts.push(w);
+    }
+    var s = parts.join(sep);
+    if (num) s += (sep || '') + String(10 + randomInt(90));
+    list.push(s);
+  }
+  var bits = n * Math.log(WORDS.length) / Math.LN2 + (num ? 6.5 : 0);
+  var lv = strength(bits, $('phBar'));
+  $('phMeta').textContent = '词表 ' + WORDS.length + ' 词 · ' + n + ' 词 · 熵 ≈ ' + bits.toFixed(1) + ' bit · ' + lv;
+  renderOut($('phOut'), list);
+  status('生成 ' + cnt + ' 条口令 · ' + lv);
+}
+$('phWords').addEventListener('input', function(){ $('phWordsVal').textContent = this.value; doGenPhrase() });
+['phSep', 'phCap', 'phNum'].forEach(function(id){ $(id).addEventListener('change', doGenPhrase) });
+$('phCount').addEventListener('change', doGenPhrase);
+$('phGen').addEventListener('click', doGenPhrase);
+bindCopy($('phOut'), function(el){ return decodeURIComponent(el.dataset.v) });
+
+// ==================== AES ====================
+async function deriveAesKey(pass, salt, mode, iters){
+  var base = await crypto.subtle.importKey('raw', enc(pass), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: salt, iterations: iters, hash: 'SHA-256' },
+    base,
+    { name: mode === 'GCM' ? 'AES-GCM' : 'AES-CBC', length: 256 },
+    false, ['encrypt', 'decrypt']
+  );
+}
+$('aesEnc').addEventListener('click', async function(){
+  if (!HAS_SUBTLE) return status(L('当前环境不支持 Web Crypto API'), 'err');
+  var pass = $('aesPass').value, plain = $('aesPlain').value;
+  if (!pass) return status(L('请输入口令'), 'err');
+  if (!plain) return status(L('请输入明文'), 'err');
+  try {
+    status(L('生成中…'));
+    var mode = $('aesMode').value;
+    var iters = Math.max(1000, parseInt($('aesIter').value, 10) || 200000);
+    var salt = rng(16), iv = rng(mode === 'GCM' ? 12 : 16);
+    var key = await deriveAesKey(pass, salt, mode, iters);
+    var alg = mode === 'GCM' ? { name: 'AES-GCM', iv: iv } : { name: 'AES-CBC', iv: iv };
+    var ct = await crypto.subtle.encrypt(alg, key, enc(plain));
+    $('aesCipher').value = [mode, iters, bufToB64(salt), bufToB64(iv), bufToB64(ct)].join('.');
+    status('加密完成 · ' + mode + '-256 · ' + ct.byteLength + ' 字节', 'ok');
+  } catch (e){ status('加密失败：' + (e.message || e), 'err') }
+});
+$('aesDec').addEventListener('click', async function(){
+  if (!HAS_SUBTLE) return status(L('当前环境不支持 Web Crypto API'), 'err');
+  var pass = $('aesPass').value;
+  if (!pass) return status(L('请输入口令'), 'err');
+  var parts = $('aesCipher').value.trim().split('.');
+  if (parts.length !== 5) return status(L('密文格式不正确'), 'err');
+  try {
+    status(L('生成中…'));
+    var mode = parts[0] === 'CBC' ? 'CBC' : 'GCM';
+    var iters = Math.max(1000, parseInt(parts[1], 10) || 200000);
+    var key = await deriveAesKey(pass, b64ToBuf(parts[2]), mode, iters);
+    var iv = b64ToBuf(parts[3]);
+    var alg = mode === 'GCM' ? { name: 'AES-GCM', iv: iv } : { name: 'AES-CBC', iv: iv };
+    var pt = await crypto.subtle.decrypt(alg, key, b64ToBuf(parts[4]));
+    $('aesPlain').value = dec(pt);
+    status('解密完成', 'ok');
+  } catch (e){ status(L('解密失败：口令错误或密文已损坏'), 'err') }
+});
+
+// ==================== RSA ====================
+function pemOf(label, b64){
+  var lines = b64.match(/.{1,64}/g) || [];
+  return '-----BEGIN ' + label + '-----\n' + lines.join('\n') + '\n-----END ' + label + '-----';
+}
+async function exportPem(key){
+  var isPriv = key.type === 'private';
+  var buf = await crypto.subtle.exportKey(isPriv ? 'pkcs8' : 'spki', key);
+  return pemOf(isPriv ? 'PRIVATE KEY' : 'PUBLIC KEY', bufToB64(buf));
+}
+async function importRsa(pem, usage){
+  var isPriv = /PRIVATE KEY/.test(pem);
+  return crypto.subtle.importKey(
+    isPriv ? 'pkcs8' : 'spki', pemToBuf(pem),
+    { name: 'RSA-OAEP', hash: 'SHA-256' }, true, [usage]
+  );
+}
+$('rsaBits').addEventListener('change', function(){
+  var b = parseInt(this.value, 10);
+  $('lblRsaLimit').textContent = '单次最多 ' + (b / 8 - 66) + ' 字节';
+});
+$('rsaGen').addEventListener('click', async function(){
+  if (!HAS_SUBTLE) return status(L('当前环境不支持 Web Crypto API'), 'err');
+  var bits = parseInt($('rsaBits').value, 10);
+  try {
+    status('正在生成 ' + bits + ' 位密钥对…');
+    var kp = await crypto.subtle.generateKey(
+      { name: 'RSA-OAEP', modulusLength: bits, publicExponent: new Uint8Array([1, 0, 1]), hash: 'SHA-256' },
+      true, ['encrypt', 'decrypt']
+    );
+    $('rsaPub').value = await exportPem(kp.publicKey);
+    $('rsaPriv').value = await exportPem(kp.privateKey);
+    status(bits + ' 位密钥对已生成', 'ok');
+  } catch (e){ status('生成失败：' + (e.message || e), 'err') }
+});
+$('rsaEnc').addEventListener('click', async function(){
+  if (!HAS_SUBTLE) return status(L('当前环境不支持 Web Crypto API'), 'err');
+  var pem = $('rsaPub').value.trim(), data = $('rsaIn').value;
+  if (!pem) return status(L('请先生成或粘贴密钥'), 'err');
+  if (!data) return status(L('请输入明文'), 'err');
+  try {
+    var key = await importRsa(pem, 'encrypt');
+    var ct = await crypto.subtle.encrypt({ name: 'RSA-OAEP' }, key, enc(data));
+    $('rsaIn').value = bufToB64(ct);
+    status('已用公钥加密 · ' + ct.byteLength + ' 字节', 'ok');
+  } catch (e){
+    status('加密失败：数据超过 ' + (($('rsaBits').value / 8) - 66) + ' 字节上限，或公钥无效', 'err');
+  }
+});
+$('rsaDec').addEventListener('click', async function(){
+  if (!HAS_SUBTLE) return status(L('当前环境不支持 Web Crypto API'), 'err');
+  var pem = $('rsaPriv').value.trim(), data = $('rsaIn').value.trim();
+  if (!pem) return status(L('请先生成或粘贴密钥'), 'err');
+  if (!data) return status(L('请输入明文'), 'err');
+  try {
+    var key = await importRsa(pem, 'decrypt');
+    var pt = await crypto.subtle.decrypt({ name: 'RSA-OAEP' }, key, b64ToBuf(data));
+    $('rsaIn').value = dec(pt);
+    status('已用私钥解密', 'ok');
+  } catch (e){ status('解密失败：私钥不匹配或密文无效', 'err') }
+});
+
+// ==================== KDF ====================
+$('kdfRun').addEventListener('click', async function(){
+  if (!HAS_SUBTLE) return status(L('当前环境不支持 Web Crypto API'), 'err');
+  var pass = $('kdfPass').value;
+  if (!pass) return status(L('请输入口令'), 'err');
+  var iters = Math.max(1000, parseInt($('kdfIter').value, 10) || 200000);
+  var len = Math.max(1, Math.min(64, parseInt($('kdfLen').value, 10) || 32));
+  var hash = $('kdfHash').value;
+  var saltStr = $('kdfSalt').value.trim();
+  var salt = saltStr ? enc(saltStr) : rng(16);
+  try {
+    status(L('生成中…'));
+    var base = await crypto.subtle.importKey('raw', enc(pass), 'PBKDF2', false, ['deriveBits']);
+    var bits = await crypto.subtle.deriveBits(
+      { name: 'PBKDF2', salt: salt, iterations: iters, hash: hash }, base, len * 8
+    );
+    var out = ($('kdfHash').value === 'SHA-512' ? 'PBKDF2-HMAC-SHA512' : 'PBKDF2-HMAC-SHA256') +
+              '\niterations = ' + iters + '\nlength     = ' + len + ' bytes\n' +
+              (saltStr ? '' : 'salt       = ' + bufToHex(salt) + '   (随机生成，请留存)\n') +
+              'key(hex)   = ' + bufToHex(bits);
+    $('kdfOut').value = out;
+    status('派生完成', 'ok');
+  } catch (e){ status('派生失败：' + (e.message || e), 'err') }
+});
+
+// ==================== 命令面板带入 ====================
+window.addEventListener('message', function(e){
+  var d = e.data;
+  if (!d) return;
+  if (d.type === 'plugin:init' && d.data){
+    if (d.data.locale) document.documentElement.setAttribute('lang', d.data.locale);
+    var t = (d.data.text || '').trim();
+    if (/^\d{1,3}$/.test(t)){
+      var v = Math.max(4, Math.min(128, parseInt(t, 10)));
+      $('pwLen').value = v; $('pwLenVal').textContent = v;
+      doGenPw();
+    }
+    return;
+  }
+  if (d.type === 'plugin:theme' && d.data){
+    if (d.data.locale) document.documentElement.setAttribute('lang', d.data.locale);
+    doGenPw(); doGenPhrase();
+  }
+});
+
+// ==================== 启动 ====================
+if (!HAS_SUBTLE){
+  $('capWarn').style.display = 'block';
+  ['aesEnc', 'aesDec', 'rsaGen', 'rsaEnc', 'rsaDec', 'kdfRun'].forEach(function(id){ $(id).disabled = true });
+}
+$('rsaBits').dispatchEvent(new Event('change'));
+doGenPw();
+doGenPhrase();
+status('全部运算在本机完成，不联网');
+})();
+</script>
+</body>
+</html>

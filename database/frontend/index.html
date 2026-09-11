@@ -71,6 +71,23 @@
     .db-row2 > * { flex:1; min-width:0; }
     .db-actions-bar { display:flex; align-items:center; gap:var(--sp-2); margin-top:var(--sp-3); }
     .db-actions-bar .spacer { flex:1; }
+    /* Redis 可视化管理 */
+    .db-redis-bar { display:flex; gap:6px; align-items:center; padding:6px 10px; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+    .db-redis-bar .p-input-sm { height:26px; }
+    .db-keydetail { display:flex; flex-direction:column; gap:10px; padding:10px 12px; }
+    .kd-actions { display:flex; align-items:center; gap:8px; }
+    .kd-type { font-size:var(--fs-xs); font-weight:var(--fw-semibold); padding:2px 8px; border-radius:6px; color:#fff; background:var(--accent); }
+    .kd-type.kd-string { background:#2f9e44; }
+    .kd-type.kd-hash { background:#1971c2; }
+    .kd-type.kd-list { background:#e8590c; }
+    .kd-type.kd-set { background:#9c36b5; }
+    .kd-type.kd-zset { background:#c2255c; }
+    .kd-meta { font-size:var(--fs-sm); color:var(--text-muted); display:flex; align-items:center; gap:8px; }
+    .kd-body { display:flex; flex-direction:column; gap:8px; }
+    .kd-item { display:flex; align-items:center; gap:8px; padding:4px 6px; border:1px solid var(--border); border-radius:6px; font-family:var(--font-mono); font-size:var(--fs-xs); }
+    .kd-idx { color:var(--text-muted); min-width:30px; text-align:right; }
+    .kd-val { flex:1; word-break:break-all; }
+    .kd-key { font-family:var(--font-mono); font-size:var(--fs-sm); }
     .db-toast { position:fixed; top:12px; right:12px; padding:8px 14px; border-radius:var(--radius); font-size:var(--fs-sm); z-index:999; box-shadow:var(--shadow-2); max-width:360px; }
     .db-toast.ok { background:var(--success); color:#fff; }
     .db-toast.err { background:var(--danger); color:#fff; }
@@ -113,6 +130,14 @@
       <div class="db-side">
         <div class="db-side-head"><span>连接</span><button class="p-btn p-btn-sm" @click="openConnModal()">＋</button></div>
         <div class="db-side-body">
+          <div v-if="selectedConn && selectedConn.dbType==='redis'" class="db-redis-bar">
+            <select class="p-input p-input-sm" v-model="redisDB" @change="reloadRedisTree">
+              <option v-for="n in 16" :key="n" :value="n-1">DB {{ n-1 }}</option>
+            </select>
+            <input class="p-input p-input-sm" style="flex:1;min-width:90px;" v-model="keyFilter" @input="reloadRedisTree" placeholder="过滤前缀，如 user:" />
+            <button class="p-btn p-btn-sm" @click="reloadRedisTree">刷新</button>
+            <button class="p-btn p-btn-sm p-btn-primary" @click="openNewKey">+ 新建</button>
+          </div>
           <div v-if="conns.length===0" class="db-empty">还没有连接，点「新建连接」添加。</div>
           <div v-for="c in conns" :key="c.id" class="db-conn" :class="{active: selectedConn && selectedConn.id===c.id}">
             <div class="db-conn-row" @click="selectConn(c)">
@@ -154,35 +179,121 @@
 
         <div class="db-resp" v-if="selectedConn">
           <div class="db-resp-head">
-            <span v-if="result" class="db-status" :class="result.success ? 'ok' : 'err'">{{ result.success ? '成功' : '失败' }}</span>
-            <span v-if="result && result.success && result.rowCount>=0" class="db-ctx">{{ result.rowCount }} 行</span>
-            <span v-if="result && result.affected>=0 && !result.rowCount" class="db-ctx">{{ result.affected }} 行受影响</span>
-            <span v-if="result && result.durationMs>=0" class="db-ctx">{{ result.durationMs }} ms</span>
-            <span v-if="result && result.editable" class="db-status ok" style="background:var(--accent-soft); color:var(--accent);">可编辑</span>
-            <span v-if="result && !result.editable && result.editReason" class="db-ctx" :title="result.editReason">💡 {{ result.editReason }}</span>
+            <template v-if="keyDetail">
+              <span class="db-ctx">查看 key：<b>{{ keyDetail.key }}</b></span>
+            </template>
+            <template v-else>
+              <span v-if="result" class="db-status" :class="result.success ? 'ok' : 'err'">{{ result.success ? '成功' : '失败' }}</span>
+              <span v-if="result && result.success && result.rowCount>=0" class="db-ctx">{{ result.rowCount }} 行</span>
+              <span v-if="result && result.affected>=0 && !result.rowCount" class="db-ctx">{{ result.affected }} 行受影响</span>
+              <span v-if="result && result.durationMs>=0" class="db-ctx">{{ result.durationMs }} ms</span>
+              <span v-if="result && result.editable" class="db-status ok" style="background:var(--accent-soft); color:var(--accent);">可编辑</span>
+              <span v-if="result && !result.editable && result.editReason" class="db-ctx" :title="result.editReason">💡 {{ result.editReason }}</span>
+            </template>
             <div class="spacer" style="flex:1;"></div>
-            <span v-if="result && result.success && !result.editable && result.editReason" class="db-ctx">{{ result.editReason }}</span>
+            <span v-if="keyDetail" class="db-ctx">{{ keyDetail.type }} · {{ keyDetail.size }} 项</span>
           </div>
           <div class="db-resp-body">
-            <div v-if="!result" class="db-nores">尚无结果。</div>
-            <div v-else-if="!result.success" class="db-pre" style="color:var(--danger);">{{ result.error }}</div>
-            <div v-else-if="result.columns && result.columns.length" >
-              <table class="db-grid">
-                <thead><tr><th v-for="(col,ci) in result.columns" :key="ci" :class="{'db-pk': isPkCol(ci)}">{{ col }}<span v-if="isPkCol(ci)" style="color:var(--accent);"> 🔑</span></th></tr></thead>
-                <tbody>
-                  <tr v-for="(row,ri) in result.rows" :key="ri">
-                    <td v-for="(cell,ci) in row" :key="ci"
-                        :class="[ isPkCol(ci) ? 'db-pk' : '', (result.nulls[ri] && result.nulls[ri][ci]) ? 'db-null' : '', (result.editable && !isPkCol(ci)) ? 'db-editable' : '', (editing.r===ri && editing.c===ci) ? 'db-editing' : '' ]"
-                        @click="beginEdit(ri, ci)">
-                      <input v-if="editing.r===ri && editing.c===ci" v-model="cellDraft" @keydown.enter.prevent="commitEdit(ri,ci)" @keydown.esc.prevent="cancelEdit" @blur="commitEdit(ri,ci)" ref="editInput" />
-                      <template v-else>{{ (result.nulls[ri] && result.nulls[ri][ci]) ? 'NULL' : cell }}</template>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+            <!-- key 详情（Redis） -->
+            <div v-if="keyDetail" class="db-keydetail">
+              <div class="kd-actions">
+                <span class="kd-type" :class="'kd-'+keyDetail.type">{{ keyDetail.type }}</span>
+                <div class="spacer"></div>
+                <button class="p-btn p-btn-sm" @click="copyKeyName">复制名</button>
+                <button class="p-btn p-btn-sm" @click="renameKey">重命名</button>
+                <button class="p-btn p-btn-sm db-del" @click="deleteKey(keyDetail.key)">删除</button>
+                <button class="p-btn p-btn-sm" @click="keyDetail=null; result=null">关闭</button>
+              </div>
+              <div class="kd-meta">
+                <span>TTL：</span>
+                <b v-if="keyDetail.ttl<0">永久</b>
+                <b v-else>{{ keyDetail.ttl }} 秒</b>
+                <button class="p-btn p-btn-sm" @click="editTTL">设 TTL</button>
+              </div>
+              <div v-if="keyDetail.type==='string'" class="kd-body">
+                <textarea class="db-ta" v-model="keyDetail.Value" style="min-height:180px;"></textarea>
+                <button class="p-btn p-btn-sm p-btn-primary" @click="saveString">保存值</button>
+              </div>
+              <div v-else-if="keyDetail.type==='hash'" class="kd-body">
+                <table class="db-grid">
+                  <thead><tr><th>字段</th><th>值</th><th></th></tr></thead>
+                  <tbody>
+                    <tr v-for="(it,idx) in keyDetail.Items" :key="idx">
+                      <td class="db-pk">{{ it.field }}</td>
+                      <td><input class="p-input" v-model="it.value" @change="hashFieldSet(it)" /></td>
+                      <td><button class="db-act db-del" @click="hashFieldDel(it.field)">🗑</button></td>
+                    </tr>
+                  </tbody>
+                </table>
+                <div class="db-row2">
+                  <input class="p-input" v-model="newHashField.f" placeholder="字段名" />
+                  <input class="p-input" v-model="newHashField.v" placeholder="值" />
+                  <button class="p-btn p-btn-sm" @click="hashFieldAdd">+ 字段</button>
+                </div>
+              </div>
+              <div v-else-if="keyDetail.type==='list'" class="kd-body">
+                <div v-for="(it,idx) in keyDetail.Items" :key="idx" class="kd-item">
+                  <span class="kd-idx">{{ idx }}</span>
+                  <span class="kd-val">{{ it }}</span>
+                  <button class="db-act db-del" @click="listElemDel(it)">🗑</button>
+                </div>
+                <div class="db-row2">
+                  <input class="p-input" v-model="newListItem" placeholder="新元素" />
+                  <button class="p-btn p-btn-sm" @click="listPush('tail')">尾部追加</button>
+                  <button class="p-btn p-btn-sm" @click="listPush('head')">头部插入</button>
+                </div>
+              </div>
+              <div v-else-if="keyDetail.type==='set'" class="kd-body">
+                <div v-for="(it,idx) in keyDetail.Items" :key="idx" class="kd-item">
+                  <span class="kd-val">{{ it }}</span>
+                  <button class="db-act db-del" @click="setMemberDel(it)">🗑</button>
+                </div>
+                <div class="db-row2">
+                  <input class="p-input" v-model="newSetMember" placeholder="新成员" />
+                  <button class="p-btn p-btn-sm" @click="setMemberAdd">+ 成员</button>
+                </div>
+              </div>
+              <div v-else-if="keyDetail.type==='zset'" class="kd-body">
+                <table class="db-grid">
+                  <thead><tr><th>成员</th><th>分数</th><th></th></tr></thead>
+                  <tbody>
+                    <tr v-for="(it,idx) in keyDetail.Items" :key="idx">
+                      <td class="db-pk">{{ it.member }}</td>
+                      <td><input class="p-input" v-model="it.score" @change="zsetMemberSet(it)" /></td>
+                      <td><button class="db-act db-del" @click="zsetMemberDel(it.member)">🗑</button></td>
+                    </tr>
+                  </tbody>
+                </table>
+                <div class="db-row2">
+                  <input class="p-input" v-model="newZsetMember.m" placeholder="成员" />
+                  <input class="p-input" v-model="newZsetMember.s" placeholder="分数" />
+                  <button class="p-btn p-btn-sm" @click="zsetMemberAdd">+ 成员</button>
+                </div>
+              </div>
+              <div v-else class="db-nores">暂不支持的类型：{{ keyDetail.type }}</div>
             </div>
-            <div v-else-if="result.message!=null && result.message!==''" class="db-pre">{{ result.message }}</div>
-            <div v-else class="db-nores">查询已执行，无返回内容。</div>
+            <!-- 查询结果 -->
+            <template v-else>
+              <div v-if="!result" class="db-nores">尚无结果。</div>
+              <div v-else-if="!result.success" class="db-pre" style="color:var(--danger);">{{ result.error }}</div>
+              <div v-else-if="result.columns && result.columns.length" >
+                <table class="db-grid">
+                  <thead><tr><th v-for="(col,ci) in result.columns" :key="ci" :class="{'db-pk': isPkCol(ci)}">{{ col }}<span v-if="isPkCol(ci)" style="color:var(--accent);"> 🔑</span></th></tr></thead>
+                  <tbody>
+                    <tr v-for="(row,ri) in result.rows" :key="ri">
+                      <td v-for="(cell,ci) in row" :key="ci"
+                          :class="[ isPkCol(ci) ? 'db-pk' : '', (result.nulls[ri] && result.nulls[ri][ci]) ? 'db-null' : '', (result.editable && !isPkCol(ci)) ? 'db-editable' : '', (editing.r===ri && editing.c===ci) ? 'db-editing' : '' ]"
+                          @click="beginEdit(ri, ci)">
+                        <input v-if="editing.r===ri && editing.c===ci" v-model="cellDraft" @keydown.enter.prevent="commitEdit(ri,ci)" @keydown.esc.prevent="cancelEdit" @blur="commitEdit(ri,ci)" ref="editInput" />
+                        <template v-else>{{ (result.nulls[ri] && result.nulls[ri][ci]) ? 'NULL' : cell }}</template>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div v-else-if="result.message!=null && result.message!==''" class="db-pre">{{ result.message }}</div>
+              <div v-else class="db-nores">查询已执行，无返回内容。</div>
+            </template>
           </div>
         </div>
       </div>
@@ -250,6 +361,34 @@
           <div class="spacer"></div>
           <button class="p-btn p-btn-sm" @click="showConnModal=false">取消</button>
           <button class="p-btn p-btn-sm p-btn-primary" @click="saveConn">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 新建 Key 弹窗 -->
+    <div v-if="showNewKey" class="db-mask" @click.self="showNewKey=false">
+      <div class="db-modal">
+        <div class="db-modal-head"><span>新建 Key</span><button class="p-btn p-btn-sm" @click="showNewKey=false">✕</button></div>
+        <div class="db-modal-body">
+          <div class="db-field"><label>类型</label>
+            <select class="p-input" v-model="newKeyForm.type">
+              <option value="string">String</option>
+              <option value="hash">Hash</option>
+              <option value="list">List</option>
+              <option value="set">Set</option>
+              <option value="zset">ZSet</option>
+            </select>
+          </div>
+          <div class="db-field"><label>Key 名称</label><input class="p-input" v-model="newKeyForm.key" placeholder="如 user:1:name" /></div>
+          <div class="db-field"><label>值 / 内容</label>
+            <textarea class="db-ta" v-model="newKeyForm.value" placeholder="string 填值；hash/list/set/zset 每行一个元素（zset 每行 member:score）" style="min-height:90px;"></textarea>
+          </div>
+          <div class="db-field"><label>TTL（秒，-1 永久）</label><input class="p-input" v-model="newKeyForm.ttl" placeholder="-1" /></div>
+          <div class="db-actions-bar">
+            <div class="spacer"></div>
+            <button class="p-btn p-btn-sm" @click="showNewKey=false">取消</button>
+            <button class="p-btn p-btn-sm p-btn-primary" @click="saveNewKey">创建</button>
+          </div>
         </div>
       </div>
     </div>
@@ -326,6 +465,18 @@
         showConnModal: false,
         testing: false,
         connForm: blankConn(),
+        // Redis 可视化管理
+        redisDB: 0,
+        keyDetail: null,
+        keyLoading: false,
+        keyFilter: '',
+        showNewKey: false,
+        newKeyForm: { type:'string', key:'', value:'', ttl:'-1' },
+        newHashField: { f:'', v:'' },
+        newListItem: '',
+        newSetMember: '',
+        newZsetMember: { m:'', s:'' },
+        ttlDraft: '',
         toasts: [],
         confirmDialog: { visible:false, message:'', onConfirm:null }
       }
@@ -397,7 +548,7 @@
           if(c.dbType==='mysql' && this.activeDb) tbl = quoteIdent('mysql', this.activeDb) + '.' + tbl
           this.query = 'SELECT * FROM ' + tbl + ' LIMIT 100'
         } else if(n.kind==='key' && c.dbType==='redis'){
-          this.query = 'GET "' + n.name + '"'
+          this.redisKeyGet(n.name)
         } else if(n.kind==='database' && c.dbType==='mysql'){
           this.activeDb = n.name
           this.toggleNode(n)
@@ -512,6 +663,152 @@
           }).catch(function(e){ toast('删除失败: '+(e.message||e),'err') })
         })
       }
+    },
+    // ---- Redis 可视化管理 ----
+    reloadRedisTree: function(){
+      var self = this
+      if(!this.selectedConn || this.selectedConn.dbType!=='redis') return
+      self.treeLoading = true
+      var payload = { id:this.selectedConn.id }
+      if(this.redisDB>=0) payload.dbIndex = this.redisDB
+      if(this.keyFilter) payload.pattern = this.keyFilter
+      send('tree.list', payload).then(function(r){
+        self.treeRoot = (r.nodes||[]).map(function(n){ n._expanded = !!n.children && n.children.length>0; n._loaded = !!n.children; return n })
+      }).catch(function(e){ toast('加载键树失败: '+(e.message||e),'err') })
+      .finally(function(){ self.treeLoading = false })
+    },
+    redisKeyGet: function(key){
+      var self = this
+      this.result = null
+      this.keyLoading = true
+      this.keyDetail = null
+      send('redis.keyGet', { id:this.selectedConn.id, key:key }).then(function(r){
+        self.keyDetail = r
+      }).catch(function(e){ toast('读取 key 失败: '+(e.message||e),'err') })
+      .finally(function(){ self.keyLoading = false })
+    },
+    saveString: function(){
+      var self = this
+      send('redis.keySet', { id:this.selectedConn.id, key:this.keyDetail.key, rtype:'string', value:this.keyDetail.Value, ttl:-1 }).then(function(){
+        toast('已保存','ok'); self.redisKeyGet(self.keyDetail.key)
+      }).catch(function(e){ toast('保存失败: '+(e.message||e),'err') })
+    },
+    hashFieldSet: function(it){
+      var self = this
+      send('redis.hashFieldSet', { id:this.selectedConn.id, key:this.keyDetail.key, field:it.field, value:it.value }).then(function(){
+        toast('字段已更新','ok')
+      }).catch(function(e){ toast('更新失败: '+(e.message||e),'err'); self.redisKeyGet(self.keyDetail.key) })
+    },
+    hashFieldAdd: function(){
+      var self = this
+      if(!this.newHashField.f.trim()){ toast('请输入字段名','err'); return }
+      send('redis.hashFieldSet', { id:this.selectedConn.id, key:this.keyDetail.key, field:this.newHashField.f, value:this.newHashField.v }).then(function(){
+        self.newHashField = { f:'', v:'' }; toast('字段已添加','ok'); self.redisKeyGet(self.keyDetail.key)
+      }).catch(function(e){ toast('添加失败: '+(e.message||e),'err') })
+    },
+    hashFieldDel: function(field){
+      var self = this
+      send('redis.hashFieldDel', { id:this.selectedConn.id, key:this.keyDetail.key, field:field }).then(function(){
+        toast('字段已删除','ok'); self.redisKeyGet(self.keyDetail.key)
+      }).catch(function(e){ toast('删除失败: '+(e.message||e),'err') })
+    },
+    listPush: function(where){
+      var self = this
+      if(!this.newListItem.trim()){ toast('请输入元素','err'); return }
+      send('redis.listPush', { id:this.selectedConn.id, key:this.keyDetail.key, value:this.newListItem, where:where }).then(function(){
+        self.newListItem=''; toast('已追加','ok'); self.redisKeyGet(self.keyDetail.key)
+      }).catch(function(e){ toast('追加失败: '+(e.message||e),'err') })
+    },
+    listElemDel: function(value){
+      var self = this
+      send('redis.listElemDel', { id:this.selectedConn.id, key:this.keyDetail.key, value:value }).then(function(){
+        toast('已删除','ok'); self.redisKeyGet(self.keyDetail.key)
+      }).catch(function(e){ toast('删除失败: '+(e.message||e),'err') })
+    },
+    setMemberAdd: function(){
+      var self = this
+      if(!this.newSetMember.trim()){ toast('请输入成员','err'); return }
+      send('redis.setMemberAdd', { id:this.selectedConn.id, key:this.keyDetail.key, member:this.newSetMember }).then(function(){
+        self.newSetMember=''; toast('已添加','ok'); self.redisKeyGet(self.keyDetail.key)
+      }).catch(function(e){ toast('添加失败: '+(e.message||e),'err') })
+    },
+    setMemberDel: function(member){
+      var self = this
+      send('redis.setMemberDel', { id:this.selectedConn.id, key:this.keyDetail.key, member:member }).then(function(){
+        toast('已删除','ok'); self.redisKeyGet(self.keyDetail.key)
+      }).catch(function(e){ toast('删除失败: '+(e.message||e),'err') })
+    },
+    zsetMemberSet: function(it){
+      var self = this
+      send('redis.zsetMemberSet', { id:this.selectedConn.id, key:this.keyDetail.key, member:String(it.member), score:String(it.score) }).then(function(){
+        toast('分数已更新','ok')
+      }).catch(function(e){ toast('更新失败: '+(e.message||e),'err'); self.redisKeyGet(self.keyDetail.key) })
+    },
+    zsetMemberAdd: function(){
+      var self = this
+      if(!this.newZsetMember.m.trim()){ toast('请输入成员','err'); return }
+      send('redis.zsetMemberSet', { id:this.selectedConn.id, key:this.keyDetail.key, member:this.newZsetMember.m, score:this.newZsetMember.s||'0' }).then(function(){
+        self.newZsetMember={m:'',s:''}; toast('成员已添加','ok'); self.redisKeyGet(self.keyDetail.key)
+      }).catch(function(e){ toast('添加失败: '+(e.message||e),'err') })
+    },
+    zsetMemberDel: function(member){
+      var self = this
+      send('redis.zsetMemberDel', { id:this.selectedConn.id, key:this.keyDetail.key, member:member }).then(function(){
+        toast('已删除','ok'); self.redisKeyGet(self.keyDetail.key)
+      }).catch(function(e){ toast('删除失败: '+(e.message||e),'err') })
+    },
+    copyKeyName: function(){
+      var k = this.keyDetail ? this.keyDetail.key : ''
+      if(window.copyViaHost && k){ window.copyViaHost(k) }
+      else if(navigator.clipboard && k){ navigator.clipboard.writeText(k).catch(function(){}) }
+      toast('已复制 key 名','ok')
+    },
+    renameKey: function(){
+      var self = this
+      var nk = prompt('重命名为：', this.keyDetail.key)
+      if(!nk || nk===this.keyDetail.key) return
+      send('redis.keyRename', { id:this.selectedConn.id, key:this.keyDetail.key, newKey:nk }).then(function(){
+        toast('已重命名','ok'); self.redisKeyGet(nk)
+      }).catch(function(e){ toast('重命名失败: '+(e.message||e),'err') })
+    },
+    deleteKey: function(key){
+      var self = this
+      this.askConfirm('删除 key「' + key + '」？此操作不可撤销。', function(){
+        send('redis.keyDelete', { id:self.selectedConn.id, keys:[key] }).then(function(){
+          self.keyDetail = null; self.result = null
+          self.reloadRedisTree()
+          toast('已删除','ok')
+        }).catch(function(e){ toast('删除失败: '+(e.message||e),'err') })
+      })
+    },
+    editTTL: function(){
+      var self = this
+      var v = prompt('设置 TTL（秒，-1 表示永不过期）：', this.keyDetail.ttl<0 ? '-1' : String(this.keyDetail.ttl))
+      if(v===null) return
+      var sec = parseInt(v, 10)
+      if(isNaN(sec)){ toast('请输入数字','err'); return }
+      send('redis.keyExpire', { id:this.selectedConn.id, key:this.keyDetail.key, seconds:sec }).then(function(){
+        toast('TTL 已更新','ok'); self.redisKeyGet(self.keyDetail.key)
+      }).catch(function(e){ toast('设置失败: '+(e.message||e),'err') })
+    },
+    openNewKey: function(){ this.newKeyForm = { type:'string', key:'', value:'', ttl:'-1' }; this.showNewKey = true },
+    saveNewKey: function(){
+      var self = this
+      var f = this.newKeyForm
+      if(!f.key.trim()){ toast('请输入 Key 名称','err'); return }
+      var payload = { id:this.selectedConn.id, key:f.key, rtype:f.type, ttl:parseInt(f.ttl||'-1',10) }
+      if(f.type==='string'){ payload.value = f.value }
+      else {
+        var lines = f.value.split('\n').map(function(s){ return s.trim() }).filter(function(s){ return s!=='' })
+        if(f.type==='hash'){
+          var fields = {}; lines.forEach(function(l){ var i=l.indexOf(':'); if(i>0){ fields[l.slice(0,i)] = l.slice(i+1) } else { fields[l]='' } }); payload.fields = fields
+        } else if(f.type==='zset'){
+          var zs = lines.map(function(l){ var i=l.lastIndexOf(':'); return { member: i>0?l.slice(0,i):l, score: i>0?l.slice(i+1):'0' } }); payload.items = zs
+        } else { payload.items = lines }
+      }
+      send('redis.keySet', payload).then(function(){
+        self.showNewKey = false; self.reloadRedisTree(); toast('已创建','ok')
+      }).catch(function(e){ toast('创建失败: '+(e.message||e),'err') })
     },
     watch: {
       // 切换数据库类型时联动默认端口，避免选 Redis 仍留 MySQL 的 3306
