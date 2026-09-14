@@ -342,7 +342,7 @@ Host Method 是宿主注册的能力表。**三种运行时共用同一张表、
 | 待办 | `todo_list` / `todo_create` / `todo_done` |
 | 剪贴板 | `clipboard_recent` / `clipboard_copy` |
 | 环境编排 | `env_list` / `env_status` / `env_log` / `env_versions` / `env_start` / `env_stop` / `env_restart` |
-| 日志与崩溃 | `log_list` / `log_read` / `crash_list` / `crash_read` / `plugin_list` |
+| 日志与崩溃 | `log_list` / `log_read` / `crash_list` / `crash_read` / `plugin_list` / `plugin_execute` |
 | 系统信息 | `port_list` / `app_info` |
 | ⚠️ 高危（默认拒绝） | `process_kill` / `system_command` |
 
