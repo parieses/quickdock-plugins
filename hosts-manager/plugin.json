@@ -70,5 +70,6 @@
   },
   "platforms": [
     "windows"
-  ]
+  ],
+  "changelog": "## v1.0.0\n\n- 管理系统 hosts 文件条目，一键启用/禁用/新增"
 }

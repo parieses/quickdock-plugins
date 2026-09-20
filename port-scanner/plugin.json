@@ -96,5 +96,6 @@
   },
   "platforms": [
     "windows"
-  ]
+  ],
+  "changelog": "## v1.0.2\n\n- 检查端口占用，显示进程名和 PID"
 }

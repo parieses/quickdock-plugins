@@ -59,5 +59,6 @@
   "description_i18n": {
     "zh-CN": "解码 JWT Token，查看 Header/Payload，验证过期时间",
     "en-US": "Decode JWT tokens, inspect Header/Payload, and verify expiration."
-  }
+  },
+  "changelog": "## v1.0.0\n\n- 解码 JWT Token，查看 Header/Payload，验证过期时间"
 }

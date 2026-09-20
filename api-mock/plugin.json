@@ -1,0 +1,66 @@
+{
+  "id": "io.github.parieses.api-mock",
+  "name": "API Mock 服务",
+  "version": "1.0.0",
+  "description": "本地 HTTP 接口 Mock 服务：可视化配置路由规则（方法/路径/状态码/响应体/延迟），一键启动本地服务，实时查看请求日志，联调前端与第三方对接无需真实后端",
+  "author": "QuickDock",
+  "category": "开发者日常",
+  "platforms": [
+    "windows",
+    "darwin",
+    "linux"
+  ],
+  "icon": "icon.svg",
+  "backend": {
+    "runtime": "native",
+    "entry": "api-mock",
+    "args": []
+  },
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 680,
+    "height": 640
+  },
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "permissions": {
+    "network": true,
+    "clipboard": true
+  },
+  "commands": [
+    {
+      "id": "mock",
+      "title": "API Mock 服务",
+      "keywords": [
+        "mock",
+        "api",
+        "接口",
+        "模拟",
+        "mock服务",
+        "假接口"
+      ],
+      "aliases": [
+        "接口模拟",
+        "本地mock",
+        "假接口",
+        "mock接口"
+      ],
+      "title_i18n": {
+        "zh-CN": "API Mock 服务",
+        "en-US": "API Mock Server"
+      }
+    }
+  ],
+  "name_i18n": {
+    "zh-CN": "API Mock 服务",
+    "en-US": "API Mock Server"
+  },
+  "description_i18n": {
+    "zh-CN": "本地 HTTP 接口 Mock 服务：可视化配置路由规则并一键启动，实时查看请求日志，联调无需真实后端",
+    "en-US": "Local HTTP mock server: configure routes visually, start with one click, live request logs — no real backend needed for frontend integration."
+  },
+  "changelog": "## v1.0.0\n\n- 新建 API Mock 服务：在本地启动 HTTP mock 服务，支持路由（方法 / 路径 / 状态码 / Content-Type / 响应体 / 延迟）管理、一键启动停止、实时请求日志"
+}

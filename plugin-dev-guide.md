@@ -80,6 +80,7 @@ my-plugin/
 | `id` | 唯一标识，格式 `com.quickdock.xxx`（至少一个点号）|
 | `name` | 插件显示名称 |
 | `version` | 语义化版本号 |
+| `changelog` | 更新日志（纯文本/Markdown），展示在「在线市场」插件详情页；可选 `changelog_i18n` 提供多语言版本（`{"zh-CN": "...", "en-US": "..."}`）。不写则详情页显示「暂无更新日志」 |
 | `backend.runtime` | 运行环境：`none` / `goja` / `native` |
 | `backend.entry` | 入口文件名（`none` runtime 不需要）|
 | `permissions` | 权限声明，影响插件能调用的 Host API |

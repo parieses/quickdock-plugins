@@ -63,5 +63,6 @@
   "description_i18n": {
     "zh-CN": "兼具草稿纸自由度与电子表格智能的多行计算工具，支持行号引用、变量定义、函数计算",
     "en-US": "Multi-line calculation tool combining scratchpad freedom with spreadsheet smarts: row references, variables, functions."
-  }
+  },
+  "changelog": "## v1.0.0\n\n- 兼具草稿纸自由度与电子表格智能的多行计算工具，支持行号引用、变量定义、函数计算"
 }

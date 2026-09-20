@@ -99,5 +99,6 @@
   "description_i18n": {
     "zh-CN": "可视化磁盘空间占用分析工具，类似 SpaceSniffer，支持树图展示目录结构",
     "en-US": "Visualize disk space usage like SpaceSniffer with a treemap of directory structure."
-  }
+  },
+  "changelog": "## v1.0.0\n\n- 可视化磁盘空间占用分析工具，类似 SpaceSniffer，支持树图展示目录结构"
 }

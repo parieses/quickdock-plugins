@@ -56,5 +56,6 @@
   "description_i18n": {
     "zh-CN": "选择目录后按内容哈希查找重复文件，分组展示并支持一键删除冗余副本",
     "en-US": "Find duplicate files by content hash in a chosen folder, grouped view with one-click redundant copy deletion."
-  }
+  },
+  "changelog": "## v1.0.1\n\n- 选择目录后按内容哈希查找重复文件，分组展示并支持一键删除冗余副本"
 }

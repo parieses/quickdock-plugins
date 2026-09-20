@@ -68,5 +68,6 @@
   "description_i18n": {
     "zh-CN": "选择本地图片上传到图床，返回图片链接",
     "en-US": "Pick a local image and upload it to an image host, get a shareable URL."
-  }
+  },
+  "changelog": "## v1.0.0\n\n- 选择本地图片，读取后通过宿主网络能力上传到图床（freeimage.host / imgbb），返回可访问的图片链接，链接可一键复制。不上传任何其它文件"
 }

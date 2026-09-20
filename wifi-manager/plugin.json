@@ -125,5 +125,6 @@
   },
   "platforms": [
     "windows"
-  ]
+  ],
+  "changelog": "## v1.0.0\n\n- 查看网络列表、WiFi 密码、连接状态"
 }

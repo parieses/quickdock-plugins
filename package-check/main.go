@@ -6,6 +6,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -191,6 +192,115 @@ func queryGo(name string) pkgInfo {
 	return info
 }
 
+// ---- OSV.dev 漏洞查询 ----
+
+type osvVuln struct {
+	ID              string                 `json:"id"`
+	Summary         string                 `json:"summary"`
+	Details         string                 `json:"details"`
+	Aliases         []string               `json:"aliases"`
+	Severity        []map[string]interface{} `json:"severity"`
+	DatabaseSpecific map[string]interface{} `json:"database_specific"`
+	References      []map[string]interface{} `json:"references"`
+	Published       string                 `json:"published"`
+	Modified        string                 `json:"modified"`
+}
+
+type osvResponse struct {
+	Vulns []osvVuln `json:"vulns"`
+}
+
+func osvEcosystem(kind string) string {
+	switch strings.ToLower(kind) {
+	case "npm":
+		return "npm"
+	case "pypi":
+		return "PyPI"
+	case "composer":
+		return "Packagist"
+	case "go":
+		return "Go"
+	}
+	return ""
+}
+
+func queryOSV(kind, name, version string) interface{} {
+	eco := osvEcosystem(kind)
+	if eco == "" {
+		return map[string]interface{}{"error": "不支持的生态: " + kind}
+	}
+	if name == "" {
+		return map[string]interface{}{"error": "缺少包名"}
+	}
+	body := map[string]interface{}{
+		"package": map[string]string{"name": name, "ecosystem": eco},
+	}
+	if version != "" {
+		body["version"] = version
+	}
+	payload, err := json.Marshal(body)
+	if err != nil {
+		return map[string]interface{}{"error": err.Error()}
+	}
+	client := newClient(10 * time.Second)
+	req, err := http.NewRequest("POST", "https://api.osv.dev/v1/query", bytes.NewReader(payload))
+	if err != nil {
+		return map[string]interface{}{"error": err.Error()}
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := client.Do(req)
+	if err != nil {
+		return map[string]interface{}{"error": err.Error()}
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return map[string]interface{}{"error": fmt.Sprintf("OSV http %d", resp.StatusCode)}
+	}
+	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
+	var out osvResponse
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return map[string]interface{}{"error": err.Error()}
+	}
+	vulns := make([]map[string]interface{}, 0, len(out.Vulns))
+	for _, v := range out.Vulns {
+		sev := ""
+		if ds, ok := v.DatabaseSpecific["severity"].(string); ok && ds != "" {
+			sev = ds
+		} else if len(v.Severity) > 0 {
+			if s, ok := v.Severity[0]["score"].(string); ok && s != "" {
+				sev = s
+			}
+		}
+		refURL := ""
+		for _, r := range v.References {
+			if u, ok := r["url"].(string); ok && u != "" {
+				refURL = u
+				break
+			}
+		}
+		aliases := v.Aliases
+		if aliases == nil {
+			aliases = []string{}
+		}
+		vulns = append(vulns, map[string]interface{}{
+			"id":        v.ID,
+			"summary":   v.Summary,
+			"severity":  sev,
+			"aliases":   aliases,
+			"url":       refURL,
+			"published": v.Published,
+			"modified":  v.Modified,
+		})
+	}
+	return map[string]interface{}{
+		"ecosystem": eco,
+		"name":      name,
+		"version":   version,
+		"count":     len(vulns),
+		"vulns":     vulns,
+	}
+}
+
 // ---- JSON-RPC ----
 
 type rpcRequest struct {
@@ -259,6 +369,13 @@ func handleQuery(id int64, input map[string]interface{}) {
 	respond(id, result)
 }
 
+func handleVuln(id int64, input map[string]interface{}) {
+	kind := strings.TrimSpace(strFrom(input, "ecosystem"))
+	name := strings.TrimSpace(strFrom(input, "name"))
+	version := strings.TrimSpace(strFrom(input, "version"))
+	respond(id, queryOSV(kind, name, version))
+}
+
 func dispatch(raw string) {
 	var req rpcRequest
 	if err := json.Unmarshal([]byte(raw), &req); err != nil {
@@ -281,6 +398,8 @@ func dispatch(raw string) {
 		switch strings.ToLower(strings.TrimSpace(params.Command)) {
 		case "query":
 			handleQuery(req.ID, params.Input)
+		case "vuln-query":
+			handleVuln(req.ID, params.Input)
 		default:
 			respondError(req.ID, -32601, "unknown command: "+params.Command)
 		}

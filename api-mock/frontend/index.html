@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>API Mock 服务</title>
+<link rel="stylesheet" href="qd-theme.css">
+<link rel="stylesheet" href="components.css">
+<script>
+function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
+</script>
+<script>
+window.__amSeq=0;
+window.execCopyFallback=function(t){try{var a=document.createElement("textarea");a.value=t;a.style.position="fixed";a.style.opacity="0";a.style.top="0";document.body.appendChild(a);a.select();var ok=document.execCommand("copy");document.body.removeChild(a);return ok}catch(e){return false}};
+window.copyViaHost=function(t,cb){var id="cp_"+(++window.__amSeq),done=false;function onMsg(e){var d=e&&e.data;if(d&&d.type==="plugin:copy-result"&&d.id===id){done=true;window.removeEventListener("message",onMsg);cb&&cb(!!d.ok)}}window.addEventListener("message",onMsg);parent.postMessage({type:"plugin:copy",id:id,text:t},"*");setTimeout(function(){if(!done){window.removeEventListener("message",onMsg);cb&&cb(window.execCopyFallback(t))}},300)};
+</script>
+<style>
+.am-app{display:flex;flex-direction:column;height:100%;padding:var(--sp-4);gap:var(--sp-3);box-sizing:border-box;overflow:auto}
+.am-card{background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-lg);padding:var(--sp-3);display:flex;flex-direction:column;gap:8px}
+.am-card-head{display:flex;align-items:center;font-weight:700;font-size:14px;gap:8px}
+.am-card-head .am-btn-sm{margin-left:auto}
+.am-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.am-label{font-size:12px;color:var(--text-muted);min-width:auto}
+.am-input,.am-select,.am-path,.am-status,.am-delay,.am-ct{height:30px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--bg-primary);color:var(--text-primary);font-size:13px;outline:none}
+.am-input:focus,.am-path:focus,.am-status:focus,.am-delay:focus,.am-ct:focus{border-color:var(--accent,#4a9eff)}
+.am-btn{padding:8px 16px;background:var(--accent,#4a9eff);color:#fff;border:none;border-radius:var(--radius-md);cursor:pointer;font-size:13px;font-weight:600}
+.am-btn:hover{filter:brightness(1.08)}
+.am-btn-sm{padding:3px 10px;background:var(--bg-tertiary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius-md);cursor:pointer;font-size:12px}
+.am-btn-sm:hover{background:var(--bg-hover)}
+.am-pill{font-size:11px;padding:3px 10px;border-radius:var(--radius-pill);font-weight:600}
+.am-pill.on{background:var(--success-soft,#1c2b24);color:var(--success,#34d399)}
+.am-pill.off{background:var(--danger-soft,#2b1c1c);color:var(--danger,#e24b4a)}
+.am-addr{font-family:ui-monospace,Consolas,monospace;font-size:13px;color:var(--accent,#4a9eff);background:var(--bg-primary);padding:4px 8px;border-radius:var(--radius-md);border:1px solid var(--border)}
+.am-hint{font-size:11px;color:var(--text-muted)}
+.am-routes{display:flex;flex-direction:column;gap:8px}
+.am-route{background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius-md);padding:8px;display:flex;flex-direction:column;gap:6px}
+.am-route-top{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.am-method{height:30px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--bg-tertiary);color:var(--text-primary);font-size:12px;outline:none;cursor:pointer}
+.am-path{flex:1;min-width:120px}
+.am-chk{font-size:12px;color:var(--text-secondary);display:flex;align-items:center;gap:3px;cursor:pointer;white-space:nowrap}
+.am-del{margin-left:auto;background:none;border:none;color:var(--danger,#e24b4a);cursor:pointer;font-size:14px;padding:0 4px}
+.am-route-meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.am-route-meta label{font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:4px}
+.am-status,.am-delay{width:64px}
+.am-ct{flex:1;min-width:120px}
+.am-body{width:100%;min-height:54px;resize:vertical;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--bg-tertiary);color:var(--text-primary);font-family:ui-monospace,Consolas,monospace;font-size:12px;outline:none;box-sizing:border-box}
+.am-body:focus{border-color:var(--accent,#4a9eff)}
+.am-logs{display:flex;flex-direction:column;gap:4px;max-height:200px;overflow:auto}
+.am-log{display:flex;align-items:center;gap:8px;font-size:12px;font-family:ui-monospace,Consolas,monospace;padding:4px 6px;border-radius:var(--radius-sm);background:var(--bg-primary)}
+.am-log .m{font-weight:700;color:var(--accent,#4a9eff);min-width:52px}
+.am-log .p{flex:1;color:var(--text-secondary);word-break:break-all}
+.am-log .s{font-weight:700}
+.s2xx{color:var(--success,#34d399)}.s3xx{color:var(--accent,#4a9eff)}.s4xx{color:var(--danger,#e24b4a)}.s5xx{color:#e24b4b}
+.am-log .mt{color:var(--text-muted);min-width:48px;text-align:right}
+.am-empty{color:var(--text-muted);font-size:12px;padding:6px 0}
+</style>
+</head>
+<body>
+<div class="am-app">
+  <div class="am-card">
+    <div class="am-card-head">🚀 Mock 服务</div>
+    <div class="am-row">
+      <span class="am-label">端口</span>
+      <input id="port" class="am-input" value="8787" style="width:84px" spellcheck="false">
+      <button id="btnToggle" class="am-btn">启动</button>
+      <span id="status" class="am-pill off">已停止</span>
+    </div>
+    <div class="am-row" id="addrRow" style="display:none">
+      <span class="am-label">地址</span>
+      <code id="addr" class="am-addr">—</code>
+      <button id="btnCopyAddr" class="am-btn-sm">复制</button>
+      <span class="am-hint">服务运行期间请保持本插件窗口打开</span>
+    </div>
+  </div>
+
+  <div class="am-card">
+    <div class="am-card-head">📋 路由规则 <button id="btnAdd" class="am-btn-sm">+ 新增</button></div>
+    <div id="routes" class="am-routes"></div>
+  </div>
+
+  <div class="am-card">
+    <div class="am-card-head">📥 请求日志 <span id="logCount" class="am-hint"></span></div>
+    <div id="logs" class="am-logs"><div class="am-empty">启动服务后，访问上面的地址即可看到请求记录</div></div>
+  </div>
+</div>
+<script>
+(function(){
+  'use strict'
+  var routes=[], seq=0, running=false, pollTimer=null
+  var portInput=document.getElementById('port')
+  var btnToggle=document.getElementById('btnToggle')
+  var statusEl=document.getElementById('status')
+  var addrRow=document.getElementById('addrRow')
+  var addrEl=document.getElementById('addr')
+  var btnCopyAddr=document.getElementById('btnCopyAddr')
+  var routesEl=document.getElementById('routes')
+  var btnAdd=document.getElementById('btnAdd')
+  var logsEl=document.getElementById('logs')
+  var logCount=document.getElementById('logCount')
+
+  function send(command,params){
+    return new Promise(function(resolve,reject){
+      var id='am_'+(++seq)
+      function onMsg(e){var d=e&&e.data;if(d&&d.type==='plugin:result'&&d.id===id){window.removeEventListener('message',onMsg);if(d.error)reject(new Error(d.error));else resolve(d.data)}}
+      window.addEventListener('message',onMsg)
+      parent.postMessage({type:'plugin:execute',id:id,command:command,input:params||{}}, '*')
+    })
+  }
+  function genId(){return 'r'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+
+  var saveTimer=null
+  function saveRoutes(){
+    if(saveTimer)clearTimeout(saveTimer)
+    saveTimer=setTimeout(function(){
+      send('set-routes',{routes:routes}).catch(function(){})
+    },250)
+  }
+
+  function renderRoutes(){
+    routesEl.innerHTML=''
+    if(!routes.length){routesEl.innerHTML='<div class="am-empty">还没有路由规则，点「+ 新增」添加</div>';return}
+    routes.forEach(function(rt,i){
+      var div=document.createElement('div'); div.className='am-route'; div.setAttribute('data-i',i)
+      var methods=['GET','POST','PUT','DELETE','PATCH','ANY']
+      var opt=methods.map(function(m){return '<option'+(m===rt.method?' selected':'')+'>'+m+'</option>'}).join('')
+      div.innerHTML=
+        '<div class="am-route-top">'+
+          '<select class="am-method">'+opt+'</select>'+
+          '<input class="am-path" placeholder="/api/xxx 或 /api/* 或 *" value="'+escapeHtml(rt.path)+'">'+
+          '<label class="am-chk"><input type="checkbox" class="am-enabled"'+(rt.enabled?' checked':'')+'> 启用</label>'+
+          '<button class="am-del" title="删除">✕</button>'+
+        '</div>'+
+        '<div class="am-route-meta">'+
+          '<label>状态码 <input class="am-status" type="number" value="'+rt.status+'"></label>'+
+          '<label>延迟ms <input class="am-delay" type="number" value="'+rt.delay+'"></label>'+
+          '<input class="am-ct" placeholder="application/json" value="'+escapeHtml(rt.contentType)+'">'+
+        '</div>'+
+        '<textarea class="am-body" placeholder="响应体（JSON / 任意文本）">'+escapeHtml(rt.body)+'</textarea>'
+      // bind
+      div.querySelector('.am-method').addEventListener('change',function(e){routes[i].method=e.target.value;saveRoutes()})
+      div.querySelector('.am-path').addEventListener('input',function(e){routes[i].path=e.target.value;saveRoutes()})
+      div.querySelector('.am-enabled').addEventListener('change',function(e){routes[i].enabled=e.target.checked;saveRoutes()})
+      div.querySelector('.am-status').addEventListener('input',function(e){routes[i].status=parseInt(e.target.value,10)||200;saveRoutes()})
+      div.querySelector('.am-delay').addEventListener('input',function(e){routes[i].delay=parseInt(e.target.value,10)||0;saveRoutes()})
+      div.querySelector('.am-ct').addEventListener('input',function(e){routes[i].contentType=e.target.value;saveRoutes()})
+      div.querySelector('.am-body').addEventListener('input',function(e){routes[i].body=e.target.value;saveRoutes()})
+      div.querySelector('.am-del').addEventListener('click',function(){routes.splice(i,1);renderRoutes();saveRoutes()})
+      routesEl.appendChild(div)
+    })
+  }
+
+  function addRoute(){
+    routes.push({id:genId(),method:'GET',path:'/api/new',status:200,contentType:'application/json',body:'{\n  "ok": true\n}',delay:0,enabled:true})
+    renderRoutes();saveRoutes()
+  }
+
+  function setRunning(on,addr){
+    running=on
+    if(on){
+      btnToggle.textContent='停止'
+      statusEl.textContent='运行中';statusEl.className='am-pill on'
+      addrRow.style.display='flex';addrEl.textContent=addr||'—'
+    }else{
+      btnToggle.textContent='启动'
+      statusEl.textContent='已停止';statusEl.className='am-pill off'
+      addrRow.style.display='none'
+      if(pollTimer){clearInterval(pollTimer);pollTimer=null}
+    }
+  }
+
+  function toggleServer(){
+    if(running){
+      send('stop',{}).then(function(){setRunning(false);logsEl.innerHTML='<div class="am-empty">已停止</div>';logCount.textContent=''}).catch(function(){})
+    }else{
+      var port=parseInt(portInput.value,10)||8787
+      btnToggle.disabled=true
+      send('start',{port:port}).then(function(res){
+        btnToggle.disabled=false
+        if(res&&res.running){setRunning(true,res.address);startPoll()}
+        else{setRunning(false)}
+      }).catch(function(err){btnToggle.disabled=false;statusEl.textContent='启动失败';statusEl.className='am-pill off'})
+    }
+  }
+
+  function startPoll(){
+    if(pollTimer)clearInterval(pollTimer)
+    pollTimer=setInterval(function(){
+      send('get-logs',{}).then(function(res){
+        var logs=res&&res.logs||[]
+        if(!logs.length){logsEl.innerHTML='<div class="am-empty">暂无请求，访问 '+addrEl.textContent+' 试试</div>';logCount.textContent='';return}
+        logCount.textContent='共 '+logs.length+' 条'
+        var html=''
+        logs.slice().reverse().forEach(function(l){
+          var cls='s2xx';if(l.status>=500)cls='s5xx';else if(l.status>=400)cls='s4xx';else if(l.status>=300)cls='s3xx'
+          html+='<div class="am-log"><span class="m">'+escapeHtml(l.method)+'</span>'+
+            '<span class="p">'+escapeHtml(l.path)+'</span>'+
+            '<span class="s '+cls+'">'+l.status+'</span>'+
+            '<span class="mt">'+escapeHtml(l.time)+'</span></div>'
+        })
+        logsEl.innerHTML=html
+      }).catch(function(){})
+    },1200)
+  }
+
+  function init(){
+    send('get-routes',{}).then(function(res){
+      if(res&&res.routes){routes=res.routes.map(function(r){return {id:r.id||genId(),method:r.method||'GET',path:r.path||'',status:r.status||200,contentType:r.contentType||'application/json',body:r.body||'',delay:r.delay||0,enabled:r.enabled!==false}})}
+      renderRoutes()
+    }).catch(function(){renderRoutes()})
+    send('status',{}).then(function(res){
+      if(res&&res.running){setRunning(true,res.address);startPoll()}
+    }).catch(function(){})
+  }
+
+  btnToggle.addEventListener('click',toggleServer)
+  btnAdd.addEventListener('click',addRoute)
+  btnCopyAddr.addEventListener('click',function(){
+    window.copyViaHost(addrEl.textContent,function(ok){var t=btnCopyAddr.textContent;btnCopyAddr.textContent=ok?'✓ 已复制':'失败';setTimeout(function(){btnCopyAddr.textContent=t},1500)})
+  })
+  init()
+})()
+</script>
+</body>
+</html>

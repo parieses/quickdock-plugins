@@ -56,5 +56,6 @@
   "description_i18n": {
     "zh-CN": "搜索 Emoji 并一键复制到剪贴板",
     "en-US": "Search emoji and copy them to the clipboard in one click."
-  }
+  },
+  "changelog": "## v1.0.1\n\n- 搜索 Emoji 并一键复制到剪贴板"
 }

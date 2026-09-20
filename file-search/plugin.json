@@ -76,5 +76,6 @@
   "description_i18n": {
     "zh-CN": "按名称/通配符/扩展名/大小搜索，或按内容哈希查找重复文件（支持递归）",
     "en-US": "Search files by name/glob/extension/size, or find duplicates by content hash (recursive)."
-  }
+  },
+  "changelog": "## v1.0.0\n\n- 选择一个文件夹，按名称/通配符/扩展名/大小搜索文件，或按内容哈希查找重复文件（支持子目录递归），删除冗余副本走宿主回收站，不离开本机"
 }

@@ -60,5 +60,6 @@
   "description_i18n": {
     "zh-CN": "邮箱足迹与有效性检查：全量 123 站探测（参考 holehe 适配），语法 / MX / SMTP 有效性验证",
     "en-US": "Email footprint & validity check: probe registrations across 123 sites (adapted from holehe), plus syntax / MX / SMTP validation."
-  }
+  },
+  "changelog": "## v1.0.1\n\n- 邮箱足迹与有效性检查：全量 123 站探测（参考 holehe 适配，Gravatar/GitHub/ProtonMail/Spotify 等已校准，其余逐步补），语法 / MX / SMTP 有效性验证"
 }

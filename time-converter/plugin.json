@@ -69,5 +69,6 @@
   "description_i18n": {
     "zh-CN": "Unix 时间戳 / ISO 8601 / 中文日期 / 相对时间互转，支持任意时区偏移输出",
     "en-US": "Convert Unix timestamp / ISO 8601 / Chinese date / relative time, with arbitrary timezone offset output."
-  }
+  },
+  "changelog": "## v1.0.0\n\n- Unix 时间戳 / ISO 8601 / 中文日期 / 相对时间互转，支持任意时区偏移输出"
 }

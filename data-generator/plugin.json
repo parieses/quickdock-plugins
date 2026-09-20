@@ -1,0 +1,110 @@
+{
+  "id": "io.github.parieses.data-generator",
+  "name": "UUID & 假数据生成器",
+  "version": "1.0.0",
+  "description": "UUID v4 / v7 生成（批量、可大写）＋ 随机字符串 / 整数 / 字节 ＋ 测试假数据（姓名 / 手机 / 邮箱 / 公司 / 地址 / 身份证(测试) / 日期 / 网址 / 用户名 / 人员），全部在本机生成，不联网、不上传",
+  "author": "QuickDock",
+  "icon": "icon.svg",
+  "category": "开发者日常",
+  "platforms": [
+    "windows",
+    "darwin",
+    "linux"
+  ],
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "permissions": {
+    "clipboard": true
+  },
+  "backend": {
+    "runtime": "none"
+  },
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 700,
+    "height": 640
+  },
+  "commands": [
+    {
+      "id": "uuid",
+      "title": "生成 UUID",
+      "keywords": [
+        "uuid",
+        "guid",
+        "唯一标识",
+        "唯一id",
+        "generate"
+      ],
+      "aliases": [
+        "生成uuid",
+        "uuid生成",
+        "guid",
+        "唯一标识",
+        "随机id"
+      ],
+      "prefix": "/uuid",
+      "title_i18n": {
+        "zh-CN": "生成 UUID",
+        "en-US": "Generate UUID"
+      }
+    },
+    {
+      "id": "fake",
+      "title": "生成测试假数据",
+      "keywords": [
+        "fake",
+        "faker",
+        "假数据",
+        "测试数据",
+        "mock",
+        "mock数据"
+      ],
+      "aliases": [
+        "假数据",
+        "测试数据",
+        "生成假数据",
+        "mock数据",
+        "faker"
+      ],
+      "prefix": "/fake",
+      "title_i18n": {
+        "zh-CN": "生成测试假数据",
+        "en-US": "Generate Fake Data"
+      }
+    },
+    {
+      "id": "data-generator",
+      "title": "UUID & 假数据生成器",
+      "keywords": [
+        "uuid",
+        "fake",
+        "faker",
+        "数据生成",
+        "随机数据",
+        "测试数据"
+      ],
+      "aliases": [
+        "数据生成器",
+        "假数据生成器",
+        "uuid生成器",
+        "随机数据"
+      ],
+      "title_i18n": {
+        "zh-CN": "UUID & 假数据生成器",
+        "en-US": "UUID & Fake Data Generator"
+      }
+    }
+  ],
+  "name_i18n": {
+    "zh-CN": "UUID & 假数据生成器",
+    "en-US": "UUID & Fake Data Generator"
+  },
+  "description_i18n": {
+    "zh-CN": "UUID / 随机数据 / 测试假数据，本机生成，不联网",
+    "en-US": "UUID / random data / fake test data. All local, nothing leaves your machine."
+  },
+  "changelog": "## v1.0.0\n\n- 新建 UUID & 假数据生成器：UUID v4 / v7、随机字符串 / 整数 / 字节、测试假数据（姓名 / 手机 / 邮箱 / 公司 / 地址 / 身份证测试号等），纯前端本地生成不联网"
+}

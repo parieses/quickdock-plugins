@@ -549,6 +549,10 @@ def build_index(plugins):
             "version": mf.get("version", "0.0.0"),
             "description": mf.get("description", ""),
             "description_i18n": mf.get("description_i18n"),
+            # 更新日志：插件 plugin.json 的 changelog（纯文本/Markdown）；
+            # changelog_i18n 提供多语言版本。未声明则缺省（前端详情页显示「暂无更新日志」）。
+            "changelog": mf.get("changelog", ""),
+            "changelog_i18n": mf.get("changelog_i18n"),
             "author": mf.get("author", ""),
             "category": mf.get("category", ""),
             "icon": icon_url,

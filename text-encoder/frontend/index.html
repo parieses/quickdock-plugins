@@ -56,6 +56,7 @@
   <div class="cmp-tabs">
     <button class="cmp-tab" data-tab="codec" id="tabCodec">🔤 编解码 / 哈希</button>
     <button class="cmp-tab" data-tab="case" id="tabCase">🔡 命名转换</button>
+    <button class="cmp-tab" data-tab="base" id="tabBase">🔢 进制 / 单位</button>
   </div>
 
   <!-- 编解码 / 哈希 -->
@@ -117,6 +118,85 @@
       <div class="cc-results" id="ccResults"></div>
     </div>
   </div>
+
+  <!-- 进制 / 单位转换 -->
+  <div class="cmp-pane" id="paneBase" hidden>
+  <style>
+  .bc-app{display:flex;flex-direction:column;height:100%;padding:10px;gap:14px;overflow:auto}
+  .bc-sub{display:flex;gap:4px;margin-bottom:2px}
+  .bc-sub button{height:26px;padding:0 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-tertiary);color:var(--text-primary);font-size:12px;cursor:pointer;font-family:inherit}
+  .bc-sub button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .bc-section{display:none;flex-direction:column;gap:8px}
+  .bc-section.active{display:flex}
+  .bc-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .bc-label{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;min-width:64px}
+  .bc-input,.bc-select{height:28px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-tertiary);color:var(--text-primary);font-size:13px;outline:none;font-family:var(--font-mono)}
+  .bc-input:focus,.bc-select:focus{border-color:var(--accent)}
+  .bc-input{flex:1;min-width:120px}
+  .bc-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .bc-cell{background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius);padding:6px 8px;display:flex;flex-direction:column;gap:2px}
+  .bc-cell .k{font-size:10px;color:var(--text-muted);text-transform:uppercase}
+  .bc-cell .v{font-size:13px;color:var(--text-primary);font-family:var(--font-mono);word-break:break-all}
+  .bc-cell .c{font-size:10px;color:var(--accent);cursor:pointer;align-self:flex-end;background:none;border:none;padding:0}
+  .bc-cell .c:hover{text-decoration:underline}
+  .bc-out{font-size:14px;color:var(--accent);font-family:var(--font-mono);word-break:break-all;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius);padding:8px 10px}
+  .bc-status{font-size:11px;color:var(--text-muted)}
+  @media(max-width:520px){.bc-grid{grid-template-columns:1fr}}
+  </style>
+  <div class="bc-app">
+    <div class="bc-sub">
+      <button id="bcSubBase" class="active">进制转换</button>
+      <button id="bcSubUnit">字节单位</button>
+    </div>
+
+    <!-- 进制转换 -->
+    <div class="bc-section active" id="bcBaseSec">
+      <div class="bc-row">
+        <span class="bc-label">数值</span>
+        <input id="bcNum" class="bc-input" placeholder="输入数值，如 FF 或 255 或 0b1010" spellcheck="false">
+        <select id="bcFromBase" class="bc-select">
+          <option value="0">自动识别</option>
+          <option value="2">二进制 (0b)</option>
+          <option value="8">八进制 (0o)</option>
+          <option value="10">十进制</option>
+          <option value="16">十六进制 (0x)</option>
+        </select>
+      </div>
+      <div class="bc-grid">
+        <div class="bc-cell"><span class="k">二进制 BIN</span><span class="v" id="bcBin">—</span><button class="c" data-copy="bcBin">复制</button></div>
+        <div class="bc-cell"><span class="k">八进制 OCT</span><span class="v" id="bcOct">—</span><button class="c" data-copy="bcOct">复制</button></div>
+        <div class="bc-cell"><span class="k">十进制 DEC</span><span class="v" id="bcDec">—</span><button class="c" data-copy="bcDec">复制</button></div>
+        <div class="bc-cell"><span class="k">十六进制 HEX</span><span class="v" id="bcHex">—</span><button class="c" data-copy="bcHex">复制</button></div>
+      </div>
+      <div class="bc-status" id="bcBaseStatus">支持 0b / 0o / 0x 前缀；留空自动按 10 处理</div>
+    </div>
+
+    <!-- 字节单位 -->
+    <div class="bc-section" id="bcUnitSec">
+      <div class="bc-row">
+        <span class="bc-label">数值</span>
+        <input id="bcVal" class="bc-input" placeholder="输入字节数，如 1536" spellcheck="false">
+        <select id="bcFromUnit" class="bc-select">
+          <option value="1">B</option>
+          <option value="1024">KB</option>
+          <option value="1048576">MB</option>
+          <option value="1073741824">GB</option>
+          <option value="1099511627776">TB</option>
+        </select>
+        <span class="bc-label">→</span>
+        <select id="bcToUnit" class="bc-select">
+          <option value="1">B</option>
+          <option value="1024" selected>KB</option>
+          <option value="1048576">MB</option>
+          <option value="1073741824">GB</option>
+          <option value="1099511627776">TB</option>
+        </select>
+      </div>
+      <div class="bc-out" id="bcUnitOut">—</div>
+      <div class="bc-status">以 1024 为换算基准（1 KB = 1024 B）。</div>
+    </div>
+  </div>
+  </div>
 </div>
 
 <!-- tab 切换（必须早于下方 codec/case 脚本，供其 plugin:init 调用） -->
@@ -126,14 +206,18 @@ function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;
 </script>
 <script>
 (function(){
-  var tabCodec=document.getElementById('tabCodec'),tabCase=document.getElementById('tabCase')
-  var paneCodec=document.getElementById('paneCodec'),paneCase=document.getElementById('paneCase')
+  var tabs={codec:document.getElementById('tabCodec'),case:document.getElementById('tabCase'),base:document.getElementById('tabBase')}
+  var panes={codec:document.getElementById('paneCodec'),case:document.getElementById('paneCase'),base:document.getElementById('paneBase')}
   function showTextTab(which){
-    if(which==='case'){tabCase.classList.add('active');tabCodec.classList.remove('active');paneCase.hidden=false;paneCodec.hidden=true}
-    else{tabCodec.classList.add('active');tabCase.classList.remove('active');paneCodec.hidden=false;paneCase.hidden=true}
+    ['codec','case','base'].forEach(function(k){
+      var on=(k===which)
+      if(tabs[k])tabs[k].classList.toggle('active',on)
+      if(panes[k])panes[k].hidden=!on
+    })
   }
-  tabCodec.addEventListener('click',function(){showTextTab('codec')})
-  tabCase.addEventListener('click',function(){showTextTab('case')})
+  Object.keys(tabs).forEach(function(k){
+    if(tabs[k])tabs[k].addEventListener('click',function(){showTextTab(k)})
+  })
   window.showTextTab=showTextTab
   showTextTab('codec')
 })()
@@ -290,7 +374,11 @@ function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;
         if(opSelect.options[i].value===pd.command){opSelect.selectedIndex=i;break}
       }
       if(keyWrap) keyWrap.style.display=(pd.command.indexOf('hmac-')===0)?'':'none'
-      if(window.showTextTab)window.showTextTab(pd.command==='convert-case'?'case':'codec')
+      if(window.showTextTab){
+        if(pd.command==='convert-case')window.showTextTab('case')
+        else if(pd.command==='base-convert')window.showTextTab('base')
+        else window.showTextTab('codec')
+      }
     }
     if(pd.text){
       inputArea.value=pd.text
@@ -402,6 +490,87 @@ function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;
     return ''
   }
   function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+})()
+</script>
+<!-- 进制 / 单位转换（新增，纯前端） -->
+<script>
+(function(){
+  var bcNum=document.getElementById('bcNum'),bcFromBase=document.getElementById('bcFromBase')
+  var bcBin=document.getElementById('bcBin'),bcOct=document.getElementById('bcOct')
+  var bcDec=document.getElementById('bcDec'),bcHex=document.getElementById('bcHex')
+  var bcBaseStatus=document.getElementById('bcBaseStatus')
+  var bcVal=document.getElementById('bcVal'),bcFromUnit=document.getElementById('bcFromUnit'),bcToUnit=document.getElementById('bcToUnit')
+  var bcUnitOut=document.getElementById('bcUnitOut')
+  var bcSubBase=document.getElementById('bcSubBase'),bcSubUnit=document.getElementById('bcSubUnit')
+  var bcBaseSec=document.getElementById('bcBaseSec'),bcUnitSec=document.getElementById('bcUnitSec')
+
+  bcSubBase.addEventListener('click',function(){bcSubBase.classList.add('active');bcSubUnit.classList.remove('active');bcBaseSec.classList.add('active');bcUnitSec.classList.remove('active')})
+  bcSubUnit.addEventListener('click',function(){bcSubUnit.classList.add('active');bcSubBase.classList.remove('active');bcUnitSec.classList.add('active');bcBaseSec.classList.remove('active')})
+
+  window.__bcSeq=0
+  function copyText(text){
+    return new Promise(function(resolve){
+      var id='bc_'+(++window.__bcSeq),done=false
+      function onMsg(e){var d=e&&e.data;if(d&&d.type==='plugin:copy-result'&&d.id===id){done=true;window.removeEventListener('message',onMsg);resolve(!!d.ok)}}
+      window.addEventListener('message',onMsg)
+      parent.postMessage({type:'plugin:copy',id:id,text:text},'*')
+      setTimeout(function(){if(!done){window.removeEventListener('message',onMsg);resolve(fallback(text))}},300)
+    })
+  }
+  function fallback(text){try{var ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.opacity='0';ta.style.top='0';document.body.appendChild(ta);ta.select();var ok=document.execCommand('copy');document.body.removeChild(ta);return ok}catch(e){return false}}
+
+  function parseNumber(str, base){
+    str=String(str).trim()
+    if(!str)return null
+    var b=base
+    if(b===0){
+      if(/^0b/i.test(str))b=2
+      else if(/^0o/i.test(str))b=8
+      else if(/^0x/i.test(str))b=16
+      else b=10
+    }
+    var clean=str.replace(/^0[box]/i,'')
+    if(clean==='')return null
+    var n=parseInt(clean,b)
+    if(isNaN(n))return null
+    return {value:n, base:b}
+  }
+
+  function convBase(){
+    var raw=bcNum.value.trim()
+    if(!raw){bcBin.textContent='—';bcOct.textContent='—';bcDec.textContent='—';bcHex.textContent='—';bcBaseStatus.textContent='支持 0b / 0o / 0x 前缀；留空自动按 10 处理';return}
+    var res=parseNumber(raw, parseInt(bcFromBase.value,10))
+    if(!res){bcBin.textContent='—';bcOct.textContent='—';bcDec.textContent='—';bcHex.textContent='—';bcBaseStatus.textContent='⚠ 无法解析：请检查数值与进制是否匹配';return}
+    if(res.value<0){bcBaseStatus.textContent='⚠ 暂仅支持非负整数';bcBin.textContent=bcOct.textContent=bcDec.textContent=bcHex.textContent='—';return}
+    var n=res.value
+    bcBin.textContent=n.toString(2)
+    bcOct.textContent=n.toString(8)
+    bcDec.textContent=String(n)
+    bcHex.textContent=n.toString(16).toUpperCase()
+    bcBaseStatus.textContent='已按 '+(res.base===2?'二进制':res.base===8?'八进制':res.base===16?'十六进制':'十进制')+' 解析'
+  }
+  bcNum.addEventListener('input',convBase)
+  bcFromBase.addEventListener('change',convBase)
+
+  function convUnit(){
+    var v=parseFloat(bcVal.value)
+    if(isNaN(v)){bcUnitOut.textContent='—';return}
+    var bytes=v*parseInt(bcFromUnit.value,10)
+    var out=bytes/parseInt(bcToUnit.value,10)
+    var unitLabel=bcToUnit.options[bcToUnit.selectedIndex].text
+    bcUnitOut.textContent=out+' '+unitLabel+'  ('+bytes.toLocaleString()+' B)'
+  }
+  bcVal.addEventListener('input',convUnit)
+  bcFromUnit.addEventListener('change',convUnit)
+  bcToUnit.addEventListener('change',convUnit)
+
+  document.querySelectorAll('#paneBase .bc-cell .c').forEach(function(b){
+    b.addEventListener('click',function(){
+      var el=document.getElementById(b.getAttribute('data-copy'))
+      if(!el)return
+      copyText(el.textContent).then(function(ok){var t=b.textContent;b.textContent=ok?'✓ 已复制':'失败';setTimeout(function(){b.textContent=t},1500)})
+    })
+  })
 })()
 </script>
 </body>

@@ -62,5 +62,6 @@
   "description_i18n": {
     "zh-CN": "被动收集域名子域名（证书透明日志 CertSpotter / crt.sh + HackerTarget + urlscan + rapiddns + AlienVault OTX），可选并发解析 A 记录筛选存活",
     "en-US": "Passively enumerate subdomains via certificate transparency logs (CertSpotter / crt.sh), HackerTarget, urlscan, rapiddns and AlienVault OTX. Optionally resolve A records to filter live ones."
-  }
+  },
+  "changelog": "## v1.0.0\n\n- 被动收集域名子域名（证书透明日志 CertSpotter / crt.sh + HackerTarget + urlscan + rapiddns + AlienVault OTX），可选并发解析 A 记录筛选存活"
 }

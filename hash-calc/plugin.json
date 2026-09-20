@@ -57,5 +57,6 @@
   "description_i18n": {
     "zh-CN": "计算文件的 MD5/SHA1/SHA256/SHA512 摘要，结果一键复制",
     "en-US": "Compute MD5/SHA1/SHA256/SHA512 digest of a file, with one-click copy."
-  }
+  },
+  "changelog": "## v1.0.1\n\n- 计算文件的 MD5/SHA1/SHA256/SHA512 摘要，结果一键复制"
 }

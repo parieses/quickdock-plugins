@@ -1,8 +1,8 @@
 {
   "id": "io.github.parieses.package-check",
   "name": "包版本速查",
-  "version": "1.0.0",
-  "description": "输入包名，并发查询 npm / PyPI / Composer / Go 四个仓库：是否存在、最新版本、描述、许可证、npm 周下载量",
+  "version": "1.1.0",
+  "description": "输入包名，并发查询 npm / PyPI / Composer / Go 四个仓库的版本信息；并基于 OSV.dev 查询包版本的已知漏洞（CVE / 安全公告）",
   "author": "QuickDock",
   "category": "开发者日常",
   "platforms": [
@@ -51,6 +51,27 @@
         "zh-CN": "包版本速查",
         "en-US": "Package Version Lookup"
       }
+    },
+    {
+      "id": "vuln-query",
+      "title": "依赖漏洞速查",
+      "keywords": [
+        "vuln",
+        "cve",
+        "漏洞",
+        "安全",
+        "osv",
+        "依赖"
+      ],
+      "aliases": [
+        "漏洞查询",
+        "安全漏洞",
+        "CVE"
+      ],
+      "title_i18n": {
+        "zh-CN": "依赖漏洞速查",
+        "en-US": "Dependency Vulnerability Lookup"
+      }
     }
   ],
   "name_i18n": {
@@ -58,7 +79,8 @@
     "en-US": "Package Version Lookup"
   },
   "description_i18n": {
-    "zh-CN": "输入包名，并发查询 npm / PyPI / Composer / Go 四个仓库：是否存在、最新版本、描述、许可证、npm 周下载量",
-    "en-US": "Query npm/PyPI/Composer/Go registries for a package: existence, latest version, description, license, and npm weekly downloads."
-  }
+    "zh-CN": "输入包名，并发查询 npm / PyPI / Composer / Go 四个仓库的版本信息；并基于 OSV.dev 查询包版本的已知漏洞（CVE / 安全公告）",
+    "en-US": "Query npm/PyPI/Composer/Go registries for package versions; look up known vulnerabilities (CVE / advisories) via OSV.dev."
+  },
+  "changelog": "## v1.1.0\n\n- 新增「漏洞速查」标签页：基于 OSV.dev 查询 npm / PyPI / Composer / Go 包版本的 CVE 与安全公告（新增 vuln-query 命令）"
 }

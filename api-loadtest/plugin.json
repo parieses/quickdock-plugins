@@ -63,5 +63,6 @@
   "description_i18n": {
     "zh-CN": "功能丰富的 HTTP 接口压测工具：支持并发/时长双模式、自定义 Header 与 Body、实时 QPS 与延迟分布(p50/p90/p95/p99)、状态码分布、错误率统计与结果一键导出",
     "en-US": "Feature-rich HTTP load testing: concurrency/duration modes, custom headers/body, live QPS and latency p50/p90/p95/p99, status code distribution, error rate and one-click export."
-  }
+  },
+  "changelog": "## v1.0.0\n\n- 功能丰富的 HTTP 接口压测工具：支持并发/时长双模式、自定义 Header 与 Body、实时 QPS 与延迟分布(p50/p90/p95/p99)、状态码分布、错误率统计与结果一键导出"
 }

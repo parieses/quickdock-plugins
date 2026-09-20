@@ -60,5 +60,6 @@
   "description_i18n": {
     "zh-CN": "把代码渲染成高颜值分享卡片：语法高亮、主题背景、窗口装饰，一键导出 PNG",
     "en-US": "Render code into beautiful shareable cards with syntax highlighting, themed backgrounds and window chrome. Export to PNG."
-  }
+  },
+  "changelog": "## v1.0.0\n\n- 把代码渲染成高颜值分享卡片：语法高亮、主题背景、窗口装饰，一键导出 PNG"
 }

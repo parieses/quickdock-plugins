@@ -137,5 +137,6 @@
   "description_i18n": {
     "zh-CN": "JSON 编辑器（格式化/折叠/编辑）、JSON → TypeScript / Go、JSON ↔ YAML / TOML / XML 互转",
     "en-US": "JSON editor (format/collapse/edit), JSON to TypeScript/Go, and JSON <-> YAML/TOML/XML conversion."
-  }
+  },
+  "changelog": "## v1.0.0\n\n- JSON 编辑器（格式化/折叠/编辑）、JSON → TypeScript / Go、JSON ↔ YAML / TOML / XML 互转"
 }

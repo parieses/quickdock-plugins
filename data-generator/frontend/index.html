@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UUID & 假数据生成器</title>
+<link rel="stylesheet" href="qd-theme.css">
+<link rel="stylesheet" href="components.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+.p-app{display:flex;flex-direction:column;height:100vh}
+.p-toolbar{padding:0 10px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0}
+.ct-tabs{display:flex;gap:2px;overflow-x:auto}
+.ct-tab{padding:9px 13px;border:none;background:none;color:var(--text-secondary);font-size:12.5px;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap}
+.ct-tab:hover{color:var(--text-primary)}
+.ct-tab.ct-active{color:var(--accent);border-bottom-color:var(--accent)}
+.ct-body{flex:1;min-height:0;overflow:auto;padding:12px}
+.ct-pane{display:none}
+.ct-pane.ct-show{display:block}
+.ct-form{display:flex;flex-direction:column;gap:10px}
+.ct-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ct-lbl{font-size:12px;color:var(--text-secondary);min-width:56px}
+.ct-num{width:80px;height:28px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-primary);color:var(--text-primary);font-size:12.5px;outline:none}
+.ct-num:focus{border-color:var(--accent)}
+select.ct-sel,.ct-inp{height:30px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-primary);color:var(--text-primary);font-size:12.5px;outline:none}
+select.ct-sel:focus,.ct-inp:focus{border-color:var(--accent)}
+.ct-inp{flex:1;min-width:0}
+.ct-checks{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px 12px}
+.ct-checks label{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-secondary);cursor:pointer}
+.ct-checks input{width:14px;height:14px;accent-color:var(--accent);cursor:pointer}
+.ct-meta{font-size:11.5px;color:var(--text-muted);min-height:16px}
+.ct-out{display:flex;flex-direction:column;gap:3px;margin-top:2px}
+.ct-out-item{display:flex;align-items:center;gap:8px;padding:6px 9px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-primary);cursor:pointer}
+.ct-out-item:hover{background:var(--bg-hover);border-color:var(--border-strong)}
+.ct-out-item code{flex:1;min-width:0;font:12.5px var(--font-mono);color:var(--text-primary);word-break:break-all}
+.ct-out-item .ct-cp{font-size:11px;color:var(--text-muted);flex-shrink:0}
+.ct-sec{border-top:1px solid var(--border);padding-top:10px;margin-top:2px}
+.ct-sec-t{font-size:11.5px;color:var(--text-muted);margin-bottom:6px}
+.ct-status{flex-shrink:0;padding:5px 12px;font-size:11.5px;color:var(--text-muted);border-top:1px solid var(--border);background:var(--bg-secondary);min-height:26px}
+.ct-status.err{color:var(--danger)}
+.ct-status.ok{color:var(--success)}
+.ct-warn{padding:9px 11px;border-radius:var(--radius);background:var(--danger-soft);color:var(--danger);font-size:12px;border:1px solid var(--danger)}
+.ct-note{font-size:11.5px;color:var(--text-muted);line-height:1.5}
+</style>
+<script>
+/* QuickDock sandbox 剪贴板桥接：iframe 内 navigator.clipboard 被 Permissions-Policy 禁用 */
+window.__cpSeq=0;
+window.copyViaHost=function(t,cb){var id='cp_'+(++window.__cpSeq),done=false;function onMsg(e){var d=e&&e.data;if(d&&d.type==='plugin:copy-result'&&d.id===id){done=true;window.removeEventListener('message',onMsg);cb&&cb(!!d.ok)}}window.addEventListener('message',onMsg);parent.postMessage({type:'plugin:copy',id:id,text:t},'*');setTimeout(function(){if(!done){window.removeEventListener('message',onMsg);cb&&cb(window.execCopyFallback(t))}},300)};
+window.execCopyFallback=function(t){try{var a=document.createElement('textarea');a.value=t;a.style.position='fixed';a.style.opacity='0';a.style.top='0';document.body.appendChild(a);a.select();var ok=document.execCommand('copy');document.body.removeChild(a);return ok}catch(e){return false}};
+</script>
+</head>
+<body>
+<div class="p-app">
+  <div class="p-toolbar">
+    <div class="ct-tabs">
+      <button class="ct-tab ct-active" data-tab="uuid">UUID</button>
+      <button class="ct-tab" data-tab="rand">随机数据</button>
+      <button class="ct-tab" data-tab="fake">测试假数据</button>
+    </div>
+  </div>
+
+  <div class="ct-body">
+    <!-- ========== UUID ========== -->
+    <section class="ct-pane ct-show" id="pane-uuid">
+      <div class="ct-form">
+        <div class="ct-row">
+          <span class="ct-lbl" id="lblVer">版本</span>
+          <select class="ct-sel" id="uVer">
+            <option value="v4">UUID v4（随机）</option>
+            <option value="v7">UUID v7（时间有序）</option>
+          </select>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-secondary);cursor:pointer">
+            <input type="checkbox" id="uUpper" style="width:14px;height:14px;accent-color:var(--accent)"> <span id="lblUpper">大写</span>
+          </label>
+        </div>
+        <div class="ct-row">
+          <span class="ct-lbl" id="lblCount">数量</span>
+          <input class="ct-num" type="number" id="uCount" value="5" min="1" max="200">
+          <div style="flex:1"></div>
+          <button class="btn btn-primary btn-sm" id="uGen">生成</button>
+          <button class="btn btn-sm" id="uCopyAll">复制全部</button>
+        </div>
+        <div class="ct-meta" id="uMeta"></div>
+        <div class="ct-out" id="uOut"></div>
+        <div class="ct-note" id="uNote"></div>
+      </div>
+    </section>
+
+    <!-- ========== 随机数据 ========== -->
+    <section class="ct-pane" id="pane-rand">
+      <div class="ct-form">
+        <div class="ct-row">
+          <span class="ct-lbl" id="lblMode">类型</span>
+          <select class="ct-sel" id="rMode">
+            <option value="str">随机字符串</option>
+            <option value="int">随机整数</option>
+            <option value="bytes">随机字节</option>
+          </select>
+        </div>
+
+        <div id="rStrOpt">
+          <div class="ct-checks">
+            <label><input type="checkbox" id="rUpper" checked> <span id="lblUpper2">大写 A-Z</span></label>
+            <label><input type="checkbox" id="rLower" checked> <span id="lblLower2">小写 a-z</span></label>
+            <label><input type="checkbox" id="rDigit" checked> <span id="lblDigit2">数字 0-9</span></label>
+            <label><input type="checkbox" id="rSymbol"> <span id="lblSymbol2">符号 !@#$%&amp;*</span></label>
+            <label><input type="checkbox" id="rNoAmb"> <span id="lblNoAmb2">排除易混淆 0O1lI</span></label>
+          </div>
+          <div class="ct-row" style="margin-top:8px">
+            <span class="ct-lbl" id="lblCustom">自定义</span>
+            <input class="ct-inp" type="text" id="rCustom" placeholder="留空则用上方字符集；填写则仅用此字符">
+          </div>
+        </div>
+
+        <div id="rIntOpt" style="display:none">
+          <div class="ct-row">
+            <span class="ct-lbl" id="lblMin">最小</span>
+            <input class="ct-num" type="number" id="rMin" value="1">
+            <span class="ct-lbl" id="lblMax">最大</span>
+            <input class="ct-num" type="number" id="rMax" value="100">
+          </div>
+        </div>
+
+        <div id="rBytesOpt" style="display:none">
+          <div class="ct-row">
+            <span class="ct-lbl" id="lblFmt">格式</span>
+            <select class="ct-sel" id="rFmt">
+              <option value="hex">Hex</option>
+              <option value="b64">Base64</option>
+            </select>
+          </div>
+          <div class="ct-row" style="margin-top:8px">
+            <span class="ct-lbl" id="lblLen">字节数</span>
+            <input class="ct-num" type="number" id="rLen" value="16" min="1" max="1024">
+          </div>
+        </div>
+
+        <div class="ct-row">
+          <span class="ct-lbl" id="lblCount2">数量</span>
+          <input class="ct-num" type="number" id="rCount" value="5" min="1" max="200">
+          <div style="flex:1"></div>
+          <button class="btn btn-primary btn-sm" id="rGen">生成</button>
+          <button class="btn btn-sm" id="rCopyAll">复制全部</button>
+        </div>
+        <div class="ct-meta" id="rMeta"></div>
+        <div class="ct-out" id="rOut"></div>
+      </div>
+    </section>
+
+    <!-- ========== 测试假数据 ========== -->
+    <section class="ct-pane" id="pane-fake">
+      <div class="ct-form">
+        <div class="ct-row">
+          <span class="ct-lbl" id="lblType">类型</span>
+          <select class="ct-sel" id="fType" style="flex:1;min-width:0">
+            <option value="person">人员（姓名·手机·邮箱·地址）</option>
+            <option value="name">姓名</option>
+            <option value="phone">手机号</option>
+            <option value="email">邮箱</option>
+            <option value="company">公司名</option>
+            <option value="address">地址</option>
+            <option value="idcard">身份证号（测试专用）</option>
+            <option value="date">日期</option>
+            <option value="url">网址</option>
+            <option value="username">用户名</option>
+          </select>
+        </div>
+        <div class="ct-row">
+          <span class="ct-lbl" id="lblLocale">语言</span>
+          <select class="ct-sel" id="fLocale">
+            <option value="zh">中文</option>
+            <option value="en">英文</option>
+          </select>
+          <span class="ct-lbl" id="lblCount3">数量</span>
+          <input class="ct-num" type="number" id="fCount" value="5" min="1" max="200">
+          <div style="flex:1"></div>
+          <button class="btn btn-primary btn-sm" id="fGen">生成</button>
+          <button class="btn btn-sm" id="fCopyAll">复制全部</button>
+        </div>
+        <div class="ct-meta" id="fMeta"></div>
+        <div class="ct-out" id="fOut"></div>
+        <div class="ct-warn" id="fWarn" style="display:none"></div>
+      </div>
+    </section>
+
+    <div class="ct-note" style="margin-top:10px">
+      <span id="noteLocal">全部在本机内存中生成，不联网、不上传。身份证号为格式合法的测试假号，非真实号码。</span>
+    </div>
+  </div>
+
+  <div class="ct-status" id="status"></div>
+</div>
+<script>
+(function(){
+'use strict';
+
+// ==================== i18n ====================
+var L10N = { 'en-US': {
+  'UUID':'UUID','随机数据':'Random','测试假数据':'Fake Data','版本':'Version','大写':'Uppercase','数量':'Count','生成':'Generate','复制全部':'Copy All',
+  '类型':'Type','随机字符串':'Random string','随机整数':'Random integer','随机字节':'Random bytes','小写 a-z':'Lowercase',
+  '数字 0-9':'Digits','符号':'Symbols','排除易混淆 0O1lI':'Exclude look-alikes','自定义':'Custom','最小':'Min','最大':'Max','格式':'Format',
+  '字节数':'Bytes','语言':'Locale','中文':'Chinese','英文':'English','姓名':'Name','手机号':'Phone','邮箱':'Email','公司名':'Company',
+  '地址':'Address','身份证号（测试专用）':'ID card (test only)','日期':'Date','网址':'URL','用户名':'Username',
+  '人员（姓名·手机·邮箱·地址）':'Person (name·phone·email·address)',
+  '已复制':'Copied','请至少选择一种字符':'Select at least one character set','最大必须大于最小':'Max must be > min',
+  '已生成':'Generated','条':'items','导出CSV(含表头）':'Export CSV (with header)',
+  '全部在本机内存中生成，不联网、不上传。身份证号为格式合法的测试假号，非真实号码。':'Generated locally in memory — no network, no upload. ID numbers are format-valid test fakes, not real.'
+}};
+function isEn(){ var l = document.documentElement.getAttribute('lang') || ''; return l.indexOf('en') === 0 }
+function L(s){ return isEn() ? ((L10N['en-US'] && L10N['en-US'][s]) || s) : s }
+
+function $(id){ return document.getElementById(id) }
+function status(msg, cls){ var el = $('status'); el.textContent = msg; el.className = 'ct-status' + (cls ? ' ' + cls : ''); }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') }
+
+// ==================== 随机数 ====================
+function rng(n){ var a = new Uint8Array(n); crypto.getRandomValues(a); return a }
+function randomInt(max){ // [0, max)
+  if (max <= 0) return 0;
+  if (max <= 256){
+    var limit = Math.floor(256 / max) * max, a = new Uint8Array(1);
+    for (;;){ crypto.getRandomValues(a); if (a[0] < limit) return a[0] % max; }
+  }
+  var lim = Math.floor(4294967296 / max) * max, w = new Uint32Array(1);
+  for (;;){ crypto.getRandomValues(w); if (w[0] < lim) return w[0] % max; }
+}
+function randIntRange(min, max){ return min + randomInt(max - min + 1) }
+function pick(arr){ return arr[randomInt(arr.length)] }
+
+// ==================== 复制 ====================
+var lastOut = { uuid: [], rand: [], fake: [] };
+function renderOut(box, key, list){
+  lastOut[key] = list;
+  box.innerHTML = list.map(function(p){
+    return '<div class="ct-out-item" data-v="' + encodeURIComponent(p) + '"><code>' + esc(p) + '</code><span class="ct-cp">' + L('复制') + '</span></div>';
+  }).join('');
+}
+function bindCopy(container){
+  container.addEventListener('click', function(e){
+    var item = e.target.closest ? e.target.closest('.ct-out-item') : null;
+    if (!item) return;
+    var txt = decodeURIComponent(item.dataset.v);
+    if (!txt) return;
+    window.copyViaHost(txt, function(){ status(L('已复制')); });
+  });
+}
+function copyAll(key){
+  var list = lastOut[key] || [];
+  if (!list.length) return status(L('请先生成'), 'err');
+  window.copyViaHost(list.join('\n'), function(){ status(L('已复制 ') + list.length + ' ' + L('条')); });
+}
+
+// ==================== Tab ====================
+function switchTab(name){
+  document.querySelectorAll('.ct-tab').forEach(function(x){ x.classList.remove('ct-active') });
+  document.querySelectorAll('.ct-pane').forEach(function(x){ x.classList.remove('ct-show') });
+  var btn = document.querySelector('.ct-tab[data-tab="' + name + '"]');
+  if (btn) btn.classList.add('ct-active');
+  var pane = $('pane-' + name);
+  if (pane) pane.classList.add('ct-show');
+}
+document.querySelectorAll('.ct-tab').forEach(function(b){
+  b.addEventListener('click', function(){ switchTab(b.dataset.tab); });
+});
+
+// ==================== UUID ====================
+function uuidFmt(b){
+  var h = [];
+  for (var i = 0; i < 16; i++) h.push(('0' + b[i].toString(16)).slice(-2));
+  return h.slice(0,4).join('') + '-' + h.slice(4,6).join('') + '-' + h.slice(6,8).join('') +
+         '-' + h.slice(8,10).join('') + '-' + h.slice(10,16).join('');
+}
+function uuidV4(){
+  var b = rng(16);
+  b[6] = (b[6] & 0x0f) | 0x40;
+  b[8] = (b[8] & 0x3f) | 0x80;
+  return uuidFmt(b);
+}
+function uuidV7(){
+  var ts = Date.now();
+  var b = rng(16);
+  b[0] = (ts >>> 40) & 0xff; b[1] = (ts >>> 32) & 0xff; b[2] = (ts >>> 24) & 0xff;
+  b[3] = (ts >>> 16) & 0xff; b[4] = (ts >>> 8) & 0xff; b[5] = ts & 0xff;
+  b[6] = (b[6] & 0x0f) | 0x70;
+  b[8] = (b[8] & 0x3f) | 0x80;
+  return uuidFmt(b);
+}
+function doGenUuid(){
+  var ver = $('uVer').value;
+  var upper = $('uUpper').checked;
+  var cnt = Math.max(1, Math.min(200, parseInt($('uCount').value, 10) || 5));
+  var list = [];
+  for (var i = 0; i < cnt; i++){
+    var u = ver === 'v7' ? uuidV7() : uuidV4();
+    list.push(upper ? u.toUpperCase() : u);
+  }
+  renderOut($('uOut'), 'uuid', list);
+  $('uMeta').textContent = ver.toUpperCase() + ' · ' + cnt + ' ' + L('条');
+  $('uNote').textContent = ver === 'v7'
+    ? 'v7 含 48-bit 毫秒时间戳，按生成时间大致有序，适合做数据库主键 / 日志 ID。'
+    : 'v4 为纯随机，碰撞概率可忽略，适合通用唯一标识。';
+  status(L('已生成 ') + cnt + ' ' + L('条'));
+}
+$('uGen').addEventListener('click', doGenUuid);
+$('uCopyAll').addEventListener('click', function(){ copyAll('uuid') });
+bindCopy($('uOut'));
+
+// ==================== 随机数据 ====================
+var SYMS = '!@#$%^&*()-_=+[]{};:,.<>?/~';
+function rStrSets(){
+  var sets = [];
+  if ($('rUpper').checked) sets.push('ABCDEFGHIJKLMNOPQRSTUVWXYZ');
+  if ($('rLower').checked) sets.push('abcdefghijklmnopqrstuvwxyz');
+  if ($('rDigit').checked) sets.push('0123456789');
+  if ($('rSymbol').checked) sets.push(SYMS);
+  if ($('rNoAmb').checked) sets = sets.map(function(s){ return s.replace(/[0O1lI]/g, '') }).filter(function(s){ return s });
+  return sets;
+}
+function doGenRand(){
+  var mode = $('rMode').value;
+  var cnt = Math.max(1, Math.min(200, parseInt($('rCount').value, 10) || 5));
+  var list = [];
+  if (mode === 'str'){
+    var custom = $('rCustom').value.trim();
+    var all = custom || rStrSets().join('');
+    if (!all){ return status(L('请至少选择一种字符'), 'err'); }
+    for (var i = 0; i < cnt; i++){
+      var len = randIntRange(8, 25), s = '';
+      for (var j = 0; j < len; j++) s += all[randomInt(all.length)];
+      list.push(s);
+    }
+  } else if (mode === 'int'){
+    var mn = parseInt($('rMin').value, 10) || 0, mx = parseInt($('rMax').value, 10) || 0;
+    if (mx <= mn) return status(L('最大必须大于最小'), 'err');
+    for (var k = 0; k < cnt; k++) list.push(String(randIntRange(mn, mx)));
+  } else { // bytes
+    var blen = Math.max(1, Math.min(1024, parseInt($('rLen').value, 10) || 16));
+    var fmt = $('rFmt').value;
+    for (var m = 0; m < cnt; m++){
+      var buf = rng(blen);
+      if (fmt === 'b64'){
+        var bin = ''; for (var z = 0; z < buf.length; z++) bin += String.fromCharCode(buf[z]);
+        list.push(btoa(bin));
+      } else {
+        var hx = ''; for (var y = 0; y < buf.length; y++) hx += ('0' + buf[y].toString(16)).slice(-2);
+        list.push(hx);
+      }
+    }
+  }
+  renderOut($('rOut'), 'rand', list);
+  $('rMeta').textContent = (mode === 'str' ? '随机字符串' : mode === 'int' ? '随机整数' : '随机字节') + ' · ' + cnt + ' ' + L('条');
+  status(L('已生成 ') + cnt + ' ' + L('条'));
+}
+$('rMode').addEventListener('change', function(){
+  $('rStrOpt').style.display = this.value === 'str' ? '' : 'none';
+  $('rIntOpt').style.display = this.value === 'int' ? '' : 'none';
+  $('rBytesOpt').style.display = this.value === 'bytes' ? '' : 'none';
+});
+['rUpper','rLower','rDigit','rSymbol','rNoAmb'].forEach(function(id){ $(id).addEventListener('change', function(){ if ($('rMode').value==='str') doGenRand(); }); });
+$('rGen').addEventListener('click', doGenRand);
+$('rCopyAll').addEventListener('click', function(){ copyAll('rand') });
+bindCopy($('rOut'));
+
+// ==================== 测试假数据 ====================
+var ZH_SURNAMES = '王李张刘陈杨黄赵周吴徐孙朱马胡郭林何高梁郑罗宋谢唐韩曹许邓萧冯曾程蔡彭潘袁于董余苏叶吕魏蒋田杜丁沈姜范江傅钟卢汪戴崔任陆廖姚方金邱夏谭韦贾邹石熊孟秦阎薛侯雷白龙段郝孔邵史毛常万顾赖武康贺严尹钱施牛洪龚'.split('');
+var ZH_GIVEN = '伟芳娜秀英敏静丽强磊洋勇艳杰娟涛明超秀霞平刚桂英文辉力俊峰建华婷雪梅琳浩然子轩雨涵思琪嘉怡梦琪佳怡宇轩浩然欣怡梓涵一鸣皓轩若曦沐宸亦可星辰云帆'.match(/.{1,2}/g);
+var EN_FIRST = 'James Mary John Patricia Robert Linda Michael Elizabeth William Barbara David Jennifer Richard Susan Joseph Jessica Thomas Sarah Charles Karen Christopher Nancy Daniel Lisa Matthew Margaret Anthony Sandra Steven Ashley Andrew Emily Joshua Michelle Brian Laura Kevin Amanda Ryan Jessica'.split(' ');
+var EN_LAST = 'Smith Johnson Williams Brown Jones Garcia Miller Davis Rodriguez Martinez Hernandez Lopez Gonzalez Wilson Anderson Thomas Taylor Moore Jackson Martin Lee Perez Thompson White Harris Martin Jackson Martin'.split(' ');
+var EN_COMPANY_A = 'Bright Blue Cloud Nova Vertex Pulse Quantum Horizon Summit Apex Terra Lumen Iron Cedar Silver Stone'.split(' ');
+var EN_COMPANY_B = 'Systems Labs Technologies Solutions Group Software Networks Data Dynamics Digital Ventures'.split(' ');
+var ZH_COMPANY_A = '云栖智联星辰天工数擎华信锐诚博远恒通聚合'.split('');
+var ZH_COMPANY_B = '科技网络信息软件数据智能电子商务文化传媒'.split('');
+var ZH_COMPANY_C = '有限公司股份公司集团'.split('');
+var PROVINCES = ['北京市','上海市','广东省','江苏省','浙江省','四川省','湖北省','湖南省','山东省','河南省','福建省','陕西省'];
+var CITIES = { '北京市':['朝阳区','海淀区','东城区'], '上海市':['浦东新区','徐汇区','静安区'], '广东省':['深圳市','广州市','东莞市'], '江苏省':['南京市','苏州市','无锡市'], '浙江省':['杭州市','宁波市','温州市'], '四川省':['成都市','绵阳市','德阳市'], '湖北省':['武汉市','宜昌市','襄阳市'], '湖南省':['长沙市','株洲市','岳阳市'], '山东省':['济南市','青岛市','烟台市'], '河南省':['郑州市','洛阳市','开封市'], '福建省':['福州市','厦门市','泉州市'], '陕西省':['西安市','咸阳市','宝鸡市'] };
+var STREETS = ['人民路','中山路','解放路','建设路','科技大道','创新街','和平里','幸福巷','世纪大道','创业园'];
+var DOMAINS = ['example.com','test.org','mail.net','demo.io','sample.cn'];
+var TLDS = ['com','cn','net','io','org'];
+var SUB_WORDS = ['api','app','www','cdn','static','blog','shop','m','dev'];
+var REGION_CODES = ['110101','110105','310101','310115','440301','440305','320100','330100','510100','420100','370100','410100','350100','610100'];
+
+function fakeName(locale){
+  if (locale === 'en') return pick(EN_FIRST) + ' ' + pick(EN_LAST);
+  return pick(ZH_SURNAMES) + pick(ZH_GIVEN);
+}
+function fakePhone(){ return '1' + pick(['3','5','6','7','8','9']) + (function(){ var s=''; for(var i=0;i<9;i++) s+=randomInt(10); return s; })(); }
+function fakeEmail(locale){
+  var name = locale === 'en' ? (pick(EN_FIRST) + '.' + pick(EN_LAST)).toLowerCase() : (pick(ZH_SURNAMES) + randomInt(9999));
+  return name + '@' + pick(DOMAINS);
+}
+function fakeCompany(locale){
+  if (locale === 'en') return pick(EN_COMPANY_A) + ' ' + pick(EN_COMPANY_B);
+  return pick(ZH_COMPANY_A) + pick(ZH_COMPANY_B) + pick(ZH_COMPANY_C);
+}
+function fakeAddress(locale){
+  var prov = pick(PROVINCES), city = pick(CITIES[prov]);
+  return prov + city + pick(STREETS) + randIntRange(1, 999) + '号';
+}
+function fakeIdcard(){
+  var region = pick(REGION_CODES);
+  var y = randIntRange(1960, 2004), mo = ('0'+randIntRange(1,12)).slice(-2), d = ('0'+randIntRange(1,28)).slice(-2);
+  var seq = ('00'+randIntRange(0,999)).slice(-3);
+  var body = region + y + mo + d + seq;
+  var w = [7,9,10,5,8,4,2,1,6,3,7,9,10,5,8,4,2], codes = '10X98765432';
+  var sum = 0; for (var i=0;i<17;i++) sum += parseInt(body[i],10)*w[i];
+  return body + codes[sum % 11];
+}
+function fakeDate(){
+  var now = Date.now(), t = randIntRange(0, now);
+  var dt = new Date(t);
+  function p(n){ return ('0'+n).slice(-2); }
+  return dt.getFullYear() + '-' + p(dt.getMonth()+1) + '-' + p(dt.getDate());
+}
+function fakeUrl(){
+  return 'https://' + pick(SUB_WORDS) + '.' + (function(){ var s=''; for(var i=0;i<randIntRange(4,8);i++) s+=String.fromCharCode(97+randomInt(26)); return s; })() + '.' + pick(TLDS);
+}
+function fakeUsername(){
+  var s = ''; for (var i=0;i<randIntRange(5,10);i++) s += String.fromCharCode(97+randomInt(26));
+  return s + randomInt(999);
+}
+function doGenFake(){
+  var type = $('fType').value, locale = $('fLocale').value;
+  var cnt = Math.max(1, Math.min(200, parseInt($('fCount').value, 10) || 5));
+  var list = [], personRows = [];
+  for (var i = 0; i < cnt; i++){
+    var name, phone, email, addr;
+    switch (type){
+      case 'name': list.push(fakeName(locale)); break;
+      case 'phone': list.push(fakePhone()); break;
+      case 'email': list.push(fakeEmail(locale)); break;
+      case 'company': list.push(fakeCompany(locale)); break;
+      case 'address': list.push(fakeAddress(locale)); break;
+      case 'idcard': list.push(fakeIdcard()); break;
+      case 'date': list.push(fakeDate()); break;
+      case 'url': list.push(fakeUrl()); break;
+      case 'username': list.push(fakeUsername()); break;
+      case 'person':
+      default:
+        name = fakeName(locale); phone = fakePhone(); email = fakeEmail(locale); addr = fakeAddress(locale);
+        personRows.push([name, phone, email, addr]);
+        list.push(name + ' · ' + phone + ' · ' + email + ' · ' + addr);
+        break;
+    }
+  }
+  renderOut($('fOut'), 'fake', list);
+  lastPersonRows = personRows;
+  $('fMeta').textContent = '假数据 · ' + cnt + ' ' + L('条');
+  $('fWarn').style.display = (type === 'idcard') ? '' : 'none';
+  if (type === 'idcard') $('fWarn').textContent = '⚠ ' + L('身份证号为格式合法的测试假号，非真实号码，请勿用于任何实名场景。');
+  status(L('已生成 ') + cnt + ' ' + L('条'));
+}
+var lastPersonRows = [];
+$('fType').addEventListener('change', function(){ if (this.value === 'person') $('fLocale').value = 'zh'; doGenFake(); });
+$('fLocale').addEventListener('change', doGenFake);
+$('fGen').addEventListener('click', doGenFake);
+$('fCopyAll').addEventListener('click', function(){
+  if ($('fType').value === 'person' && lastPersonRows.length){
+    var csv = '姓名,手机号,邮箱,地址\n' + lastPersonRows.map(function(r){ return r.join(','); }).join('\n');
+    window.copyViaHost(csv, function(){ status(L('导出CSV(含表头） ') + lastPersonRows.length); });
+  } else { copyAll('fake'); }
+});
+bindCopy($('fOut'));
+
+// ==================== 命令面板带入 ====================
+window.addEventListener('message', function(e){
+  var d = e.data; if (!d) return;
+  if (d.type === 'plugin:init' && d.data){
+    if (d.data.locale) document.documentElement.setAttribute('lang', d.data.locale);
+    var cmd = (d.data.command || '').toLowerCase();
+    if (cmd === 'uuid' || cmd === 'fake') switchTab(cmd);
+    return;
+  }
+  if (d.type === 'plugin:theme' && d.data){
+    if (d.data.locale) document.documentElement.setAttribute('lang', d.data.locale);
+  }
+});
+
+// ==================== 启动 ====================
+$('rMode').dispatchEvent(new Event('change'));
+doGenUuid();
+doGenRand();
+doGenFake();
+status('全部在本机生成，不联网、不上传');
+})();
+</script>
+</body>
+</html>

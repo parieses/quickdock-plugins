@@ -84,5 +84,6 @@
   "description_i18n": {
     "zh-CN": "解析 cron 表达式（含义/下次执行/小时分布），并可可视化生成表达式、实时预览下次执行时间",
     "en-US": "Parse cron expressions (meaning / next runs / hour distribution), or build one visually with a live preview of upcoming runs."
-  }
+  },
+  "changelog": "## v1.0.1\n\n- 解析 cron 表达式（含义/下次执行/小时分布），并可可视化生成表达式、实时预览下次执行时间"
 }

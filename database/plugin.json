@@ -81,5 +81,6 @@
         "en-US": "Schema Tree"
       }
     }
-  ]
+  ],
+  "changelog": "## v1.1.0\n\n- 轻量数据库连接与查询工具：MySQL / SQLite / Redis 连接管理、SQL 与 Redis 命令执行、库表浏览器（库→表/视图→字段、Redis 键树）、Redis 键类型感知详情与增删改（string/hash/list/set/zset）、TTL 与 DB 管理、结果网格内联行编辑。数据独立存储"
 }

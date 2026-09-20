@@ -63,5 +63,6 @@
   "description_i18n": {
     "zh-CN": "数字金额转中文大写（壹贰叁…），财务报销、开票、合同的刚需小工具",
     "en-US": "Convert numeric amounts to Chinese capital form, as required on invoices and contracts."
-  }
+  },
+  "changelog": "## v1.0.0\n\n- 数字金额转中文大写（壹贰叁…），财务报销、开票、合同的刚需小工具"
 }

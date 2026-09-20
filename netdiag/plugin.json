@@ -136,5 +136,6 @@
   "description_i18n": {
     "zh-CN": "将 Ping 监视、路由追踪、局域网扫描、IP 归属地、端口指纹五个网络工具合并为单一插件，按需切换标签页，共享一个原生子进程",
     "en-US": "Combines Ping, Traceroute, LAN scan, IP geolocation and port fingerprint into one plugin with tabbed UI, sharing a single native subprocess."
-  }
+  },
+  "changelog": "## v1.0.0\n\n- 将 Ping 监视、路由追踪、局域网扫描、IP 归属地、端口指纹五个网络工具合并为单一插件，按需切换标签页，共享一个原生子进程"
 }

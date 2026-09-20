@@ -60,5 +60,6 @@
   "description_i18n": {
     "zh-CN": "正则提取与替换：匹配高亮、分组捕获、反向引用替换、一键复制",
     "en-US": "Regex extract & replace: match highlight, group capture, backreference replace, one-click copy."
-  }
+  },
+  "changelog": "## v1.0.0\n\n- 正则提取与替换：匹配高亮、分组捕获、反向引用替换（$1/$2）、一键复制结果"
 }

@@ -73,5 +73,6 @@
         "en-US": "Resolve Variables"
       }
     }
-  ]
+  ],
+  "changelog": "## v1.0.1\n\n- 轻量 HTTP 请求调试客户端：项目管理请求、目录与文档树、环境变量与 {{var}} 替换、请求历史重放、Postman 集合导入。数据独立存储"
 }

@@ -58,5 +58,6 @@
   "description_i18n": {
     "zh-CN": "扫描并清理系统垃圾文件：临时文件/更新缓存/缩略图缓存/预读取/崩溃转储等，安全只读扫描+确认后删除",
     "en-US": "Scan and clean system junk: temp files, update cache, thumbnail cache, prefetch, crash dumps. Read-only scan then confirm to delete."
-  }
+  },
+  "changelog": "## v1.0.0\n\n- 扫描并清理系统垃圾文件：临时文件/更新缓存/缩略图缓存/预读取/崩溃转储等，安全只读扫描+确认后删除"
 }

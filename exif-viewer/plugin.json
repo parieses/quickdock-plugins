@@ -56,5 +56,6 @@
   "description_i18n": {
     "zh-CN": "选择图片（JPEG/PNG）查看拍摄时间、相机/镜头、参数与 GPS 经纬度等 EXIF 信息",
     "en-US": "View EXIF metadata (capture time, camera/lens, params, GPS) of a JPEG/PNG image."
-  }
+  },
+  "changelog": "## v1.0.1\n\n- 选择图片（JPEG/PNG）查看拍摄时间、相机/镜头、参数与 GPS 经纬度等 EXIF 信息"
 }

@@ -1,8 +1,8 @@
 {
   "id": "io.github.parieses.text-encoder",
   "name": "文本工具箱",
-  "version": "1.0.1",
-  "description": "Base64 / URL / HTML 编解码，MD5 / SHA1 / SHA256 / SHA512 哈希与 HMAC 签名，Base64 图片识别预览",
+  "version": "1.0.2",
+  "description": "Base64 / URL / HTML 编解码，MD5 / SHA1 / SHA256 / SHA512 哈希与 HMAC 签名，Base64 图片识别预览，2/8/10/16 进制互转与字节单位换算",
   "author": "QuickDock",
   "icon": "icon.svg",
   "category": "开发者日常",
@@ -200,6 +200,30 @@
         "zh-CN": "变量命名转换",
         "en-US": "Variable Name Conversion"
       }
+    },
+    {
+      "id": "base-convert",
+      "title": "进制 / 单位转换",
+      "keywords": [
+        "base",
+        "进制",
+        "hex",
+        "二进制",
+        "十六进制",
+        "byte",
+        "字节",
+        "kb",
+        "mb"
+      ],
+      "aliases": [
+        "进制转换",
+        "十六进制",
+        "字节换算"
+      ],
+      "title_i18n": {
+        "zh-CN": "进制 / 单位转换",
+        "en-US": "Base & Unit Conversion"
+      }
     }
   ],
   "capabilities": [
@@ -214,7 +238,8 @@
     "en-US": "Text Toolbox"
   },
   "description_i18n": {
-    "zh-CN": "Base64 / URL / HTML 编解码，MD5 / SHA1 / SHA256 / SHA512 哈希与 HMAC，Base64 图片预览",
-    "en-US": "Base64/URL/HTML codec, MD5/SHA1/SHA256/SHA512 hashes & HMAC, Base64 image preview."
-  }
+    "zh-CN": "Base64 / URL / HTML 编解码，MD5 / SHA1 / SHA256 / SHA512 哈希与 HMAC，Base64 图片预览，2/8/10/16 进制互转与字节单位换算",
+    "en-US": "Base64/URL/HTML codec, MD5/SHA1/SHA256/SHA512 hashes & HMAC, Base64 image preview, base-2/8/10/16 conversion & byte-unit conversion."
+  },
+  "changelog": "## v1.0.2\n\n- 新增「进制转换」标签页：2 / 8 / 10 / 16 进制互转 + 字节单位（B/KB/MB/GB）换算\n- 新增 base-convert 命令，支持 Ctrl+K 直达"
 }

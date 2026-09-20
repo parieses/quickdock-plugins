@@ -64,5 +64,6 @@
   "description_i18n": {
     "zh-CN": "12 类常用单位实时互转，输入一个值即列出该类别全部换算结果",
     "en-US": "Convert between 12 categories of units in real time; one input lists every unit in the category."
-  }
+  },
+  "changelog": "## v1.0.0\n\n- 长度 / 面积 / 体积 / 重量 / 温度 / 速度 / 数据存储 / 时间 / 压力 / 能量 / 功率 / 角度 共 12 类单位实时互转，输入一个值即列出该类别全部换算结果"
 }

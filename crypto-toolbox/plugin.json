@@ -90,5 +90,6 @@
   "description_i18n": {
     "zh-CN": "随机密码/口令生成 + AES/RSA 加解密 + PBKDF2 派生，全部本机运算",
     "en-US": "Random password & passphrase generation, AES/RSA encryption, PBKDF2 derivation. All local, nothing leaves your machine."
-  }
+  },
+  "changelog": "## v1.0.0\n\n- 随机密码 / 口令生成（字符集可配、熵值与强度评估）＋ AES-GCM / AES-CBC 加解密 ＋ RSA-OAEP 密钥对与加解密 ＋ PBKDF2 密钥派生，全部在本机完成，不联网、不上传"
 }

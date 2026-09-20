@@ -107,5 +107,6 @@
   "description_i18n": {
     "zh-CN": "通用代码压缩/美化（JS / CSS / HTML 自动检测）与 SQL 格式化合二为一",
     "en-US": "Universal code minify/beautify (JS/CSS/HTML auto-detect) plus SQL formatting in one tool."
-  }
+  },
+  "changelog": "## v1.0.0\n\n- 通用代码压缩/美化（JS / CSS / HTML 自动检测）与 SQL 格式化合二为一"
 }
