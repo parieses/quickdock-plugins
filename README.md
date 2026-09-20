@@ -7,15 +7,17 @@
 | 插件 | ID | 版本 | 说明 |
 |------|----|------|------|
 | [api-loadtest](./api-loadtest/) | `io.github.parieses.api-loadtest` | 1.0.0 | 功能丰富的 HTTP 接口压测工具：支持并发/时长双模式、自定义 Header 与 Body、实时 QPS 与延迟分布(p50/p90/p95/p99)、状态码 | |
+| [api-mock](./api-mock/) | `io.github.parieses.api-mock` | 1.0.0 | 本地 HTTP Mock 服务：路由管理（方法/路径/状态码/响应体/延迟）、启动/停止、访问地址与实时请求日志，填补 inbound 调试缺口（native） | |
 | [batch-rename](./batch-rename/) | `io.github.parieses.batch-rename` | 1.0.0 | 批量重命名工具：选择目录后按前缀/后缀/查找替换/序号/大小写/扩展名规则预览并重命名，冲突自动跳过（基于宿主 `host.fs.*` 能力，runtime:none） | |
 | [calcsheet](./calcsheet/) | `io.github.parieses.calcsheet` | 1.0.0 | 兼具草稿纸自由度与电子表格智能的多行计算工具，支持行号引用、变量定义、函数计算 | |
 | [code-card](./code-card/) | `io.github.parieses.code-card` | 1.0.0 | 把代码渲染成高颜值分享卡片：语法高亮、主题背景、窗口装饰，一键导出 PNG | |
-| [color-converter](./color-converter/) | `io.github.parieses.color-converter` | 1.0.0 | 颜色格式互转（HEX / RGB / HSL）+ 屏幕取色，支持常见英文色名识别 | |
+| [color-converter](./color-converter/) | `io.github.parieses.color-converter` | 1.0.1 | 颜色格式互转（HEX / RGB / HSL）+ 屏幕取色，支持常见英文色名识别；取色时自动隐藏宿主窗口并弹出系统通知 | |
 | [compare](./compare/) | `io.github.parieses.compare` | 1.0.1 | 文件/图片对比（元数据 + 图片预览 + 文本内容差异）与文本块逐行 Diff 合二为一 | |
 | [cron-explainer](./cron-explainer/) | `io.github.parieses.cron-explainer` | 1.0.1 | 解析 cron 表达式（含义/下次执行/小时分布），并可可视化生成表达式、实时预览下次执行时间 | |
 | [crypto-toolbox](./crypto-toolbox/) | `io.github.parieses.crypto-toolbox` | 1.0.0 | 密码与加密工具箱：随机密码/口令生成（字符集可配、熵值与强度评估）＋ AES-GCM/AES-CBC 加解密 ＋ RSA-OAEP 密钥对与加解密 ＋ PBKDF2 密钥派生，全部本机完成，不联网不上传（runtime:none） |
 | [curl-converter](./curl-converter/) | `io.github.parieses.curl-converter` | 1.0.0 | 把 curl 命令解析成 Python / Go / JavaScript / PHP 请求代码，也支持把 fetch、requests 代码反向转回 curl | |
 | [database](./database/) | `io.github.parieses.database` | 1.1.0 | 轻量数据库连接与查询工具：MySQL / SQLite / Redis 连接管理、SQL 与 Redis 命令执行、库表浏览器（库→表/视图→字段、Redis  | |
+| [data-generator](./data-generator/) | `io.github.parieses.data-generator` | 1.0.0 | UUID v4/v7 生成、随机字符串/整数/字节、测试假数据（姓名/手机/邮箱/公司/地址/身份证测试号/人员 CSV），纯前端（runtime:none） | |
 | [dir-buster](./dir-buster/) | `io.github.parieses.dir-buster` | 1.0.0 | 对指定目标 URL 用内置常见路径字典进行轻量探测（自用）：并发受限、可配扩展名，采用异步会话模型实时返回命中的非 404 路径。仅探测你授权的目标，内置字典、 | |
 | [disk-analyzer](./disk-analyzer/) | `io.github.parieses.disk-analyzer` | 1.0.0 | 可视化磁盘空间占用分析工具，类似 SpaceSniffer，支持树图展示目录结构 | |
 | [dup-finder](./dup-finder/) | `io.github.parieses.dup-finder` | 1.0.1 | 选择目录后按内容哈希查找重复文件，分组展示并支持一键删除冗余副本 | |
@@ -39,7 +41,7 @@
 | [mindmap](./mindmap/) | `io.github.parieses.mindmap` | 1.0.0 | 思维导图：把 Markdown 大纲/缩进列表实时渲染成思维导图，自动分层配色、可点击折叠分支、支持缩放与导出 PNG/SVG（runtime:none） |
 | [netdiag](./netdiag/) | `io.github.parieses.netdiag` | 1.0.0 | 将 Ping 监视、路由追踪、局域网扫描、IP 归属地、端口指纹五个网络工具合并为单一插件，按需切换标签页，共享一个原生子进程 | |
 | [ocr-tool](./ocr-tool/) | `io.github.parieses.ocr-tool` | 2.0.0 | 基于 PaddleOCR (ONNX) 的离线文字识别，支持中英文，首次使用自动下载约 178MB 模型（ModelScope 镜像），之后完全离线运行，跨 Windows/macOS/Linux |
-| [package-check](./package-check/) | `io.github.parieses.package-check` | 1.0.0 | 输入包名，并发查询 npm / PyPI / Composer / Go 四个仓库：是否存在、最新版本、描述、许可证、npm 周下载量 | |
+| [package-check](./package-check/) | `io.github.parieses.package-check` | 1.1.0 | 输入包名，并发查询 npm / PyPI / Composer / Go 四个仓库并查依赖漏洞（OSV.dev CVE），返回版本/许可证/下载量与安全公告（native） | |
 | [pdf-toolkit](./pdf-toolkit/) | `io.github.parieses.pdf-toolkit` | 1.0.0 | PDF 处理工具箱：合并/拆分/压缩/加水印/提取图片，无需安装 Adobe Acrobat | |
 | [port-scanner](./port-scanner/) | `io.github.parieses.port-scanner` | 1.0.2 | 检查端口占用，显示进程名和 PID | |
 | [qrcode](./qrcode/) | `io.github.parieses.qrcode` | 1.0.0 | 文本/URL 生成二维码，支持保存 PNG；从图片识别二维码内容 | |
@@ -48,7 +50,7 @@
 | [site-audit](./site-audit/) | `io.github.parieses.site-audit` | 1.0.1 | 将 WHOIS 查询、SSL 证书检查、DNS 查询、DNS 传播检查、HTTP 状态码速查、HTTP 安全头审计六个站点工具合并为单一插件，按需切换标签页，共 | |
 | [speed-test](./speed-test/) | `io.github.parieses.speed-test` | 1.0.0 | 测量网络下载速率与延迟：流式下载测速（支持自定义测速节点 URL），实时显示速率与进度，采用异步会话模型规避宿主执行超时 | |
 | [subdomain-enum](./subdomain-enum/) | `io.github.parieses.subdomain-enum` | 1.0.0 | 被动收集域名子域名（证书透明日志 CertSpotter / crt.sh + HackerTarget + urlscan + rapiddns + Alie | |
-| [text-encoder](./text-encoder/) | `io.github.parieses.text-encoder` | 1.0.1 | Base64 / URL / HTML 编解码，MD5 / SHA1 / SHA256 / SHA512 哈希与 HMAC 签名，Base64 图片识别预览 | |
+| [text-encoder](./text-encoder/) | `io.github.parieses.text-encoder` | 1.0.2 | Base64 / URL / HTML 编解码，MD5 / SHA1 / SHA256 / SHA512 哈希与 HMAC 签名，Base64 图片识别预览，进制 / 单位转换（goja） | |
 | [time-converter](./time-converter/) | `io.github.parieses.time-converter` | 1.0.0 | Unix 时间戳 / ISO 8601 / 中文日期 / 相对时间互转，支持任意时区偏移输出 | |
 | [unit-converter](./unit-converter/) | `io.github.parieses.unit-converter` | 1.0.0 | 单位换算器：长度/面积/体积/重量/温度/速度/数据存储/时间/压力/能量/功率/角度共 12 类单位实时互转，输入一个值即列出该类别全部换算结果（runtime:none） |
 | [wifi-manager](./wifi-manager/) | `io.github.parieses.wifi-manager` | 1.0.0 | 查看网络列表、WiFi 密码、连接状态 | |
@@ -164,6 +166,7 @@ quickdock-plugins/
 | `capabilities` | - | 能力声明：`command`（命令面板）/ `frontend`（前端页面）等；有前端页面必须含 `frontend` |
 | `permissions` | - | 权限声明（**静态白名单，安装时展示、fail-closed**）：`network`（HTTP 域名白名单）/ `filesystem`（布尔 `true`=仅对话框；对象 `{read:[...], write:[...]}`=按目录 scope 读写）/ `clipboard` / `shell`（可执行程序前缀白名单）/ `processKill`（布尔，允许结束进程）。详见 [plugin-dev-guide.md](./plugin-dev-guide.md) |
 | `commands[]` | - | 命令面板条目：`id`（命令唯一标识）/ `title` / `keywords`（搜索关键词）/ `aliases`（别名） |
+| `changelog` / `changelog_i18n` | - | 版本更新说明（Markdown 文本），展示在插件市场详情页与官网（`gen_site.py` 读取）；建议每次发版随改随写，避免全量重传 |
 
 ## 三种 runtime
 
