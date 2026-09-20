@@ -66,7 +66,7 @@ window.copyViaHost=function(t,cb){var id='cp_'+(++window.__cpSeq),done=false;fun
 
     <div class="p-picker-row">
       <button class="cc-btn" id="pickScreen">屏幕取色</button>
-      <span class="p-muted">进入取色模式后按 F8 取色，HEX 自动复制</span>
+      <span class="p-muted">进入取色模式后窗口自动隐藏，按 F8 取色，HEX 自动复制</span>
     </div>
 
     <div class="p-section">
@@ -107,7 +107,7 @@ var L10N = {
     '拾色器': 'Picker',
     '拖动选取任意颜色，下方三栏实时同步': 'Drag to pick any color; all three formats below sync in real time',
     '屏幕取色': 'Screen Picker',
-    '进入取色模式后按 F8 取色，HEX 自动复制': 'Enter pick mode, press F8 to grab; HEX copies automatically',
+    '进入取色模式后窗口自动隐藏，按 F8 取色，HEX 自动复制': 'Window auto-hides on pick; press F8 to grab, HEX copies automatically',
     '取色中 — 把鼠标停在目标颜色上，按 F8 取色 · ESC 取消': 'Picking — rest the cursor on the target color and press F8 · ESC to cancel',
     '取消': 'Cancel',
     '已取消': 'Cancelled',
@@ -115,6 +115,7 @@ var L10N = {
     ' · 已复制到剪贴板': ' · Copied to clipboard',
     '取色失败': 'Pick failed',
     '已取色 ': 'Picked ',
+    '已进入屏幕取色，移动鼠标到目标颜色按 F8 取色，ESC 取消': 'Screen picking started — move cursor to target color and press F8, ESC to cancel',
     '复制': 'Copy',
     '色名: ': 'Name: ',
     '已复制 ': 'Copied ',
@@ -296,13 +297,28 @@ $('copyHsl').addEventListener('click', function () {
   copyText('hsl(' + hsl.h + ', ' + hsl.s + '%, ' + hsl.l + '%)')
 })
 
+// ---- 宿主窗口显隐（取色时隐藏主面板，避免遮挡取样区域）----
+// 走 iframe 通用宿主代发 qdHostCall（与 host.notify / host.clipboard.write 同源），
+// 失败静默降级——即便 host 方法不可用，取色核心流程仍可用（仅不隐藏窗口）。
+function hostCall(method, params) {
+  if (typeof window.qdHostCall === 'function') {
+    return window.qdHostCall(method, params || {}).catch(function () {})
+  }
+  return Promise.resolve()
+}
+
 // ---- 宿主传入初始值 ----
 window.addEventListener('message', function (e) {
   if (e.data && e.data.type === 'plugin:init') {
     var text = e.data.data && e.data.data.text
+    var cmd = (e.data.data && e.data.data.command) || ''
     if (text) {
       var rgb = hexToRgb(text.trim())
       if (rgb) setFromRgb(rgb.r, rgb.g, rgb.b)
+    }
+    // 从命令面板选中「屏幕取色」命令时直接进入取色模式，省去再点按钮的一步
+    if (cmd === 'screen-pick' || cmd === 'screen-pick-start' || cmd === 'pick-color') {
+      startPick()
     }
   }
 })
@@ -348,9 +364,15 @@ function sendExec(command, input, onOk, onErr) {
 function startPick() {
   if (pickPolling || !window.parent || window.parent === window) return
   sendExec('screen-pick-start', {}, function () {
-    $('pickBanner').classList.add('on')
-    $('pickScreen').disabled = true
     pickPolling = true
+    $('pickScreen').disabled = true
+    $('pickBanner').classList.add('on') // 仅作兜底：窗口未隐藏（降级场景）时给出可见提示
+    // 进入取色立即隐藏窗口，清理遮挡；提示完全交给桌面通知（toast 独立于窗口，藏掉照样弹）
+    hostCall('host.window.hide')
+    hostCall('host.notify', {
+      title: L('屏幕取色'),
+      message: L('已进入屏幕取色，移动鼠标到目标颜色按 F8 取色，ESC 取消')
+    })
     pollPick()
   }, function (err) {
     flash(L('启动取色失败'))
@@ -386,6 +408,8 @@ function endPick() {
   pickPolling = false
   $('pickBanner').classList.remove('on')
   $('pickScreen').disabled = false
+  // 取色结束（完成 / 取消 / 失败）后恢复主面板，让结果可见、可继续操作
+  hostCall('host.window.show')
 }
 
 function cancelPick() {

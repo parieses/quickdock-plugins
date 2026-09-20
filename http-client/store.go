@@ -362,7 +362,7 @@ func (d *DB) ListProjects() ([]HttpProject, error) {
 }
 
 func (d *DB) GetProject(id string) (*HttpProject, error) {
-	row := d.q1(`SELECT ` + httpProjectCols + ` FROM http_projects WHERE id = ?`, id)
+	row := d.q1(`SELECT `+httpProjectCols+` FROM http_projects WHERE id = ?`, id)
 	var r HttpProject
 	if err := row.Scan(&r.ID, &r.Name, &r.Headers, &r.Sort, &r.CreatedAt, &r.UpdatedAt); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -923,4 +923,3 @@ func (d *DB) ClearHistory(projectID string) error {
 }
 
 // 注：旧主程序 quickdock.db 的 http_* 数据不再迁移（按需求丢弃老数据，新插件库独立存储）。
-

@@ -21,13 +21,13 @@ type lineBlame struct {
 }
 
 type commitAgg struct {
-	Hash    string `json:"hash"`
-	Author  string `json:"author"`
-	Time    string `json:"time"`
-	Message string `json:"message"`
-	Lines   int    `json:"lines"`
-	First   int    `json:"firstLine"`
-	Last    int    `json:"lastLine"`
+	Hash    string  `json:"hash"`
+	Author  string  `json:"author"`
+	Time    string  `json:"time"`
+	Message string  `json:"message"`
+	Lines   int     `json:"lines"`
+	First   int     `json:"firstLine"`
+	Last    int     `json:"lastLine"`
 	Percent float64 `json:"percent"`
 }
 
@@ -140,12 +140,12 @@ func runTimeline(t *asyncTask, repo *git.Repository, c *object.Commit, file stri
 			}
 		} else {
 			byCommit[full] = &commitAgg{
-				Hash:  hash,
+				Hash:   hash,
 				Author: name,
-				Time:  ts,
-				Lines: 1,
-				First: i + 1,
-				Last:  i + 1,
+				Time:   ts,
+				Lines:  1,
+				First:  i + 1,
+				Last:   i + 1,
 			}
 		}
 
@@ -194,15 +194,15 @@ func runTimeline(t *asyncTask, repo *git.Repository, c *object.Commit, file stri
 	sort.Slice(authors, func(i, j int) bool { return authors[i].Lines > authors[j].Lines })
 
 	t.done(map[string]interface{}{
-		"file":    file,
-		"total":   total,
-		"scanned": len(res.Lines),
-		"range":   []int{start, end},
-		"lines":   lines,
-		"commits": commits,
-		"authors": authors,
-		"ref":     shortHash(c.Hash),
-		"refTime": c.Author.When.Format("2006-01-02 15:04"),
+		"file":       file,
+		"total":      total,
+		"scanned":    len(res.Lines),
+		"range":      []int{start, end},
+		"lines":      lines,
+		"commits":    commits,
+		"authors":    authors,
+		"ref":        shortHash(c.Hash),
+		"refTime":    c.Author.When.Format("2006-01-02 15:04"),
 		"finishedAt": time.Now().Format("15:04:05"),
 	})
 }

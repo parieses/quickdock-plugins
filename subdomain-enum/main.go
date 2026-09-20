@@ -1,17 +1,19 @@
 // 子域名枚举 — 被动收集目标域名的子域名
 //
 // 仅使用被动数据源（无需向目标发起探测），多源冗余以提高覆盖：
-//   1. certspotter   证书透明日志（稳定，主源）
-//   2. crt.sh        证书透明日志（含 %25.domain 模糊匹配，但常 5xx/超时）
-//   3. hackertarget  hostsearch API（免费额度有限）
-//   4. urlscan.io    扫描结果页提取域名（无需 key）
-//   5. rapiddns.io   被动 DNS 聚合（HTML 解析，best-effort）
-//   6. AlienVault OTX 被动 DNS（无需 key，偶发限流 429）
+//  1. certspotter   证书透明日志（稳定，主源）
+//  2. crt.sh        证书透明日志（含 %25.domain 模糊匹配，但常 5xx/超时）
+//  3. hackertarget  hostsearch API（免费额度有限）
+//  4. urlscan.io    扫描结果页提取域名（无需 key）
+//  5. rapiddns.io   被动 DNS 聚合（HTML 解析，best-effort）
+//  6. AlienVault OTX 被动 DNS（无需 key，偶发限流 429）
+//
 // 收集完成后可选并发解析 A 记录，筛选出当前可解析的子域名。
 //
 // 命令：start / poll / stop
-//   crt.sh 响应常在 10s 以上（偶发 5xx/超时），同步执行会撞上宿主 20s 上限，
-//   因此采用「start 立即返回 + 前端轮询」的异步会话模型。
+//
+//	crt.sh 响应常在 10s 以上（偶发 5xx/超时），同步执行会撞上宿主 20s 上限，
+//	因此采用「start 立即返回 + 前端轮询」的异步会话模型。
 package main
 
 import (
@@ -71,8 +73,9 @@ type certspotterEntry struct {
 // fetchCRT 从证书透明日志收集（返回原始条目，未做域名归属过滤）
 //
 // crt.sh 的两个坑（实测）：
-//   1. 不带 Accept: application/json 时大概率返回 502 —— 必须显式声明
-//   2. 大域名（如 qq.com）单次响应可达 24s 以上 —— 超时不能按常规 HTTP 设太短
+//  1. 不带 Accept: application/json 时大概率返回 502 —— 必须显式声明
+//  2. 大域名（如 qq.com）单次响应可达 24s 以上 —— 超时不能按常规 HTTP 设太短
+//
 // 另外它对突发请求返回 429/5xx，需要退避重试。
 func fetchCRT(domain string, timeout time.Duration) ([]string, error) {
 	url := "https://crt.sh/?q=%25." + domain + "&output=json"
@@ -447,7 +450,9 @@ func (s *session) run() {
 				recoverLog("run.crtsh", r)
 			}
 		}()
-		s.mu.Lock(); s.sources["crt.sh"] = "running"; s.mu.Unlock()
+		s.mu.Lock()
+		s.sources["crt.sh"] = "running"
+		s.mu.Unlock()
 		// 大域名单次响应实测 24s+，超时给到 30s（异步模型下不受宿主 20s 限制）
 		names, err := fetchCRT(s.Domain, 30*time.Second)
 		s.mu.Lock()
@@ -470,7 +475,9 @@ func (s *session) run() {
 				recoverLog("run.certspotter", r)
 			}
 		}()
-		s.mu.Lock(); s.sources["certspotter"] = "running"; s.mu.Unlock()
+		s.mu.Lock()
+		s.sources["certspotter"] = "running"
+		s.mu.Unlock()
 		names, err := fetchCertSpotter(s.Domain, 15*time.Second)
 		s.mu.Lock()
 		if err != nil {
@@ -492,7 +499,9 @@ func (s *session) run() {
 				recoverLog("run.hackertarget", r)
 			}
 		}()
-		s.mu.Lock(); s.sources["hackertarget"] = "running"; s.mu.Unlock()
+		s.mu.Lock()
+		s.sources["hackertarget"] = "running"
+		s.mu.Unlock()
 		names, err := fetchHackerTarget(s.Domain, 10*time.Second)
 		s.mu.Lock()
 		if err != nil {
@@ -514,7 +523,9 @@ func (s *session) run() {
 				recoverLog("run.urlscan", r)
 			}
 		}()
-		s.mu.Lock(); s.sources["urlscan"] = "running"; s.mu.Unlock()
+		s.mu.Lock()
+		s.sources["urlscan"] = "running"
+		s.mu.Unlock()
 		names, err := fetchURLScan(s.Domain, 15*time.Second)
 		s.mu.Lock()
 		if err != nil {
@@ -536,7 +547,9 @@ func (s *session) run() {
 				recoverLog("run.rapiddns", r)
 			}
 		}()
-		s.mu.Lock(); s.sources["rapiddns"] = "running"; s.mu.Unlock()
+		s.mu.Lock()
+		s.sources["rapiddns"] = "running"
+		s.mu.Unlock()
 		names, err := fetchRapidDNS(s.Domain, 15*time.Second)
 		s.mu.Lock()
 		if err != nil {
@@ -558,7 +571,9 @@ func (s *session) run() {
 				recoverLog("run.otx", r)
 			}
 		}()
-		s.mu.Lock(); s.sources["otx"] = "running"; s.mu.Unlock()
+		s.mu.Lock()
+		s.sources["otx"] = "running"
+		s.mu.Unlock()
 		names, err := fetchOTX(s.Domain, 15*time.Second)
 		s.mu.Lock()
 		if err != nil {

@@ -594,7 +594,6 @@ func handleTaskStatus(id int64, input map[string]interface{}) {
 	respond(id, resp)
 }
 
-
 // ---- PDF 操作实现 ----
 
 func mergePDFs(paths []string, outputPath string) error {

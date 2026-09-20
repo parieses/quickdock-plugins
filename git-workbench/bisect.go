@@ -132,16 +132,16 @@ func handleBisectStart(id int64, input map[string]interface{}) {
 	}
 
 	s := &bisectSession{
-		Path:    path,
-		Good:    shortHash(goodC.Hash),
-		Bad:     shortHash(badC.Hash),
-		Commits: make([]plumbing.Hash, len(commits)),
-		Hashes:  make([]string, len(commits)),
-		Lo:      -1, // good 是区间之前的那个提交（虚拟下标 -1）
-		Hi:      len(commits) - 1,
-		Skipped: make(map[int]bool),
+		Path:     path,
+		Good:     shortHash(goodC.Hash),
+		Bad:      shortHash(badC.Hash),
+		Commits:  make([]plumbing.Hash, len(commits)),
+		Hashes:   make([]string, len(commits)),
+		Lo:       -1, // good 是区间之前的那个提交（虚拟下标 -1）
+		Hi:       len(commits) - 1,
+		Skipped:  make(map[int]bool),
 		SkipList: []string{},
-		History: []bisectStepRecord{},
+		History:  []bisectStepRecord{},
 	}
 	for i, c := range commits {
 		s.Commits[i] = c.Hash
@@ -194,17 +194,17 @@ func bisectCheckout(repo *git.Repository, s *bisectSession) error {
 
 func bisectSnapshot(repo *git.Repository, s *bisectSession) map[string]interface{} {
 	out := map[string]interface{}{
-		"ok":      true,
-		"done":    s.Done,
-		"good":    s.Good,
-		"bad":     s.Bad,
-		"steps":   s.Steps,
-		"total":   len(s.Commits),
-		"remain":  s.Hi - s.Lo - 1,
-		"history": s.History,
-		"skipList": s.SkipList,
-		"result":  s.Result,
-		"path":    s.Path,
+		"ok":         true,
+		"done":       s.Done,
+		"good":       s.Good,
+		"bad":        s.Bad,
+		"steps":      s.Steps,
+		"total":      len(s.Commits),
+		"remain":     s.Hi - s.Lo - 1,
+		"history":    s.History,
+		"skipList":   s.SkipList,
+		"result":     s.Result,
+		"path":       s.Path,
 		"origBranch": s.OrigBranch,
 	}
 	if s.Done {

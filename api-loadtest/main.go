@@ -67,16 +67,16 @@ type executeParams struct {
 // ---- 配置 ----
 
 type benchConfig struct {
-	URL          string            `json:"url"`
-	Method       string            `json:"method"`
-	Headers      map[string]string `json:"headers"`
-	HeaderText   string            `json:"headerText"` // 备选：多行 "Key: Value"
-	Body         string            `json:"body"`
-	Concurrency  int               `json:"concurrency"`
-	Requests     int64             `json:"requests"`     // 请求数模式
-	DurationSec  int               `json:"durationSec"`  // 时长模式（>0 优先生效）
-	TimeoutMs    int               `json:"timeoutMs"`
-	RampUpSec    int               `json:"rampUpSec"`
+	URL         string            `json:"url"`
+	Method      string            `json:"method"`
+	Headers     map[string]string `json:"headers"`
+	HeaderText  string            `json:"headerText"` // 备选：多行 "Key: Value"
+	Body        string            `json:"body"`
+	Concurrency int               `json:"concurrency"`
+	Requests    int64             `json:"requests"`    // 请求数模式
+	DurationSec int               `json:"durationSec"` // 时长模式（>0 优先生效）
+	TimeoutMs   int               `json:"timeoutMs"`
+	RampUpSec   int               `json:"rampUpSec"`
 }
 
 // 延迟直方图桶上界（毫秒），最后一个为 +inf
@@ -85,24 +85,24 @@ var latBounds = []int64{1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10
 // ---- 压测运行态 ----
 
 type benchRun struct {
-	cfg        benchConfig
-	startTime  time.Time
-	stopTime   time.Time
-	done       atomic.Bool
-	stopped    atomic.Bool
-	mu         sync.Mutex
-	seq        int64 // 运行序号，用于结果导出标识
-	target     int64 // 请求数模式的目标
-	mode       string // "requests" | "duration"
-	sent       int64
-	success    int64
-	failed     int64
-	sumLatency int64 // 累计延迟(ms)，用于均值
-	maxLatency int64
-	buckets    []int64                 // 长度=len(latBounds)
+	cfg         benchConfig
+	startTime   time.Time
+	stopTime    time.Time
+	done        atomic.Bool
+	stopped     atomic.Bool
+	mu          sync.Mutex
+	seq         int64  // 运行序号，用于结果导出标识
+	target      int64  // 请求数模式的目标
+	mode        string // "requests" | "duration"
+	sent        int64
+	success     int64
+	failed      int64
+	sumLatency  int64 // 累计延迟(ms)，用于均值
+	maxLatency  int64
+	buckets     []int64 // 长度=len(latBounds)
 	statusCodes map[int]int64
-	errSamples []string
-	lastErr    string
+	errSamples  []string
+	lastErr     string
 }
 
 var (
@@ -113,20 +113,20 @@ var (
 
 // 并发写保护与 host 回调响应路由
 var (
-	writeMu       sync.Mutex       // 保护 stdout 并发写（dispatch 在独立 goroutine 执行）
-	hostRespChans sync.Map         // int64 -> chan *hostResponse，用于 host.* 调用回传
+	writeMu       sync.Mutex // 保护 stdout 并发写（dispatch 在独立 goroutine 执行）
+	hostRespChans sync.Map   // int64 -> chan *hostResponse，用于 host.* 调用回传
 	hostReqID     int64
 )
 
 func newBenchRun(cfg benchConfig) *benchRun {
 	return &benchRun{
-		cfg:        cfg,
-		startTime:  time.Now(),
-		buckets:    make([]int64, len(latBounds)),
+		cfg:         cfg,
+		startTime:   time.Now(),
+		buckets:     make([]int64, len(latBounds)),
 		statusCodes: map[int]int64{},
 		errSamples:  make([]string, 0, 20),
 		target:      cfg.Requests,
-		mode:       "requests",
+		mode:        "requests",
 	}
 }
 
@@ -298,7 +298,9 @@ func main() {
 
 // dispatch 解析一行 JSON-RPC，区分宿主响应（无 method）与请求（有 method）
 func dispatch(data string) {
-	var probe struct{ Method string `json:"method"` }
+	var probe struct {
+		Method string `json:"method"`
+	}
 	if json.Unmarshal([]byte(data), &probe) == nil && probe.Method == "" {
 		var hr hostResponse
 		if json.Unmarshal([]byte(data), &hr) == nil && hr.ID > 0 {
@@ -440,12 +442,12 @@ func handleStart(id int64, input map[string]interface{}) {
 
 	go r.run()
 	respond(id, map[string]interface{}{
-		"started":  true,
-		"runId":    r.seq,
-		"mode":     r.mode,
-		"target":   r.target,
-		"url":      cfg.URL,
-		"method":   cfg.Method,
+		"started":   true,
+		"runId":     r.seq,
+		"mode":      r.mode,
+		"target":    r.target,
+		"url":       cfg.URL,
+		"method":    cfg.Method,
 		"rampUpSec": cfg.RampUpSec,
 	})
 }

@@ -1,9 +1,10 @@
 // WebSocket Tester - 连接 ws/wss 并收发消息（原生 JSON-RPC 子进程，gorilla/websocket）
 // 命令：
-//   connect  input {url}            建立连接（异步，返回 connId 作为 taskId）
-//   send     input {taskId,message} 向连接发送文本
-//   close    input {taskId}         关闭连接
-//   task-status input {taskId}      轮询连接状态与消息列表
+//
+//	connect  input {url}            建立连接（异步，返回 connId 作为 taskId）
+//	send     input {taskId,message} 向连接发送文本
+//	close    input {taskId}         关闭连接
+//	task-status input {taskId}      轮询连接状态与消息列表
 package main
 
 import (

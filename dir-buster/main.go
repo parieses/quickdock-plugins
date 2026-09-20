@@ -10,9 +10,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"runtime/debug"
 	"net/http"
 	"os"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
@@ -98,19 +98,19 @@ type finding struct {
 }
 
 type session struct {
-	ID   string
-	mu   sync.Mutex
+	ID      string
+	mu      sync.Mutex
 	running bool
 	stopCh  chan struct{}
 	ctx     context.Context
 	cancel  context.CancelFunc
 
-	BaseURL  string
-	Method   string
-	total    int
-	scanned  int
-	found    []finding
-	errMsg   string
+	BaseURL string
+	Method  string
+	total   int
+	scanned int
+	found   []finding
+	errMsg  string
 }
 
 var (
@@ -270,16 +270,16 @@ func handleStart(id int64, input map[string]interface{}) {
 	seqID++
 	sid := fmt.Sprintf("d%d", seqID)
 	s := &session{
-		ID:       sid,
-		running:  true,
-		stopCh:   make(chan struct{}),
-		ctx:      ctx,
-		cancel:   cancel,
-		BaseURL:  base,
-		Method:   method,
-		total:    len(candidates),
-		scanned:  0,
-		found:    []finding{},
+		ID:      sid,
+		running: true,
+		stopCh:  make(chan struct{}),
+		ctx:     ctx,
+		cancel:  cancel,
+		BaseURL: base,
+		Method:  method,
+		total:   len(candidates),
+		scanned: 0,
+		found:   []finding{},
 	}
 	sessions[sid] = s
 	sessMu.Unlock()

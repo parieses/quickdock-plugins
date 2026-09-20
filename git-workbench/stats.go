@@ -249,20 +249,20 @@ func runStats(t *asyncTask, repo *git.Repository, limit int) {
 	}
 
 	t.done(map[string]interface{}{
-		"commits":    total,
-		"mergeCount": mergeCount,
-		"authors":    authors,
+		"commits":     total,
+		"mergeCount":  mergeCount,
+		"authors":     authors,
 		"authorCount": len(authors),
-		"files":      files,
-		"fileCount":  len(byFile),
-		"islands":    islands,
-		"heatmap":    heat,
-		"heatMax":    maxHeat,
-		"daily":      recentDays,
-		"trends":     trends,
-		"span":       spanDays,
-		"netLines":   running,
-		"finishedAt": time.Now().Format("15:04:05"),
+		"files":       files,
+		"fileCount":   len(byFile),
+		"islands":     islands,
+		"heatmap":     heat,
+		"heatMax":     maxHeat,
+		"daily":       recentDays,
+		"trends":      trends,
+		"span":        spanDays,
+		"netLines":    running,
+		"finishedAt":  time.Now().Format("15:04:05"),
 	})
 }
 

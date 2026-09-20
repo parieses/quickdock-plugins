@@ -14,12 +14,12 @@ import (
 // 各类型把元素放在 Items：string 用 Value，list/set 为 []string，
 // hash 为 [{field,value}]，zset 为 [{member,score}]。
 type RedisKeyDetail struct {
-	Key    string      `json:"key"`
-	Type   string      `json:"type"`
-	TTL    int64       `json:"ttl"`
-	Size   int64       `json:"size"`
-	Value  string      `json:"value,omitempty"`
-	Items  interface{} `json:"items,omitempty"`
+	Key   string      `json:"key"`
+	Type  string      `json:"type"`
+	TTL   int64       `json:"ttl"`
+	Size  int64       `json:"size"`
+	Value string      `json:"value,omitempty"`
+	Items interface{} `json:"items,omitempty"`
 }
 
 func redisCtx() context.Context {

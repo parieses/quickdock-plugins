@@ -308,10 +308,10 @@ func handlePreview(id int64, input map[string]interface{}) {
 		size = st.Size()
 	}
 	respond(id, map[string]interface{}{
-		"format": format,
-		"width":  img.Bounds().Dx(),
-		"height": img.Bounds().Dy(),
-		"size":   size,
+		"format":  format,
+		"width":   img.Bounds().Dx(),
+		"height":  img.Bounds().Dy(),
+		"size":    size,
 		"preview": toPreview(img),
 	})
 }

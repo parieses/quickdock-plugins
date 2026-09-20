@@ -61,23 +61,23 @@ type warmup struct {
 }
 
 type siteConfig struct {
-	Key       string            `json:"key"`
-	Name      string            `json:"name"`
-	NameEn    string            `json:"nameEn,omitempty"`
-	Category  string            `json:"category"`
-	URL       string            `json:"url,omitempty"`
-	Desc      string            `json:"desc,omitempty"`
-	Status    string            `json:"status,omitempty"` // adapted | needs-review | skip
-	Engine    string            `json:"engine,omitempty"` // gravatar 等专用探测器
-	Method    string            `json:"method,omitempty"` // GET | POST（默认 GET）
-	ProbeURL  string            `json:"probeUrl"`
-	Warmup    *warmup           `json:"warmup,omitempty"`
-	BodyType  string            `json:"bodyType,omitempty"` // form | json
-	Body      string            `json:"body,omitempty"`     // {email}/{domain}/{token} 占位
-	RandomUser bool             `json:"randomUser,omitempty"`
-	Headers   map[string]string `json:"headers,omitempty"`
-	Rules     []judgment        `json:"rules"`
-	Default   string            `json:"default,omitempty"`
+	Key        string            `json:"key"`
+	Name       string            `json:"name"`
+	NameEn     string            `json:"nameEn,omitempty"`
+	Category   string            `json:"category"`
+	URL        string            `json:"url,omitempty"`
+	Desc       string            `json:"desc,omitempty"`
+	Status     string            `json:"status,omitempty"` // adapted | needs-review | skip
+	Engine     string            `json:"engine,omitempty"` // gravatar 等专用探测器
+	Method     string            `json:"method,omitempty"` // GET | POST（默认 GET）
+	ProbeURL   string            `json:"probeUrl"`
+	Warmup     *warmup           `json:"warmup,omitempty"`
+	BodyType   string            `json:"bodyType,omitempty"` // form | json
+	Body       string            `json:"body,omitempty"`     // {email}/{domain}/{token} 占位
+	RandomUser bool              `json:"randomUser,omitempty"`
+	Headers    map[string]string `json:"headers,omitempty"`
+	Rules      []judgment        `json:"rules"`
+	Default    string            `json:"default,omitempty"`
 }
 
 var siteList []siteConfig
@@ -151,7 +151,7 @@ func strFrom(input map[string]interface{}, key string) string {
 // ---- 代理支持 ----
 // Go http.Client 默认只认 HTTP_PROXY/HTTPS_PROXY 环境变量，不读 Windows 系统代理。
 // 这里补上：环境变量优先，否则读注册表 Internet Settings 的系统代理
-//（Clash/V2ray 等"系统代理"模式写入的位置），让境外探测站也能走代理可达。
+// （Clash/V2ray 等"系统代理"模式写入的位置），让境外探测站也能走代理可达。
 func systemProxyURL() *url.URL {
 	k, err := registry.OpenKey(registry.CURRENT_USER, `Software\Microsoft\Windows\CurrentVersion\Internet Settings`, registry.QUERY_VALUE)
 	if err != nil {
@@ -218,8 +218,8 @@ type asyncTask struct {
 // checkProgress 运行中的增量进度：每个站点探测完成即追加（task-status 轮询时下发 partial）
 type checkProgress struct {
 	mu       sync.Mutex
-	done     int                     // 已完成站点数
-	validity *validityResult         // 有效性检测结果（可能为 nil）
+	done     int                      // 已完成站点数
+	validity *validityResult          // 有效性检测结果（可能为 nil）
 	probes   []map[string]interface{} // 已完成站点（按完成顺序）
 }
 

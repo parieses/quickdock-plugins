@@ -10,11 +10,11 @@ import (
 var (
 	wlanapi = syscall.NewLazyDLL("wlanapi.dll")
 
-	procWlanOpenHandle      = wlanapi.NewProc("WlanOpenHandle")
-	procWlanCloseHandle     = wlanapi.NewProc("WlanCloseHandle")
-	procWlanEnumInterfaces  = wlanapi.NewProc("WlanEnumInterfaces")
-	procWlanGetProfile      = wlanapi.NewProc("WlanGetProfile")
-	procWlanFreeMemory      = wlanapi.NewProc("WlanFreeMemory")
+	procWlanOpenHandle     = wlanapi.NewProc("WlanOpenHandle")
+	procWlanCloseHandle    = wlanapi.NewProc("WlanCloseHandle")
+	procWlanEnumInterfaces = wlanapi.NewProc("WlanEnumInterfaces")
+	procWlanGetProfile     = wlanapi.NewProc("WlanGetProfile")
+	procWlanFreeMemory     = wlanapi.NewProc("WlanFreeMemory")
 )
 
 // WLAN_PROFILE_GET_PLAINTEXT_KEY = 4
@@ -77,7 +77,7 @@ func getWifiPassword(ssid string) (string, error) {
 		clientHandle,
 		uintptr(unsafe.Pointer(ifGuid)),
 		uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr(ssid))),
-		0,        // pReserved
+		0, // pReserved
 		uintptr(unsafe.Pointer(&profileXML)),
 		uintptr(unsafe.Pointer(&flags)),
 		uintptr(unsafe.Pointer(&access)),

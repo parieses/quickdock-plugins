@@ -14,7 +14,7 @@ type PortInfo struct {
 	State    string `json:"state"`
 	PID      int    `json:"pid,omitempty"`
 	Process  string `json:"process,omitempty"`
-	Path     string `json:"path,omitempty"`  // 进程 exe 绝对路径，wmic 全量缓存，空表示未取到
+	Path     string `json:"path,omitempty"`   // 进程 exe 绝对路径，wmic 全量缓存，空表示未取到
 	AddrV4   string `json:"addrV4,omitempty"` // 本地 IPv4 绑定地址，如 0.0.0.0:8080
 	AddrV6   string `json:"addrV6,omitempty"` // 本地 IPv6 绑定地址，如 [::]:8080
 }
@@ -153,7 +153,6 @@ func portList(id int64) {
 	})
 }
 
-
 // resolvePositiveInt 从输入中解析正整数参数。
 // 依次尝试传入的 key（如 "port"/"pid"），并兼容命令面板内联匹配时
 // 前端把原始文本放在 input["text"]（例如输入 "1" 命中端口检查）。
@@ -203,7 +202,6 @@ func portCheck(id int64, input map[string]interface{}) {
 		})
 	}
 }
-
 
 func findByPort(port int) (PortInfo, bool) {
 	out, err := hiddenCmd("netstat", "-ano").Output()

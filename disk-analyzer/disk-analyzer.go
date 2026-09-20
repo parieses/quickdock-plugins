@@ -115,11 +115,11 @@ const defaultBudget = 10 * time.Second
 
 // 后台全量扫描的全局上限：避免极端情况下把内存吃爆或扫到天荒地老。
 const (
-	maxJobNodes = 20000    // 单任务返回节点数硬上限
-	maxJobDepth = 4        // 最大扫描深度
-	jobOverall  = 3 * time.Minute // 单任务整体耗时上限
+	maxJobNodes  = 20000            // 单任务返回节点数硬上限
+	maxJobDepth  = 4                // 最大扫描深度
+	jobOverall   = 3 * time.Minute  // 单任务整体耗时上限
 	perDirBudget = 20 * time.Second // 单个目录体积统计的预算（后台，宽松）
-	walkSemSize = 64       // 并发 walk 的目录数上限
+	walkSemSize  = 64               // 并发 walk 的目录数上限
 )
 
 var stdout = bufio.NewWriter(os.Stdout)
@@ -330,16 +330,16 @@ func handleInfo(id int64, input map[string]interface{}) {
 		return
 	}
 	respond(id, map[string]interface{}{
-		"total":     formatSize(int64(stat.Total)),
-		"used":      formatSize(int64(stat.Used)),
-		"free":      formatSize(int64(stat.Free)),
-		"usage":     formatPct(stat.UsagePct),
-		"usagePct":  stat.UsagePct,
-		"totalRaw":  stat.Total,
-		"usedRaw":   stat.Used,
-		"freeRaw":   stat.Free,
-		"mount":     path,
-		"platform":  runtime.GOOS,
+		"total":    formatSize(int64(stat.Total)),
+		"used":     formatSize(int64(stat.Used)),
+		"free":     formatSize(int64(stat.Free)),
+		"usage":    formatPct(stat.UsagePct),
+		"usagePct": stat.UsagePct,
+		"totalRaw": stat.Total,
+		"usedRaw":  stat.Used,
+		"freeRaw":  stat.Free,
+		"mount":    path,
+		"platform": runtime.GOOS,
 	})
 }
 
@@ -446,10 +446,10 @@ func handleScanFull(id int64, input map[string]interface{}) {
 	if j, ok := jobs[path]; ok && !j.isDone() {
 		jobsMu.Unlock()
 		respond(id, map[string]interface{}{
-			"jobId":         path,
-			"started":       false,
+			"jobId":          path,
+			"started":        false,
 			"alreadyRunning": true,
-			"maxDepth":      maxDepth,
+			"maxDepth":       maxDepth,
 		})
 		return
 	}
@@ -560,6 +560,7 @@ func (j *scanJob) run() {
 //  2. 各目录体积在后台并发统计，算完一个就把对应占位节点的 Size 就地更新、
 //     Scanning 置否、再 version++ —— 前端方块一个接一个"长大"。
 //  3. 未被截断的子目录继续递归下钻，过程同上，逐层渐进铺开。
+//
 // 全局 j.mu 保护：占位节点挂载、子节点 Size/Scanning/Children 更新、version 自增、
 // 以及 disk-scan-status 的快照序列化，全部在同一把锁下，避免读到半更新状态。
 // 重活（os.ReadDir / dirSize）都在锁外完成。

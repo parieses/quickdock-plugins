@@ -171,9 +171,9 @@ func startTaskID(prefix string) *asyncTask {
 	defer tasksMu.Unlock()
 	taskSeq++
 	t := &asyncTask{
-		ID:      fmt.Sprintf("%s-%d", prefix, taskSeq),
-		Status:  "running",
-		cancel:  make(chan struct{}),
+		ID:     fmt.Sprintf("%s-%d", prefix, taskSeq),
+		Status: "running",
+		cancel: make(chan struct{}),
 	}
 	tasks[t.ID] = t
 	return t

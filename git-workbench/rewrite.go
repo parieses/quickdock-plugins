@@ -15,26 +15,26 @@ import (
 
 // rewritePlan 一次历史改写的执行计划。Preview 与 Apply 共用，保证"所见即所改"。
 type rewritePlan struct {
-	Mode      string             `json:"mode"` // author | deleteFile
-	OldEmail  string             `json:"oldEmail,omitempty"`
-	NewName   string             `json:"newName,omitempty"`
-	NewEmail  string             `json:"newEmail,omitempty"`
-	Targets   []string           `json:"targets,omitempty"`
-	Commits   []rewriteCommitHit `json:"commits"`
-	Total     int                `json:"total"`
-	Affected  int                `json:"affected"`
-	Refs      []string           `json:"refs"`
-	Branch    string             `json:"branch"`
+	Mode     string             `json:"mode"` // author | deleteFile
+	OldEmail string             `json:"oldEmail,omitempty"`
+	NewName  string             `json:"newName,omitempty"`
+	NewEmail string             `json:"newEmail,omitempty"`
+	Targets  []string           `json:"targets,omitempty"`
+	Commits  []rewriteCommitHit `json:"commits"`
+	Total    int                `json:"total"`
+	Affected int                `json:"affected"`
+	Refs     []string           `json:"refs"`
+	Branch   string             `json:"branch"`
 }
 
 type rewriteCommitHit struct {
-	Hash     string   `json:"hash"`
-	Author   string   `json:"author"`
-	Email    string   `json:"email"`
-	Time     string   `json:"time"`
-	Message  string   `json:"message"`
-	AuthorChanged  bool     `json:"authorChanged"`
-	RemovedFiles    []string `json:"removedFiles,omitempty"`
+	Hash          string   `json:"hash"`
+	Author        string   `json:"author"`
+	Email         string   `json:"email"`
+	Time          string   `json:"time"`
+	Message       string   `json:"message"`
+	AuthorChanged bool     `json:"authorChanged"`
+	RemovedFiles  []string `json:"removedFiles,omitempty"`
 }
 
 // ---- 树操作：从 tree 中删除指定路径 ----
@@ -413,13 +413,13 @@ func handleRewriteApply(id int64, input map[string]interface{}) {
 	}
 
 	respond(id, map[string]interface{}{
-		"ok":             true,
-		"changed":        changedCommits,
-		"total":          len(recs),
-		"removedTrees":   removedTotal,
-		"updatedRefs":    updatedRefs,
-		"backupRef":      backupRef.Name().String(),
-		"backupCommit":   shortHash(head.Hash()),
-		"finishedAt":     time.Now().Format("15:04:05"),
+		"ok":           true,
+		"changed":      changedCommits,
+		"total":        len(recs),
+		"removedTrees": removedTotal,
+		"updatedRefs":  updatedRefs,
+		"backupRef":    backupRef.Name().String(),
+		"backupCommit": shortHash(head.Hash()),
+		"finishedAt":   time.Now().Format("15:04:05"),
 	})
 }

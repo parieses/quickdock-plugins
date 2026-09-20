@@ -643,19 +643,19 @@ func handleClean(id int64, input map[string]interface{}) {
 				}
 			}
 			perCat = append(perCat, map[string]interface{}{
-				"key":      c.Key,
-				"name":     c.Name,
-				"freed":    freed,
-				"deleted":  deleted,
-				"skipped":  skipped,
+				"key":     c.Key,
+				"name":    c.Name,
+				"freed":   freed,
+				"deleted": deleted,
+				"skipped": skipped,
 			})
 			totalFreed += freed
 			totalDeleted += deleted
 		}
 		finishTask(t, map[string]interface{}{
-			"results":       perCat,
-			"totalFreed":    totalFreed,
-			"totalDeleted":  totalDeleted,
+			"results":      perCat,
+			"totalFreed":   totalFreed,
+			"totalDeleted": totalDeleted,
 		}, nil)
 	})
 	respond(id, map[string]interface{}{"async": true, "taskId": t.ID})

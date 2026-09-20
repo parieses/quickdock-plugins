@@ -1,8 +1,9 @@
 // Duplicate File Finder - 按内容哈希查找重复文件（原生 JSON-RPC 子进程）
 // 命令：
-//   scan    input {path, hidden?}  异步：递归扫描，按 size 预分组再算 sha256，返回重复分组
-//   delete  input {remove:[path]}  删除指定冗余副本（保留其一）
-//   task-status 轮询扫描进度
+//
+//	scan    input {path, hidden?}  异步：递归扫描，按 size 预分组再算 sha256，返回重复分组
+//	delete  input {remove:[path]}  删除指定冗余副本（保留其一）
+//	task-status 轮询扫描进度
 package main
 
 import (
@@ -197,10 +198,10 @@ func (sp *scanProgress) snapshot() map[string]interface{} {
 }
 
 // scanDuplicates 并发扫描重复文件：
-//  1) 并行目录树遍历（worker 池 + pending 计数），按文件大小分组（跳过 0 字节与符号链接）
-//  2) 仅对 size 相同组内文件并行计算 sha256，按 hash 再分组
-//  3) 保留 >1 的重复组，按大小倒序
-//  sp 接收进度计数（文件/目录/已哈希数、当前目录、阶段），供前端实时展示。
+//  1. 并行目录树遍历（worker 池 + pending 计数），按文件大小分组（跳过 0 字节与符号链接）
+//  2. 仅对 size 相同组内文件并行计算 sha256，按 hash 再分组
+//  3. 保留 >1 的重复组，按大小倒序
+//     sp 接收进度计数（文件/目录/已哈希数、当前目录、阶段），供前端实时展示。
 func scanDuplicates(root string, includeHidden bool, sp *scanProgress) []map[string]interface{} {
 	sizeMap := map[int64][]string{}
 	var mu sync.Mutex

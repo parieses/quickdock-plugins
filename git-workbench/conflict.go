@@ -193,13 +193,13 @@ func handleConflictLoad(id int64, input map[string]interface{}) {
 	}
 
 	respond(id, map[string]interface{}{
-		"ok":     true,
-		"file":   file,
-		"merged": merged,
-		"ours":   ours,
-		"theirs": theirs,
-		"base":   base,
-		"blocks": blocks,
+		"ok":        true,
+		"file":      file,
+		"merged":    merged,
+		"ours":      ours,
+		"theirs":    theirs,
+		"base":      base,
+		"blocks":    blocks,
 		"hasOurs":   oursC != nil,
 		"hasTheirs": theirsC != nil,
 		"hasBase":   baseC != nil,

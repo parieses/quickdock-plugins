@@ -189,16 +189,16 @@ func execute(p executeParams) (map[string]interface{}, string) {
 // ---- 热键等待模式的状态 ----
 
 type pickSession struct {
-	Status string // running | done | cancelled | error
+	Status  string // running | done | cancelled | error
 	R, G, B uint8
-	Copied bool
-	ErrMsg string
+	Copied  bool
+	ErrMsg  string
 }
 
 var (
-	pickMu     sync.Mutex
-	pickState  pickSession
-	pickEpoch  int
+	pickMu    sync.Mutex
+	pickState pickSession
+	pickEpoch int
 )
 
 // markPick 终态写入；epoch 不匹配说明已被新一轮 start 重置，丢弃本次结果
@@ -242,6 +242,7 @@ func respond(id int64, result interface{}) {
 func respondError(id int64, code int, msg string) {
 	writeResponse(rpcResponse{JSONRPC: "2.0", ID: id, Error: &rpcError{Code: code, Message: msg}})
 }
+
 // writeResponse 统一出口：成功与失败都必须 Flush，
 // 否则响应滞留在 bufio 缓冲区，宿主收不到任何字节，只会等到超时。
 func writeResponse(resp rpcResponse) {

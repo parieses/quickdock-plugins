@@ -1,8 +1,8 @@
 package main
 
 import (
-	"context"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 )
+
 const (
 	httpClientMaxBody   = 16 << 20
 	httpClientTimeout   = 30 * time.Second

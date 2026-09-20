@@ -12,8 +12,8 @@ import (
 
 // OcrLine 单行识别结果，携带文本、坐标框与置信度（供前端画框）。
 type OcrLine struct {
-	Text  string `json:"text"`
-	Box   [4]int `json:"box"` // [x1, y1, x2, y2]，原图像素坐标
+	Text  string  `json:"text"`
+	Box   [4]int  `json:"box"` // [x1, y1, x2, y2]，原图像素坐标
 	Score float32 `json:"score"`
 }
 

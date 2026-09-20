@@ -20,17 +20,17 @@
 package main
 
 import (
-	"context"
 	"bufio"
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"runtime/debug"
 	"io"
 	"net/http"
 	"net/url"
 	"os"
 	"regexp"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
@@ -149,10 +149,10 @@ func builtinPasswords() []string {
 /* ==================== 会话状态 ==================== */
 
 type attemptResult struct {
-	User     string `json:"user"`
-	Pass     string `json:"pass"`
-	Status   int    `json:"status"`
-	Success  bool   `json:"success"`
+	User      string `json:"user"`
+	Pass      string `json:"pass"`
+	Status    int    `json:"status"`
+	Success   bool   `json:"success"`
 	Location  string `json:"location,omitempty"`
 	SetCookie string `json:"setCookie,omitempty"`
 	Body      string `json:"body,omitempty"`
@@ -161,12 +161,12 @@ type attemptResult struct {
 }
 
 type csrfCfg struct {
-	Enabled     bool   `json:"enabled"`
-	URL         string `json:"url"`
-	Regex       string `json:"regex"`
-	Field       string `json:"field"`
-	Header      string `json:"header"`
-	PerRequest  bool   `json:"perRequest"`
+	Enabled    bool   `json:"enabled"`
+	URL        string `json:"url"`
+	Regex      string `json:"regex"`
+	Field      string `json:"field"`
+	Header     string `json:"header"`
+	PerRequest bool   `json:"perRequest"`
 }
 
 type testConfig struct {
@@ -196,22 +196,22 @@ type testConfig struct {
 }
 
 type session struct {
-	mu          sync.Mutex
-	id          string
-	total       int
-	done        int
-	startedAt   time.Time
-	status      string // running | done | stopped | error
-	found       []attemptResult
-	lastResults []attemptResult
-	lockout     bool
-	lockoutNote string
-	failStreak  int
+	mu           sync.Mutex
+	id           string
+	total        int
+	done         int
+	startedAt    time.Time
+	status       string // running | done | stopped | error
+	found        []attemptResult
+	lastResults  []attemptResult
+	lockout      bool
+	lockoutNote  string
+	failStreak   int
 	reqErrStreak int
-	errMsg      string
-	stop        chan struct{}
-	stopOnce    sync.Once
-	cfg         testConfig
+	errMsg       string
+	stop         chan struct{}
+	stopOnce     sync.Once
+	cfg          testConfig
 }
 
 var (

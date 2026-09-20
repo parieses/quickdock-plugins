@@ -13,9 +13,9 @@ import (
 // DbTreeNode 库表浏览器树节点（SQL：库→表/视图→字段；Redis：目录→键）。
 type DbTreeNode struct {
 	Name     string       `json:"name"`
-	Kind     string       `json:"kind"`             // database | folder | table | view | column | key
-	Detail   string       `json:"detail"`           // 字段类型 / Redis 类型 / 计数
-	Label    string       `json:"label,omitempty"`  // 显示名（Redis 键在目录层级下只显示末段，Name 仍为完整 key）
+	Kind     string       `json:"kind"`            // database | folder | table | view | column | key
+	Detail   string       `json:"detail"`          // 字段类型 / Redis 类型 / 计数
+	Label    string       `json:"label,omitempty"` // 显示名（Redis 键在目录层级下只显示末段，Name 仍为完整 key）
 	Children []DbTreeNode `json:"children,omitempty"`
 }
 

@@ -75,8 +75,8 @@ func respondError(id int64, code int, msg string) {
 /* ==================== 会话 ==================== */
 
 type session struct {
-	ID   string
-	mu   sync.Mutex
+	ID      string
+	mu      sync.Mutex
 	running bool
 	stopCh  chan struct{}
 
@@ -108,17 +108,17 @@ func (s *session) snapshot() map[string]interface{} {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return map[string]interface{}{
-		"sessionId": s.ID,
-		"running":   s.running,
-		"url":       s.URL,
-		"nodeName":  s.NodeName,
-		"latencyMs": s.latencyMs,
+		"sessionId":  s.ID,
+		"running":    s.running,
+		"url":        s.URL,
+		"nodeName":   s.NodeName,
+		"latencyMs":  s.latencyMs,
 		"downloaded": s.downloaded,
 		"total":      s.total,
-		"elapsedMs": s.elapsedMs,
-		"speedMBps": s.speedMBps,
-		"speedMbps": s.speedMbps,
-		"error":     s.errMsg,
+		"elapsedMs":  s.elapsedMs,
+		"speedMBps":  s.speedMBps,
+		"speedMbps":  s.speedMbps,
+		"error":      s.errMsg,
 	}
 }
 
@@ -245,11 +245,11 @@ func handleStart(id int64, input map[string]interface{}) {
 	seqID++
 	sid := fmt.Sprintf("s%d", seqID)
 	s := &session{
-		ID:        sid,
-		URL:       url,
-		NodeName:  node,
-		running:   true,
-		stopCh:    make(chan struct{}),
+		ID:       sid,
+		URL:      url,
+		NodeName: node,
+		running:  true,
+		stopCh:   make(chan struct{}),
 	}
 	sessions[sid] = s
 	sessMu.Unlock()
