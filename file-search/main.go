@@ -1,9 +1,11 @@
-// Duplicate File Finder - 按内容哈希查找重复文件（原生 JSON-RPC 子进程）
+// File Search - 重复文件查找后端（原生 JSON-RPC 子进程）
 // 命令：
 //
-//	scan    input {path, hidden?}  异步：递归扫描，按 size 预分组再算 sha256，返回重复分组
-//	delete  input {remove:[path]}  删除指定冗余副本（保留其一）
+//	scan         input {path, hidden?}  异步：递归扫描，按 size 预分组再算 sha256，返回重复分组
 //	task-status 轮询扫描进度
+//
+// 删除冗余副本不由本后端负责：前端统一走宿主 host.fs.remove（进系统回收站，可恢复），
+// 避免 os.Remove 直接物理删除导致不可恢复的数据丢失。
 package main
 
 import (
@@ -43,19 +45,6 @@ func strFrom(m map[string]interface{}, key string) string {
 	return ""
 }
 
-func strSliceFrom(m map[string]interface{}, key string) []string {
-	if v, ok := m[key].([]interface{}); ok {
-		out := []string{}
-		for _, x := range v {
-			if s, ok := x.(string); ok {
-				out = append(out, s)
-			}
-		}
-		return out
-	}
-	return nil
-}
-
 func respond(id int64, result interface{}) {
 	out, _ := json.Marshal(map[string]interface{}{"jsonrpc": "2.0", "id": id, "result": result})
 	fmt.Println(string(out))
@@ -90,7 +79,7 @@ func startTask() *asyncTask {
 	tasksMu.Lock()
 	defer tasksMu.Unlock()
 	taskSeq++
-	t := &asyncTask{ID: fmt.Sprintf("df-%d", taskSeq), Status: "running"}
+	t := &asyncTask{ID: fmt.Sprintf("fs-%d", taskSeq), Status: "running"}
 	tasks[t.ID] = t
 	return t
 }
@@ -156,6 +145,7 @@ func workerCount() int {
 }
 
 // fileHash 计算文件 SHA-256；1MB 拷贝缓冲减少大文件系统调用次数。
+// 后端直接读文件，不受宿主 host.fs.read 的 8MiB 限制，因此大文件重复也能检出。
 func fileHash(path string) (string, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -215,7 +205,7 @@ func scanDuplicates(root string, includeHidden bool, sp *scanProgress) []map[str
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				fmt.Fprintf(os.Stderr, "[dup-finder] seed goroutine panic: %v\n%s\n", r, debug.Stack())
+				fmt.Fprintf(os.Stderr, "[file-search] seed goroutine panic: %v\n%s\n", r, debug.Stack())
 			}
 		}()
 		dirs <- root
@@ -228,7 +218,7 @@ func scanDuplicates(root string, includeHidden bool, sp *scanProgress) []map[str
 					defer pending.Done()
 					defer func() {
 						if r := recover(); r != nil {
-							fmt.Fprintf(os.Stderr, "[dup-finder] scan worker panic: %v\n%s\n", r, debug.Stack())
+							fmt.Fprintf(os.Stderr, "[file-search] scan worker panic: %v\n%s\n", r, debug.Stack())
 						}
 					}()
 					sp.current.Store(dir)
@@ -247,7 +237,7 @@ func scanDuplicates(root string, includeHidden bool, sp *scanProgress) []map[str
 								go func(c string) {
 									defer func() {
 										if r := recover(); r != nil {
-											fmt.Fprintf(os.Stderr, "[dup-finder] scan child-send panic: %v\n%s\n", r, debug.Stack())
+											fmt.Fprintf(os.Stderr, "[file-search] scan child-send panic: %v\n%s\n", r, debug.Stack())
 										}
 									}()
 									dirs <- c
@@ -295,7 +285,7 @@ func scanDuplicates(root string, includeHidden bool, sp *scanProgress) []map[str
 			defer hwg.Done()
 			defer func() {
 				if r := recover(); r != nil {
-					fmt.Fprintf(os.Stderr, "[dup-finder] hash worker panic: %v\n%s\n", r, debug.Stack())
+					fmt.Fprintf(os.Stderr, "[file-search] hash worker panic: %v\n%s\n", r, debug.Stack())
 				}
 			}()
 			for f := range jobs {
@@ -368,7 +358,7 @@ func handleScan(id int64, input map[string]interface{}) {
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				fmt.Fprintf(os.Stderr, "[dup-finder] progress ticker panic: %v\n%s\n", r, debug.Stack())
+				fmt.Fprintf(os.Stderr, "[file-search] progress ticker panic: %v\n%s\n", r, debug.Stack())
 			}
 		}()
 		tick := time.NewTicker(150 * time.Millisecond)
@@ -388,7 +378,7 @@ func handleScan(id int64, input map[string]interface{}) {
 		defer close(done)
 		defer func() {
 			if r := recover(); r != nil {
-				fmt.Fprintf(os.Stderr, "[dup-finder] scan task panic: %v\n%s\n", r, debug.Stack())
+				fmt.Fprintf(os.Stderr, "[file-search] scan task panic: %v\n%s\n", r, debug.Stack())
 				finishTask(t, nil, fmt.Errorf("panic: %v", r))
 			}
 		}()
@@ -414,29 +404,6 @@ func handleScan(id int64, input map[string]interface{}) {
 	respond(id, map[string]interface{}{"async": true, "taskId": t.ID})
 }
 
-func handleDelete(id int64, input map[string]interface{}) {
-	remove := strSliceFrom(input, "remove")
-	if len(remove) == 0 {
-		respondError(id, -32602, "未指定要删除的文件")
-		return
-	}
-	var deleted, skipped int
-	var failed []string
-	for _, p := range remove {
-		if err := os.Remove(p); err != nil {
-			skipped++
-			failed = append(failed, p)
-		} else {
-			deleted++
-		}
-	}
-	respond(id, map[string]interface{}{
-		"deleted": deleted,
-		"skipped": skipped,
-		"failed":  failed,
-	})
-}
-
 func dispatch(raw string) {
 	var req rpcRequest
 	if err := json.Unmarshal([]byte(raw), &req); err != nil {
@@ -445,7 +412,7 @@ func dispatch(raw string) {
 	}
 	switch req.Method {
 	case "initialize":
-		respond(req.ID, map[string]interface{}{"status": "ready", "name": "QuickDock Dup Finder"})
+		respond(req.ID, map[string]interface{}{"status": "ready", "name": "QuickDock File Search"})
 	case "host.ping":
 		respond(req.ID, map[string]interface{}{"pong": true})
 	case "plugin.execute":
@@ -456,8 +423,6 @@ func dispatch(raw string) {
 		switch strings.ToLower(strings.TrimSpace(params.Command)) {
 		case "scan":
 			handleScan(req.ID, params.Input)
-		case "delete":
-			handleDelete(req.ID, params.Input)
 		case "task-status":
 			handleTaskStatus(req.ID, params.Input)
 		default:
@@ -485,7 +450,7 @@ func main() {
 			defer wg.Done()
 			defer func() {
 				if r := recover(); r != nil {
-					fmt.Fprintf(os.Stderr, "[dup-finder] dispatch panic: %v\n%s\n", r, debug.Stack())
+					fmt.Fprintf(os.Stderr, "[file-search] dispatch panic: %v\n%s\n", r, debug.Stack())
 					var req rpcRequest
 					if err := json.Unmarshal([]byte(raw), &req); err == nil && req.ID != 0 {
 						respondError(req.ID, -32603, fmt.Sprintf("internal panic: %v", r))

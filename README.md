@@ -4,57 +4,60 @@
 
 ## 插件列表
 
+<!--PLUGINS_TABLE_START-->
+
 | 插件 | ID | 版本 | 说明 |
 |------|----|------|------|
-| [api-loadtest](./api-loadtest/) | `io.github.parieses.api-loadtest` | 1.0.0 | 功能丰富的 HTTP 接口压测工具：支持并发/时长双模式、自定义 Header 与 Body、实时 QPS 与延迟分布(p50/p90/p95/p99)、状态码 | |
-| [api-mock](./api-mock/) | `io.github.parieses.api-mock` | 1.0.0 | 本地 HTTP Mock 服务：路由管理（方法/路径/状态码/响应体/延迟）、启动/停止、访问地址与实时请求日志，填补 inbound 调试缺口（native） | |
-| [batch-rename](./batch-rename/) | `io.github.parieses.batch-rename` | 1.0.0 | 批量重命名工具：选择目录后按前缀/后缀/查找替换/序号/大小写/扩展名规则预览并重命名，冲突自动跳过（基于宿主 `host.fs.*` 能力，runtime:none） | |
-| [calcsheet](./calcsheet/) | `io.github.parieses.calcsheet` | 1.0.0 | 兼具草稿纸自由度与电子表格智能的多行计算工具，支持行号引用、变量定义、函数计算 | |
-| [code-card](./code-card/) | `io.github.parieses.code-card` | 1.0.0 | 把代码渲染成高颜值分享卡片：语法高亮、主题背景、窗口装饰，一键导出 PNG | |
-| [color-converter](./color-converter/) | `io.github.parieses.color-converter` | 1.0.1 | 颜色格式互转（HEX / RGB / HSL）+ 屏幕取色，支持常见英文色名识别；取色时自动隐藏宿主窗口并弹出系统通知 | |
-| [compare](./compare/) | `io.github.parieses.compare` | 1.0.1 | 文件/图片对比（元数据 + 图片预览 + 文本内容差异）与文本块逐行 Diff 合二为一 | |
-| [cron-explainer](./cron-explainer/) | `io.github.parieses.cron-explainer` | 1.0.1 | 解析 cron 表达式（含义/下次执行/小时分布），并可可视化生成表达式、实时预览下次执行时间 | |
-| [crypto-toolbox](./crypto-toolbox/) | `io.github.parieses.crypto-toolbox` | 1.0.0 | 密码与加密工具箱：随机密码/口令生成（字符集可配、熵值与强度评估）＋ AES-GCM/AES-CBC 加解密 ＋ RSA-OAEP 密钥对与加解密 ＋ PBKDF2 密钥派生，全部本机完成，不联网不上传（runtime:none） |
-| [curl-converter](./curl-converter/) | `io.github.parieses.curl-converter` | 1.0.0 | 把 curl 命令解析成 Python / Go / JavaScript / PHP 请求代码，也支持把 fetch、requests 代码反向转回 curl | |
-| [database](./database/) | `io.github.parieses.database` | 1.1.0 | 轻量数据库连接与查询工具：MySQL / SQLite / Redis 连接管理、SQL 与 Redis 命令执行、库表浏览器（库→表/视图→字段、Redis  | |
-| [data-generator](./data-generator/) | `io.github.parieses.data-generator` | 1.0.0 | UUID v4/v7 生成、随机字符串/整数/字节、测试假数据（姓名/手机/邮箱/公司/地址/身份证测试号/人员 CSV），纯前端（runtime:none） | |
-| [dir-buster](./dir-buster/) | `io.github.parieses.dir-buster` | 1.0.0 | 对指定目标 URL 用内置常见路径字典进行轻量探测（自用）：并发受限、可配扩展名，采用异步会话模型实时返回命中的非 404 路径。仅探测你授权的目标，内置字典、 | |
-| [disk-analyzer](./disk-analyzer/) | `io.github.parieses.disk-analyzer` | 1.0.0 | 可视化磁盘空间占用分析工具，类似 SpaceSniffer，支持树图展示目录结构 | |
-| [dup-finder](./dup-finder/) | `io.github.parieses.dup-finder` | 1.0.1 | 选择目录后按内容哈希查找重复文件，分组展示并支持一键删除冗余副本 | |
-| [emoji-search](./emoji-search/) | `io.github.parieses.emoji-search` | 1.0.1 | 搜索 Emoji 并一键复制到剪贴板 | |
-| [exif-viewer](./exif-viewer/) | `io.github.parieses.exif-viewer` | 1.0.1 | 选择图片（JPEG/PNG）查看拍摄时间、相机/镜头、参数与 GPS 经纬度等 EXIF 信息 | |
-| [file-search](./file-search/) | `io.github.parieses.file-search` | 1.0.0 | 本地文件搜索与重复查找：按名称/通配符/扩展名/大小递归搜索，按内容 SHA-256 哈希找重复，冗余副本移入回收站（基于宿主 `host.fs.*` 能力，runtime:none） | |
-| [formatter](./formatter/) | `io.github.parieses.formatter` | 1.0.0 | 通用代码压缩/美化（JS / CSS / HTML 自动检测）与 SQL 格式化合二为一 | |
-| [git-workbench](./git-workbench/) | `io.github.parieses.git-workbench` | 1.0.1 | Git 仓库一体化工作台：仓库浏览、二分定位 bug 引入提交、三方合并冲突可视化解决、代码演化时间轴、历史改写（改作者/删敏感文件）、仓库体检与知识孤岛识别。 | |
-| [hash-calc](./hash-calc/) | `io.github.parieses.hash-calc` | 1.0.1 | 计算文件的 MD5/SHA1/SHA256/SHA512 摘要，结果一键复制 | |
-| [hosts-manager](./hosts-manager/) | `io.github.parieses.hosts-manager` | 1.0.0 | 管理系统 hosts 文件条目，一键启用/禁用/新增 | |
-| [http-client](./http-client/) | `io.github.parieses.http-client` | 1.0.1 | 轻量 HTTP 请求调试客户端：项目管理请求、目录与文档树、环境变量与 {{var}} 替换、请求历史重放、Postman 集合导入。数据独立存储。 | |
-| [image-studio](./image-studio/) | `io.github.parieses.image-studio` | 1.0.0 | 仿 Squoosh 实时对比：左右预览对比，质量滑块、缩放(锁定比例/百分比/预设)、旋转/翻转、亮度/对比度/饱和度调整，实时预览文件大小与压缩率 | |
-| [image-uploader](./image-uploader/) | `io.github.parieses.image-uploader` | 1.0.0 | 图床上传客户端：选择图片经宿主读文件后通过 `http.post` 上传到 freeimage.host / imgbb 等图床，复制图片 URL（runtime:none，纯前端经宿主代发） | |
-| [json-toolbox](./json-toolbox/) | `io.github.parieses.json-toolbox` | 1.0.0 | JSON 编辑器（格式化/折叠/编辑）、JSON → TypeScript / Go、JSON ↔ YAML / TOML / XML 互转 | |
-| [junk-cleaner](./junk-cleaner/) | `io.github.parieses.junk-cleaner` | 1.0.0 | 扫描并清理系统垃圾文件：临时文件/更新缓存/缩略图缓存/预读取/崩溃转储等，安全只读扫描+确认后删除 | |
-| [jwt-decoder](./jwt-decoder/) | `io.github.parieses.jwt-decoder` | 1.0.0 | 解码 JWT Token，查看 Header/Payload，验证过期时间 | |
-| [login-tester](./login-tester/) | `io.github.parieses.login-tester` | 1.0.0 | 对自身网站登录接口进行密码库撞库/爆破安全自检，支持并发、限速与锁定检测。仅用于你拥有或已授权的站点。 | |
-| [mail-check](./mail-check/) | `io.github.parieses.mail-check` | 1.0.1 | 邮箱足迹与有效性检查：全量 123 站探测（参考 holehe 适配，Gravatar/GitHub/ProtonMail/Spotify 等已校准，其余逐步补 | |
-| [markdown-preview](./markdown-preview/) | `io.github.parieses.markdown-preview` | 1.0.0 | 实时渲染 Markdown（GFM：标题/列表/表格/任务列表/引用）+ 代码高亮，一键复制为 HTML | |
-| [md-table-converter](./md-table-converter/) | `io.github.parieses.md-table` | 1.0.0 | Markdown 表格与 CSV / JSON / HTML 四种格式互转，自动识别输入格式，写文档、导数据的顺手小工具 | |
-| [mindmap](./mindmap/) | `io.github.parieses.mindmap` | 1.0.0 | 思维导图：把 Markdown 大纲/缩进列表实时渲染成思维导图，自动分层配色、可点击折叠分支、支持缩放与导出 PNG/SVG（runtime:none） |
-| [netdiag](./netdiag/) | `io.github.parieses.netdiag` | 1.0.0 | 将 Ping 监视、路由追踪、局域网扫描、IP 归属地、端口指纹五个网络工具合并为单一插件，按需切换标签页，共享一个原生子进程 | |
-| [ocr-tool](./ocr-tool/) | `io.github.parieses.ocr-tool` | 2.0.0 | 基于 PaddleOCR (ONNX) 的离线文字识别，支持中英文，首次使用自动下载约 178MB 模型（ModelScope 镜像），之后完全离线运行，跨 Windows/macOS/Linux |
-| [package-check](./package-check/) | `io.github.parieses.package-check` | 1.1.0 | 输入包名，并发查询 npm / PyPI / Composer / Go 四个仓库并查依赖漏洞（OSV.dev CVE），返回版本/许可证/下载量与安全公告（native） | |
-| [pdf-toolkit](./pdf-toolkit/) | `io.github.parieses.pdf-toolkit` | 1.0.0 | PDF 处理工具箱：合并/拆分/压缩/加水印/提取图片，无需安装 Adobe Acrobat | |
-| [port-scanner](./port-scanner/) | `io.github.parieses.port-scanner` | 1.0.2 | 检查端口占用，显示进程名和 PID | |
-| [qrcode](./qrcode/) | `io.github.parieses.qrcode` | 1.0.0 | 文本/URL 生成二维码，支持保存 PNG；从图片识别二维码内容 | |
-| [regex-extractor](./regex-extractor/) | `io.github.parieses.regex-extractor` | 1.0.0 | 正则提取与替换：匹配高亮、分组捕获、反向引用替换（$1/$2）、一键复制结果 | |
-| [rmb-upper](./rmb-upper/) | `io.github.parieses.rmb-upper` | 1.0.0 | 数字金额转中文大写（壹贰叁…），财务报销、开票、合同的刚需小工具 | |
-| [site-audit](./site-audit/) | `io.github.parieses.site-audit` | 1.0.1 | 将 WHOIS 查询、SSL 证书检查、DNS 查询、DNS 传播检查、HTTP 状态码速查、HTTP 安全头审计六个站点工具合并为单一插件，按需切换标签页，共 | |
-| [speed-test](./speed-test/) | `io.github.parieses.speed-test` | 1.0.0 | 测量网络下载速率与延迟：流式下载测速（支持自定义测速节点 URL），实时显示速率与进度，采用异步会话模型规避宿主执行超时 | |
-| [subdomain-enum](./subdomain-enum/) | `io.github.parieses.subdomain-enum` | 1.0.0 | 被动收集域名子域名（证书透明日志 CertSpotter / crt.sh + HackerTarget + urlscan + rapiddns + Alie | |
-| [text-encoder](./text-encoder/) | `io.github.parieses.text-encoder` | 1.0.2 | Base64 / URL / HTML 编解码，MD5 / SHA1 / SHA256 / SHA512 哈希与 HMAC 签名，Base64 图片识别预览，进制 / 单位转换（goja） | |
-| [time-converter](./time-converter/) | `io.github.parieses.time-converter` | 1.0.0 | Unix 时间戳 / ISO 8601 / 中文日期 / 相对时间互转，支持任意时区偏移输出 | |
-| [unit-converter](./unit-converter/) | `io.github.parieses.unit-converter` | 1.0.0 | 单位换算器：长度/面积/体积/重量/温度/速度/数据存储/时间/压力/能量/功率/角度共 12 类单位实时互转，输入一个值即列出该类别全部换算结果（runtime:none） |
-| [wifi-manager](./wifi-manager/) | `io.github.parieses.wifi-manager` | 1.0.0 | 查看网络列表、WiFi 密码、连接状态 | |
-| [ws-tester](./ws-tester/) | `io.github.parieses.ws-tester` | 1.0.1 | 连接 ws/wss 服务，发送消息并实时查看返回的帧，支持多连接与历史 | |
+| [接口压测](./api-loadtest/) | `io.github.parieses.api-loadtest` | 1.0.0 | 功能丰富的 HTTP 接口压测工具：支持并发/时长双模式、自定义 Header 与 Body、实时 QPS 与延迟分布(p50/p90/p95/p99)、状态码分布、错误率统计与结果一键导出 |
+| [API Mock 服务](./api-mock/) | `io.github.parieses.api-mock` | 1.0.0 | 本地 HTTP 接口 Mock 服务：可视化配置路由规则（方法/路径/状态码/响应体/延迟），一键启动本地服务，实时查看请求日志，联调前端与第三方对接无需真实后端 |
+| [批量重命名](./batch-rename/) | `io.github.parieses.batch-rename` | 1.0.0 | 选择一个文件夹，按前缀/后缀/查找替换/正则/序号/扩展名/大小写规则预览并重命名文件，全部通过宿主文件系统能力执行，不离开本机 |
+| [计算稿纸](./calcsheet/) | `io.github.parieses.calcsheet` | 1.0.0 | 兼具草稿纸自由度与电子表格智能的多行计算工具，支持行号引用、变量定义、函数计算 |
+| [代码卡片](./code-card/) | `io.github.parieses.code-card` | 1.0.0 | 把代码渲染成高颜值分享卡片：语法高亮、主题背景、窗口装饰，一键导出 PNG |
+| [颜色工具](./color-converter/) | `io.github.parieses.color-converter` | 1.0.1 | 颜色格式互转（HEX / RGB / HSL）+ 屏幕取色，支持常见英文色名识别 |
+| [对比工具](./compare/) | `io.github.parieses.compare` | 1.0.1 | 文件/图片对比（元数据 + 图片预览 + 文本内容差异）与文本块逐行 Diff 合二为一 |
+| [Crontab 解释器](./cron-explainer/) | `io.github.parieses.cron-explainer` | 1.0.1 | 解析 cron 表达式（含义/下次执行/小时分布），并可可视化生成表达式、实时预览下次执行时间 |
+| [密码与加密工具箱](./crypto-toolbox/) | `io.github.parieses.crypto-toolbox` | 1.0.0 | 随机密码 / 口令生成（字符集可配、熵值与强度评估）＋ AES-GCM / AES-CBC 加解密 ＋ RSA-OAEP 密钥对与加解密 ＋ PBKDF2 密钥派生，全部在本机完成，不联网、不上传 |
+| [cURL 转代码](./curl-converter/) | `io.github.parieses.curl-converter` | 1.0.0 | 把 curl 命令解析成 Python / Go / JavaScript / PHP 请求代码，也支持把 fetch、requests 代码反向转回 curl |
+| [UUID & 假数据生成器](./data-generator/) | `io.github.parieses.data-generator` | 1.0.0 | UUID v4 / v7 生成（批量、可大写）＋ 随机字符串 / 整数 / 字节 ＋ 测试假数据（姓名 / 手机 / 邮箱 / 公司 / 地址 / 身份证(测试) / 日期 / 网址 / 用户名 / 人员），全部在本机生成，不联网、不上传 |
+| [数据库客户端](./database/) | `io.github.parieses.database` | 1.1.0 | 轻量数据库连接与查询工具：MySQL / SQLite / Redis 连接管理、SQL 与 Redis 命令执行、库表浏览器（库→表/视图→字段、Redis 键树）、Redis 键类型感知详情与增删改（string/hash/list/set/zset）、TTL 与 DB 管理、结果网格内联行编辑。数据独立存储。 |
+| [目录探测](./dir-buster/) | `io.github.parieses.dir-buster` | 1.0.0 | 对指定目标 URL 用内置常见路径字典进行轻量探测（自用）：并发受限、可配扩展名，采用异步会话模型实时返回命中的非 404 路径。仅探测你授权的目标，内置字典、不递归 |
+| [磁盘分析器](./disk-analyzer/) | `io.github.parieses.disk-analyzer` | 1.0.0 | 可视化磁盘空间占用分析工具，类似 SpaceSniffer，支持树图展示目录结构 |
+| [Emoji 搜索](./emoji-search/) | `io.github.parieses.emoji-search` | 1.0.1 | 搜索 Emoji 并一键复制到剪贴板 |
+| [EXIF 查看](./exif-viewer/) | `io.github.parieses.exif-viewer` | 1.0.1 | 选择图片（JPEG/PNG）查看拍摄时间、相机/镜头、参数与 GPS 经纬度等 EXIF 信息 |
+| [本地文件搜索](./file-search/) | `io.github.parieses.file-search` | 1.1.0 | 选择文件夹，按名称/通配符/扩展名/大小搜索文件；或按内容哈希查找重复文件（无文件大小上限，大文件也能查，支持隐藏文件与实时进度），删除冗余副本统一走系统回收站，可恢复 |
+| [代码格式化](./formatter/) | `io.github.parieses.formatter` | 1.0.0 | 通用代码压缩/美化（JS / CSS / HTML 自动检测）与 SQL 格式化合二为一 |
+| [Git 工作台](./git-workbench/) | `io.github.parieses.git-workbench` | 1.0.1 | Git 仓库一体化工作台：仓库浏览、二分定位 bug 引入提交、三方合并冲突可视化解决、代码演化时间轴、历史改写（改作者/删敏感文件）、仓库体检与知识孤岛识别。 |
+| [文件哈希](./hash-calc/) | `io.github.parieses.hash-calc` | 1.0.1 | 计算文件的 MD5/SHA1/SHA256/SHA512 摘要，结果一键复制 |
+| [Hosts 管理器](./hosts-manager/) | `io.github.parieses.hosts-manager` | 1.0.0 | 管理系统 hosts 文件条目，一键启用/禁用/新增 |
+| [HTTP 客户端](./http-client/) | `io.github.parieses.http-client` | 1.0.1 | 轻量 HTTP 请求调试客户端：项目管理请求、目录与文档树、环境变量与 {{var}} 替换、请求历史重放、Postman 集合导入。数据独立存储。 |
+| [图片工坊](./image-studio/) | `io.github.parieses.image-studio` | 1.0.0 | 仿 Squoosh 实时对比：左右预览对比，质量滑块、缩放(锁定比例/百分比/预设)、旋转/翻转、亮度/对比度/饱和度调整，实时预览文件大小与压缩率 |
+| [图床上传](./image-uploader/) | `io.github.parieses.image-uploader` | 1.0.0 | 选择本地图片，读取后通过宿主网络能力上传到图床（freeimage.host / imgbb），返回可访问的图片链接，链接可一键复制。不上传任何其它文件。 |
+| [JSON 工具箱](./json-toolbox/) | `io.github.parieses.json-toolbox` | 1.0.0 | JSON 编辑器（格式化/折叠/编辑）、JSON → TypeScript / Go、JSON ↔ YAML / TOML / XML 互转 |
+| [Windows 垃圾清理](./junk-cleaner/) | `io.github.parieses.junk-cleaner` | 1.0.0 | 扫描并清理系统垃圾文件：临时文件/更新缓存/缩略图缓存/预读取/崩溃转储等，安全只读扫描+确认后删除 |
+| [JWT 解码器](./jwt-decoder/) | `io.github.parieses.jwt-decoder` | 1.0.0 | 解码 JWT Token，查看 Header/Payload，验证过期时间 |
+| [登录爆破测试器](./login-tester/) | `io.github.parieses.login-tester` | 1.0.0 | 对自身网站登录接口进行密码库撞库/爆破安全自检，支持并发、限速与锁定检测。仅用于你拥有或已授权的站点。 |
+| [邮箱足迹查询](./mail-check/) | `io.github.parieses.mail-check` | 1.0.1 | 邮箱足迹与有效性检查：全量 123 站探测（参考 holehe 适配，Gravatar/GitHub/ProtonMail/Spotify 等已校准，其余逐步补），语法 / MX / SMTP 有效性验证 |
+| [Markdown 渲染](./markdown-preview/) | `io.github.parieses.markdown-preview` | 1.0.0 | 实时渲染 Markdown（GFM：标题/列表/表格/任务列表/引用）+ 代码高亮，一键复制为 HTML |
+| [MD 表格转换器](./md-table-converter/) | `io.github.parieses.md-table` | 1.0.0 | Markdown 表格与 CSV / JSON / HTML 四种格式互转，自动识别输入格式，写文档、导数据的顺手小工具 |
+| [思维导图](./mindmap/) | `io.github.parieses.mindmap` | 1.0.0 | 把 Markdown 大纲 / 缩进列表实时渲染成思维导图，自动分层配色、可点击折叠分支、支持缩放与导出 PNG / SVG |
+| [网络诊断箱](./netdiag/) | `io.github.parieses.netdiag` | 1.0.0 | 将 Ping 监视、路由追踪、局域网扫描、IP 归属地、端口指纹五个网络工具合并为单一插件，按需切换标签页，共享一个原生子进程 |
+| [OCR 文字识别](./ocr-tool/) | `io.github.parieses.ocr-tool` | 2.0.0 | 基于 PaddleOCR (ONNX) 的离线文字识别，支持中英文，首次使用自动下载约 178MB 模型（ModelScope 镜像），之后完全离线运行，跨 Windows / macOS / Linux。 |
+| [包版本速查](./package-check/) | `io.github.parieses.package-check` | 1.1.0 | 输入包名，并发查询 npm / PyPI / Composer / Go 四个仓库的版本信息；并基于 OSV.dev 查询包版本的已知漏洞（CVE / 安全公告） |
+| [PDF 工具箱](./pdf-toolkit/) | `io.github.parieses.pdf-toolkit` | 1.0.0 | PDF 处理工具箱：合并/拆分/压缩/加水印/提取图片，无需安装 Adobe Acrobat |
+| [端口检查器](./port-scanner/) | `io.github.parieses.port-scanner` | 1.0.2 | 检查端口占用，显示进程名和 PID |
+| [二维码工具](./qrcode/) | `io.github.parieses.qrcode` | 1.0.0 | 文本/URL 生成二维码，支持保存 PNG；从图片识别二维码内容 |
+| [正则提取工具](./regex-extractor/) | `io.github.parieses.regex-extractor` | 1.0.0 | 正则提取与替换：匹配高亮、分组捕获、反向引用替换（$1/$2）、一键复制结果 |
+| [人民币大写](./rmb-upper/) | `io.github.parieses.rmb-upper` | 1.0.0 | 数字金额转中文大写（壹贰叁…），财务报销、开票、合同的刚需小工具 |
+| [站点审计箱](./site-audit/) | `io.github.parieses.site-audit` | 1.0.1 | 将 WHOIS 查询、SSL 证书检查、DNS 查询、DNS 传播检查、HTTP 状态码速查、HTTP 安全头审计六个站点工具合并为单一插件，按需切换标签页，共享一个原生子进程 |
+| [网速测试](./speed-test/) | `io.github.parieses.speed-test` | 1.0.0 | 测量网络下载速率与延迟：流式下载测速（支持自定义测速节点 URL），实时显示速率与进度，采用异步会话模型规避宿主执行超时 |
+| [子域名枚举](./subdomain-enum/) | `io.github.parieses.subdomain-enum` | 1.0.0 | 被动收集域名子域名（证书透明日志 CertSpotter / crt.sh + HackerTarget + urlscan + rapiddns + AlienVault OTX），可选并发解析 A 记录筛选存活 |
+| [文本工具箱](./text-encoder/) | `io.github.parieses.text-encoder` | 1.0.2 | Base64 / URL / HTML 编解码，MD5 / SHA1 / SHA256 / SHA512 哈希与 HMAC 签名，Base64 图片识别预览，2/8/10/16 进制互转与字节单位换算 |
+| [时间转换](./time-converter/) | `io.github.parieses.time-converter` | 1.0.0 | Unix 时间戳 / ISO 8601 / 中文日期 / 相对时间互转，支持任意时区偏移输出 |
+| [单位换算器](./unit-converter/) | `io.github.parieses.unit-converter` | 1.0.0 | 长度 / 面积 / 体积 / 重量 / 温度 / 速度 / 数据存储 / 时间 / 压力 / 能量 / 功率 / 角度 共 12 类单位实时互转，输入一个值即列出该类别全部换算结果 |
+| [WiFi 管理器](./wifi-manager/) | `io.github.parieses.wifi-manager` | 1.0.0 | 查看网络列表、WiFi 密码、连接状态 |
+| [WebSocket 测试](./ws-tester/) | `io.github.parieses.ws-tester` | 1.0.1 | 连接 ws/wss 服务，发送消息并实时查看返回的帧，支持多连接与历史 |
+<!--PLUGINS_TABLE_END-->
+
 ## 安装方法
 
 QuickDock「插件管理」页：

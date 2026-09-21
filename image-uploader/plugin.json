@@ -32,6 +32,8 @@
   "backend": {
     "runtime": "none"
   },
+  "host_apis": ["qdPickFile", "host.fs.read", "http.post"],
+
   "frontend": {
     "enabled": true,
     "entry": "frontend/index.html",

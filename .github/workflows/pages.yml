@@ -30,6 +30,9 @@ jobs:
       - name: Generate plugin home page
         run: python3 gen_site.py
 
+      - name: Generate plugin doc tables
+        run: python3 gen_tables.py
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site

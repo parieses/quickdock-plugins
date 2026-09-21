@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>打字练习</title>
+<link rel="stylesheet" href="qd-theme.css">
+<link rel="stylesheet" href="components.css">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { height: 100vh; overflow: hidden; }
+
+.app { display: flex; flex-direction: column; height: 100vh; }
+
+/* 顶栏 */
+.topbar { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap;
+  padding: 0 var(--sp-4); height: 50px; background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.topbar .title { font-size: var(--fs-lg); font-weight: var(--fw-semibold); color: var(--text-primary); letter-spacing: .2px; }
+.topbar .spacer { flex: 1; }
+.ctrl { display: flex; align-items: center; gap: 6px; }
+.ctrl label { font-size: var(--fs-xs); color: var(--text-muted); white-space: nowrap; }
+.ctrl select, .ctrl input { height: 30px; }
+.best-chip { font-size: var(--fs-xs); color: var(--accent); background: var(--accent-soft);
+  padding: 4px 10px; border-radius: var(--radius-pill); white-space: nowrap; }
+
+/* 实时统计条 */
+.statsbar { display: flex; gap: var(--sp-5); padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--border); background: var(--bg-primary); flex-shrink: 0; }
+.stat { display: flex; flex-direction: column; gap: 2px; }
+.stat .v { font-size: var(--fs-2xl); font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; line-height: 1; }
+.stat .k { font-size: var(--fs-xs); color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; }
+.stat.accent .v { color: var(--accent); }
+.statsbar .spacer { flex: 1; }
+#prog { align-self: center; font-size: var(--fs-sm); color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+/* 打字区 */
+.typing-area { position: relative; flex: 1; overflow: auto; padding: var(--sp-5); }
+#text { position: relative; z-index: 1; pointer-events: none;
+  white-space: pre-wrap; word-break: break-word; font-family: var(--font-mono);
+  font-size: 20px; line-height: 2; letter-spacing: .3px; max-width: 900px; }
+#input { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2;
+  opacity: 0; border: none; outline: none; resize: none; background: transparent;
+  color: transparent; caret-color: transparent; font-size: 20px; }
+.ch { border-radius: 3px; transition: color .05s, background .05s; }
+.ch.pending { color: var(--text-muted); }
+.ch.correct { color: var(--text-primary); }
+.ch.incorrect { color: var(--danger); background: var(--danger-soft); }
+.ch.current { background: var(--accent-soft); border-bottom: 2px solid var(--accent); }
+
+/* 结果页 */
+.results { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: var(--sp-5);
+  background: color-mix(in srgb, var(--bg-primary) 92%, transparent); backdrop-filter: blur(6px); }
+.results[hidden] { display: none; }
+.result-grid { display: flex; gap: var(--sp-6); }
+.result-item { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 90px; }
+.result-item .v { font-size: 38px; font-weight: 800; color: var(--text-primary); line-height: 1; font-variant-numeric: tabular-nums; }
+.result-item.accent .v { color: var(--accent); }
+.result-item .k { font-size: var(--fs-xs); color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; }
+.result-actions { display: flex; gap: var(--sp-3); }
+
+/* 历史 */
+.history { border-top: 1px solid var(--border); background: var(--bg-primary);
+  max-height: 38vh; overflow: auto; flex-shrink: 0; }
+.history h4 { font-size: var(--fs-sm); color: var(--text-secondary); padding: var(--sp-3) var(--sp-4) 0; font-weight: 600; }
+.hist-row { display: grid; grid-template-columns: 1.2fr 1fr .8fr .8fr 1fr; gap: var(--sp-2);
+  padding: 8px var(--sp-4); font-size: var(--fs-sm); border-bottom: 1px solid var(--border); align-items: center; }
+.hist-row .h-mode { color: var(--text-secondary); }
+.hist-row .h-wpm { color: var(--accent); font-weight: 700; font-variant-numeric: tabular-nums; }
+.hist-row .h-wpm i { font-style: normal; font-size: 10px; color: var(--text-muted); font-weight: 400; }
+.hist-row .h-acc, .hist-row .h-time { color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.hist-row .h-date { color: var(--text-muted); text-align: right; }
+
+/* toast */
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(12px);
+  background: var(--bg-tertiary); border: 1px solid var(--border-strong); color: var(--text-primary);
+  padding: 8px 18px; border-radius: var(--radius); font-size: var(--fs-sm); opacity: 0;
+  transition: opacity .18s, transform .18s; z-index: 99; box-shadow: var(--shadow-2); }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <span class="title">⌨ 打字练习</span>
+    <div class="ctrl">
+      <label>模式</label>
+      <select id="selMode" class="p-input">
+        <option value="en">英文</option>
+        <option value="cn">中文</option>
+        <option value="code">代码</option>
+      <option value="custom">导入</option>
+      </select>
+    </div>
+    <div class="ctrl" id="ctrlLib" hidden>
+      <label>字库</label>
+      <select id="selLib" class="p-input"></select>
+    </div>
+    <div class="ctrl">
+      <label>类型</label>
+      <select id="selType" class="p-input">
+        <option value="time">计时</option>
+        <option value="words">字数</option>
+      </select>
+    </div>
+    <div class="ctrl">
+      <label>数量</label>
+      <select id="selLimit" class="p-input"></select>
+    </div>
+    <div class="ctrl">
+      <label>字号</label>
+      <input id="numFont" class="p-input" type="number" min="14" max="34" value="20" style="width:64px">
+    </div>
+    <span class="spacer"></span>
+    <span id="best" class="best-chip">—</span>
+    <button id="btnImport" class="btn btn-sm">导入TXT</button>
+    <button id="btnHistory" class="btn btn-sm">历史</button>
+    <button id="btnRestart" class="btn btn-sm btn-primary">重开</button>
+    <input id="fileInput" type="file" accept=".txt,text/plain" multiple hidden>
+  </div>
+
+  <div class="statsbar">
+    <div class="stat accent"><span id="wpm" class="v">0</span><span class="k">WPM</span></div>
+    <div class="stat"><span id="acc" class="v">100%</span><span class="k">准确率</span></div>
+    <div class="stat"><span id="time" class="v">30s</span><span class="k">用时</span></div>
+    <div class="stat"><span id="err" class="v">0</span><span class="k">错误</span></div>
+    <span class="spacer"></span>
+    <span id="prog"></span>
+  </div>
+
+  <div class="typing-area" id="typingArea">
+    <div id="text"></div>
+    <textarea id="input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+
+    <div class="results" id="results" hidden>
+      <div class="result-grid">
+        <div class="result-item accent"><span id="rWpm" class="v">0</span><span class="k">WPM</span></div>
+        <div class="result-item"><span id="rAcc" class="v">0%</span><span class="k">准确率</span></div>
+        <div class="result-item"><span id="rTime" class="v">0s</span><span class="k">用时</span></div>
+        <div class="result-item"><span id="rErr" class="v">0</span><span class="k">错误</span></div>
+      </div>
+      <div class="result-actions">
+        <button id="btnAgain" class="btn btn-primary">再来一次</button>
+        <button id="btnCopy" class="btn">复制成绩</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="history" id="history" hidden>
+    <h4>历史记录（最近 20 条）</h4>
+    <div id="histList"></div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+/* 打字练习 - 内置文本库
+ * 暴露到 window.TYPE_TEXTS，供 app.js 取用。
+ * - EN_WORDS: 英文单词池（常用词 + 技术词），用于「字数模式」随机造句
+ * - EN_PARAGRAPHS: 英文段落，用于「计时模式」
+ * - CN_SENTENCES: 中文句子，用于计时模式与中文字数模式
+ * - CODE_SNIPPETS: 真实代码片段（Go / Python / JS），面向开发者
+ */
+(function () {
+  'use strict';
+
+  var EN_WORDS = [
+    'the', 'be', 'to', 'of', 'and', 'a', 'in', 'that', 'have', 'it',
+    'for', 'not', 'on', 'with', 'he', 'as', 'you', 'do', 'at', 'this',
+    'but', 'his', 'by', 'from', 'they', 'we', 'say', 'her', 'she', 'or',
+    'an', 'will', 'my', 'one', 'all', 'would', 'there', 'their', 'what', 'so',
+    'up', 'out', 'if', 'about', 'who', 'get', 'which', 'go', 'me', 'when',
+    'make', 'can', 'like', 'time', 'no', 'just', 'him', 'know', 'take', 'people',
+    'into', 'year', 'your', 'good', 'some', 'could', 'them', 'see', 'other', 'than',
+    // 技术词
+    'function', 'interface', 'struct', 'channel', 'goroutine', 'async', 'await',
+    'promise', 'module', 'import', 'export', 'default', 'const', 'let', 'var',
+    'component', 'render', 'state', 'request', 'response', 'server', 'client',
+    'database', 'query', 'index', 'cache', 'runtime', 'pointer', 'memory',
+    'compile', 'deploy', 'container', 'docker', 'kubernetes', 'linux', 'kernel',
+    'algorithm', 'recursion', 'iteration', 'concurrency', 'parallel', 'latency',
+    'throughput', 'benchmark', 'profile', 'refactor', 'pattern', 'abstraction'
+  ];
+
+  var EN_PARAGRAPHS = [
+    'The quick brown fox jumps over the lazy dog while the small blue bird sings a happy song near the open window. ' +
+    'Good code is not written by following a set of rules. You do not become a craftsman by reading a book. ' +
+    'You become a craftsman by writing code every day and learning from the mistakes you make along the way.',
+
+    'Performance is a feature that users notice before they notice anything else. A slow interface feels broken ' +
+    'even when every function works as designed. Measure first, optimize second, and never guess where the time goes. ' +
+    'Most programs spend their life waiting on input and output rather than burning cycles in the processor.',
+
+    'Concurrency is not parallelism, and understanding the difference will save you from countless late night debugging ' +
+    'sessions. Share memory by communicating, and communicate by sharing memory, but pick one model and stay consistent. ' +
+    'A clear contract between components is worth more than a clever optimization that nobody can explain.'
+  ];
+
+  var CN_SENTENCES = [
+    '性能优化是工程里最容易被忽视却最影响体验的一环，先测量再动手。',
+    '良好的代码不是靠规则堆出来的，而是每天敲出来并从错误里学到的。',
+    '并发不等于并行，理解两者的差异能帮你避开无数个深夜调试的坑。',
+    '清晰的接口契约比任何精巧的优化都更有价值，也更容易被他人维护。',
+    '写代码之前先想清楚边界条件，比写完再补测试要省心得多。',
+    '缓存能显著降低延迟，但也会引入一致性问题，使用时要权衡利弊。',
+    '部署失败往往不是因为新功能，而是因为没人校验过回滚路径是否可用。',
+    '把复杂的逻辑拆成小的纯函数，测试会更容易，心也会更安静。'
+  ];
+
+  var CODE_SNIPPETS = [
+    {
+      lang: 'go',
+      lines: [
+        'package main',
+        '',
+        'import (',
+        '    "fmt"',
+        '    "time"',
+        ')',
+        '',
+        'func main() {',
+        '    start := time.Now()',
+        '    for i := 0; i < 3; i++ {',
+        '        fmt.Printf("hello %d\\n", i)',
+        '    }',
+        '    fmt.Println(time.Since(start))',
+        '}'
+      ]
+    },
+    {
+      lang: 'python',
+      lines: [
+        'def fib(n):',
+        '    a, b = 0, 1',
+        '    for _ in range(n):',
+        '        a, b = b, a + b',
+        '    return a',
+        '',
+        '',
+        'if __name__ == "__main__":',
+        '    print([fib(i) for i in range(10)])'
+      ]
+    },
+    {
+      lang: 'js',
+      lines: [
+        'async function fetchUser(id) {',
+        '    const res = await fetch(`/api/users/${id}`);',
+        '    if (!res.ok) throw new Error("request failed");',
+        '    const data = await res.json();',
+        '    return data;',
+        '}',
+        '',
+        'fetchUser(1).then(console.log).catch(console.error);'
+      ]
+    },
+    {
+      lang: 'go',
+      lines: [
+        'func worker(jobs <-chan int, results chan<- int) {',
+        '    for j := range jobs {',
+        '        results <- j * j',
+        '    }',
+        '}',
+        '',
+        'func main() {',
+        '    jobs := make(chan int, 100)',
+        '    results := make(chan int, 100)',
+        '    go worker(jobs, results)',
+        '}'
+      ]
+    }
+  ];
+
+  window.TYPE_TEXTS = {
+    EN_WORDS: EN_WORDS,
+    EN_PARAGRAPHS: EN_PARAGRAPHS,
+    CN_SENTENCES: CN_SENTENCES,
+    CODE_SNIPPETS: CODE_SNIPPETS
+  };
+})();
+</script>
+<script>
+/* 打字练习 - 打字引擎 + UI
+ * 纯原生实现，无依赖。
+ * 输入模型：隐藏 textarea 捕获按键；
+ *   - 英文/代码：keydown 单字符逐键比对（preventDefault 阻止实际输入）
+ *   - 中文：compositionend 批量提交已合成串，兼容 IME
+ * 同一套「已输入串 vs 目标串」模型兼容两种输入路径。
+ */
+(function () {
+  'use strict';
+
+  var T = window.TYPE_TEXTS;
+  var $ = function (id) { return document.getElementById(id); };
+
+  // ---- DOM ----
+  var elText = $('text');
+  var elInput = $('input');
+  var elTypingArea = $('typingArea');
+  var elWpm = $('wpm'), elAcc = $('acc'), elTime = $('time'), elErr = $('err'), elProg = $('prog');
+  var elBest = $('best');
+  var elResults = $('results');
+  var elHistory = $('history'), elHistList = $('histList');
+  var selMode = $('selMode'), selType = $('selType'), selLimit = $('selLimit'), selLib = $('selLib');
+  var ctrlLib = $('ctrlLib'), btnImport = $('btnImport'), fileInput = $('fileInput');
+  var numFont = $('numFont');
+
+  var LIMITS_TIME = [15, 30, 60];
+  var LIMITS_WORDS = [10, 25, 50];
+  var MODE_NAME = { en: '英文', cn: '中文', code: '代码', custom: '导入' };
+  var TYPE_NAME = { time: '计时', words: '字数' };
+
+  var LS_HIST = 'type-trainer-history';
+  var LS_BEST = 'type-trainer-best';
+  var LS_LIBS = 'type-trainer-libs';
+
+  var state = {
+    mode: 'en',
+    type: 'time',
+    limit: 30,
+    text: '',
+    typed: [],
+    startTime: 0,
+    endTime: 0,
+    active: false,
+    finished: false,
+    composing: false,
+    charSpans: [],
+    timer: null,
+    libs: loadLibs(),
+    libIndex: 0,
+    best: loadBest()
+  };
+
+  // ---- 工具 ----
+  function rand(n) { return Math.floor(Math.random() * n); }
+  function pick(arr) { return arr[rand(arr.length)]; }
+
+  // 沙箱 iframe（opaque origin，宿主 sandbox 未开 allow-same-origin）下，
+  // 访问 localStorage 会抛 SecurityError。全部走安全封装：失败则静默降级
+  // —— 历史/最佳成绩不跨刷新持久化，但插件其余功能正常运行，IIFE 不再崩溃。
+  function safeGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function safeSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+
+  function loadHistory() {
+    try { return JSON.parse(safeGet(LS_HIST)) || []; } catch (e) { return []; }
+  }
+  function saveHistory(rec) {
+    var h = loadHistory();
+    h.unshift(rec);
+    if (h.length > 20) h = h.slice(0, 20);
+    safeSet(LS_HIST, JSON.stringify(h));
+  }
+  function loadBest() { var v = parseInt(safeGet(LS_BEST), 10); return isNaN(v) ? 0 : v; }
+  function saveBest(v) { safeSet(LS_BEST, String(v)); }
+  function loadLibs() {
+    try { var a = JSON.parse(safeGet(LS_LIBS)); return Array.isArray(a) ? a : []; } catch (e) { return []; }
+  }
+  function saveLibs() { safeSet(LS_LIBS, JSON.stringify(state.libs)); }
+  function selectedLib() { return state.libs[state.libIndex] || null; }
+  function refreshLibOptions() {
+    selLib.innerHTML = '';
+    state.libs.forEach(function (lib, i) {
+      var o = document.createElement('option');
+      o.value = i; o.textContent = lib.name;
+      selLib.appendChild(o);
+    });
+    if (state.libIndex >= state.libs.length) state.libIndex = Math.max(0, state.libs.length - 1);
+    selLib.value = state.libIndex;
+  }
+  function normalizeLib(raw) {
+    return raw.replace(/\r\n?/g, '\n')
+      .split('\n')
+      .map(function (l) { return l.trim(); })
+      .join('\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  }
+
+  // ---- 文本生成 ----
+  function buildText() {
+    var m = state.mode, t = state.type, lim = state.limit;
+    if (m === 'code') {
+      var snip = pick(T.CODE_SNIPPETS);
+      return snip.lines.join('\n');
+    }
+    if (m === 'custom') {
+      var lib = selectedLib();
+      if (!lib) return '';
+      if (t === 'time') {
+        var base = lib.text, s = base;
+        while (s.length < 600) s += '\n' + base;
+        return s;
+      }
+      return lib.text.slice(0, Math.max(lim, lib.text.length));
+    }
+    if (t === 'time') {
+      if (m === 'en') {
+        var paras = T.EN_PARAGRAPHS, s = '';
+        while (s.length < 600) s += pick(paras) + ' ';
+        return s.trim();
+      }
+      var sent = T.CN_SENTENCES, c = '';
+      while (c.length < 200) c += pick(sent);
+      return c;
+    }
+    // 字数模式
+    if (m === 'en') {
+      var words = [];
+      for (var i = 0; i < lim; i++) words.push(pick(T.EN_WORDS));
+      return words.join(' ');
+    }
+    // 中文：按字符数截取
+    var pool = '';
+    while (pool.length < lim) pool += pick(T.CN_SENTENCES);
+    return pool.slice(0, lim);
+  }
+
+  // ---- 渲染 ----
+  function buildSpans() {
+    elText.innerHTML = '';
+    state.charSpans = [];
+    var frag = document.createDocumentFragment();
+    for (var i = 0; i < state.text.length; i++) {
+      var sp = document.createElement('span');
+      sp.className = 'ch pending';
+      sp.textContent = state.text[i];
+      frag.appendChild(sp);
+      state.charSpans.push(sp);
+    }
+    elText.appendChild(frag);
+  }
+
+  function renderChars() {
+    var n = state.typed.length;
+    for (var i = 0; i < state.charSpans.length; i++) {
+      var sp = state.charSpans[i];
+      sp.className = 'ch';
+      if (i < n) sp.classList.add(state.typed[i] === state.text[i] ? 'correct' : 'incorrect');
+      else if (i === n) sp.classList.add('current');
+      else sp.classList.add('pending');
+    }
+    if (n < state.charSpans.length) {
+      var cur = state.charSpans[n];
+      if (cur && cur.scrollIntoView) cur.scrollIntoView({ block: 'nearest' });
+    }
+  }
+
+  // ---- 统计 ----
+  function elapsedSec() {
+    if (!state.startTime) return 0;
+    var end = state.finished ? state.endTime : Date.now();
+    return (end - state.startTime) / 1000;
+  }
+  function computeStats() {
+    var correct = 0, errors = 0;
+    var n = Math.min(state.typed.length, state.text.length);
+    for (var i = 0; i < n; i++) {
+      if (state.typed[i] === state.text[i]) correct++; else errors++;
+    }
+    var sec = elapsedSec();
+    var minutes = sec / 60;
+    var wpm = minutes > 0 ? (correct / 5) / minutes : 0;
+    var acc = state.typed.length > 0 ? (correct / state.typed.length) * 100 : 100;
+    return { correct: correct, errors: errors, wpm: wpm, acc: acc, sec: sec };
+  }
+  function updateLive() {
+    var s = computeStats();
+    elWpm.textContent = Math.round(s.wpm);
+    elAcc.textContent = s.acc.toFixed(0) + '%';
+    if (state.type === 'time') {
+      elTime.textContent = Math.max(0, Math.ceil(state.limit - s.sec)) + 's';
+    } else {
+      elTime.textContent = s.sec.toFixed(1) + 's';
+    }
+    elErr.textContent = s.errors;
+    elProg.textContent = state.type === 'words' ? (state.typed.length + '/' + state.text.length) : '';
+  }
+
+  function startTimerIfNeeded() {
+    if (state.active || state.finished) return;
+    state.active = true;
+    state.startTime = Date.now();
+    state.timer = setInterval(tick, 100);
+  }
+  function tick() {
+    if (!state.active) return;
+    updateLive();
+    if (state.type === 'time' && elapsedSec() >= state.limit) finish();
+  }
+
+  // ---- 输入 ----
+  function addChar(ch) {
+    if (state.finished) return;
+    startTimerIfNeeded();
+    state.typed.push(ch);
+    renderChars();
+    updateLive();
+    if (state.type === 'words' && state.typed.length >= state.text.length) finish();
+  }
+  function removeChar() {
+    if (state.finished || state.typed.length === 0) return;
+    state.typed.pop();
+    renderChars();
+    updateLive();
+  }
+
+  elInput.addEventListener('keydown', function (e) {
+    if (state.finished) { e.preventDefault(); return; }
+    if (e.isComposing) return;                       // IME 合成中：交给 compositionend
+    if (e.ctrlKey || e.metaKey || e.altKey) return;  // 放行系统快捷键
+    if (e.key === 'Backspace') { e.preventDefault(); removeChar(); return; }
+    if (e.key === 'Enter') { e.preventDefault(); if (state.mode === 'code') addChar('\n'); return; }
+    if (e.key === 'Tab') { e.preventDefault(); return; }
+    if (e.key.length === 1) { e.preventDefault(); addChar(e.key); }
+  });
+  elInput.addEventListener('compositionstart', function () { state.composing = true; });
+  elInput.addEventListener('compositionend', function (e) {
+    state.composing = false;
+    var data = e.data || '';
+    for (var i = 0; i < data.length; i++) addChar(data[i]);
+    elInput.value = '';
+  });
+  elInput.addEventListener('paste', function (e) { e.preventDefault(); });
+
+  function focusInput() { try { elInput.focus(); } catch (e) {} }
+
+  // ---- 结束 ----
+  function finish() {
+    if (state.finished) return;
+    state.finished = true;
+    state.endTime = Date.now();
+    if (state.timer) { clearInterval(state.timer); state.timer = null; }
+    var s = computeStats();
+    $('rWpm').textContent = Math.round(s.wpm);
+    $('rAcc').textContent = s.acc.toFixed(0) + '%';
+    $('rTime').textContent = s.sec.toFixed(1) + 's';
+    $('rErr').textContent = s.errors;
+    if (s.wpm > state.best) { state.best = Math.round(s.wpm); saveBest(state.best); }
+    elBest.textContent = state.best ? (state.best + ' WPM') : '—';
+    saveHistory({
+      mode: state.mode, type: state.type, limit: state.limit,
+      wpm: Math.round(s.wpm), acc: Math.round(s.acc),
+      time: +s.sec.toFixed(1), errors: s.errors, date: Date.now()
+    });
+    renderHistory();
+    elResults.hidden = false;
+    elInput.blur();
+  }
+
+  function renderHistory() {
+    var h = loadHistory();
+    elHistList.innerHTML = '';
+    if (!h.length) { elHistList.innerHTML = '<div class="p-muted" style="padding:16px">暂无记录</div>'; return; }
+    h.forEach(function (r) {
+      var row = document.createElement('div');
+      row.className = 'hist-row';
+      var d = new Date(r.date);
+      var tstr = (d.getMonth() + 1) + '/' + d.getDate() + ' ' +
+        ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+      row.innerHTML =
+        '<span class="h-mode">' + MODE_NAME[r.mode] + '·' + TYPE_NAME[r.type] + '</span>' +
+        '<span class="h-wpm">' + r.wpm + ' <i>wpm</i></span>' +
+        '<span class="h-acc">' + r.acc + '%</span>' +
+        '<span class="h-time">' + r.time + 's</span>' +
+        '<span class="h-date">' + tstr + '</span>';
+      elHistList.appendChild(row);
+    });
+  }
+
+  // ---- 控制 ----
+  function refreshLimitOptions() {
+    var opts = state.type === 'time' ? LIMITS_TIME : LIMITS_WORDS;
+    var unit = state.type === 'time' ? 's' : (state.mode === 'cn' || state.mode === 'custom' ? '字' : '词');
+    selLimit.innerHTML = '';
+    opts.forEach(function (v) {
+      var o = document.createElement('option');
+      o.value = v; o.textContent = v + unit;
+      selLimit.appendChild(o);
+    });
+    state.limit = opts[1] || opts[0];
+    selLimit.value = state.limit;
+  }
+
+  selMode.addEventListener('change', function () {
+    state.mode = selMode.value;
+    var wordsOpt = selType.querySelector('option[value="words"]');
+    if (state.mode === 'code') {
+      state.type = 'time';
+      selType.value = 'time';
+      wordsOpt.disabled = true;
+    } else {
+      wordsOpt.disabled = false;
+    }
+    if (state.mode === 'custom') {
+      if (!selectedLib()) {
+        toast('请先点「导入TXT」导入字库');
+        selMode.value = 'en';
+        state.mode = 'en';
+        wordsOpt.disabled = false;
+        ctrlLib.hidden = true;
+      } else {
+        ctrlLib.hidden = false;
+      }
+    } else {
+      ctrlLib.hidden = true;
+    }
+    refreshLimitOptions();
+    start();
+  });
+  selType.addEventListener('change', function () {
+    state.type = selType.value;
+    refreshLimitOptions();
+    start();
+  });
+  selLimit.addEventListener('change', function () {
+    state.limit = parseInt(selLimit.value, 10);
+    start();
+  });
+  numFont.addEventListener('input', function () {
+    var fs = Math.max(14, Math.min(34, parseInt(numFont.value, 10) || 20));
+    elText.style.fontSize = fs + 'px';
+  });
+  selLib.addEventListener('change', function () {
+    state.libIndex = parseInt(selLib.value, 10) || 0;
+    start();
+  });
+  btnImport.addEventListener('click', function () { try { fileInput.click(); } catch (e) {} });
+  fileInput.addEventListener('change', function () {
+    var files = fileInput.files || [];
+    if (!files.length) return;
+    importFiles(files, function () {
+      if (state.mode !== 'custom') { selMode.value = 'custom'; state.mode = 'custom'; }
+      ctrlLib.hidden = false;
+      refreshLimitOptions();
+      if (selLib.options.length) { selLib.selectedIndex = selLib.options.length - 1; state.libIndex = selLib.options.length - 1; }
+      start();
+    });
+  });
+  function importFiles(files, done) {
+    var pending = files.length, imported = 0;
+    Array.prototype.forEach.call(files, function (f) {
+      var reader = new FileReader();
+      reader.onload = function () {
+        var text = normalizeLib(String(reader.result || ''));
+        if (text) { state.libs.push({ name: f.name, text: text }); imported++; }
+        pending--;
+        if (pending === 0) { saveLibs(); refreshLibOptions(); toast('已导入 ' + imported + ' 个字库'); if (done) done(); }
+      };
+      reader.onerror = function () {
+        pending--;
+        if (pending === 0) { saveLibs(); refreshLibOptions(); if (done) done(); }
+      };
+      reader.readAsText(f, 'utf-8');
+    });
+  }
+  $('btnRestart').addEventListener('click', function () { start(); });
+  $('btnAgain').addEventListener('click', function () { start(); });
+  $('btnHistory').addEventListener('click', function () {
+    var show = elHistory.hidden;
+    elHistory.hidden = !show;
+    if (show) renderHistory();
+  });
+  $('btnCopy').addEventListener('click', function () {
+    var txt = '打字练习 · ' + MODE_NAME[state.mode] + '\n速度 ' + $('rWpm').textContent + ' WPM\n' +
+      '准确率 ' + $('rAcc').textContent + '\n用时 ' + $('rTime').textContent + '\n错误 ' + $('rErr').textContent;
+    copyText(txt);
+  });
+
+  function copyText(t) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(t).then(function () { toast('成绩已复制'); }, function () { fallbackCopy(t); });
+    } else fallbackCopy(t);
+  }
+  function fallbackCopy(t) {
+    var ta = document.createElement('textarea');
+    ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); toast('成绩已复制'); }
+    catch (e) { toast('复制失败'); }
+    document.body.removeChild(ta);
+  }
+  var toastTimer;
+  function toast(msg) {
+    var t = $('toast');
+    t.textContent = msg; t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.classList.remove('show'); }, 1600);
+  }
+
+  // 点击区域保持输入焦点
+  document.addEventListener('click', function (e) {
+    if (state.finished) return;
+    if (e.target.closest('.topbar')) return;
+    focusInput();
+  });
+
+  // 宿主主题同步
+  window.addEventListener('message', function (e) {
+    var d = e.data;
+    if (!d) return;
+    if (d.type === 'plugin:theme') {
+      var dd = d.data || {};
+      if (dd.theme) document.documentElement.setAttribute('data-theme', dd.theme);
+      if (dd.locale) document.documentElement.setAttribute('lang', dd.locale);
+    }
+  });
+
+  // ---- 启动 ----
+  function start() {
+    if (state.mode === 'custom' && !selectedLib()) { toast('请先导入字库'); return; }
+    state.finished = false;
+    state.active = false;
+    state.typed = [];
+    state.startTime = 0;
+    state.endTime = 0;
+    state.composing = false;
+    if (state.timer) { clearInterval(state.timer); state.timer = null; }
+    state.text = buildText();
+    elResults.hidden = true;
+    buildSpans();
+    renderChars();
+    elWpm.textContent = '0';
+    elAcc.textContent = '—';
+    elTime.textContent = state.type === 'time' ? (state.limit + 's') : '0.0s';
+    elErr.textContent = '0';
+    elProg.textContent = state.type === 'words' ? ('0/' + state.text.length) : '';
+    elInput.value = '';
+    elInput.disabled = false;
+    focusInput();
+  }
+
+  function init() {
+    selMode.value = state.mode;
+    selType.value = state.type;
+    refreshLibOptions();
+    refreshLimitOptions();
+    ctrlLib.hidden = (state.mode !== 'custom');
+    elText.style.fontSize = (parseInt(numFont.value, 10) || 20) + 'px';
+    elBest.textContent = state.best ? (state.best + ' WPM') : '—';
+    start();
+    focusInput();
+  }
+  init();
+})();
+</script>
+</body>
+</html>

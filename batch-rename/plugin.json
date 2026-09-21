@@ -34,6 +34,8 @@
   "backend": {
     "runtime": "none"
   },
+  "host_apis": ["qdPickFolder", "host.fs.list", "host.fs.move"],
+
   "frontend": {
     "enabled": true,
     "entry": "frontend/index.html",

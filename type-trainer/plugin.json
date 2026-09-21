@@ -1,0 +1,64 @@
+{
+  "id": "io.github.parieses.type-trainer",
+  "name": "打字练习",
+  "version": "1.0.1",
+  "description": "开发者向打字训练器：英文 / 中文 / 代码 / 导入四种模式，支持导入 TXT 字库，实时统计 WPM 与准确率，本地记录历史与最佳成绩",
+  "author": "QuickDock",
+  "icon": "icon.svg",
+  "category": "开发者日常",
+  "platforms": [
+    "windows",
+    "darwin",
+    "linux"
+  ],
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "permissions": {
+    "clipboard": true
+  },
+  "backend": {
+    "runtime": "none"
+  },
+  "host_apis": [],
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 960,
+    "height": 680
+  },
+  "commands": [
+    {
+      "id": "type-trainer",
+      "title": "打字练习",
+      "keywords": [
+        "type",
+        "打字",
+        "练习",
+        "wpm",
+        "指法",
+        "代码打字",
+        "typing"
+      ],
+      "aliases": [
+        "打字训练",
+        "打字测试",
+        "打字游戏"
+      ],
+      "title_i18n": {
+        "zh-CN": "打字练习",
+        "en-US": "Typing Trainer"
+      }
+    }
+  ],
+  "name_i18n": {
+    "zh-CN": "打字练习",
+    "en-US": "Typing Trainer"
+  },
+  "description_i18n": {
+    "zh-CN": "开发者向打字训练器：英文 / 中文 / 代码三种模式，实时统计 WPM 与准确率，本地记录历史与最佳成绩",
+    "en-US": "Developer-oriented typing trainer with EN/CN/code modes, live WPM & accuracy stats, and local best-score history."
+  },
+  "changelog": "## v1.0.1\n\n- 新增「导入」模式：支持导入 .txt 字库（多文件、多字库，存 localStorage）\n- 顶栏新增「导入TXT」按钮与「字库」下拉选择器\n\n## v1.0.0\n\n- 英文 / 中文 / 代码三种打字模式\n- 实时统计 WPM、准确率、错误数\n- 本地保存历史记录与最佳成绩\n- 一键复制成绩"
+}

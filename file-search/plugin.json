@@ -1,8 +1,8 @@
 {
   "id": "io.github.parieses.file-search",
   "name": "本地文件搜索",
-  "version": "1.0.0",
-  "description": "选择一个文件夹，按名称/通配符/扩展名/大小搜索文件，或按内容哈希查找重复文件（支持子目录递归），删除冗余副本走宿主回收站，不离开本机",
+  "version": "1.1.0",
+  "description": "选择文件夹，按名称/通配符/扩展名/大小搜索文件；或按内容哈希查找重复文件（无文件大小上限，大文件也能查，支持隐藏文件与实时进度），删除冗余副本统一走系统回收站，可恢复",
   "author": "QuickDock",
   "icon": "icon.svg",
   "category": "文件工具",
@@ -31,12 +31,14 @@
         "~/Documents",
         "~/Pictures",
         "~/Movies",
-        "~/Music"
+        "~Music"
       ]
     }
   },
   "backend": {
-    "runtime": "none"
+    "runtime": "native",
+    "entry": "file-search",
+    "args": []
   },
   "frontend": {
     "enabled": true,
@@ -74,8 +76,8 @@
     "en-US": "Local File Search"
   },
   "description_i18n": {
-    "zh-CN": "按名称/通配符/扩展名/大小搜索，或按内容哈希查找重复文件（支持递归）",
-    "en-US": "Search files by name/glob/extension/size, or find duplicates by content hash (recursive)."
+    "zh-CN": "按名称/通配符/扩展名/大小搜索，或按内容哈希查找重复文件（无大小上限，支持隐藏文件与实时进度），删除走回收站",
+    "en-US": "Search files by name/glob/extension/size, or find duplicates by content hash (no size limit, hidden files & live progress supported), delete goes to recycle bin."
   },
-  "changelog": "## v1.0.0\n\n- 选择一个文件夹，按名称/通配符/扩展名/大小搜索文件，或按内容哈希查找重复文件（支持子目录递归），删除冗余副本走宿主回收站，不离开本机"
+  "changelog": "## v1.1.0\n\n- 升级为 native 运行时：重复文件查找改为后端驱动，支持大文件（无 8MiB 上限）、全盘扫描、隐藏文件开关与实时进度\n- 删除冗余副本统一走系统回收站（可恢复），移除前端直删路径\n\n## v1.0.0\n\n- 选择一个文件夹，按名称/通配符/扩展名/大小搜索文件，或按内容哈希查找重复文件（支持子目录递归），删除冗余副本走宿主回收站，不离开本机"
 }

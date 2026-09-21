@@ -334,16 +334,18 @@ Host Method 是宿主注册的能力表。**三种运行时共用同一张表、
 {"jsonrpc":"2.0","id":102,"method":"host.mcp.call","params":{"tool":"item_search","args":{"q":"周报"}}}
 ```
 
-已注册工具（共 29 个，`services/mcp/service.go`）：
+已注册工具（`services/mcp/service.go`；完整清单与等级以客户端 `tools/list` 返回为准）：
 
 | 类别 | 工具 |
 |---|---|
+| 应用与系统 | `app_info` · `port_list` |
 | 内容检索 | `item_search` / `item_open` · `recent_items` · `workspace_list` |
 | 笔记 | `note_search` / `note_create` / `note_update` / `note_quick` |
 | 待办 | `todo_list` / `todo_create` / `todo_done` |
 | 剪贴板 | `clipboard_recent` / `clipboard_copy` |
 | 环境编排 | `env_list` / `env_status` / `env_log` / `env_versions` / `env_start` / `env_stop` / `env_restart` |
 | 日志与崩溃 | `log_list` / `log_read` / `crash_list` / `crash_read` / `plugin_list` / `plugin_execute` |
+| 高危（需在环境管理页开启，默认关闭） | `process_kill` / `system_command` |
 | 系统信息 | `port_list` / `app_info` |
 | ⚠️ 高危（默认拒绝） | `process_kill` / `system_command` |
 
@@ -829,69 +831,71 @@ window.addEventListener('message', (e) => {
 
 以下能力均已有现成外部插件（位于 `plugins/external/`，ID 为 `io.github.parieses.*`），开发新插件前先确认是否已覆盖。2026-08-24 起**内置插件已全部外置**，`plugins/builtin/` 仅保留 `common.css` / `common.js` 骨架（宿主向后兼容注入用）：
 
-**Goja 插件（`backend.runtime: "goja"`，内嵌 JS 引擎，有后端逻辑）** — 共 9 个
+<!--DEVGUIDE_PLUGINS_START-->
 
+**Goja 插件（`backend.runtime: "goja"`，内嵌 JS 引擎，有后端逻辑）** — 共 9 个
 | 插件 ID | 功能 |
 |---|---|
-| calcsheet | 计算稿纸（行号引用/变量/函数） |
-| compare | 文件/图片对比 + 文本 Diff |
-| cron-explainer | cron 表达式解析与可视化生成 |
-| formatter | 代码压缩/美化 + SQL 格式化 |
-| json-toolbox | JSON 编辑/转换 |
-| jwt-decoder | JWT 解码 |
-| regex-extractor | 正则提取与替换 |
-| text-encoder | Base64/URL/HTML 编解码 + 哈希/HMAC |
-| time-converter | 时间戳/时区转换 |
+| calcsheet | 兼具草稿纸自由度与电子表格智能的多行计算工具，支持行号引用、变量定义、函数计算 |
+| compare | 文件/图片对比（元数据 + 图片预览 + 文本内容差异）与文本块逐行 Diff 合二为一 |
+| cron-explainer | 解析 cron 表达式（含义/下次执行/小时分布），并可可视化生成表达式、实时预览下次执行时间 |
+| formatter | 通用代码压缩/美化（JS / CSS / HTML 自动检测）与 SQL 格式化合二为一 |
+| json-toolbox | JSON 编辑器（格式化/折叠/编辑）、JSON → TypeScript / Go、JSON ↔ YAML / TOML / XML 互转 |
+| jwt-decoder | 解码 JWT Token，查看 Header/Payload，验证过期时间 |
+| regex-extractor | 正则提取与替换：匹配高亮、分组捕获、反向引用替换（$1/$2）、一键复制结果 |
+| text-encoder | Base64 / URL / HTML 编解码，MD5 / SHA1 / SHA256 / SHA512 哈希与 HMAC 签名，Base64 图片识别预览，2/8/10/16 进制互转与字节单位换算 |
+| time-converter | Unix 时间戳 / ISO 8601 / 中文日期 / 相对时间互转，支持任意时区偏移输出 |
 
 **Pure Frontend 插件（`runtime: none`，纯前端经宿主桥接调 Host API）** — 共 13 个
-
 | 插件 ID | 功能 | 演示的宿主能力 |
 |---|---|---|
-| batch-rename | 批量重命名 | `qdPickFolder` → `host.fs.list` → `host.fs.move` |
-| code-card | 代码分享卡片 | 纯前端 + 导出 PNG |
-| crypto-toolbox | 密码/加密工具箱 | 纯前端（AES/RSA/PBKDF2 自实现） |
-| curl-converter | curl ↔ 代码转换 | 纯前端 |
-| emoji-search | Emoji 搜索 | 纯前端 |
-| file-search | 本地文件搜索 + 去重 | `host.fs.list` 递归 + `host.fs.read` + SHA-256 + `host.fs.remove` |
-| image-uploader | 图床上传 | `qdPickFile` → `host.fs.read` → `http.post` |
-| markdown-preview | Markdown 预览 | 纯前端 |
-| md-table-converter | Markdown 表格互转 | 纯前端 |
-| mindmap | 思维导图 | 纯前端 |
-| qrcode | 二维码生成/识别 | 纯前端 |
-| rmb-upper | 金额大写 | 纯前端 |
-| unit-converter | 单位换算 | 纯前端 |
+| batch-rename | 选择一个文件夹，按前缀/后缀/查找替换/正则/序号/扩展名/大小写规则预览并重命名文件，全部通过宿主文件系统能力执行，不离开本机 | qdPickFolder → host.fs.list → host.fs.move |
+| code-card | 把代码渲染成高颜值分享卡片：语法高亮、主题背景、窗口装饰，一键导出 PNG | 纯前端 |
+| crypto-toolbox | 随机密码 / 口令生成（字符集可配、熵值与强度评估）＋ AES-GCM / AES-CBC 加解密 ＋ RSA-OAEP 密钥对与加解密 ＋ PBKDF2 密钥派生，全部在本机完成，不联网、不上传 | 纯前端 |
+| curl-converter | 把 curl 命令解析成 Python / Go / JavaScript / PHP 请求代码，也支持把 fetch、requests 代码反向转回 curl | 纯前端 |
+| data-generator | UUID v4 / v7 生成（批量、可大写）＋ 随机字符串 / 整数 / 字节 ＋ 测试假数据（姓名 / 手机 / 邮箱 / 公司 / 地址 / 身份证(测试) / 日期 / 网址 / 用户名 / 人员），全部在本机生成，不联网、不上传 | 纯前端 |
+| emoji-search | 搜索 Emoji 并一键复制到剪贴板 | 纯前端 |
+| image-uploader | 选择本地图片，读取后通过宿主网络能力上传到图床（freeimage.host / imgbb），返回可访问的图片链接，链接可一键复制。不上传任何其它文件。 | qdPickFile → host.fs.read → http.post |
+| markdown-preview | 实时渲染 Markdown（GFM：标题/列表/表格/任务列表/引用）+ 代码高亮，一键复制为 HTML | 纯前端 |
+| md-table-converter | Markdown 表格与 CSV / JSON / HTML 四种格式互转，自动识别输入格式，写文档、导数据的顺手小工具 | 纯前端 |
+| mindmap | 把 Markdown 大纲 / 缩进列表实时渲染成思维导图，自动分层配色、可点击折叠分支、支持缩放与导出 PNG / SVG | 纯前端 |
+| qrcode | 文本/URL 生成二维码，支持保存 PNG；从图片识别二维码内容 | 纯前端 |
+| rmb-upper | 数字金额转中文大写（壹贰叁…），财务报销、开票、合同的刚需小工具 | 纯前端 |
+| unit-converter | 长度 / 面积 / 体积 / 重量 / 温度 / 速度 / 数据存储 / 时间 / 压力 / 能量 / 功率 / 角度 共 12 类单位实时互转，输入一个值即列出该类别全部换算结果 | 纯前端 |
 
-**Native 插件（`runtime: native`，自带 Go 源码 + 编译产物）** — 共 25 个
-
+**Native 插件（`runtime: native`，自带 Go 源码 + 编译产物）** — 共 26 个
 | 插件 ID | 功能 |
 |---|---|
-| api-loadtest | HTTP 接口压测 |
-| color-converter | 颜色格式互转 + 屏幕取色 |
-| database | 数据库连接与查询 |
-| dir-buster | 路径字典探测 |
-| disk-analyzer | 磁盘空间分析 |
-| dup-finder | 重复文件查找 |
-| exif-viewer | EXIF 信息查看 |
-| git-workbench | Git 工作台 |
-| hash-calc | 文件哈希计算 |
-| hosts-manager | hosts 管理（vendor Go 源码） |
-| http-client | HTTP 调试客户端 |
-| image-studio | 图片压缩对比 |
-| junk-cleaner | 系统垃圾清理 |
-| login-tester | 登录接口自检 |
-| mail-check | 邮箱足迹检查 |
-| netdiag | 网络诊断五合一 |
-| ocr-tool | PaddleOCR 离线识别 |
-| package-check | 包仓库查询 |
-| pdf-toolkit | PDF 工具箱（自带 pdfcpu.exe） |
-| port-scanner | 端口扫描（vendor Go 源码） |
-| site-audit | 站点审计六合一 |
-| speed-test | 网络测速 |
-| subdomain-enum | 子域名被动收集 |
-| wifi-manager | WiFi 管理（vendor Go 源码） |
-| ws-tester | WebSocket 测试 |
+| api-loadtest | 功能丰富的 HTTP 接口压测工具：支持并发/时长双模式、自定义 Header 与 Body、实时 QPS 与延迟分布(p50/p90/p95/p99)、状态码分布、错误率统计与结果一键导出 |
+| api-mock | 本地 HTTP 接口 Mock 服务：可视化配置路由规则（方法/路径/状态码/响应体/延迟），一键启动本地服务，实时查看请求日志，联调前端与第三方对接无需真实后端 |
+| color-converter | 颜色格式互转（HEX / RGB / HSL）+ 屏幕取色，支持常见英文色名识别 |
+| database | 轻量数据库连接与查询工具：MySQL / SQLite / Redis 连接管理、SQL 与 Redis 命令执行、库表浏览器（库→表/视图→字段、Redis 键树）、Redis 键类型感知详情与增删改（string/hash/list/set/zset）、TTL 与 DB 管理、结果网格内联行编辑。数据独立存储。 |
+| dir-buster | 对指定目标 URL 用内置常见路径字典进行轻量探测（自用）：并发受限、可配扩展名，采用异步会话模型实时返回命中的非 404 路径。仅探测你授权的目标，内置字典、不递归 |
+| disk-analyzer | 可视化磁盘空间占用分析工具，类似 SpaceSniffer，支持树图展示目录结构 |
+| exif-viewer | 选择图片（JPEG/PNG）查看拍摄时间、相机/镜头、参数与 GPS 经纬度等 EXIF 信息 |
+| file-search | 选择文件夹，按名称/通配符/扩展名/大小搜索文件；或按内容哈希查找重复文件（无文件大小上限，大文件也能查，支持隐藏文件与实时进度），删除冗余副本统一走系统回收站，可恢复 |
+| git-workbench | Git 仓库一体化工作台：仓库浏览、二分定位 bug 引入提交、三方合并冲突可视化解决、代码演化时间轴、历史改写（改作者/删敏感文件）、仓库体检与知识孤岛识别。 |
+| hash-calc | 计算文件的 MD5/SHA1/SHA256/SHA512 摘要，结果一键复制 |
+| hosts-manager | 管理系统 hosts 文件条目，一键启用/禁用/新增 |
+| http-client | 轻量 HTTP 请求调试客户端：项目管理请求、目录与文档树、环境变量与 {{var}} 替换、请求历史重放、Postman 集合导入。数据独立存储。 |
+| image-studio | 仿 Squoosh 实时对比：左右预览对比，质量滑块、缩放(锁定比例/百分比/预设)、旋转/翻转、亮度/对比度/饱和度调整，实时预览文件大小与压缩率 |
+| junk-cleaner | 扫描并清理系统垃圾文件：临时文件/更新缓存/缩略图缓存/预读取/崩溃转储等，安全只读扫描+确认后删除 |
+| login-tester | 对自身网站登录接口进行密码库撞库/爆破安全自检，支持并发、限速与锁定检测。仅用于你拥有或已授权的站点。 |
+| mail-check | 邮箱足迹与有效性检查：全量 123 站探测（参考 holehe 适配，Gravatar/GitHub/ProtonMail/Spotify 等已校准，其余逐步补），语法 / MX / SMTP 有效性验证 |
+| netdiag | 将 Ping 监视、路由追踪、局域网扫描、IP 归属地、端口指纹五个网络工具合并为单一插件，按需切换标签页，共享一个原生子进程 |
+| ocr-tool | 基于 PaddleOCR (ONNX) 的离线文字识别，支持中英文，首次使用自动下载约 178MB 模型（ModelScope 镜像），之后完全离线运行，跨 Windows / macOS / Linux。 |
+| package-check | 输入包名，并发查询 npm / PyPI / Composer / Go 四个仓库的版本信息；并基于 OSV.dev 查询包版本的已知漏洞（CVE / 安全公告） |
+| pdf-toolkit | PDF 处理工具箱：合并/拆分/压缩/加水印/提取图片，无需安装 Adobe Acrobat |
+| port-scanner | 检查端口占用，显示进程名和 PID |
+| site-audit | 将 WHOIS 查询、SSL 证书检查、DNS 查询、DNS 传播检查、HTTP 状态码速查、HTTP 安全头审计六个站点工具合并为单一插件，按需切换标签页，共享一个原生子进程 |
+| speed-test | 测量网络下载速率与延迟：流式下载测速（支持自定义测速节点 URL），实时显示速率与进度，采用异步会话模型规避宿主执行超时 |
+| subdomain-enum | 被动收集域名子域名（证书透明日志 CertSpotter / crt.sh + HackerTarget + urlscan + rapiddns + AlienVault OTX），可选并发解析 A 记录筛选存活 |
+| wifi-manager | 查看网络列表、WiFi 密码、连接状态 |
+| ws-tester | 连接 ws/wss 服务，发送消息并实时查看返回的帧，支持多连接与历史 |
 
-> 以上 47 个插件均已迁至 `plugins/external/`（ID 改为 `io.github.parieses.*`），代码可直接复用。goja/none 插件演示「零宿主依赖、纯 JS 自包含」的外部化样板；native 插件演示「Go 源码 vendor + 自编译 entry exe」模式（`build.py` 直接在插件目录 `go build`）。完整 goja 模板见上文「完整示例」。
+> 以上 48 个插件均已迁至 `plugins/external/`（ID 改为 `io.github.parieses.*`），代码可直接复用。goja/none 插件演示「零宿主依赖、纯 JS 自包含」的外部化样板；native 插件演示「Go 源码 vendor + 自编译 entry exe」模式（`build.py` 直接在插件目录 `go build`）。完整 goja 模板见上文「完整示例」。
+
+<!--DEVGUIDE_PLUGINS_END-->
 
 > 样式自包含（2026-08-24 约定）：外部插件的 `frontend/` 下必须自带 `qd-theme.css`（即 `common.css` 的副本，改名以绕开宿主对 `common.css` 后缀的拦截改写），页面用 `<link rel="stylesheet" href="qd-theme.css">` 引用——zip 解压到任何环境都有完整样式，不依赖宿主注入。宿主仍会向页面注入 `PluginsDir/builtin/common.css/js` 以兼容历史已安装的旧版插件，但新插件不得依赖该注入。
 

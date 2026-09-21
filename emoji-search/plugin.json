@@ -14,6 +14,8 @@
   "backend": {
     "runtime": "none"
   },
+  "host_apis": [],
+
   "frontend": {
     "enabled": true,
     "entry": "frontend/index.html"
