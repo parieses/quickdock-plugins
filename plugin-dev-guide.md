@@ -138,7 +138,7 @@ my-plugin/
 
 #### none 插件最小骨架
 
-宿主会向每个插件前端页面注入桥接脚本（见「前端开发 → 调用宿主能力」），因此 none 插件的 `frontend/index.html` 可以直接调用 `qdHostCall` / `qdHttp` / `qdPickFile` / `qdPickFolder` 等全局，无需自己 `postMessage`：
+宿主会向每个插件前端页面注入桥接脚本（见「前端开发 → 调用宿主能力」），因此 none 插件的 `frontend/index.html` 可以直接调用 `qdHostCall` / `qdHttp` / `qdPickFile` / `qdPickFolder` / `qdPrint` 等全局，无需自己 `postMessage`：
 
 ```html
 <!DOCTYPE html>
@@ -153,7 +153,7 @@ my-plugin/
   <button id="pick">选择文件</button>
   <pre id="out"></pre>
   <script>
-    // qdPickFile / qdPickFolder / qdHostCall / qdHttp 均由宿主注入，直接可用
+    // qdPickFile / qdPickFolder / qdHostCall / qdHttp / qdPrint 均由宿主注入，直接可用
     document.getElementById('pick').onclick = async () => {
       const p = await qdPickFile({ filter: '文本', pattern: '*.txt' })
       if (!p) return                                  // 用户取消
@@ -303,6 +303,7 @@ Host Method 是宿主注册的能力表。**三种运行时共用同一张表、
 | `host.shell.open` | 打开 URL / 文件 / 目录（走 `sysutil.OpenDetached`，禁裸 exec）→ `{"success":true}` | `shell` 目标前缀白名单（如 `["file:///C:/Users/me","https://docs.example.com"]`）；`true` 全放行 |
 | `host.process.list` | 列出全部进程 → `{processes:[{pid,name,memBytes}], count}`（CPU 单样本无意义，留 0） | 无需权限 |
 | `host.process.kill` | 结束进程 → `{success, pid}` | `processKill: true`（显式开关，默认拒绝） |
+| `host.window.hide` / `host.window.show` | 临时隐藏 / 恢复宿主窗口：同时管主窗口、命令面板窗口与**本插件的独立窗口**，隐藏前各自记录原可见性，恢复时只还原原本可见的（供屏幕取色等场景避免遮挡取样区域） | 无需权限 |
 | `host.mcp.call` | 调用宿主内置 MCP 工具 → `{tool, result}` | 无需权限（等级门见下） |
 | `db.get` / `db.set` / `db.delete` / `db.list` | 插件私有 KV，按 `plugin_id` 强隔离，单值 ≤256 KiB | 无需权限 |
 
@@ -345,12 +346,10 @@ Host Method 是宿主注册的能力表。**三种运行时共用同一张表、
 | 剪贴板 | `clipboard_recent` / `clipboard_copy` |
 | 环境编排 | `env_list` / `env_status` / `env_log` / `env_versions` / `env_start` / `env_stop` / `env_restart` |
 | 日志与崩溃 | `log_list` / `log_read` / `crash_list` / `crash_read` / `plugin_list` / `plugin_execute` |
-| 高危（需在环境管理页开启，默认关闭） | `process_kill` / `system_command` |
-| 系统信息 | `port_list` / `app_info` |
-| ⚠️ 高危（默认拒绝） | `process_kill` / `system_command` |
+| ⚠️ 高危（需在环境管理页开启，默认拒绝） | `process_kill` / `system_command` |
 
 **无需在 `permissions` 里声明任何东西**，安全边界由宿主的 MCP 等级门统一把关：
-默认最高等级是「低危写」（`LevelRead` + `LevelWrite` 共 27 个），上表最后两个
+默认最高等级是「低危写」（`LevelRead` 17 个 + `LevelWrite` 11 个，共 28 个），上表最后一行的那两个
 `LevelRisk` 工具**在用户于「环境管理页」手动开启高危等级之前一律被拒绝**
 （返回错误，不会静默放行）。调用方按需 `try/catch` 即可。
 
@@ -643,6 +642,37 @@ await qdHostCall('db.set', { key: 'lastQuery', value: 'abc' })
 > ⚠️ 插件身份（`pluginID`）由**宿主侧状态**决定，不是插件自报的。你用 `qdHostCall`
 > 只能以「当前这个插件」的身份调用宿主能力，无法冒充其它插件读写其数据。
 
+#### 打印：`qdPrint`（**必须走它，别自己调 `window.print()`**）
+
+```javascript
+await qdPrint({ html: buildPrintDocument(), page: 'A4' })
+```
+
+- `html`：**一份完整的 HTML 文档字符串**（自带全部 CSS），宿主会在顶层文档里渲染后调系统打印
+- `page`：可选，`@page` 尺寸（如 `'A4'`）；省略则不覆盖
+- 打印对话框关闭后 resolve；内容为空 / 宿主打印失败会 reject
+
+> 🚫 **不要在插件里直接 `window.print()`** —— WebView2 / Chromium 的 `window.print()` 只作用于
+> **顶层文档**。插件跑在沙箱 iframe 里，打印出来的是**整个 QuickDock 应用**（暗色外壳），
+> 你辛苦排版的纸面内容根本不在打印上下文里，用户拿到的就是**一张白纸**。
+> `qdPrint` 把 HTML 交给宿主，由宿主在顶层文档渲染后打印；打印期间宿主界面被隐藏、
+> 插件 CSS 被包进 `@media print` 隔离（不会污染宿主），打完自动清理。
+
+**两个配套建议**：
+
+1. **打印与导出共用同一份 HTML**。例如都调 `buildPrintDocument()`，一份交给 `qdPrint`，
+   一份另存为 `.html`。这样「打印件」与「导出件」永远一致，也不会出现只修好一边的情况。
+2. **导出前先确认样式已内联**。宿主会把插件页里的 `<link rel="stylesheet">` 内联成
+   **无 id 的 `<style>`**；一旦内联失败（只剩一条 `<!-- quickdock: css inline failed -->` 注释），
+   你从 DOM 里采集到的 CSS 就是不完整的 —— 纸面尺寸、白底、边框全丢，只剩行内样式里
+   那些浅灰描红字，**白纸+浅灰 = 用户眼中的「导出是一片空白」**。导出/打印前断言关键
+   选择器（如 `.your-page`）确实出现在采集到的 CSS 里，缺失就明确报错，别把白纸交出去。
+
+另外，导出的 HTML 建议显式声明 `color-scheme: light only` 并给纸面元素加
+`forced-color-adjust: none`：前者避免浏览器把「跟随系统深色」的自动反转作用到固定浅色的
+纸面上，后者避免 Windows 高对比度模式把 `background-image`（很多格子线就是用内联 SVG
+背景画的）与自定颜色一并抹掉。
+
 ### 从命令面板接收输入（acceptsInput）
 
 当用户在命令面板选中某个插件命令，且输入框里有文本时，这些文本**默认不会**传给插件。只有命令在 `plugin.json` 中声明了 `"acceptsInput": true`，宿主才会把文本注入插件。
@@ -846,7 +876,7 @@ window.addEventListener('message', (e) => {
 | text-encoder | Base64 / URL / HTML 编解码，MD5 / SHA1 / SHA256 / SHA512 哈希与 HMAC 签名，Base64 图片识别预览，2/8/10/16 进制互转与字节单位换算 |
 | time-converter | Unix 时间戳 / ISO 8601 / 中文日期 / 相对时间互转，支持任意时区偏移输出 |
 
-**Pure Frontend 插件（`runtime: none`，纯前端经宿主桥接调 Host API）** — 共 13 个
+**Pure Frontend 插件（`runtime: none`，纯前端经宿主桥接调 Host API）** — 共 15 个
 | 插件 ID | 功能 | 演示的宿主能力 |
 |---|---|---|
 | batch-rename | 选择一个文件夹，按前缀/后缀/查找替换/正则/序号/扩展名/大小写规则预览并重命名文件，全部通过宿主文件系统能力执行，不离开本机 | qdPickFolder → host.fs.list → host.fs.move |
@@ -855,15 +885,17 @@ window.addEventListener('message', (e) => {
 | curl-converter | 把 curl 命令解析成 Python / Go / JavaScript / PHP 请求代码，也支持把 fetch、requests 代码反向转回 curl | 纯前端 |
 | data-generator | UUID v4 / v7 生成（批量、可大写）＋ 随机字符串 / 整数 / 字节 ＋ 测试假数据（姓名 / 手机 / 邮箱 / 公司 / 地址 / 身份证(测试) / 日期 / 网址 / 用户名 / 人员），全部在本机生成，不联网、不上传 | 纯前端 |
 | emoji-search | 搜索 Emoji 并一键复制到剪贴板 | 纯前端 |
+| hanzi-copybook | 汉字描红字帖生成器：支持任意汉字定制、拼音与笔顺显示、田字格/米字格排版，面向小学生规范书写与笔顺习惯养成，一键导出/打印 | 纯前端 |
 | image-uploader | 选择本地图片，读取后通过宿主网络能力上传到图床（freeimage.host / imgbb），返回可访问的图片链接，链接可一键复制。不上传任何其它文件。 | qdPickFile → host.fs.read → http.post |
 | markdown-preview | 实时渲染 Markdown（GFM：标题/列表/表格/任务列表/引用）+ 代码高亮，一键复制为 HTML | 纯前端 |
 | md-table-converter | Markdown 表格与 CSV / JSON / HTML 四种格式互转，自动识别输入格式，写文档、导数据的顺手小工具 | 纯前端 |
 | mindmap | 把 Markdown 大纲 / 缩进列表实时渲染成思维导图，自动分层配色、可点击折叠分支、支持缩放与导出 PNG / SVG | 纯前端 |
 | qrcode | 文本/URL 生成二维码，支持保存 PNG；从图片识别二维码内容 | 纯前端 |
 | rmb-upper | 数字金额转中文大写（壹贰叁…），财务报销、开票、合同的刚需小工具 | 纯前端 |
+| type-trainer | 开发者向打字训练器：英文 / 中文 / 代码 / 导入四种模式，支持导入 TXT 字库，实时统计 WPM 与准确率，本地记录历史与最佳成绩 | 纯前端 |
 | unit-converter | 长度 / 面积 / 体积 / 重量 / 温度 / 速度 / 数据存储 / 时间 / 压力 / 能量 / 功率 / 角度 共 12 类单位实时互转，输入一个值即列出该类别全部换算结果 | 纯前端 |
 
-**Native 插件（`runtime: native`，自带 Go 源码 + 编译产物）** — 共 26 个
+**Native 插件（`runtime: native`，自带 Go 源码 + 编译产物）** — 共 25 个
 | 插件 ID | 功能 |
 |---|---|
 | api-loadtest | 功能丰富的 HTTP 接口压测工具：支持并发/时长双模式、自定义 Header 与 Body、实时 QPS 与延迟分布(p50/p90/p95/p99)、状态码分布、错误率统计与结果一键导出 |
@@ -873,7 +905,6 @@ window.addEventListener('message', (e) => {
 | dir-buster | 对指定目标 URL 用内置常见路径字典进行轻量探测（自用）：并发受限、可配扩展名，采用异步会话模型实时返回命中的非 404 路径。仅探测你授权的目标，内置字典、不递归 |
 | disk-analyzer | 可视化磁盘空间占用分析工具，类似 SpaceSniffer，支持树图展示目录结构 |
 | exif-viewer | 选择图片（JPEG/PNG）查看拍摄时间、相机/镜头、参数与 GPS 经纬度等 EXIF 信息 |
-| file-search | 选择文件夹，按名称/通配符/扩展名/大小搜索文件；或按内容哈希查找重复文件（无文件大小上限，大文件也能查，支持隐藏文件与实时进度），删除冗余副本统一走系统回收站，可恢复 |
 | git-workbench | Git 仓库一体化工作台：仓库浏览、二分定位 bug 引入提交、三方合并冲突可视化解决、代码演化时间轴、历史改写（改作者/删敏感文件）、仓库体检与知识孤岛识别。 |
 | hash-calc | 计算文件的 MD5/SHA1/SHA256/SHA512 摘要，结果一键复制 |
 | hosts-manager | 管理系统 hosts 文件条目，一键启用/禁用/新增 |
@@ -893,7 +924,7 @@ window.addEventListener('message', (e) => {
 | wifi-manager | 查看网络列表、WiFi 密码、连接状态 |
 | ws-tester | 连接 ws/wss 服务，发送消息并实时查看返回的帧，支持多连接与历史 |
 
-> 以上 48 个插件均已迁至 `plugins/external/`（ID 改为 `io.github.parieses.*`），代码可直接复用。goja/none 插件演示「零宿主依赖、纯 JS 自包含」的外部化样板；native 插件演示「Go 源码 vendor + 自编译 entry exe」模式（`build.py` 直接在插件目录 `go build`）。完整 goja 模板见上文「完整示例」。
+> 以上 49 个插件均已迁至 `plugins/external/`（ID 改为 `io.github.parieses.*`），代码可直接复用。goja/none 插件演示「零宿主依赖、纯 JS 自包含」的外部化样板；native 插件演示「Go 源码 vendor + 自编译 entry exe」模式（`build.py` 直接在插件目录 `go build`）。完整 goja 模板见上文「完整示例」。
 
 <!--DEVGUIDE_PLUGINS_END-->
 

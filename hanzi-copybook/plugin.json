@@ -1,0 +1,32 @@
+{
+  "id": "io.github.parieses.hanzi-copybook",
+  "name": "字帖打印",
+  "version": "1.0.4",
+  "description": "汉字描红字帖生成器：支持任意汉字定制、拼音与笔顺显示、田字格/米字格排版，面向小学生规范书写与笔顺习惯养成，一键导出/打印",
+  "author": "QuickDock",
+  "icon": "icon.svg",
+  "category": "教育学习",
+  "platforms": ["windows", "darwin", "linux"],
+  "capabilities": ["command", "frontend"],
+  "backend": { "runtime": "none" },
+  "host_apis": [],
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 1024,
+    "height": 760
+  },
+  "commands": [{
+    "id": "hanzi-copybook",
+    "title": "字帖打印",
+    "keywords": ["字帖", "描红", "练字", "笔顺", "拼音", "汉字", "书法", "小学生"],
+    "aliases": ["汉字字帖", "练字帖", "书法练习", "copybook"],
+    "title_i18n": { "zh-CN": "字帖打印", "en-US": "Copybook Printer" }
+  }],
+  "name_i18n": { "zh-CN": "字帖打印", "en-US": "Copybook Printer" },
+  "description_i18n": {
+    "zh-CN": "汉字描红字帖生成器：任意汉字定制、拼音与笔顺显示、田字格/米字格排版，面向小学生规范书写，一键导出打印",
+    "en-US": "Chinese copybook generator: custom characters, pinyin & stroke order, Tian/Mi grid, one-click export & print."
+  },
+  "changelog": "## v1.0.4\n\n- 修复：点「打印」只出一张白纸——WebView2/Chromium 的 window.print() 只作用于顶层文档，插件在沙箱 iframe 里调用，打印的是整个 QuickDock 应用（暗色外壳），纸面内容根本不在打印上下文里。现改为经宿主打印通道（qdPrint）把纸面交给宿主，由宿主在顶层文档渲染后调起系统打印，沙箱不放宽、不加权限\n- 打印与「导出 HTML」现在共用同一份 HTML，打印件与导出件逐字节一致\n- 修复：导出/打印的纸面被系统深色模式与 Windows 高对比度模式干扰（自动反转、背景图形被抹掉）——显式声明 color-scheme: light only 并关闭 forced-color-adjust\n- 新增：纸面样式自检。样式内联失败时会明确报错，而不是静默导出一张白纸\n- 新增：练习格描红——练习格内也印浅灰范字供描红（字帖标准做法），可在排版里关掉改为空格默写\n- 加固：打印时把外壳的 zoom/视口高度约束彻底解除，格子内线线宽 0.7→1.2，避免打印驱动整段丢掉发丝虚线\n\n## v1.0.3\n\n- 排版回归「一行一个字」：字块独占整行，练习格行（1 范字 + N 练习格）铺满正文宽\n- 辅助行合并为一行：拼音在前，笔顺分解条紧随其后（原为拼音独立一行、笔顺条挂在字块底部）\n- 移除「每行几个字」（一行一字后该选项恒为 1 已无意义），版面参数统一由「每字练习格」控制\n- 默认每字练习格 5（一行 6 格、格子 30.6mm，约 5 字/页）\n- 笔顺小格宽按「剩余宽度 ÷ 笔画数」自适应，笔画多的字自动缩小而不折行，保证辅助行单行\n- 字块间距改由 .cp-page-body 的 gap 承担，块高估算与渲染保持一致\n\n## v1.0.2\n\n- 尝试一行并排多个字块以提升密度（v1.0.3 已回退）\n- 「每字练习格」与「每行字数」解耦\n- 新增版面提示，实时显示「一行几字 · 共几格 · 格子多大」，格子过小时给出提醒\n\n## v1.0.1\n\n- 修复：汉字内容无法输入——重排时会回写输入框，打断输入法组字并抹掉标点，现已改为保留原文\n- 修复：打印预览时田字格/米字格/回宫格内线消失（浏览器默认不打印背景图形）\n- 修复：每行填满时右侧被裁：格子边长扣除行内 gap\n\n## v1.0.0\n\n- 任意汉字/词语/句子定制字帖\n- 拼音（带声调）标注 + 笔顺分解图与动态描红动画\n- 田字格 / 米字格 / 回宫格可选，范字描红 + 练习格\n- 小学 1-6 年级生字表一键选字\n- 导出 HTML 经浏览器打印，或直接调用系统打印机"
+}

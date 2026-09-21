@@ -59,7 +59,7 @@
       </div>
       <div class="row" id="keyRow" style="display:none;margin-bottom:8px">
         <span class="hint">API Key</span>
-        <input id="apiKey" class="inp" type="text" placeholder="imgbb API Key" style="flex:1;min-width:160px">
+        <input id="apiKey" class="inp" type="text" placeholder="API Key" style="flex:1;min-width:160px">
       </div>
       <div class="row" id="customRow" style="display:none;margin-bottom:8px">
         <span class="hint">URL</span>
@@ -148,8 +148,9 @@ function readImage(p){
 function buildRequest(){
   var ep=$('endpoint').value;
   if(ep==='freeimage'){
+    var fk=$('apiKey').value.trim()||FREEIMAGE_KEY;
     return {url:'https://freeimage.host/api/1/upload',
-      body:'key='+encodeURIComponent(FREEIMAGE_KEY)+'&source='+encodeURIComponent(b64),
+      body:'key='+encodeURIComponent(fk)+'&source='+encodeURIComponent(b64),
       contentType:'application/x-www-form-urlencoded'};
   }
   if(ep==='imgbb'){
@@ -187,7 +188,9 @@ function doUpload(){
     showResult(url, r.body, obj);
     if(url)status('上传成功','ok');else status('已收到响应，但未解析到图片链接（见下方原始响应）','err');
   }).catch(function(e){
-    status('上传失败：'+(e&&e.message||e),'err');
+    var msg=(e&&e.message||e)+'';
+    if(/Invalid API v1 key/i.test(msg))msg+='  → 当前 Key 已被图床吊销，请到 freeimage.host 设置页获取自己的 Key 填入上方「API Key」后重试。';
+    status('上传失败：'+msg,'err');
   }).then(function(){$('btnUpload').disabled=!b64});
 }
 
@@ -212,11 +215,19 @@ function showResult(url, raw, obj){
 // ---- 端点切换 ----
 function syncEndpoint(){
   var ep=$('endpoint').value;
-  $('keyRow').style.display=ep==='imgbb'?'':'none';
+  var showKey=(ep==='freeimage'||ep==='imgbb');
+  $('keyRow').style.display=showKey?'':'none';
+  if(ep==='freeimage'){
+    $('apiKey').placeholder='freeimage.host API Key（留空用内置演示 Key）';
+    if(!$('apiKey').value)$('apiKey').value=FREEIMAGE_KEY;
+  }else if(ep==='imgbb'){
+    $('apiKey').placeholder='imgbb API Key';
+    if($('apiKey').value===FREEIMAGE_KEY)$('apiKey').value='';
+  }
   $('customRow').style.display=ep==='custom'?'':'none';
   $('customBodyRow').style.display=ep==='custom'?'':'none';
   $('quotaHint').textContent = ep==='freeimage'
-    ? 'freeimage.host 公共演示 Key 有每日额度限制，仅适合偶尔使用；生产请改用 imgbb 或自定义端点。'
+    ? '内置演示 Key 可能已被 freeimage.host 吊销（报「Invalid API v1 key」时即是）。此时到 freeimage.host 设置页获取自己的 Key 填入上方即可。'
     : ep==='imgbb' ? '在 https://api.imgbb.com 免费注册获取 API Key。' : '自定义端点须先在插件 plugin.json 的 permissions.network 中加入该域名后重新安装。';
 }
 $('endpoint').addEventListener('change',syncEndpoint);

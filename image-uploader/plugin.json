@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.image-uploader",
   "name": "图床上传",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "选择本地图片，读取后通过宿主网络能力上传到图床（freeimage.host / imgbb），返回可访问的图片链接，链接可一键复制。不上传任何其它文件。",
   "author": "QuickDock",
   "icon": "icon.svg",
@@ -71,5 +71,5 @@
     "zh-CN": "选择本地图片上传到图床，返回图片链接",
     "en-US": "Pick a local image and upload it to an image host, get a shareable URL."
   },
-  "changelog": "## v1.0.0\n\n- 选择本地图片，读取后通过宿主网络能力上传到图床（freeimage.host / imgbb），返回可访问的图片链接，链接可一键复制。不上传任何其它文件"
+  "changelog": "## v1.0.1\n\n- freeimage.host 端点的 API Key 改为可编辑（默认预填内置演示 Key）。公共演示 Key 被 freeimage.host 吊销导致「Invalid API v1 key」时，可在设置页获取自己的 Key 填入后重试，不再写死；失败提示同步给出明确指引\n\n## v1.0.0\n\n- 选择本地图片，读取后通过宿主网络能力上传到图床（freeimage.host / imgbb），返回可访问的图片链接，链接可一键复制。不上传任何其它文件"
 }

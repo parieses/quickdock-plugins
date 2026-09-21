@@ -1,0 +1,172 @@
+/* ===== 字帖打印 · 纸面与格子样式 =====
+ * 纸面永远浅色（打印用途，与宿主主题无关）；外壳跟随主题。
+ * 所有尺寸用 mm：屏幕预览与打印输出同一套数值，所见即所得。
+ */
+
+/* ---------- 外壳（跟随主题） ---------- */
+.cp-body { flex: 1; display: flex; overflow: hidden; }
+
+.cp-side {
+  width: 296px; flex-shrink: 0; overflow-y: auto;
+  padding: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-4);
+  background: var(--bg-secondary); border-right: 1px solid var(--border);
+}
+.cp-field { display: flex; flex-direction: column; gap: 6px; }
+.cp-field > label { font-size: var(--fs-xs); font-weight: var(--fw-medium); color: var(--text-muted); letter-spacing: .4px; }
+.cp-inline { display: flex; align-items: center; gap: var(--sp-2); }
+.cp-inline > .p-input, .cp-inline > select { flex: 1; min-width: 0; }
+.cp-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); }
+.cp-checks { display: flex; flex-wrap: wrap; gap: var(--sp-3); }
+.cp-check { display: flex; align-items: center; gap: 6px; font-size: var(--fs-sm); color: var(--text-secondary); cursor: pointer; user-select: none; }
+.cp-check input { accent-color: var(--accent); cursor: pointer; }
+
+.cp-textarea {
+  width: 100%; height: 96px; resize: vertical; padding: 8px 10px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--bg-primary); color: var(--text-primary);
+  font-size: var(--fs-md); line-height: 1.6; outline: none;
+  font-family: var(--font);
+}
+.cp-textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+
+.cp-hint { font-size: var(--fs-xs); color: var(--text-muted); line-height: 1.6; }
+.cp-count { font-size: var(--fs-xs); color: var(--text-secondary); }
+
+.cp-main { flex: 1; overflow: auto; padding: var(--sp-5); background: var(--bg-primary); }
+#pages { display: flex; flex-direction: column; align-items: center; gap: 18px; }
+
+/* ---------- 纸面 ---------- */
+.cp-page {
+  --cp-margin: 12mm;
+  --cp-line: #e0716f;       /* 格子外框 */
+  --cp-line-soft: #f0b3b1;  /* 格子内线 */
+  --cp-ink: #1a1a1a;        /* 范字实色 */
+  --cp-trace: #cfcfcf;      /* 描红浅灰 */
+  width: 210mm; height: 297mm; box-sizing: border-box;
+  padding: var(--cp-margin);
+  background: #fff; color: var(--cp-ink);
+  position: relative; overflow: hidden;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, .38);
+  display: flex; flex-direction: column;
+}
+
+.cp-page-head {
+  height: 12mm; flex-shrink: 0; display: flex; align-items: flex-end; gap: 8mm;
+  border-bottom: .4mm solid var(--cp-line-soft); padding-bottom: 2mm; margin-bottom: 4mm;
+}
+.cp-ph-title { font-size: 5.2mm; font-weight: 700; letter-spacing: 1mm; }
+.cp-ph-meta { margin-left: auto; font-size: 3.4mm; color: #555; display: flex; gap: 6mm; }
+.cp-ph-meta u { text-decoration: none; display: inline-block; min-width: 18mm; border-bottom: .3mm solid #999; }
+
+.cp-page-body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 2.4mm; }
+
+/* ---------- 单字块 ---------- */
+/* 一行 .cp-blk = 一个字：
+ *   上半 .cp-head   辅助行 = 拼音 + 笔顺分解条（横排，笔顺条紧跟拼音右侧）
+ *   下半 .cp-row    练习格行 = 1 个范字格 + N 个练习格（铺满正文宽）
+ * 块宽固定 100%，块间距由 .cp-page-body 的 gap 给（与 app.js 的 BLK_GAP 一致）。 */
+.cp-blk { display: flex; flex-direction: column; gap: .8mm; width: 100%; }
+
+.cp-head { display: flex; align-items: center; gap: 1.2mm; min-height: var(--cp-headh, 4mm); }
+.cp-head .cp-py { flex: 0 0 auto; }
+
+.cp-row { display: flex; align-items: flex-end; gap: .6mm; }
+
+.cp-py {
+  font-size: var(--cp-pyfs, 3.2mm); line-height: 1.15; color: #333;
+  font-family: 'Times New Roman', Georgia, serif; white-space: nowrap;
+  letter-spacing: .2px;
+}
+
+.cp-cell {
+  width: var(--cp-cell, 22mm); height: var(--cp-cell, 22mm);
+  box-sizing: border-box; border: .35mm solid var(--cp-line);
+  display: flex; align-items: center; justify-content: center;
+  position: relative; background-repeat: no-repeat; background-size: 100% 100%;
+}
+.cp-ch {
+  font-family: 'KaiTi', 'STKaiti', 'Kaiti SC', 'KaiTi_GB2312', '楷体', 'Noto Serif CJK SC', serif;
+  font-size: calc(var(--cp-cell, 22mm) * .78); line-height: 1;
+  color: var(--cp-trace);
+}
+.cp-ch.cp-ink { color: var(--cp-ink); }
+
+/* 格子内线（内联 SVG，随格子拉伸）。
+ * stroke-width 用 1.2 而不是 0.7：配 non-scaling-stroke 时线宽就是 CSS px，
+ * 0.7px ≈ 0.19mm 的发丝虚线在纸上常被打印驱动整段丢掉（屏幕上却看得见），
+ * 打印出来就只剩外框、像没画格子。 */
+.cp-grid-tian { background-image: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cg stroke='%23f0b3b1' stroke-width='1.2' stroke-dasharray='5 4' vector-effect='non-scaling-stroke'%3E%3Cline x1='50' y1='0' x2='50' y2='100'/%3E%3Cline x1='0' y1='50' x2='100' y2='50'/%3E%3C/g%3E%3C/svg%3E"); }
+.cp-grid-mi { background-image: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cg stroke='%23f0b3b1' stroke-width='1.2' stroke-dasharray='5 4' vector-effect='non-scaling-stroke'%3E%3Cline x1='50' y1='0' x2='50' y2='100'/%3E%3Cline x1='0' y1='50' x2='100' y2='50'/%3E%3Cline x1='0' y1='0' x2='100' y2='100'/%3E%3Cline x1='100' y1='0' x2='0' y2='100'/%3E%3C/g%3E%3C/svg%3E"); }
+.cp-grid-hui { background-image: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Crect x='26' y='26' width='48' height='48' fill='none' stroke='%23f0b3b1' stroke-width='1.2' stroke-dasharray='5 4' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E"); }
+.cp-grid-none { border-color: #ddd; }
+
+/* ---------- 笔顺分解条（辅助行内，紧跟拼音右侧） ---------- */
+/* flex:1 吃掉「正文宽 - 拼音占宽」的剩余空间；小格宽由 JS 按剩余宽度算好写进 --cp-sw，
+ * 故正常情况下只有一行，笔画极多时才折行。 */
+.cp-strokes { display: flex; flex-wrap: wrap; align-items: center; gap: .5mm; flex: 1 1 auto; min-width: 0; }
+.cp-sc {
+  position: relative; width: var(--cp-sw, 9mm); height: var(--cp-sw, 9mm);
+  box-sizing: border-box; border: .25mm solid var(--cp-line-soft);
+  background-repeat: no-repeat; background-size: 100% 100%;
+}
+.cp-sc svg { display: block; width: 100%; height: 100%; }
+.cp-sc > i {
+  position: absolute; right: 0; bottom: 0; font-style: normal;
+  font-size: calc(var(--cp-sw, 9mm) * .3); line-height: 1;
+  color: #b06a68; padding: 0 .3mm;
+}
+.cp-nostroke { font-size: 2.8mm; color: #999; line-height: var(--cp-sw, 9mm); }
+
+/* ---------- 笔顺动画弹层 ---------- */
+.cp-modal { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, .55); }
+.cp-modal[hidden] { display: none; }
+.cp-modal-card { width: 340px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-xl); box-shadow: var(--shadow-2); padding: var(--sp-5); display: flex; flex-direction: column; gap: var(--sp-4); }
+.cp-modal-head { display: flex; align-items: center; gap: var(--sp-2); }
+.cp-modal-title { font-size: var(--fs-lg); font-weight: var(--fw-semibold); }
+.cp-modal-stage { display: flex; justify-content: center; }
+.cp-modal-stage > div { background: #fff; border-radius: var(--radius); }
+.cp-modal-foot { display: flex; align-items: center; gap: var(--sp-2); }
+.cp-modal-info { margin-left: auto; font-size: var(--fs-xs); color: var(--text-muted); }
+
+/* 可点击的范字 */
+.cp-click { cursor: pointer; }
+.cp-click:hover { border-color: var(--accent); }
+
+/* ---------- 打印 ---------- */
+@media print {
+  @page { size: A4; margin: 0; }
+
+  /* 打印时把外壳的尺寸/裁切/缩放约束全部解除，只留纸面。三个踩过的坑：
+   * 1) #pages 的 zoom 由 applyZoom() 写成**行内样式**，普通规则压不过它，必须 !important
+   *    （否则按预览缩放打印，纸面尺寸与分页都跟着走样）；
+   * 2) .p-app 是 height:100vh 的 flex 列，不重置就把全部内容压在一个视口高度里；
+   * 3) 暗色主题下 body 的 color 是近白色（--text-primary: #e9eaec），打印丢背景后
+   *    等于白纸上看不见字，必须显式改黑。 */
+  html, body {
+    background: #fff !important;
+    color: #000 !important;
+    height: auto !important; min-height: 0 !important;
+    overflow: visible !important;
+  }
+  body, .p-app, .cp-body, .cp-main, #pages {
+    display: block !important;
+    height: auto !important; min-height: 0 !important; max-height: none !important;
+    overflow: visible !important;
+    padding: 0 !important; margin: 0 !important;
+    background: transparent !important;
+    zoom: 1 !important; transform: none !important;
+  }
+  .p-head, .cp-side, .cp-modal { display: none !important; }
+
+  /* 田字格/米字格/回宫格的内线是用 background-image(内联 SVG) 画的，
+   * 而浏览器打印默认 print-color-adjust: economy —— 不输出任何背景图形，
+   * 结果打印预览里内线整片消失、只剩外框。必须显式要求保留背景。
+   * 该属性可继承，但仍逐层写明，避免个别浏览器/打印驱动上继承失效。 */
+  .cp-page, .cp-page * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .cp-page { box-shadow: none !important; margin: 0 auto !important; break-after: page; page-break-after: always; }
+  .cp-page:last-child { break-after: auto; page-break-after: auto; }
+}

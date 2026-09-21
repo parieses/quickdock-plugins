@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>字帖打印</title>
+<link rel="stylesheet" href="qd-theme.css">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+<div class="p-app">
+  <header class="p-head">
+    <span class="p-head-title">字帖打印</span>
+    <span class="p-count" id="countInfo"></span>
+    <span class="p-head-actions">
+      <span class="p-count" id="pageInfo"></span>
+      <button class="p-btn" id="btnZoomOut" title="缩小预览">−</button>
+      <button class="p-btn" id="btnZoomIn" title="放大预览">＋</button>
+      <button class="p-btn" id="btnExport">导出 HTML</button>
+      <button class="p-btn p-btn-primary" id="btnPrint">打印</button>
+    </span>
+  </header>
+
+  <div class="cp-body">
+    <aside class="cp-side">
+
+      <div class="cp-field">
+        <label>汉字内容</label>
+        <textarea id="txtInput" class="cp-textarea" spellcheck="false"
+          placeholder="输入任意汉字 / 词语 / 句子，会自动提取其中的汉字。例如：春眠不觉晓"></textarea>
+        <div class="cp-inline">
+          <span class="cp-count" id="charCount">0 字</span>
+          <span class="p-spacer"></span>
+          <button class="p-btn p-btn-sm" id="btnClear">清空</button>
+        </div>
+      </div>
+
+      <div class="cp-field">
+        <label>年级字表（人教版统编版《写字表》）</label>
+        <div class="cp-inline">
+          <select class="p-input" id="selGrade"></select>
+          <select class="p-input" id="selVolume">
+            <option value="all">全学年</option>
+            <option value="up">上册</option>
+            <option value="down">下册</option>
+          </select>
+        </div>
+        <div class="cp-inline">
+          <button class="p-btn p-btn-sm" id="btnGradeAdd">加入字帖</button>
+          <button class="p-btn p-btn-sm" id="btnGradeReplace">替换字帖</button>
+          <span class="p-spacer"></span>
+          <span class="cp-count" id="gradeCount"></span>
+        </div>
+      </div>
+
+      <div class="cp-field">
+        <label>排版</label>
+        <div class="cp-grid2">
+          <div class="cp-field">
+            <label>格子类型</label>
+            <select class="p-input" id="selGrid">
+              <option value="tian">田字格</option>
+              <option value="mi">米字格</option>
+              <option value="hui">回宫格</option>
+              <option value="none">无格</option>
+            </select>
+          </div>
+          <div class="cp-field">
+            <label>范字浓淡</label>
+            <select class="p-input" id="selInk">
+              <option value="trace">描红（浅灰）</option>
+              <option value="gray">浅黑</option>
+              <option value="ink">实黑</option>
+            </select>
+          </div>
+        </div>
+        <div class="cp-field" style="margin-top:8px">
+          <label>每字练习格</label>
+          <select class="p-input" id="selPractice">
+            <option>1</option><option>2</option><option>3</option>
+            <option>4</option><option selected>5</option><option>6</option>
+            <option>7</option><option>8</option><option>9</option>
+            <option>10</option><option>11</option><option>12</option><option>13</option>
+          </select>
+        </div>
+        <div class="cp-hint" id="layoutHint" style="margin-top:6px"></div>
+        <div class="cp-hint" style="margin-top:4px">
+          一行排一个字：左边 1 个范字格，右边跟着 N 个练习格，铺满整行。想一页装更多字就调大«每字练习格»（格子随之变小）。
+        </div>
+        <div class="cp-field" style="margin-top:8px">
+          <label>字帖标题</label>
+          <input class="p-input" id="inpTitle" value="汉字描红字帖">
+        </div>
+        <div class="cp-checks" style="margin-top:10px">
+          <label class="cp-check"><input type="checkbox" id="chkPinyin" checked>标注拼音</label>
+          <label class="cp-check"><input type="checkbox" id="chkStroke" checked>笔顺分解</label>
+          <label class="cp-check"><input type="checkbox" id="chkTrace" checked>练习格描红</label>
+          <label class="cp-check"><input type="checkbox" id="chkName" checked>姓名日期栏</label>
+          <label class="cp-check"><input type="checkbox" id="chkDedupe" checked>汉字去重</label>
+        </div>
+      </div>
+
+      <div class="cp-field">
+        <label>说明</label>
+        <div class="cp-hint">
+          · 点击纸面上任一<b>范字</b>可播放该字的笔顺动画。<br>
+          · 一行一个字：上排是<b>拼音 + 笔顺分解条</b>，下排是 1 个范字格 + N 个练习格。<br>
+          · <b>练习格描红</b>勾选时，练习格里也印浅灰范字供描红；取消勾选则是空格，用来默写。<br>
+          · 「打印」把纸面交给主程序，由主程序调起系统打印（A4 满页、无页边距）。<br>
+          · 「导出 HTML」另存为可离线打开的文件，在浏览器里 Ctrl+P 同样可打印，两份内容完全一致。系统若未弹出打印窗口（如 macOS），请改用「导出 HTML」。<br>
+          · 笔顺数据覆盖人教版《写字表》全部 2484 字；表外字仅显示拼音与范字。
+        </div>
+      </div>
+
+    </aside>
+
+    <main class="cp-main" id="main"><div id="pages"></div></main>
+  </div>
+</div>
+
+<div class="cp-modal" id="modal" hidden>
+  <div class="cp-modal-card">
+    <div class="cp-modal-head">
+      <span class="cp-modal-title" id="mTitle">笔顺动画</span>
+      <span class="p-spacer"></span>
+      <button class="p-btn p-btn-sm" id="mClose">关闭</button>
+    </div>
+    <div class="cp-modal-stage"><div id="mStage"></div></div>
+    <div class="cp-modal-foot">
+      <button class="p-btn p-btn-sm p-btn-primary" id="mPlay">播放</button>
+      <button class="p-btn p-btn-sm" id="mPrev">上一字</button>
+      <button class="p-btn p-btn-sm" id="mNext">下一字</button>
+      <span class="cp-modal-info" id="mInfo"></span>
+    </div>
+  </div>
+</div>
+
+<script src="lib/pinyin-pro.js"></script>
+<script src="lib/hanzi-writer.js"></script>
+<script src="data/words.js"></script>
+<script src="data/strokes.bin.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

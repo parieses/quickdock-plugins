@@ -24,14 +24,14 @@
 | [磁盘分析器](./disk-analyzer/) | `io.github.parieses.disk-analyzer` | 1.0.0 | 可视化磁盘空间占用分析工具，类似 SpaceSniffer，支持树图展示目录结构 |
 | [Emoji 搜索](./emoji-search/) | `io.github.parieses.emoji-search` | 1.0.1 | 搜索 Emoji 并一键复制到剪贴板 |
 | [EXIF 查看](./exif-viewer/) | `io.github.parieses.exif-viewer` | 1.0.1 | 选择图片（JPEG/PNG）查看拍摄时间、相机/镜头、参数与 GPS 经纬度等 EXIF 信息 |
-| [本地文件搜索](./file-search/) | `io.github.parieses.file-search` | 1.1.0 | 选择文件夹，按名称/通配符/扩展名/大小搜索文件；或按内容哈希查找重复文件（无文件大小上限，大文件也能查，支持隐藏文件与实时进度），删除冗余副本统一走系统回收站，可恢复 |
 | [代码格式化](./formatter/) | `io.github.parieses.formatter` | 1.0.0 | 通用代码压缩/美化（JS / CSS / HTML 自动检测）与 SQL 格式化合二为一 |
 | [Git 工作台](./git-workbench/) | `io.github.parieses.git-workbench` | 1.0.1 | Git 仓库一体化工作台：仓库浏览、二分定位 bug 引入提交、三方合并冲突可视化解决、代码演化时间轴、历史改写（改作者/删敏感文件）、仓库体检与知识孤岛识别。 |
+| [字帖打印](./hanzi-copybook/) | `io.github.parieses.hanzi-copybook` | 1.0.4 | 汉字描红字帖生成器：支持任意汉字定制、拼音与笔顺显示、田字格/米字格排版，面向小学生规范书写与笔顺习惯养成，一键导出/打印 |
 | [文件哈希](./hash-calc/) | `io.github.parieses.hash-calc` | 1.0.1 | 计算文件的 MD5/SHA1/SHA256/SHA512 摘要，结果一键复制 |
 | [Hosts 管理器](./hosts-manager/) | `io.github.parieses.hosts-manager` | 1.0.0 | 管理系统 hosts 文件条目，一键启用/禁用/新增 |
 | [HTTP 客户端](./http-client/) | `io.github.parieses.http-client` | 1.0.1 | 轻量 HTTP 请求调试客户端：项目管理请求、目录与文档树、环境变量与 {{var}} 替换、请求历史重放、Postman 集合导入。数据独立存储。 |
 | [图片工坊](./image-studio/) | `io.github.parieses.image-studio` | 1.0.0 | 仿 Squoosh 实时对比：左右预览对比，质量滑块、缩放(锁定比例/百分比/预设)、旋转/翻转、亮度/对比度/饱和度调整，实时预览文件大小与压缩率 |
-| [图床上传](./image-uploader/) | `io.github.parieses.image-uploader` | 1.0.0 | 选择本地图片，读取后通过宿主网络能力上传到图床（freeimage.host / imgbb），返回可访问的图片链接，链接可一键复制。不上传任何其它文件。 |
+| [图床上传](./image-uploader/) | `io.github.parieses.image-uploader` | 1.0.1 | 选择本地图片，读取后通过宿主网络能力上传到图床（freeimage.host / imgbb），返回可访问的图片链接，链接可一键复制。不上传任何其它文件。 |
 | [JSON 工具箱](./json-toolbox/) | `io.github.parieses.json-toolbox` | 1.0.0 | JSON 编辑器（格式化/折叠/编辑）、JSON → TypeScript / Go、JSON ↔ YAML / TOML / XML 互转 |
 | [Windows 垃圾清理](./junk-cleaner/) | `io.github.parieses.junk-cleaner` | 1.0.0 | 扫描并清理系统垃圾文件：临时文件/更新缓存/缩略图缓存/预读取/崩溃转储等，安全只读扫描+确认后删除 |
 | [JWT 解码器](./jwt-decoder/) | `io.github.parieses.jwt-decoder` | 1.0.0 | 解码 JWT Token，查看 Header/Payload，验证过期时间 |
@@ -53,6 +53,7 @@
 | [子域名枚举](./subdomain-enum/) | `io.github.parieses.subdomain-enum` | 1.0.0 | 被动收集域名子域名（证书透明日志 CertSpotter / crt.sh + HackerTarget + urlscan + rapiddns + AlienVault OTX），可选并发解析 A 记录筛选存活 |
 | [文本工具箱](./text-encoder/) | `io.github.parieses.text-encoder` | 1.0.2 | Base64 / URL / HTML 编解码，MD5 / SHA1 / SHA256 / SHA512 哈希与 HMAC 签名，Base64 图片识别预览，2/8/10/16 进制互转与字节单位换算 |
 | [时间转换](./time-converter/) | `io.github.parieses.time-converter` | 1.0.0 | Unix 时间戳 / ISO 8601 / 中文日期 / 相对时间互转，支持任意时区偏移输出 |
+| [打字练习](./type-trainer/) | `io.github.parieses.type-trainer` | 1.0.1 | 开发者向打字训练器：英文 / 中文 / 代码 / 导入四种模式，支持导入 TXT 字库，实时统计 WPM 与准确率，本地记录历史与最佳成绩 |
 | [单位换算器](./unit-converter/) | `io.github.parieses.unit-converter` | 1.0.0 | 长度 / 面积 / 体积 / 重量 / 温度 / 速度 / 数据存储 / 时间 / 压力 / 能量 / 功率 / 角度 共 12 类单位实时互转，输入一个值即列出该类别全部换算结果 |
 | [WiFi 管理器](./wifi-manager/) | `io.github.parieses.wifi-manager` | 1.0.0 | 查看网络列表、WiFi 密码、连接状态 |
 | [WebSocket 测试](./ws-tester/) | `io.github.parieses.ws-tester` | 1.0.1 | 连接 ws/wss 服务，发送消息并实时查看返回的帧，支持多连接与历史 |
@@ -284,6 +285,7 @@ JS 侧注册方法（参考主仓库内置插件 json-toolbox 等的实现方式
 | `plugin:copy` | 复制文本 `{id, text}` → 宿主回 `plugin:copy-result {id, ok}` |
 | `plugin:pickfile` | 原生文件选择 `{id, title?, filter?, pattern?}` → 宿主回 `plugin:pickfile-result {id, path|null}` |
 | `plugin:readfile` | 读取选中文件 `{id, path}` → 宿主回 `plugin:readfile-result {id, payload|null}`，`payload = {type:'text'|'dataurl', content}` |
+| `plugin:print` | 系统打印 `{id, html, page?}` → 宿主回 `plugin:print-result {id, ok, error?}`。`html` 为**完整 HTML 文档字符串**，宿主在顶层文档渲染后调系统打印（**不要自己 `window.print()`**，见下） |
 
 ### 宿主桥接脚本（自动注入）
 
@@ -297,8 +299,11 @@ JS 侧注册方法（参考主仓库内置插件 json-toolbox 等的实现方式
 | `window.qdReadFile(path)` → `Promise<{type,content}|null>` | 读取 `qdPickFile`/`qdPickFolder` 选中的文件；文本→`{type:'text',content}`，图片/二进制→`{type:'dataurl',content}` |
 | `window.qdHostCall(method, params?)` → `Promise<any>` | **通用宿主代发**：调用任意宿主 Host 方法（如 `host.fs.read` / `host.fs.list` / `http.post` / `host.mcp.call`），受插件 `permissions` 管控，返回解析后的结果 |
 | `window.qdHttp(opts)` → `Promise<{status,ok,headers,body,truncated}>` | `qdHostCall` 的 HTTP 便捷封装：`opts={url, method?, headers?, body?}`；自动 JSON 序列化 body 并补 `Content-Type`，走宿主代发绕过 iframe CORS |
+| `window.qdPrint(opts)` → `Promise<true>` | 系统打印：`opts={html, page?}`；`html` 是一份**完整 HTML 文档字符串**（自带全部 CSS），`page` 可选（如 `'A4'`）覆盖 `@page`。打印对话框关闭后 resolve |
 
 > **选文件一律用 `qdPickFile`**：iframe 沙箱内的 `<input type=file>` 会触发宿主窗口失焦问题，且脚本无法精确控制。示例：`const p = await window.qdPickFile({filter:'JSON', pattern:'*.json'}); const res = p && await window.qdReadFile(p);`
+
+> **打印一律用 `qdPrint`，不要在插件里直接 `window.print()`**：WebView2 / Chromium 的 `window.print()` 只作用于**顶层文档**，插件跑在沙箱 iframe 里，直接调打印出来的是**整个 QuickDock 应用**（暗色外壳）—— 用户拿到的是**一张白纸**。`qdPrint` 把 HTML 交给宿主，由宿主在顶层文档渲染后打印；打印期间宿主界面被隐藏、插件 CSS 被包进 `@media print` 隔离（不污染宿主），打完自动清理。完整说明见 [plugin-dev-guide.md](./plugin-dev-guide.md) 的「打印：`qdPrint`」小节。
 
 ### 样式约定
 
