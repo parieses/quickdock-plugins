@@ -1,4 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
-  <rect width="48" height="48" rx="10" fill="#2a2a2a"/>
-  <text x="24" y="33" font-size="28" text-anchor="middle">😊</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#3381ff"/>
+  <g transform="translate(7.069,8.8442) scale(1.0388)">
+    <text x="24" y="33" font-size="28" text-anchor="middle">😊</text>
+  </g>
 </svg>

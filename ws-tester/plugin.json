@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.ws-tester",
   "name": "WebSocket 测试",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "连接 ws/wss 服务，发送消息并实时查看返回的帧，支持多连接与历史",
   "author": "QuickDock",
   "category": "网络工具",
@@ -57,5 +57,5 @@
     "zh-CN": "连接 ws/wss 服务，发送消息并实时查看返回的帧，支持多连接与历史",
     "en-US": "Connect to ws/wss, send messages and view returned frames in real time, with multi-connection support."
   },
-  "changelog": "## v1.0.1\n\n- 连接 ws/wss 服务，发送消息并实时查看返回的帧，支持多连接与历史"
+  "changelog": "## v1.0.2\n\n- 图标改用统一 64 网格满幅圆角贴片 + 白色图形，线宽归一\n- 新增浅色主题图标 `icon.light.svg`，随应用主题自动切换\n\n## v1.0.1\n\n- 连接 ws/wss 服务，发送消息并实时查看返回的帧，支持多连接与历史"
 }

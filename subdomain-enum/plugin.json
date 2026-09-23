@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.subdomain-enum",
   "name": "子域名枚举",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "被动收集域名子域名（证书透明日志 CertSpotter / crt.sh + HackerTarget + urlscan + rapiddns + AlienVault OTX），可选并发解析 A 记录筛选存活",
   "author": "QuickDock",
   "category": "网络工具",
@@ -63,5 +63,5 @@
     "zh-CN": "被动收集域名子域名（证书透明日志 CertSpotter / crt.sh + HackerTarget + urlscan + rapiddns + AlienVault OTX），可选并发解析 A 记录筛选存活",
     "en-US": "Passively enumerate subdomains via certificate transparency logs (CertSpotter / crt.sh), HackerTarget, urlscan, rapiddns and AlienVault OTX. Optionally resolve A records to filter live ones."
   },
-  "changelog": "## v1.0.0\n\n- 被动收集域名子域名（证书透明日志 CertSpotter / crt.sh + HackerTarget + urlscan + rapiddns + AlienVault OTX），可选并发解析 A 记录筛选存活"
+  "changelog": "## v1.0.1\n\n- 图标改用统一 64 网格满幅圆角贴片 + 白色图形，线宽归一\n- 新增浅色主题图标 `icon.light.svg`，随应用主题自动切换\n\n## v1.0.0\n\n- 被动收集域名子域名（证书透明日志 CertSpotter / crt.sh + HackerTarget + urlscan + rapiddns + AlienVault OTX），可选并发解析 A 记录筛选存活"
 }

@@ -1,7 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
-  <rect x="4" y="6" width="40" height="36" rx="6" fill="#4a9eff" opacity="0.12"/>
-  <rect x="4" y="6" width="40" height="36" rx="6" stroke="#4a9eff" stroke-width="1.8"/>
-  <circle cx="24" cy="19" r="8" fill="#ff0000" opacity="0.85"/>
-  <circle cx="18" cy="33" r="7" fill="#00ff00" opacity="0.85"/>
-  <circle cx="30" cy="33" r="7" fill="#0000ff" opacity="0.85"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#3381ff"/>
+  <g transform="translate(9.7443,9.7443) scale(0.9273)">
+    <g fill="none">
+    <rect x="4" y="6" width="40" height="36" rx="6" stroke="#fff" stroke-width="3.2351"/>
+    <circle cx="24" cy="19" r="8" fill="#fff" opacity="0.55"/>
+    <circle cx="18" cy="33" r="7" fill="#fff" opacity="0.55"/>
+    <circle cx="30" cy="33" r="7" fill="#fff" opacity="0.55"/>
+    </g>
+  </g>
 </svg>

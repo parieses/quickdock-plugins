@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.rmb-upper",
   "name": "人民币大写",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "数字金额转中文大写（壹贰叁…），财务报销、开票、合同的刚需小工具",
   "author": "QuickDock",
   "icon": "icon.svg",
@@ -22,7 +22,6 @@
     "runtime": "none"
   },
   "host_apis": [],
-
   "frontend": {
     "enabled": true,
     "entry": "frontend/index.html",
@@ -66,5 +65,5 @@
     "zh-CN": "数字金额转中文大写（壹贰叁…），财务报销、开票、合同的刚需小工具",
     "en-US": "Convert numeric amounts to Chinese capital form, as required on invoices and contracts."
   },
-  "changelog": "## v1.0.0\n\n- 数字金额转中文大写（壹贰叁…），财务报销、开票、合同的刚需小工具"
+  "changelog": "## v1.0.1\n\n- 图标改用统一 64 网格满幅圆角贴片 + 白色图形，线宽归一\n- 新增浅色主题图标 `icon.light.svg`，随应用主题自动切换\n\n## v1.0.0\n\n- 数字金额转中文大写（壹贰叁…），财务报销、开票、合同的刚需小工具"
 }

@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.regex-extractor",
   "name": "正则提取工具",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "正则提取与替换：匹配高亮、分组捕获、反向引用替换（$1/$2）、一键复制结果",
   "author": "QuickDock",
   "icon": "icon.svg",
@@ -61,5 +61,5 @@
     "zh-CN": "正则提取与替换：匹配高亮、分组捕获、反向引用替换、一键复制",
     "en-US": "Regex extract & replace: match highlight, group capture, backreference replace, one-click copy."
   },
-  "changelog": "## v1.0.0\n\n- 正则提取与替换：匹配高亮、分组捕获、反向引用替换（$1/$2）、一键复制结果"
+  "changelog": "## v1.0.1\n\n- 图标改用统一 64 网格满幅圆角贴片 + 白色图形，线宽归一\n- 新增浅色主题图标 `icon.light.svg`，随应用主题自动切换\n\n## v1.0.0\n\n- 正则提取与替换：匹配高亮、分组捕获、反向引用替换（$1/$2）、一键复制结果"
 }

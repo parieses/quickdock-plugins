@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.emoji-search",
   "name": "Emoji 搜索",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "搜索 Emoji 并一键复制到剪贴板",
   "author": "QuickDock",
   "category": "开发者日常",
@@ -15,7 +15,6 @@
     "runtime": "none"
   },
   "host_apis": [],
-
   "frontend": {
     "enabled": true,
     "entry": "frontend/index.html"
@@ -59,5 +58,5 @@
     "zh-CN": "搜索 Emoji 并一键复制到剪贴板",
     "en-US": "Search emoji and copy them to the clipboard in one click."
   },
-  "changelog": "## v1.0.1\n\n- 搜索 Emoji 并一键复制到剪贴板"
+  "changelog": "## v1.0.2\n\n- 图标改用统一 64 网格满幅圆角贴片 + 白色图形，线宽归一\n- 新增浅色主题图标 `icon.light.svg`，随应用主题自动切换\n\n## v1.0.1\n\n- 搜索 Emoji 并一键复制到剪贴板"
 }

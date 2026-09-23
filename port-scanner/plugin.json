@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.port-scanner",
   "name": "端口检查器",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "检查端口占用，显示进程名和 PID",
   "author": "QuickDock",
   "category": "效率工具",
@@ -97,5 +97,5 @@
   "platforms": [
     "windows"
   ],
-  "changelog": "## v1.0.2\n\n- 检查端口占用，显示进程名和 PID"
+  "changelog": "## v1.0.3\n\n- 图标改用统一 64 网格满幅圆角贴片 + 白色图形，线宽归一\n- 新增浅色主题图标 `icon.light.svg`，随应用主题自动切换\n\n## v1.0.2\n\n- 检查端口占用，显示进程名和 PID"
 }

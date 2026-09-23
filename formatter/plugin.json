@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.formatter",
   "name": "代码格式化",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "通用代码压缩/美化（JS / CSS / HTML 自动检测）与 SQL 格式化合二为一",
   "author": "QuickDock",
   "icon": "icon.svg",
@@ -108,5 +108,5 @@
     "zh-CN": "通用代码压缩/美化（JS / CSS / HTML 自动检测）与 SQL 格式化合二为一",
     "en-US": "Universal code minify/beautify (JS/CSS/HTML auto-detect) plus SQL formatting in one tool."
   },
-  "changelog": "## v1.0.0\n\n- 通用代码压缩/美化（JS / CSS / HTML 自动检测）与 SQL 格式化合二为一"
+  "changelog": "## v1.0.1\n\n- 图标改用统一 64 网格满幅圆角贴片 + 白色图形，线宽归一\n- 新增浅色主题图标 `icon.light.svg`，随应用主题自动切换\n\n## v1.0.0\n\n- 通用代码压缩/美化（JS / CSS / HTML 自动检测）与 SQL 格式化合二为一"
 }

@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.image-studio",
   "name": "图片工坊",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "仿 Squoosh 实时对比：左右预览对比，质量滑块、缩放(锁定比例/百分比/预设)、旋转/翻转、亮度/对比度/饱和度调整，实时预览文件大小与压缩率",
   "author": "QuickDock",
   "category": "文件工具",
@@ -62,5 +62,5 @@
     "zh-CN": "仿 Squoosh 实时对比：左右预览对比，质量滑块、缩放(锁定比例/百分比/预设)、旋转/翻转、亮度/对比度/饱和度调整，实时预览文件大小与压缩率",
     "en-US": "Squoosh-style live comparison: side-by-side preview, quality slider, resize (lock ratio/percent/presets), rotate/flip, brightness/contrast/saturation, with live size & compression ratio."
   },
-  "changelog": "## v1.0.0\n\n- 仿 Squoosh 实时对比：左右预览对比，质量滑块、缩放(锁定比例/百分比/预设)、旋转/翻转、亮度/对比度/饱和度调整，实时预览文件大小与压缩率"
+  "changelog": "## v1.0.1\n\n- 图标改用统一 64 网格满幅圆角贴片 + 白色图形，线宽归一\n- 新增浅色主题图标 `icon.light.svg`，随应用主题自动切换\n\n## v1.0.0\n\n- 仿 Squoosh 实时对比：左右预览对比，质量滑块、缩放(锁定比例/百分比/预设)、旋转/翻转、亮度/对比度/饱和度调整，实时预览文件大小与压缩率"
 }

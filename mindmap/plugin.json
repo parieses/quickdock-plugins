@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.mindmap",
   "name": "思维导图",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "把 Markdown 大纲 / 缩进列表实时渲染成思维导图，自动分层配色、可点击折叠分支、支持缩放与导出 PNG / SVG",
   "author": "QuickDock",
   "icon": "icon.svg",
@@ -22,7 +22,6 @@
     "runtime": "none"
   },
   "host_apis": [],
-
   "frontend": {
     "enabled": true,
     "entry": "frontend/index.html",
@@ -63,5 +62,5 @@
     "zh-CN": "Markdown 大纲实时转思维导图，可折叠分支并导出 PNG / SVG",
     "en-US": "Turn a Markdown outline into a mind map in real time, collapse branches and export PNG/SVG."
   },
-  "changelog": "## v1.0.0\n\n- 把 Markdown 大纲 / 缩进列表实时渲染成思维导图，自动分层配色、可点击折叠分支、支持缩放与导出 PNG / SVG"
+  "changelog": "## v1.0.1\n\n- 图标改用统一 64 网格满幅圆角贴片 + 白色图形，线宽归一\n- 新增浅色主题图标 `icon.light.svg`，随应用主题自动切换\n\n## v1.0.0\n\n- 把 Markdown 大纲 / 缩进列表实时渲染成思维导图，自动分层配色、可点击折叠分支、支持缩放与导出 PNG / SVG"
 }

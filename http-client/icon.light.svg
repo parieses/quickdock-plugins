@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#148077"/>
+  <g transform="translate(-0.1688,-5.9697) scale(1.0547)">
+    <!-- 箭头：发送 -->
+    <path d="M16 32 L46 32" stroke="#fff" stroke-width="2.8444" stroke-linecap="round"/>
+    <path d="M38 22 L48 32 L38 42" fill="none" stroke="#fff" stroke-width="2.8444" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- 请求小方块（URL 锚点意象） -->
+    <rect x="13" y="22" width="9" height="9" rx="2.5" fill="#fff" fill-opacity="0.85"/>
+    <circle cx="22.5" cy="46" r="4" fill="#fff" fill-opacity="0.9"/>
+  </g>
+</svg>

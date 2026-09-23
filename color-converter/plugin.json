@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.color-converter",
   "name": "颜色工具",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "颜色格式互转（HEX / RGB / HSL）+ 屏幕取色，支持常见英文色名识别",
   "author": "QuickDock",
   "category": "开发者日常",
@@ -84,5 +84,5 @@
     "zh-CN": "颜色格式互转（HEX / RGB / HSL）+ 屏幕取色，支持常见英文色名识别",
     "en-US": "Convert between color formats (HEX/RGB/HSL) and pick colors from the screen, with common English color name recognition."
   },
-  "changelog": "## v1.0.1\n\n- 屏幕取色体验优化：进入取色模式后立即隐藏窗口，并弹出系统通知提示「移动鼠标到目标颜色按 F8 取色，ESC 取消」\n- 支持独立插件窗口取色时一并隐藏，命令面板（Ctrl+K）选区取色无提示的问题已修复"
+  "changelog": "## v1.0.2\n\n- 图标改用统一 64 网格满幅圆角贴片 + 白色图形，线宽归一\n- 新增浅色主题图标 `icon.light.svg`，随应用主题自动切换\n\n## v1.0.1\n\n- 屏幕取色体验优化：进入取色模式后立即隐藏窗口，并弹出系统通知提示「移动鼠标到目标颜色按 F8 取色，ESC 取消」\n- 支持独立插件窗口取色时一并隐藏，命令面板（Ctrl+K）选区取色无提示的问题已修复"
 }

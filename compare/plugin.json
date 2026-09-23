@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.compare",
   "name": "对比工具",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "文件/图片对比（元数据 + 图片预览 + 文本内容差异）与文本块逐行 Diff 合二为一",
   "author": "QuickDock",
   "icon": "icon.svg",
@@ -82,5 +82,5 @@
     "zh-CN": "文件/图片对比（元数据 + 图片预览 + 文本内容差异）与文本块逐行 Diff 合二为一",
     "en-US": "File/image comparison (metadata + preview + text diff) plus line-by-line text diff in one tool."
   },
-  "changelog": "## v1.0.1\n\n- 文件/图片对比（元数据 + 图片预览 + 文本内容差异）与文本块逐行 Diff 合二为一"
+  "changelog": "## v1.0.2\n\n- 图标改用统一 64 网格满幅圆角贴片 + 白色图形，线宽归一\n- 新增浅色主题图标 `icon.light.svg`，随应用主题自动切换\n\n## v1.0.1\n\n- 文件/图片对比（元数据 + 图片预览 + 文本内容差异）与文本块逐行 Diff 合二为一"
 }

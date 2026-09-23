@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>扫雷</title>
+<link rel="stylesheet" href="qd-theme.css">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div class="ms-app">
+  <div class="ms-toolbar">
+    <span class="ms-title">💣 扫雷</span>
+    <label>难度
+      <select id="difficulty">
+        <option value="beginner">初级 (9×9, 10雷)</option>
+        <option value="intermediate">中级 (16×16, 40雷)</option>
+        <option value="expert">高级 (16×30, 99雷)</option>
+        <option value="custom">自定义</option>
+      </select>
+    </label>
+    <div class="ms-cust" id="customBox">
+      <label>行 <input id="inRows" type="number" min="5" max="30" value="9"></label>
+      <label>列 <input id="inCols" type="number" min="5" max="40" value="9"></label>
+      <label>雷 <input id="inMines" type="number" min="1" max="800" value="10"></label>
+    </div>
+    <span class="ms-best" id="best">最佳 —</span>
+  </div>
+
+  <div class="ms-frame">
+    <div class="ms-hud">
+      <div class="ms-led" id="mineCounter">010</div>
+      <button class="ms-smiley" id="smiley" title="重新开始" type="button">🙂</button>
+      <div class="ms-led" id="timeCounter">000</div>
+    </div>
+    <div class="ms-board-well">
+      <div class="ms-board" id="board"></div>
+    </div>
+  </div>
+
+  <div class="ms-status" id="status">左键挖开 · 右键插旗 · 数字上点击快速展开</div>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

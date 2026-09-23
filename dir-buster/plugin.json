@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.dir-buster",
   "name": "目录探测",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "对指定目标 URL 用内置常见路径字典进行轻量探测（自用）：并发受限、可配扩展名，采用异步会话模型实时返回命中的非 404 路径。仅探测你授权的目标，内置字典、不递归",
   "author": "QuickDock",
   "category": "网络工具",
@@ -61,5 +61,5 @@
     "zh-CN": "对指定目标用内置字典轻量探测暴露的路径（自用，仅你授权的目标）",
     "en-US": "Lightweight path discovery against a target you authorize, using a built-in wordlist (self-use only)"
   },
-  "changelog": "## v1.0.0\n\n- 对指定目标 URL 用内置常见路径字典进行轻量探测（自用）：并发受限、可配扩展名，采用异步会话模型实时返回命中的非 404 路径。仅探测你授权的目标，内置字典、不递归"
+  "changelog": "## v1.0.1\n\n- 图标改用统一 64 网格满幅圆角贴片 + 白色图形，线宽归一\n- 新增浅色主题图标 `icon.light.svg`，随应用主题自动切换\n\n## v1.0.0\n\n- 对指定目标 URL 用内置常见路径字典进行轻量探测（自用）：并发受限、可配扩展名，采用异步会话模型实时返回命中的非 404 路径。仅探测你授权的目标，内置字典、不递归"
 }

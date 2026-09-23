@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.jwt-decoder",
   "name": "JWT 解码器",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "解码 JWT Token，查看 Header/Payload，验证过期时间",
   "author": "QuickDock",
   "icon": "icon.svg",
@@ -60,5 +60,5 @@
     "zh-CN": "解码 JWT Token，查看 Header/Payload，验证过期时间",
     "en-US": "Decode JWT tokens, inspect Header/Payload, and verify expiration."
   },
-  "changelog": "## v1.0.0\n\n- 解码 JWT Token，查看 Header/Payload，验证过期时间"
+  "changelog": "## v1.0.1\n\n- 图标改用统一 64 网格满幅圆角贴片 + 白色图形，线宽归一\n- 新增浅色主题图标 `icon.light.svg`，随应用主题自动切换\n\n## v1.0.0\n\n- 解码 JWT Token，查看 Header/Payload，验证过期时间"
 }

@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.wifi-manager",
   "name": "WiFi 管理器",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "查看网络列表、WiFi 密码、连接状态",
   "author": "QuickDock",
   "category": "效率工具",
@@ -126,5 +126,5 @@
   "platforms": [
     "windows"
   ],
-  "changelog": "## v1.0.0\n\n- 查看网络列表、WiFi 密码、连接状态"
+  "changelog": "## v1.0.1\n\n- 修复图标背景色值写成 `##2a2a2a`（非法）导致贴片渲染成纯黑的问题\n- 图标按新规范重做：统一 64 网格满幅圆角贴片 + 白色图形，线宽归一\n- 新增浅色主题图标 `icon.light.svg`，随应用主题自动切换\n\n## v1.0.0\n\n- 查看网络列表、WiFi 密码、连接状态"
 }

@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.qrcode",
   "name": "二维码工具",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "文本/URL 生成二维码，支持保存 PNG；从图片识别二维码内容",
   "author": "QuickDock",
   "category": "开发者日常",
@@ -15,7 +15,6 @@
     "runtime": "none"
   },
   "host_apis": [],
-
   "frontend": {
     "enabled": true,
     "entry": "frontend/index.html",
@@ -56,5 +55,5 @@
     "zh-CN": "文本/URL 生成二维码，支持保存 PNG；从图片识别二维码内容",
     "en-US": "Generate QR codes from text/URL (save as PNG); decode QR codes from images."
   },
-  "changelog": "## v1.0.0\n\n- 文本/URL 生成二维码，支持保存 PNG；从图片识别二维码内容"
+  "changelog": "## v1.0.1\n\n- 图标改用统一 64 网格满幅圆角贴片 + 白色图形，线宽归一\n- 新增浅色主题图标 `icon.light.svg`，随应用主题自动切换\n\n## v1.0.0\n\n- 文本/URL 生成二维码，支持保存 PNG；从图片识别二维码内容"
 }

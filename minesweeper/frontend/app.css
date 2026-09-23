@@ -1,0 +1,218 @@
+/* ============================================================
+ *  扫雷 — 复刻 Windows 原生扫雷的经典配色与立体控件
+ *  棋盘使用固定经典配色（与宿主主题无关，还原原生观感）；
+ *  顶部工具栏使用 qd-theme.css 的设计令牌，融入 QuickDock。
+ * ========================================================== */
+
+:root {
+  --ms-silver: #c0c0c0;
+  --ms-light: #ffffff;
+  --ms-light2: #dfdfdf;
+  --ms-dark: #808080;
+  --ms-darker: #505050;
+  --ms-cell: 24px;
+}
+
+html, body { height: 100%; }
+
+.ms-app {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  height: 100vh;
+  overflow: auto;
+}
+
+/* ---------- 顶部工具栏（跟随宿主主题） ---------- */
+.ms-toolbar {
+  width: 100%;
+  max-width: 760px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.ms-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.ms-toolbar label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.ms-toolbar select,
+.ms-toolbar input {
+  height: 30px;
+  padding: 0 8px;
+  font-size: 12px;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  outline: none;
+}
+.ms-toolbar input[type="number"] { width: 60px; }
+.ms-toolbar select:focus,
+.ms-toolbar input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+.ms-best {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* 自定义参数区 */
+.ms-cust { display: none; gap: 10px; align-items: center; }
+.ms-cust.show { display: inline-flex; }
+
+/* ---------- 游戏框体（经典灰） ---------- */
+.ms-frame {
+  width: fit-content;
+  padding: 7px;
+  background: var(--ms-silver);
+  border-top: 3px solid var(--ms-light);
+  border-left: 3px solid var(--ms-light);
+  border-right: 3px solid var(--ms-dark);
+  border-bottom: 3px solid var(--ms-dark);
+}
+
+/* 顶部 HUD：雷数 / 笑脸 / 计时 */
+.ms-hud {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 5px 6px;
+  margin-bottom: 7px;
+  background: var(--ms-silver);
+  border-top: 3px solid var(--ms-dark);
+  border-left: 3px solid var(--ms-dark);
+  border-right: 3px solid var(--ms-light);
+  border-bottom: 3px solid var(--ms-light);
+}
+
+/* LED 数码管计数 */
+.ms-led {
+  min-width: 60px;
+  padding: 2px 6px 3px;
+  background: #000;
+  color: #ff2b2b;
+  font-family: 'Courier New', Consolas, monospace;
+  font-weight: 700;
+  font-size: 26px;
+  line-height: 1;
+  letter-spacing: 3px;
+  text-align: center;
+  text-shadow: 0 0 5px rgba(255, 43, 43, 0.75);
+  border-top: 2px solid var(--ms-dark);
+  border-left: 2px solid var(--ms-dark);
+  border-right: 2px solid var(--ms-light);
+  border-bottom: 2px solid var(--ms-light);
+  user-select: none;
+}
+
+/* 笑脸按钮 */
+.ms-smiley {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-size: 24px;
+  line-height: 1;
+  background: var(--ms-silver);
+  border-top: 3px solid var(--ms-light);
+  border-left: 3px solid var(--ms-light);
+  border-right: 3px solid var(--ms-dark);
+  border-bottom: 3px solid var(--ms-dark);
+  border-radius: 2px;
+  cursor: pointer;
+  user-select: none;
+}
+.ms-smiley:active {
+  border-top: 3px solid var(--ms-dark);
+  border-left: 3px solid var(--ms-dark);
+  border-right: 3px solid var(--ms-light);
+  border-bottom: 3px solid var(--ms-light);
+}
+
+/* 棋盘井 */
+.ms-board-well {
+  padding: 3px;
+  background: var(--ms-silver);
+  border-top: 3px solid var(--ms-dark);
+  border-left: 3px solid var(--ms-dark);
+  border-right: 3px solid var(--ms-light);
+  border-bottom: 3px solid var(--ms-light);
+}
+
+.ms-board {
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 9), var(--ms-cell));
+  grid-auto-rows: var(--ms-cell);
+  user-select: none;
+}
+
+/* ---------- 格子 ---------- */
+.cell {
+  width: var(--ms-cell);
+  height: var(--ms-cell);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ms-silver);
+  font-family: 'Courier New', Consolas, monospace;
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 1;
+  cursor: default;
+  overflow: hidden;
+}
+.cell.hidden {
+  box-shadow: inset 2px 2px 0 var(--ms-light), inset -2px -2px 0 var(--ms-dark);
+}
+.cell.revealed {
+  box-shadow: inset 0 0 0 1px var(--ms-dark);
+}
+.cell.mine  { background: #ff2b2b; }
+.cell.exploded { background: #ff2b2b; }
+
+/* 经典数字配色 */
+.cell.n1 { color: #0000ff; }
+.cell.n2 { color: #008000; }
+.cell.n3 { color: #ff0000; }
+.cell.n4 { color: #000080; }
+.cell.n5 { color: #800000; }
+.cell.n6 { color: #008080; }
+.cell.n7 { color: #000000; }
+.cell.n8 { color: #808080; }
+
+/* ---------- 底部状态 ---------- */
+.ms-status {
+  width: 100%;
+  max-width: 760px;
+  min-height: 16px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.ms-status.win  { color: var(--success); }
+.ms-status.lose { color: var(--danger); }

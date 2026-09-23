@@ -5,7 +5,7 @@
     "zh-CN": "PDF 工具箱",
     "en-US": "PDF Toolkit"
   },
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "PDF 处理工具箱：合并/拆分/压缩/加水印/提取图片，无需安装 Adobe Acrobat",
   "description_i18n": {
     "zh-CN": "PDF 处理工具箱：合并/拆分/压缩/加水印/提取图片，无需安装 Adobe Acrobat",
@@ -63,5 +63,5 @@
       ]
     }
   ],
-  "changelog": "## v1.0.0\n\n- PDF 处理工具箱：合并/拆分/压缩/加水印/提取图片，无需安装 Adobe Acrobat"
+  "changelog": "## v1.0.1\n\n- 图标改用统一 64 网格满幅圆角贴片 + 白色图形，线宽归一\n- 新增浅色主题图标 `icon.light.svg`，随应用主题自动切换\n\n## v1.0.0\n\n- PDF 处理工具箱：合并/拆分/压缩/加水印/提取图片，无需安装 Adobe Acrobat"
 }

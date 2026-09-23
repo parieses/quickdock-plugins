@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.junk-cleaner",
   "name": "Windows 垃圾清理",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "扫描并清理系统垃圾文件：临时文件/更新缓存/缩略图缓存/预读取/崩溃转储等，安全只读扫描+确认后删除",
   "author": "QuickDock",
   "icon": "icon.svg",
@@ -59,5 +59,5 @@
     "zh-CN": "扫描并清理系统垃圾文件：临时文件/更新缓存/缩略图缓存/预读取/崩溃转储等，安全只读扫描+确认后删除",
     "en-US": "Scan and clean system junk: temp files, update cache, thumbnail cache, prefetch, crash dumps. Read-only scan then confirm to delete."
   },
-  "changelog": "## v1.0.0\n\n- 扫描并清理系统垃圾文件：临时文件/更新缓存/缩略图缓存/预读取/崩溃转储等，安全只读扫描+确认后删除"
+  "changelog": "## v1.0.1\n\n- 图标改用统一 64 网格满幅圆角贴片 + 白色图形，线宽归一\n- 新增浅色主题图标 `icon.light.svg`，随应用主题自动切换\n\n## v1.0.0\n\n- 扫描并清理系统垃圾文件：临时文件/更新缓存/缩略图缓存/预读取/崩溃转储等，安全只读扫描+确认后删除"
 }

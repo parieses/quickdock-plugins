@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.hash-calc",
   "name": "文件哈希",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "计算文件的 MD5/SHA1/SHA256/SHA512 摘要，结果一键复制",
   "author": "QuickDock",
   "category": "开发者日常",
@@ -58,5 +58,5 @@
     "zh-CN": "计算文件的 MD5/SHA1/SHA256/SHA512 摘要，结果一键复制",
     "en-US": "Compute MD5/SHA1/SHA256/SHA512 digest of a file, with one-click copy."
   },
-  "changelog": "## v1.0.1\n\n- 计算文件的 MD5/SHA1/SHA256/SHA512 摘要，结果一键复制"
+  "changelog": "## v1.0.2\n\n- 图标按新规范重做：统一 64 网格满幅圆角贴片 + 白色图形，线宽归一\n- 新增浅色主题图标 `icon.light.svg`，随应用主题自动切换\n\n## v1.0.1\n\n- 计算文件的 MD5/SHA1/SHA256/SHA512 摘要，结果一键复制"
 }

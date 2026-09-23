@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.hosts-manager",
   "name": "Hosts 管理器",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "管理系统 hosts 文件条目，一键启用/禁用/新增",
   "author": "QuickDock",
   "category": "效率工具",
@@ -71,5 +71,5 @@
   "platforms": [
     "windows"
   ],
-  "changelog": "## v1.0.0\n\n- 管理系统 hosts 文件条目，一键启用/禁用/新增"
+  "changelog": "## v1.0.1\n\n- 图标改用统一 64 网格满幅圆角贴片 + 白色图形，线宽归一\n- 新增浅色主题图标 `icon.light.svg`，随应用主题自动切换\n\n## v1.0.0\n\n- 管理系统 hosts 文件条目，一键启用/禁用/新增"
 }

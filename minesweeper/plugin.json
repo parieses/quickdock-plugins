@@ -1,0 +1,60 @@
+{
+  "id": "io.github.parieses.minesweeper",
+  "name": "扫雷",
+  "version": "1.0.1",
+  "description": "复刻 Windows 原生扫雷：经典灰色立体棋盘、笑脸重置、LED 雷数/计时器，支持初级/中级/高级与自定义",
+  "author": "QuickDock",
+  "icon": "icon.svg",
+  "category": "游戏娱乐",
+  "platforms": [
+    "windows",
+    "darwin",
+    "linux"
+  ],
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "backend": {
+    "runtime": "none"
+  },
+  "host_apis": [],
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 820,
+    "height": 700
+  },
+  "commands": [
+    {
+      "id": "minesweeper",
+      "title": "扫雷",
+      "keywords": [
+        "minesweeper",
+        "扫雷",
+        "地雷",
+        "mine",
+        "游戏",
+        "game"
+      ],
+      "aliases": [
+        "扫雷游戏",
+        "windows 扫雷",
+        "踩地雷"
+      ],
+      "title_i18n": {
+        "zh-CN": "扫雷",
+        "en-US": "Minesweeper"
+      }
+    }
+  ],
+  "name_i18n": {
+    "zh-CN": "扫雷",
+    "en-US": "Minesweeper"
+  },
+  "description_i18n": {
+    "zh-CN": "复刻 Windows 原生扫雷：经典灰色立体棋盘、笑脸重置、LED 雷数/计时器，支持初级/中级/高级与自定义",
+    "en-US": "A faithful Windows Minesweeper clone: classic beveled board, smiley reset, LED mine/timer, beginner/intermediate/expert and custom modes."
+  },
+  "changelog": "## v1.0.1\n\n- 图标改用统一 64 网格满幅圆角贴片 + 白色图形，线宽归一\n- 新增浅色主题图标 `icon.light.svg`，随应用主题自动切换\n\n## v1.0.0\n\n- 复刻 Windows 原生扫雷：立体棋盘、笑脸重置、LED 雷数/计时器\n- 首次点击必安全且必展开一片空地\n- 左键挖开 / 右键插旗 / 数字上点击快速展开（和棋）\n- 初级(9×9,10)、中级(16×16,40)、高级(16×30,99) 与自定义\n- 按难度记录最佳通关时间"
+}

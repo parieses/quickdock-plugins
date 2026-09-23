@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.code-card",
   "name": "代码卡片",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "把代码渲染成高颜值分享卡片：语法高亮、主题背景、窗口装饰，一键导出 PNG",
   "author": "QuickDock",
   "icon": "icon.svg",
@@ -22,7 +22,6 @@
     "runtime": "none"
   },
   "host_apis": [],
-
   "frontend": {
     "enabled": true,
     "entry": "frontend/index.html",
@@ -63,5 +62,5 @@
     "zh-CN": "把代码渲染成高颜值分享卡片：语法高亮、主题背景、窗口装饰，一键导出 PNG",
     "en-US": "Render code into beautiful shareable cards with syntax highlighting, themed backgrounds and window chrome. Export to PNG."
   },
-  "changelog": "## v1.0.0\n\n- 把代码渲染成高颜值分享卡片：语法高亮、主题背景、窗口装饰，一键导出 PNG"
+  "changelog": "## v1.0.1\n\n- 图标改用统一 64 网格满幅圆角贴片 + 白色图形，线宽归一\n- 新增浅色主题图标 `icon.light.svg`，随应用主题自动切换\n\n## v1.0.0\n\n- 把代码渲染成高颜值分享卡片：语法高亮、主题背景、窗口装饰，一键导出 PNG"
 }

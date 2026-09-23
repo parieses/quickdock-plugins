@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.speed-test",
   "name": "网速测试",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "测量网络下载速率与延迟：流式下载测速（支持自定义测速节点 URL），实时显示速率与进度，采用异步会话模型规避宿主执行超时",
   "author": "QuickDock",
   "category": "网络工具",
@@ -61,5 +61,5 @@
     "zh-CN": "测量网络下载速率与延迟：流式下载测速（支持自定义测速节点 URL），实时显示速率与进度",
     "en-US": "Measure download throughput and latency via streaming download, with live speed and progress (custom node URL supported)"
   },
-  "changelog": "## v1.0.0\n\n- 测量网络下载速率与延迟：流式下载测速（支持自定义测速节点 URL），实时显示速率与进度，采用异步会话模型规避宿主执行超时"
+  "changelog": "## v1.0.1\n\n- 图标改用统一 64 网格满幅圆角贴片 + 白色图形，线宽归一\n- 新增浅色主题图标 `icon.light.svg`，随应用主题自动切换\n\n## v1.0.0\n\n- 测量网络下载速率与延迟：流式下载测速（支持自定义测速节点 URL），实时显示速率与进度，采用异步会话模型规避宿主执行超时"
 }

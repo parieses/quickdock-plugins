@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.cron-explainer",
   "name": "Crontab 解释器",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "解析 cron 表达式（含义/下次执行/小时分布），并可可视化生成表达式、实时预览下次执行时间",
   "author": "QuickDock",
   "icon": "icon.svg",
@@ -85,5 +85,5 @@
     "zh-CN": "解析 cron 表达式（含义/下次执行/小时分布），并可可视化生成表达式、实时预览下次执行时间",
     "en-US": "Parse cron expressions (meaning / next runs / hour distribution), or build one visually with a live preview of upcoming runs."
   },
-  "changelog": "## v1.0.1\n\n- 解析 cron 表达式（含义/下次执行/小时分布），并可可视化生成表达式、实时预览下次执行时间"
+  "changelog": "## v1.0.2\n\n- 图标改用统一 64 网格满幅圆角贴片 + 白色图形，线宽归一\n- 新增浅色主题图标 `icon.light.svg`，随应用主题自动切换\n\n## v1.0.1\n\n- 解析 cron 表达式（含义/下次执行/小时分布），并可可视化生成表达式、实时预览下次执行时间"
 }
