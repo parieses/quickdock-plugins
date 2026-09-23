@@ -1,15 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="14" fill="#1d66ff"/>
-  <g transform="translate(6.2325,6.2325) scale(0.8052)">
-    <rect x="9" y="16" width="46" height="32" rx="6" fill="none" stroke="#fff" stroke-width="3.7256"/>
-    <line x1="9" y1="27" x2="55" y2="27" stroke="#fff" stroke-width="3.7256"/>
-    <g fill="#fff">
-    <rect x="14" y="31" width="5" height="5" rx="1"/>
-    <rect x="22" y="31" width="5" height="5" rx="1"/>
-    <rect x="30" y="31" width="5" height="5" rx="1"/>
-    <rect x="38" y="31" width="5" height="5" rx="1"/>
-    <rect x="46" y="31" width="4" height="5" rx="1"/>
-    <rect x="14" y="40" width="36" height="5" rx="1"/>
+  <defs>
+    <linearGradient id="pg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1d66ff"/>
+      <stop offset="1" stop-color="#5134dd"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#pg)"/>
+  <g transform="translate(8.383,8.1862) scale(1.9681)">
+    <g stroke="#fff" fill="none" stroke-width="1.5243" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6.4 3.4h4.8"/>
+    <path d="M6.4 6.4h8.6" opacity="0.55"/>
+    <rect x="2.6" y="9.4" width="18.8" height="11.4" rx="2.8"/>
+    <path d="M6.6 13.4h10.8" opacity="0.55"/>
+    <path d="M6.6 17.2h6.6" opacity="0.55"/>
     </g>
   </g>
 </svg>

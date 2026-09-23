@@ -1,13 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="14" fill="#916aff"/>
-  <g transform="translate(8.7394,7.6406) scale(0.9692)">
-    <g fill="none">
-    <circle cx="24" cy="24" r="18" fill="#fff" opacity="0.3"/>
-    <circle cx="24" cy="24" r="18" stroke="#fff" stroke-width="3.0954"/>
-    <circle cx="24" cy="18" r="3" fill="#fff" opacity="0.55"/>
-    <line x1="24" y1="21" x2="24" y2="34" stroke="#fff" stroke-width="2.5794"/>
-    <line x1="18" y1="28" x2="30" y2="28" stroke="#fff" stroke-width="2.5794"/>
-    <text x="24" y="43" text-anchor="middle" font-size="5" fill="#fff" font-family="monospace">*/5 * * * *</text>
+  <defs>
+    <linearGradient id="pg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#916aff"/>
+      <stop offset="1" stop-color="#9740cd"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#pg)"/>
+  <g transform="translate(10.0198,10.0198) scale(1.8317)">
+    <g stroke="#fff" fill="none" stroke-width="1.6378" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="7.6"/>
+    <path d="M12 6.4V12l3.4 2.2"/>
+    <path d="M12 1.9v1.9M12 20.2v1.9M1.9 12h1.9M20.2 12h1.9" opacity="0.55"/>
     </g>
   </g>
 </svg>

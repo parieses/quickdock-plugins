@@ -1,11 +1,20 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="14" fill="#ba560e"/>
-  <g transform="translate(-4.9675,-4.9675) scale(1.1552)">
-    <circle cx="20" cy="20" r="4" fill="#fff"/>
-    <circle cx="44" cy="20" r="4" fill="#fff"/>
-    <circle cx="20" cy="44" r="4" fill="#fff"/>
-    <circle cx="44" cy="44" r="4" fill="#fff"/>
-    <circle cx="32" cy="32" r="5" fill="none" stroke="#fff" stroke-width="2.5969"/>
-    <path d="M23 23l5 5M41 23l-5 5M23 41l5-5M41 41l-5-5" fill="none" stroke="#fff" stroke-width="2.1641" stroke-linecap="round"/>
+  <defs>
+    <linearGradient id="pg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ba560e"/>
+      <stop offset="1" stop-color="#855108"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#pg)"/>
+  <g transform="translate(10.0198,8.7376) scale(1.8317)">
+    <g stroke="#fff" fill="none" stroke-width="1.6378" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="11.4" r="3.6"/>
+    <circle cx="4.2" cy="4.6" r="2"/>
+    <circle cx="19.8" cy="4.6" r="2"/>
+    <circle cx="12" cy="20.8" r="2"/>
+    <path d="M9.7 8.9L6.2 6.4"/>
+    <path d="M14.3 8.9l3.5-2.5"/>
+    <path d="M12 15v3.9"/>
+    </g>
   </g>
 </svg>

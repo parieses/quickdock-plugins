@@ -1,12 +1,14 @@
 {
   "id": "io.github.parieses.crypto-toolbox",
   "name": "密码与加密工具箱",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "随机密码 / 口令生成（字符集可配、熵值与强度评估）＋ AES-GCM / AES-CBC 加解密 ＋ RSA-OAEP 密钥对与加解密 ＋ PBKDF2 密钥派生，全部在本机完成，不联网、不上传",
   "author": "QuickDock",
   "icon": "icon.svg",
   "category": "安全工具",
-  "platforms": ["windows"],
+  "platforms": [
+    "windows"
+  ],
   "capabilities": [
     "command",
     "frontend"
@@ -88,5 +90,5 @@
     "zh-CN": "随机密码/口令生成 + AES/RSA 加解密 + PBKDF2 派生，全部本机运算",
     "en-US": "Random password & passphrase generation, AES/RSA encryption, PBKDF2 derivation. All local, nothing leaves your machine."
   },
-  "changelog": "## v1.0.1\n\n- 图标改用统一 64 网格满幅圆角贴片 + 白色图形，线宽归一\n- 新增浅色主题图标 `icon.light.svg`，随应用主题自动切换\n\n## v1.0.0\n\n- 随机密码 / 口令生成（字符集可配、熵值与强度评估）＋ AES-GCM / AES-CBC 加解密 ＋ RSA-OAEP 密钥对与加解密 ＋ PBKDF2 密钥派生，全部在本机完成，不联网、不上传"
+  "changelog": "## v1.0.2\n\n- 50 个插件的图形全部按各自功能重新绘制（原先是从老仓库图形迁移过来的通用件）\n- 统一的部分：64 网格 / 安全区 / 最粗一笔 3px / 同色系渐变底色 / 深浅两档主题\n- 不同的部分：字形本体，逐个对应插件功能（如 mail-check 为信封+对勾、jwt-decoder 为三段的凭证、unit-converter 为标尺+双向箭头）\n- 保留状态语义的强调色：绿 = 可用 / 生效 / 通过，红 = 删除，黄 = 告警\n- 图形源改为 glyphs.py 单点维护，改了重跑 glyphs.py + gen_icons.py --gen 即可\n\n\n## v1.0.1\n\n- 图标改用统一 64 网格满幅圆角贴片 + 白色图形，线宽归一\n- 新增浅色主题图标 `icon.light.svg`，随应用主题自动切换\n\n## v1.0.0\n\n- 随机密码 / 口令生成（字符集可配、熵值与强度评估）＋ AES-GCM / AES-CBC 加解密 ＋ RSA-OAEP 密钥对与加解密 ＋ PBKDF2 密钥派生，全部在本机完成，不联网、不上传\n"
 }
