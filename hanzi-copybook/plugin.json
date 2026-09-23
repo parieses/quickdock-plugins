@@ -6,11 +6,7 @@
   "author": "QuickDock",
   "icon": "icon.svg",
   "category": "教育学习",
-  "platforms": [
-    "windows",
-    "darwin",
-    "linux"
-  ],
+  "platforms": ["windows"],
   "capabilities": [
     "command",
     "frontend"

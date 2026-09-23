@@ -6,11 +6,7 @@
   "author": "QuickDock",
   "icon": "icon.svg",
   "category": "游戏娱乐",
-  "platforms": [
-    "windows",
-    "darwin",
-    "linux"
-  ],
+  "platforms": ["windows"],
   "capabilities": [
     "command",
     "frontend"

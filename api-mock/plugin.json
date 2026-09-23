@@ -5,11 +5,7 @@
   "description": "本地 HTTP 接口 Mock 服务：可视化配置路由规则（方法/路径/状态码/响应体/延迟），一键启动本地服务，实时查看请求日志，联调前端与第三方对接无需真实后端",
   "author": "QuickDock",
   "category": "开发者日常",
-  "platforms": [
-    "windows",
-    "darwin",
-    "linux"
-  ],
+  "platforms": ["windows"],
   "icon": "icon.svg",
   "backend": {
     "runtime": "native",

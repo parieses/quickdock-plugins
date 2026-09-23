@@ -6,11 +6,7 @@
   "author": "QuickDock",
   "icon": "icon.svg",
   "category": "系统工具",
-  "platforms": [
-    "windows",
-    "darwin",
-    "linux"
-  ],
+  "platforms": ["windows"],
   "backend": {
     "runtime": "native",
     "entry": "disk-analyzer",

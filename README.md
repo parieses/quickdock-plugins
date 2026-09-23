@@ -333,6 +333,8 @@ JS 侧注册方法（参考主仓库内置插件 json-toolbox 等的实现方式
 4. 应用内「在线市场」与插件中心主页会随之更新（GitHub Pages 有缓存，通常几十秒到几分钟内生效）。
 
 > 平台说明：`build.py` 默认按各插件 `plugin.json` 的 `platforms` 字段打包，`gen_site.py` 据此生成对应平台的下载项（`downloads` 与下载按钮）。`platforms` 声明了 darwin/linux 的插件必须有对应的可交叉编译源码（否则 `go build` 会在 CI 失败）——因此**多平台声明的 native 插件必须真正能跨平台编译**；纯 Windows 功能（如依赖 Windows 注册表/专属二进制的插件）请把 `platforms` 收敛为 `["windows"]`。临时只打某平台用 `python build.py <dir> --platform <plat>`。
+>
+> **当前发布策略（2026-09-23 起）：仅发布 Windows 安装包**。仓库内全部插件的 `platforms` 均已收敛为 `["windows"]`，故 CI 不再产出 darwin/linux 资产，主页与市场索引也只显示 Windows 下载项（`--platform darwin` 会被 `build.py` 拒绝：不在声明内）。恢复某插件多平台：把该插件 `platforms` 改回并推送即可，无需改动 `build.py` / `gen_site.py`。
 
 ## 开发约定
 

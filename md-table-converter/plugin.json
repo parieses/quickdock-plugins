@@ -6,11 +6,7 @@
   "author": "QuickDock",
   "icon": "icon.svg",
   "category": "办公效率",
-  "platforms": [
-    "windows",
-    "darwin",
-    "linux"
-  ],
+  "platforms": ["windows"],
   "capabilities": [
     "frontend"
   ],

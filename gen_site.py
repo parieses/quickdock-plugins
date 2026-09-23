@@ -44,6 +44,16 @@ def plugin_platforms(mf):
         return [k for k, _ in ALL_PLATFORMS if k in declared]
     return FALLBACK_PLATFORM_KEYS
 
+
+def release_platforms(plugins):
+    """本次实际会发布的平台集合（各插件 platforms 的并集，顺序稳定为 ALL_PLATFORMS 顺序）。
+    用于让首页文案与真实发布范围保持一致（只有 Windows 时不再自称"多平台就绪"）。"""
+    seen = set()
+    for p in plugins:
+        seen.update(plugin_platforms(p["manifest"]))
+    return [k for k, _ in ALL_PLATFORMS if k in seen]
+
+
 # 分类 emoji（按子串匹配，未命中回退 🧩）
 CATEGORY_ICONS = [("网络", "🌐"), ("系统", "🗂️"), ("办公", "📄"), ("效率", "⚡"), ("开发", "🛠️")]
 
@@ -197,18 +207,20 @@ TEMPLATE = r"""<!DOCTYPE html>
   .pid { display:block; margin-top:3px; font:11px/1.4 ui-monospace, Consolas, monospace; color:var(--faint);
     word-break:break-all; user-select:all; }
   .desc { color:var(--muted); font-size:14px; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
-  .card-foot { margin-top:auto; display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  /* 页脚：分类标签 + 平台下载按钮。多平台（≥2 个按钮 + 复制）时单行放不下，
+     必须允许换行，否则 .acts 会超出卡片内容宽、被 .card 的 overflow:hidden 裁掉。 */
+  .card-foot { margin-top:auto; display:flex; align-items:center; flex-wrap:wrap; gap:10px 8px; }
   .cat-chip { font-size:12px; font-weight:500; color:var(--muted); background:rgba(148,163,190,.11);
     padding:4px 11px; border-radius:999px; white-space:nowrap; }
-  .acts { display:flex; gap:8px; }
+  .acts { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:8px; margin-left:auto; min-width:0; }
   .copy { display:inline-flex; align-items:center; justify-content:center; width:37px; height:37px; border-radius:11px;
     border:1px solid var(--border); background:transparent; color:var(--muted); cursor:pointer; transition:.15s; }
   .copy:hover { color:var(--accent); border-color:var(--accent); }
   .copy.done { color:var(--good); border-color:var(--good); }
   .copy svg { width:15px; height:15px; }
-  .dl { display:inline-flex; align-items:center; gap:7px; padding:9px 18px; border-radius:12px; text-decoration:none;
-    background:var(--grad); color:#fff; font-size:13.5px; font-weight:600; letter-spacing:.01em;
-    box-shadow:0 6px 18px -4px rgba(99,102,241,.45); transition:.16s; }
+  .dl { display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border-radius:12px; text-decoration:none;
+    background:var(--grad); color:#fff; font-size:13px; font-weight:600; letter-spacing:.01em; white-space:nowrap;
+    flex:none; box-shadow:0 6px 18px -4px rgba(99,102,241,.45); transition:.16s; }
   .dl:hover { filter:brightness(1.12); box-shadow:0 8px 24px -4px rgba(99,102,241,.55); }
   .dl svg { width:14px; height:14px; transition:transform .18s; }
   .dl:hover svg { transform:translateY(2px); }
@@ -270,7 +282,7 @@ TEMPLATE = r"""<!DOCTYPE html>
     <div class="stats">
       <span><b>__PLUGIN_COUNT__</b> 个插件</span><span class="sep"></span>
       <span><b>__CAT_COUNT__</b> 个分类</span><span class="sep"></span>
-      <span>多平台就绪</span><span class="sep"></span>
+      <span>__PLATFORM_LABEL__ 安装包</span><span class="sep"></span>
       <span class="live"><span class="pulse"></span>应用内一键更新</span>
     </div>
   </section>
@@ -303,7 +315,7 @@ __CARDS__
   <section class="howto">
     <h2>📦 如何安装</h2>
     <ol>
-      <li>点击卡片上对应你系统的平台按钮（Windows / macOS / Linux）下载 zip 安装包；</li>
+      <li>点击卡片上的 <b>__PLATFORM_LABEL__</b> 按钮下载 zip 安装包；</li>
       <li>打开 QuickDock → <b>插件管理</b> → <b>从文件安装</b>，选择下载的 zip（也可以直接把 zip 拖进插件管理页）；</li>
       <li>完成！之后可在应用内「插件市场」一键升级。</li>
     </ol>
@@ -442,11 +454,13 @@ CARD_TEMPLATE = """    <article class="card" data-cat="@CAT@" data-hay="@HAY@" s
 DOWNLOAD_TEMPLATE = ('<a class="dl" href="@HREF@">'
                      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" '
                      'stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m6 11 6 6 6-6"/>'
-                     '<path d="M5 21h14"/></svg>@LABEL@</a>'
-                     '<button class="copy" data-link="@HREF@" onclick="copyLink(this)" title="复制下载链接" aria-label="复制下载链接">'
-                     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" '
-                     'stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>'
-                     '</button>')
+                     '<path d="M5 21h14"/></svg>@LABEL@</a>')
+
+# 复制按钮每张卡片只有一个（多平台时若按平台各放一个，会出现多个重复复制图标并挤爆页脚）
+COPY_TEMPLATE = ('<button class="copy" data-link="@HREF@" onclick="copyLink(this)" title="复制下载链接" aria-label="复制下载链接">'
+                 '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" '
+                 'stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>'
+                 '</button>')
 
 
 def collect_plugins(repo_root):
@@ -489,10 +503,15 @@ def build_cards(plugins):
         icon_url = f"{RAW_BASE}/{urllib.parse.quote(pdir)}/{urllib.parse.quote(icon)}" if icon else ICON_FALLBACK
 
         downloads = []
-        for plat in plugin_platforms(mf):
+        plats = plugin_platforms(mf)
+        for plat in plats:
             label = next((l for k, l in ALL_PLATFORMS if k == plat), plat)
             href = f"{REL_BASE}/{safe_id}-{plat}.zip"
             downloads.append(DOWNLOAD_TEMPLATE.replace("@HREF@", href).replace("@LABEL@", label))
+        # 复制按钮只跟主平台（首个）直链走，避免多平台时重复出现
+        if plats:
+            downloads.append(COPY_TEMPLATE.replace(
+                "@HREF@", f"{REL_BASE}/{safe_id}-{plats[0]}.zip"))
         downloads_html = "".join(downloads)
 
         hay = h(f"{name} {mf['id']} {desc}".lower(), quote=True)
@@ -517,6 +536,8 @@ def build_cards(plugins):
     html = html.replace("__REL_PAGE__", REL_PAGE)
     html = html.replace("__PLUGIN_COUNT__", str(len(plugins)))
     html = html.replace("__CAT_COUNT__", str(len(cats)))
+    html = html.replace("__PLATFORM_LABEL__",
+                        " / ".join(l for k, l in ALL_PLATFORMS if k in release_platforms(plugins)))
     html = html.replace("__CHIPS__", chip_html)
     html = html.replace("__CARDS__", "\n".join(cards))
     return html

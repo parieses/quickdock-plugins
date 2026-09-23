@@ -6,11 +6,7 @@
   "author": "QuickDock",
   "icon": "icon.svg",
   "category": "开发工具",
-  "platforms": [
-    "windows",
-    "darwin",
-    "linux"
-  ],
+  "platforms": ["windows"],
   "capabilities": [
     "frontend"
   ],

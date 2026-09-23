@@ -5,11 +5,7 @@
   "description": "实时渲染 Markdown（GFM：标题/列表/表格/任务列表/引用）+ 代码高亮，一键复制为 HTML",
   "author": "QuickDock",
   "category": "开发者日常",
-  "platforms": [
-    "windows",
-    "darwin",
-    "linux"
-  ],
+  "platforms": ["windows"],
   "icon": "icon.svg",
   "backend": {
     "runtime": "none"

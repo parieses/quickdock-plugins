@@ -5,11 +5,7 @@
   "description": "搜索 Emoji 并一键复制到剪贴板",
   "author": "QuickDock",
   "category": "开发者日常",
-  "platforms": [
-    "windows",
-    "darwin",
-    "linux"
-  ],
+  "platforms": ["windows"],
   "icon": "icon.svg",
   "backend": {
     "runtime": "none"
