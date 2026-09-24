@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>人生重开模拟器</title>
+<link rel="stylesheet" href="qd-theme.css">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div class="lr-app">
+  <div class="lr-screen" id="setup">
+    <div class="lr-title">🎲 人生重开模拟器</div>
+    <div class="lr-sub">选天赋、分属性，重开一段随机人生</div>
+    <div class="lr-label">天赋（最多 3 个）</div>
+    <div class="lr-talents" id="talents"></div>
+    <div class="lr-label">初始属性 <span class="lr-pool" id="pool">剩余 0</span></div>
+    <div class="lr-attrs" id="attrs"></div>
+    <button class="p-btn p-btn-primary lr-start" id="start" type="button">开始人生 →</button>
+  </div>
+
+  <div class="lr-screen" id="play" hidden>
+    <div class="lr-top">
+      <div class="lr-age">年龄 <b id="age">0</b></div>
+      <div class="lr-bars">
+        <span>💗<b id="hp">100</b></span>
+        <span>💰<b id="money">0</b></span>
+        <span>😊<b id="happy">60</b></span>
+      </div>
+      <button class="p-btn p-btn-ghost" id="restart" type="button">重开</button>
+    </div>
+    <div class="lr-log" id="log"></div>
+    <button class="p-btn p-btn-primary lr-next" id="next" type="button">继续 ›</button>
+  </div>
+
+  <div class="lr-screen lr-end" id="end" hidden>
+    <div class="lr-end-title" id="endTitle"></div>
+    <div class="lr-end-sum" id="endSum"></div>
+    <button class="p-btn p-btn-primary" id="again" type="button">再来一次</button>
+  </div>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

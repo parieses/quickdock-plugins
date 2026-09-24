@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>小黑屋</title>
+<link rel="stylesheet" href="qd-theme.css">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div class="dr-app">
+  <div class="dr-head">
+    <div class="dr-title">🏚 小黑屋</div>
+    <div class="dr-turn">第 <b id="turn">0</b> 天</div>
+  </div>
+  <div class="dr-stats" id="stats"></div>
+  <div class="dr-log" id="log"></div>
+  <div class="dr-actions">
+    <button class="p-btn p-btn-primary" data-act="fire" type="button">🔥 添柴</button>
+    <button class="p-btn" data-act="chop" type="button">🪓 砍柴</button>
+    <button class="p-btn" data-act="hunt" type="button">🏹 狩猎</button>
+    <button class="p-btn" data-act="explore" type="button">🧭 外出探索</button>
+  </div>
+  <div class="dr-build-label">建造</div>
+  <div class="dr-build" id="build"></div>
+  <div class="dr-trade" id="trade" hidden>
+    <div class="dr-trade-text" id="tradeText"></div>
+    <div class="dr-trade-actions">
+      <button class="p-btn p-btn-primary" data-trade="yes" type="button">成交</button>
+      <button class="p-btn" data-trade="no" type="button">婉拒</button>
+    </div>
+  </div>
+  <div class="dr-over" id="over" hidden>
+    <div class="dr-over-text" id="overText"></div>
+    <button class="p-btn p-btn-primary" id="again" type="button">再来一局</button>
+  </div>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

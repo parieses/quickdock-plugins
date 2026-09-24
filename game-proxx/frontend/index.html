@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>扫清黑洞</title>
+<link rel="stylesheet" href="qd-theme.css">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div class="px-app">
+  <div class="px-head">
+    <div class="px-title">🌑 扫清黑洞</div>
+    <div class="px-stat"><span>剩余</span><b id="mines">0</b></div>
+    <div class="px-stat"><span>时间</span><b id="time">0</b></div>
+  </div>
+  <div class="px-bar">
+    <button class="p-btn" data-diff="easy" type="button">简单</button>
+    <button class="p-btn" data-diff="medium" type="button">中等</button>
+    <button class="p-btn" data-diff="hard" type="button">困难</button>
+    <button class="p-btn p-btn-ghost" id="flagMode" type="button">🔁 标记:关</button>
+    <button class="p-btn p-btn-primary" id="restart" type="button">重开</button>
+  </div>
+  <div class="px-board-wrap">
+    <svg id="board" class="hx-board" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div class="px-over" id="over" hidden>
+      <div class="px-over-text" id="overText"></div>
+      <button class="p-btn p-btn-primary" id="again" type="button">再来一局</button>
+    </div>
+  </div>
+  <div class="px-best" id="best"></div>
+  <div class="px-hint">六边形扫雷：每格最多 6 个邻居 · 左键翻开 · 右键/标记模式插旗 · 数字=周围黑洞数</div>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

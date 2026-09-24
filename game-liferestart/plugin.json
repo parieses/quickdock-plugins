@@ -1,0 +1,56 @@
+{
+  "id": "io.github.parieses.game-liferestart",
+  "name": "人生重开模拟器",
+  "version": "1.0.0",
+  "description": "选定天赋、分配初始属性，重开一段随机人生，看遍悲欢离合。不满意就再来一次。",
+  "author": "QuickDock",
+  "icon": "icon.svg",
+  "category": "游戏娱乐",
+  "platforms": [
+    "windows"
+  ],
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "backend": {
+    "runtime": "none"
+  },
+  "host_apis": [],
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 560,
+    "height": 760
+  },
+  "commands": [
+    {
+      "id": "game-liferestart",
+      "title": "人生重开模拟器",
+      "keywords": [
+        "人生重开模拟器",
+        "Life Restart",
+        "游戏",
+        "game",
+        "liferestart"
+      ],
+      "aliases": [
+        "Life Restart",
+        "人生重开模拟器游戏"
+      ],
+      "title_i18n": {
+        "zh-CN": "人生重开模拟器",
+        "en-US": "Life Restart"
+      }
+    }
+  ],
+  "name_i18n": {
+    "zh-CN": "人生重开模拟器",
+    "en-US": "Life Restart"
+  },
+  "description_i18n": {
+    "zh-CN": "选定天赋、分配初始属性，重开一段随机人生，看遍悲欢离合。不满意就再来一次。",
+    "en-US": "Pick talents, allocate attributes, and live a randomized life full of twists. Restart anytime."
+  },
+  "changelog": "## v1.0.0\n- 自包含单文件游戏插件（纯前端，无后端依赖）\n- 沙箱安全：localStorage 降级、启动守护\n- 支持方向键 / 鼠标操作，本地记录最高分"
+}

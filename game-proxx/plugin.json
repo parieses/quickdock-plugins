@@ -1,0 +1,56 @@
+{
+  "id": "io.github.parieses.game-proxx",
+  "name": "扫清黑洞",
+  "version": "1.0.0",
+  "description": "真·六边形扫雷：每格最多 6 个邻居，数字提示周围黑洞数量，别踩中。",
+  "author": "QuickDock",
+  "icon": "icon.svg",
+  "category": "游戏娱乐",
+  "platforms": [
+    "windows"
+  ],
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "backend": {
+    "runtime": "none"
+  },
+  "host_apis": [],
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 560,
+    "height": 680
+  },
+  "commands": [
+    {
+      "id": "game-proxx",
+      "title": "扫清黑洞",
+      "keywords": [
+        "扫清黑洞",
+        "Proxx",
+        "游戏",
+        "game",
+        "proxx"
+      ],
+      "aliases": [
+        "Proxx",
+        "扫清黑洞游戏"
+      ],
+      "title_i18n": {
+        "zh-CN": "扫清黑洞",
+        "en-US": "Proxx"
+      }
+    }
+  ],
+  "name_i18n": {
+    "zh-CN": "扫清黑洞",
+    "en-US": "Proxx"
+  },
+  "description_i18n": {
+      "zh-CN": "真·六边形扫雷：每格最多 6 个邻居，数字提示周围黑洞数量，别踩中。",
+      "en-US": "True hexagonal Minesweeper: each cell has up to 6 neighbors; numbers hint at adjacent black holes. Don't step on one."
+  },
+  "changelog": "## v1.0.0\n- 自包含单文件游戏插件（纯前端，无后端依赖）\n- 沙箱安全：localStorage 降级、启动守护\n- 支持方向键 / 鼠标操作，本地记录最高分"
+}

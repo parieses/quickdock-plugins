@@ -1,0 +1,30 @@
+.px-app { display: flex; flex-direction: column; height: 100vh; }
+.px-head {
+  display: flex; align-items: center; gap: var(--sp-3);
+  padding: 0 var(--sp-4); height: 44px; background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.px-title { font-size: var(--fs-lg); font-weight: var(--fw-semibold); }
+.px-stat { display: flex; align-items: baseline; gap: 6px; margin-left: auto; color: var(--text-secondary); font-size: var(--fs-sm); }
+.px-stat:last-of-type { margin-left: 0; }
+.px-stat b { color: var(--text-primary); font-size: var(--fs-lg); font-variant-numeric: tabular-nums; min-width: 28px; text-align: right; }
+.px-bar { display: flex; gap: var(--sp-2); padding: var(--sp-3) var(--sp-4); flex-wrap: wrap; flex-shrink: 0; }
+.px-board-wrap { position: relative; flex: 1; display: flex; align-items: center; justify-content: center; padding: var(--sp-2); overflow: auto; }
+.hx-board { width: 100%; height: 100%; max-width: 100%; touch-action: manipulation; user-select: none; }
+.hx { fill: var(--bg-tertiary); stroke: var(--border); stroke-width: 1.5; cursor: pointer; transition: fill 80ms; }
+.hx:hover:not(.open):not(.mine) { fill: var(--bg-hover); }
+.hx.open { fill: var(--bg-primary); cursor: default; }
+.hx.flag { fill: #2a2118; }
+.hx.mine { fill: var(--danger); cursor: default; }
+.hx.boom { fill: #ff3b30; }
+.hx-txt { font-size: 16px; font-weight: 700; fill: var(--text-primary); pointer-events: none; text-anchor: middle; font-family: system-ui, sans-serif; }
+.hx-txt.n1 { fill: #4a9eff; } .hx-txt.n2 { fill: #28c864; } .hx-txt.n3 { fill: #e24b4a; }
+.hx-txt.n4 { fill: #916aff; } .hx-txt.n5 { fill: #f0a030; } .hx-txt.n6 { fill: #1c958a; }
+.px-over {
+  position: absolute; inset: 0; display: flex; flex-direction: column; gap: var(--sp-3);
+  align-items: center; justify-content: center; background: rgba(0,0,0,.55); backdrop-filter: blur(2px);
+}
+.px-over[hidden] { display: none; }
+.px-over-text { color: #fff; font-size: var(--fs-2xl); font-weight: var(--fw-semibold); }
+.px-best { text-align: center; font-size: var(--fs-xs); color: var(--text-muted); padding: 2px 0; min-height: 16px; }
+.px-hint { text-align: center; font-size: var(--fs-xs); color: var(--text-muted); padding: var(--sp-2); flex-shrink: 0; }

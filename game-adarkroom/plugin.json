@@ -1,0 +1,56 @@
+{
+  "id": "io.github.parieses.game-adarkroom",
+  "name": "小黑屋",
+  "version": "1.1.0",
+  "description": "极简文字冒险：添柴升温、建造设施、外出探索，还会偶遇流浪商人做交易，在黑暗中一步步壮大村落。点击即可推进。",
+  "author": "QuickDock",
+  "icon": "icon.svg",
+  "category": "游戏娱乐",
+  "platforms": [
+    "windows"
+  ],
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "backend": {
+    "runtime": "none"
+  },
+  "host_apis": [],
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 600,
+    "height": 720
+  },
+  "commands": [
+    {
+      "id": "game-adarkroom",
+      "title": "小黑屋",
+      "keywords": [
+        "小黑屋",
+        "A Dark Room",
+        "游戏",
+        "game",
+        "adarkroom"
+      ],
+      "aliases": [
+        "A Dark Room",
+        "小黑屋游戏"
+      ],
+      "title_i18n": {
+        "zh-CN": "小黑屋",
+        "en-US": "A Dark Room"
+      }
+    }
+  ],
+  "name_i18n": {
+    "zh-CN": "小黑屋",
+    "en-US": "A Dark Room"
+  },
+  "description_i18n": {
+    "zh-CN": "极简文字冒险：添柴升温、建造设施、外出探索，还会偶遇流浪商人做交易，在黑暗中一步步壮大村落。点击即可推进。",
+    "en-US": "A minimalist text adventure: stoke the fire, build, explore, and trade with a wandering merchant to grow your village in the dark. Click to advance."
+  },
+  "changelog": "## v1.1.0\n- 新增「流浪商人」交易系统：每隔数日随机到访，可付出资源换取金属/村民/皮毛等\n- 交易面板随商人到访出现，支持成交/婉拒，资源不足时提示\n\n## v1.0.0\n- 自包含单文件游戏插件（纯前端，无后端依赖）\n- 沙箱安全：localStorage 降级、启动守护\n- 支持方向键 / 鼠标操作，本地记录最高分"
+}
