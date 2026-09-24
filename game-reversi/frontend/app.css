@@ -1,0 +1,137 @@
+.g-app {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100vh;
+  box-sizing: border-box;
+  padding: 16px 14px;
+  gap: 12px;
+}
+
+.g-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 432px;
+}
+.g-title {
+  font-size: 30px;
+  font-weight: 800;
+  color: var(--accent);
+}
+.g-scores { display: flex; gap: 8px; }
+.g-score {
+  min-width: 64px;
+  padding: 5px 10px;
+  border-radius: var(--radius);
+  background: var(--bg-tertiary);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+}
+.g-score span { font-size: var(--fs-xs); color: var(--text-muted); }
+.g-score b { font-size: 18px; color: var(--text-primary); }
+.g-you b { color: #1b1b1b; }
+.g-ai b { color: #f2f2f2; }
+
+.g-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 432px;
+  gap: 8px;
+}
+.g-status { font-size: var(--fs-sm); color: var(--text-muted); flex: 1; text-align: center; }
+
+.g-board {
+  position: relative;
+  width: 100%;
+  max-width: 432px;
+}
+.g-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 2px;
+  padding: 8px;
+  border-radius: var(--radius-lg);
+  background: var(--bg-tertiary);
+  box-sizing: border-box;
+}
+.g-cell {
+  aspect-ratio: 1 / 1;
+  border-radius: 4px;
+  background: #2f7d4f;
+  position: relative;
+  cursor: default;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.g-cell.playable { cursor: pointer; }
+.g-cell.playable:hover { background: #36915c; }
+
+/* 合法落子提示 */
+.g-hint {
+  width: 26%;
+  height: 26%;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.32);
+}
+
+/* 棋子 */
+.g-disc {
+  width: 80%;
+  height: 80%;
+  border-radius: 50%;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+.g-disc.black { background: radial-gradient(circle at 35% 30%, #4a4a4a, #0b0b0b); }
+.g-disc.white { background: radial-gradient(circle at 35% 30%, #ffffff, #c4c4c4); }
+
+/* 翻子动画 */
+.g-disc.flip { animation: rev-flip 240ms ease; }
+@keyframes rev-flip {
+  0%   { transform: rotateY(0deg) scale(1); }
+  50%  { transform: rotateY(90deg) scale(0.86); }
+  100% { transform: rotateY(0deg) scale(1); }
+}
+.g-disc.spawn { animation: rev-spawn 200ms ease; }
+@keyframes rev-spawn {
+  0%   { transform: scale(0); }
+  100% { transform: scale(1); }
+}
+
+.g-over {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  border-radius: var(--radius-lg);
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+  z-index: 5;
+}
+.g-over[hidden] { display: none; }
+.g-over-text { font-size: 28px; font-weight: 800; color: #fff; text-align: center; }
+
+.g-foot {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  max-width: 432px;
+  width: 100%;
+  text-align: center;
+}
+
+.p-sel {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 5px 8px;
+  font-size: var(--fs-sm);
+}

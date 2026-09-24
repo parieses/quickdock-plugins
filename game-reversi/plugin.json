@@ -1,0 +1,57 @@
+{
+  "id": "io.github.parieses.game-reversi",
+  "name": "黑白棋",
+  "version": "1.0.0",
+  "description": "经典黑白棋（Othello / Reversi）：8×8 棋盘，夹住对方棋子即翻转。内置 minimax + α-β 剪枝人机，难度可调。",
+  "author": "QuickDock",
+  "icon": "icon.svg",
+  "category": "游戏娱乐",
+  "platforms": [
+    "windows"
+  ],
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "backend": {
+    "runtime": "none"
+  },
+  "host_apis": [],
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 480,
+    "height": 600
+  },
+  "commands": [
+    {
+      "id": "game-reversi",
+      "title": "黑白棋",
+      "keywords": [
+        "黑白棋",
+        "奥赛罗",
+        "reversi",
+        "othello",
+        "翻转棋",
+        "游戏"
+      ],
+      "aliases": [
+        "翻转棋",
+        "奥赛罗棋"
+      ],
+      "title_i18n": {
+        "zh-CN": "黑白棋",
+        "en-US": "Reversi"
+      }
+    }
+  ],
+  "name_i18n": {
+    "zh-CN": "黑白棋",
+    "en-US": "Reversi"
+  },
+  "description_i18n": {
+    "zh-CN": "经典黑白棋：8×8 棋盘，夹住对方棋子即翻转。内置 minimax + α-β 剪枝人机，难度可调。",
+    "en-US": "Classic Reversi/Othello on 8x8. Flank and flip opponent discs. Built-in minimax + alpha-beta AI with difficulty levels."
+  },
+  "changelog": "## v1.0.0\n\n- 8×8 经典黑白棋，你执黑先手\n- 合法落子点提示（小圆点）\n- 内置人机：minimax + α-β 剪枝 + 位置权重评估（角最高、角旁为负）\n- 三档难度（简单 / 普通 / 困难 对应搜索深度 2 / 4 / 6）\n- 翻子动画、子数统计、胜负判定（按子数多者胜）\n- 本地记录最佳战绩（胜场 / 最高净胜子）"
+}

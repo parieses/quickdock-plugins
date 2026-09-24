@@ -460,6 +460,22 @@ GLYPH["game-roguelike"] = """
   <path d="M6 16h8" opacity="0.5"/>
 """
 
+GLYPH["game-reversi"] = """
+  <rect x="3" y="3" width="18" height="18" rx="2.6"/>
+  <circle cx="8.6" cy="12" r="3.7" fill="#e6e6e6" stroke="none"/>
+  <circle cx="15.4" cy="12" r="3.7" fill="#e6e6e6" stroke="none"/>
+  <path d="M12 6.5v11" opacity="0.55"/>
+"""
+
+GLYPH["game-gomoku"] = """
+  <rect x="3" y="3" width="18" height="18" rx="2.6"/>
+  <path d="M12 5v14" opacity="0.55"/>
+  <path d="M5 12h14" opacity="0.55"/>
+  <circle cx="9" cy="9" r="2.4" fill="#e6e6e6" stroke="none"/>
+  <circle cx="12" cy="12" r="2.4" fill="#e6e6e6" stroke="none"/>
+  <circle cx="15" cy="15" r="2.4" fill="#e6e6e6" stroke="none"/>
+"""
+
 
 def main():
     made = []

@@ -1,0 +1,116 @@
+.g-app {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100vh;
+  box-sizing: border-box;
+  padding: 14px 12px;
+  gap: 12px;
+}
+
+.g-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 540px;
+}
+.g-title {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--accent);
+}
+.g-status {
+  flex: 1;
+  text-align: center;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+
+.g-board {
+  position: relative;
+  width: 100%;
+  max-width: 540px;
+}
+.g-grid {
+  display: grid;
+  grid-template-columns: repeat(15, 1fr);
+  gap: 0;
+  padding: 10px;
+  border-radius: var(--radius-lg);
+  background: #d9b073;
+  box-sizing: border-box;
+  aspect-ratio: 1 / 1;
+}
+.g-cell {
+  position: relative;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* 棋盘网格线（用背景渐变画十字） */
+.g-cell::before,
+.g-cell::after {
+  content: "";
+  position: absolute;
+  background: rgba(80, 50, 20, 0.55);
+}
+.g-cell::before { width: 100%; height: 1px; top: 50%; left: 0; }
+.g-cell::after { height: 100%; width: 1px; left: 50%; top: 0; }
+/* 边角不画出格的线 */
+.g-cell.edge-top::before { top: 50%; }
+.g-cell.edge-left::after { left: 50%; }
+
+.g-stone {
+  width: 78%;
+  height: 78%;
+  border-radius: 50%;
+  position: relative;
+  z-index: 2;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  animation: gm-pop 160ms ease;
+}
+@keyframes gm-pop {
+  0% { transform: scale(0); }
+  100% { transform: scale(1); }
+}
+.g-stone.black { background: radial-gradient(circle at 35% 30%, #555, #000); }
+.g-stone.white { background: radial-gradient(circle at 35% 30%, #fff, #cfcfcf); }
+.g-stone.last::after {
+  content: "";
+  position: absolute;
+  width: 30%;
+  height: 30%;
+  border-radius: 50%;
+  background: #e23b3b;
+  top: 35%;
+  left: 35%;
+}
+.g-stone.win {
+  box-shadow: 0 0 0 3px #ffd23b, 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.g-over {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  border-radius: var(--radius-lg);
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+  z-index: 5;
+}
+.g-over[hidden] { display: none; }
+.g-over-text { font-size: 28px; font-weight: 800; color: #fff; text-align: center; }
+
+.g-foot {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  max-width: 540px;
+  width: 100%;
+  text-align: center;
+}

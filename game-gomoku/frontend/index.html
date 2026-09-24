@@ -3,31 +3,25 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>2048</title>
+<title>五子棋</title>
 <link rel="stylesheet" href="qd-theme.css">
 <link rel="stylesheet" href="app.css">
 </head>
 <body>
 <div class="g-app">
   <div class="g-head">
-    <div class="g-title">2048</div>
-    <div class="g-scores">
-      <div class="g-score"><span>分数</span><b id="score">0</b></div>
-      <div class="g-score"><span>最佳</span><b id="best">0</b></div>
-    </div>
-  </div>
-  <div class="g-bar">
-    <span class="g-tip" id="tip">方向键 / WASD 滑动 · 触屏可滑动</span>
-    <button class="p-btn p-btn-primary" id="new" type="button">新游戏</button>
+    <div class="g-title">五子棋</div>
+    <div class="g-status" id="status">轮到你落子</div>
+    <button class="p-btn p-btn-primary" id="new" type="button">新对局</button>
   </div>
   <div class="g-board">
     <div class="g-grid" id="grid"></div>
-    <div class="g-tiles" id="tiles"></div>
     <div class="g-over" id="over" hidden>
       <div class="g-over-text" id="overText">游戏结束</div>
       <button class="p-btn p-btn-primary" id="retry" type="button">再来一局</button>
     </div>
   </div>
+  <div class="g-foot" id="best">战绩：—</div>
 </div>
 <script src="app.js"></script>
 </body>

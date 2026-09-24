@@ -149,14 +149,14 @@ for _g, _names in {
     "blue": """calcsheet compare color-converter unit-converter time-converter rmb-upper
                batch-rename text-encoder type-trainer hanzi-copybook minesweeper emoji-search
                qrcode markdown-preview md-table-converter pdf-toolkit mindmap
-               game-2048""".split(),
+               game-2048 game-reversi""".split(),
     "violet": """code-card formatter json-toolbox regex-extractor git-workbench
                  cron-explainer package-check game-tetris""".split(),
     "teal": """api-mock api-loadtest http-client ws-tester port-scanner speed-test netdiag
                mail-check wifi-manager hosts-manager curl-converter game-sudoku""".split(),
     "amber": """crypto-toolbox hash-calc jwt-decoder login-tester dir-buster
                 subdomain-enum site-audit game-roguelike""".split(),
-    "green": "database data-generator disk-analyzer junk-cleaner game-snake".split(),
+    "green": "database data-generator disk-analyzer junk-cleaner game-snake game-gomoku".split(),
     "pink": "image-studio ocr-tool exif-viewer image-uploader game-code-snake".split(),
 }.items():
     for _n in _names:

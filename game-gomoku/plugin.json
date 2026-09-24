@@ -1,0 +1,56 @@
+{
+  "id": "io.github.parieses.game-gomoku",
+  "name": "五子棋",
+  "version": "1.0.0",
+  "description": "经典五子棋（Gomoku）：15×15 棋盘，五子连珠即胜。内置模式评分人机（攻防合一 + 威胁优先），先手为先。",
+  "author": "QuickDock",
+  "icon": "icon.svg",
+  "category": "游戏娱乐",
+  "platforms": [
+    "windows"
+  ],
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "backend": {
+    "runtime": "none"
+  },
+  "host_apis": [],
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 600,
+    "height": 680
+  },
+  "commands": [
+    {
+      "id": "game-gomoku",
+      "title": "五子棋",
+      "keywords": [
+        "五子棋",
+        "gomoku",
+        "连珠",
+        "围棋",
+        "游戏"
+      ],
+      "aliases": [
+        "连珠棋",
+        "五子连珠"
+      ],
+      "title_i18n": {
+        "zh-CN": "五子棋",
+        "en-US": "Gomoku"
+      }
+    }
+  ],
+  "name_i18n": {
+    "zh-CN": "五子棋",
+    "en-US": "Gomoku"
+  },
+  "description_i18n": {
+    "zh-CN": "经典五子棋：15×15 棋盘，五子连珠即胜。内置模式评分人机（攻防合一 + 威胁优先）。",
+    "en-US": "Classic Gomoku on 15x15. Five in a row wins. Built-in pattern-scoring AI (offense + defense)."
+  },
+  "changelog": "## v1.0.0\n\n- 15×15 经典五子棋，你执黑先手\n- 内置人机：模式评分启发式（活四 / 冲四 / 活三 等威胁识别，攻防合一、威胁优先）\n- 四方向连珠胜负判定（横 / 竖 / 两斜）\n- 最后一手标记、胜利连线高亮、和棋判定\n- 本地记录战绩（胜 / 负 / 和）"
+}
