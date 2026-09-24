@@ -1,17 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <defs>
-    <linearGradient id="pg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#1c958a"/>
-      <stop offset="1" stop-color="#0f777f"/>
-    </linearGradient>
-  </defs>
-  <rect width="64" height="64" rx="14" fill="url(#pg)"/>
-  <g transform="translate(8.875,8.6823) scale(1.9271)">
-    <g stroke="#fff" fill="none" stroke-width="1.5568" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="2.4" y="4.6" width="19.2" height="15" rx="3"/>
-    <path d="M2.4 8.9h19.2" opacity="0.3"/>
-    <path d="M6.6 12.4l2.6 2.6-2.6 2.6"/>
-    <path d="M11.8 17.6h5.6"/>
-    </g>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#e6e6e6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <rect x="2.4" y="4.6" width="19.2" height="15" rx="3"/>
+  <path d="M2.4 8.9h19.2" opacity="0.3"/>
+  <path d="M6.6 12.4l2.6 2.6-2.6 2.6"/>
+  <path d="M11.8 17.6h5.6"/>
 </svg>

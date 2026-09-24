@@ -476,6 +476,31 @@ GLYPH["game-gomoku"] = """
   <circle cx="15" cy="15" r="2.4" fill="#e6e6e6" stroke="none"/>
 """
 
+GLYPH["game-hextris"] = """
+  <path d="M12 3.2l7.8 4.5v9L12 21.2 4.2 16.7v-9z"/>
+  <path d="M8.4 9.4h7.2" opacity="0.55"/>
+  <path d="M8.4 12.6h7.2" opacity="0.55"/>
+  <path d="M8.4 15.8h7.2" opacity="0.3"/>
+"""
+
+GLYPH["game-adarkroom"] = """
+  <path d="M4.2 11l7.8-6 7.8 6"/>
+  <path d="M5.6 10.6V19h12.8V10.6"/>
+  <path d="M9.6 19v-4.4h4.8V19" opacity="0.55"/>
+  <path d="M17 6.4h2.6V10" opacity="0.3"/>
+  <path d="M12 13.4l1.3 2.1h-2.6z" fill="#e6e6e6" stroke="none"/>
+"""
+
+GLYPH["game-liferestart"] = """
+  <path d="M17 7.5A6.5 6.5 0 1 0 18.3 12"/>
+  <path d="M17.6 4.8l.1 3-3 .1z" fill="#e6e6e6" stroke="none"/>
+"""
+
+GLYPH["game-proxx"] = """
+  <circle cx="12" cy="12" r="4.6"/>
+  <path d="M12 3v3.2M12 17.8v3.2M3 12h3.2M17.8 12h3.2M5.7 5.7l2.2 2.2M18.3 5.7l-2.2 2.2M5.7 18.3l2.2-2.2M18.3 18.3l-2.2-2.2" opacity="0.55"/>
+"""
+
 
 def main():
     made = []
