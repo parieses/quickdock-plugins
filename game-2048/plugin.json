@@ -1,0 +1,58 @@
+{
+  "id": "io.github.parieses.game-2048",
+  "name": "2048",
+  "version": "1.0.0",
+  "description": "经典数字合并：方向键 / WASD 滑动，相同数字相撞合成翻倍，冲击 2048。本地记录最佳分数。",
+  "author": "QuickDock",
+  "icon": "icon.svg",
+  "category": "游戏娱乐",
+  "platforms": [
+    "windows"
+  ],
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "backend": {
+    "runtime": "none"
+  },
+  "host_apis": [],
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 520,
+    "height": 660
+  },
+  "commands": [
+    {
+      "id": "game-2048",
+      "title": "2048",
+      "keywords": [
+        "2048",
+        "游戏",
+        "game",
+        "数字",
+        "合并",
+        "滑动"
+      ],
+      "aliases": [
+        "合并数字",
+        "二〇四八",
+        "数字游戏"
+      ],
+      "title_i18n": {
+        "zh-CN": "2048",
+        "en-US": "2048"
+      }
+    }
+  ],
+  "name_i18n": {
+    "zh-CN": "2048",
+    "en-US": "2048"
+  },
+  "description_i18n": {
+    "zh-CN": "经典数字合并：方向键 / WASD 滑动，相同数字相撞合成翻倍，冲击 2048。本地记录最佳分数。",
+    "en-US": "Classic 2048: slide with arrow keys / WASD, merge equal tiles to double up, chase 2048. Best score saved locally."
+  },
+  "changelog": "## v1.0.0\n\n- 经典 4×4 数字合并玩法\n- 方向键 / WASD 控制，支持触屏滑动\n- 首次点击安全、合并后随机生成 2/4\n- 本地记录最佳分数\n- 胜利（合成 2048）后可继续挑战"
+}

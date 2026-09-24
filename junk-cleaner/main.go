@@ -16,9 +16,11 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -77,6 +79,8 @@ type junkCategory struct {
 	Group     string   // cache | system | temp | danger（前端分组）
 	DefaultOn bool     // 默认是否勾选清理
 	Dangerous bool     // 高危：删除不可逆/影响范围大，默认不勾选且需二次警告
+	Detect    string   // 可选：检测该程序是否在 PATH；为空=始终显示，非空=仅在可找到时显示（用于语言缓存）
+	CleanCmd  string   // 可选：清理命令（cmd /c 执行）；设置后清理走该命令而非逐文件 os.Remove
 	Roots     []string // 根目录（支持 %ENV% 展开）
 	SubGlob   string   // 可选：仅在 Root 下的此子目录通配下操作（如 *\Cache）
 	Exts      []string // 可选：仅匹配这些扩展名（小写，含点）；空=全部文件
@@ -218,6 +222,41 @@ var junkCategories = []junkCategory{
 		DefaultOn: false, Dangerous: true,
 		Roots: []string{`%SystemDrive%\$Recycle.bin`},
 	},
+	// ---------- 语言工具链缓存（仅在该工具已安装时显示）----------
+	{
+		Key: "go-build-cache", Name: "Go 构建缓存", NameEn: "Go Build Cache",
+		Group: "lang", Desc: "go build 缓存（GOCACHE），`go clean -cache` 清理，重编译自动重建",
+		DefaultOn: true, Detect: "go", CleanCmd: "go clean -cache",
+	},
+	{
+		Key: "go-mod-cache", Name: "Go 模块缓存", NameEn: "Go Module Cache",
+		Group: "lang", Desc: "go 下载的依赖模块（GOMODCACHE），`go clean -modcache` 清理，下次构建需重新下载",
+		DefaultOn: false, Detect: "go", CleanCmd: "go clean -modcache",
+	},
+	{
+		Key: "npm-cache", Name: "npm 缓存", NameEn: "npm Cache",
+		Group: "lang", Desc: "npm 包缓存，`npm cache clean --force` 清理，清理后首次安装略慢",
+		DefaultOn: true, Detect: "npm", CleanCmd: `powershell -NoProfile -Command "npm cache clean --force"`,
+		Roots: []string{`%LOCALAPPDATA%\npm-cache`},
+	},
+	{
+		Key: "pnpm-store", Name: "pnpm 存储", NameEn: "pnpm Store",
+		Group: "lang", Desc: "pnpm 内容寻址存储，`pnpm store prune` 清理未被引用的包",
+		DefaultOn: true, Detect: "pnpm", CleanCmd: `powershell -NoProfile -Command "pnpm store prune"`,
+		Roots: []string{`%LOCALAPPDATA%\pnpm\store`},
+	},
+	{
+		Key: "pip-cache", Name: "pip 缓存", NameEn: "pip Cache",
+		Group: "lang", Desc: "Python pip 下载缓存，`pip cache purge` 清理，清理后重装需重新下载",
+		DefaultOn: true, Detect: "pip", CleanCmd: "pip cache purge",
+		Roots: []string{`%LOCALAPPDATA%\pip\cache`},
+	},
+	{
+		Key: "gradle-cache", Name: "Gradle 缓存", NameEn: "Gradle Cache",
+		Group: "lang", Desc: "Gradle 依赖缓存（~/.gradle/caches），直接删除缓存文件，下次构建重新解析",
+		DefaultOn: false, Detect: "gradle",
+		Roots: []string{`%USERPROFILE%\.gradle\caches`},
+	},
 }
 
 func categoryByKey(key string) (junkCategory, bool) {
@@ -354,7 +393,7 @@ func expandPath(p string) string {
 
 // collectFiles 遍历分类下所有匹配文件，回调 path 与 size；只读，不计修改。
 func collectFiles(cat junkCategory, onFile func(path string, size int64)) {
-	for _, r := range cat.Roots {
+	for _, r := range resolveRoots(cat) {
 		root := expandPath(r)
 		info, err := os.Stat(root)
 		if err != nil || !info.IsDir() {
@@ -424,6 +463,104 @@ func pruneEmptyDirs(root string) {
 		}
 		_ = os.Remove(d) // 非空则失败，忽略
 	}
+}
+
+// ---- 语言缓存：检测 / 路径解析 / 命令式清理 ----
+
+// catAvailable 判断分类是否应展示：Detect 为空始终可用；非空则要求该程序可找到。
+// 部分工具以 .ps1 形式存在（如 npm/pnpm），exec.LookPath 默认找不到，
+// 用 PowerShell 的 Get-Command 兜底探测，避免已安装却隐藏。
+func catAvailable(c junkCategory) bool {
+	if c.Detect == "" {
+		return true
+	}
+	if _, err := exec.LookPath(c.Detect); err == nil {
+		return true
+	}
+	return probePowerShell("if(Get-Command " + c.Detect + " -ErrorAction SilentlyContinue){exit 0}else{exit 1}")
+}
+
+// probePowerShell 运行一段 PowerShell 脚本，按退出码返回是否成功。
+func probePowerShell(script string) bool {
+	cmd := exec.Command("powershell", "-NoProfile", "-Command", script)
+	return cmd.Run() == nil
+}
+
+// shOut 运行命令并返回 trim 后的 stdout；失败返回空串。
+func shOut(name string, args ...string) string {
+	cmd := exec.Command(name, args...)
+	var b bytes.Buffer
+	cmd.Stdout = &b
+	if err := cmd.Run(); err != nil {
+		return ""
+	}
+	return strings.TrimSpace(b.String())
+}
+
+// resolveRoots 返回分类实际要扫描/清理的根目录。
+// 语言缓存路径往往由工具自身决定（如 GOCACHE），用 `go env` / `npm config` 等动态解析；
+// 解析失败则回退到静态 Roots（默认路径），保证总能给出可用路径。
+func resolveRoots(c junkCategory) []string {
+	switch c.Key {
+	case "go-build-cache":
+		if s := shOut("go", "env", "GOCACHE"); s != "" {
+			return []string{s}
+		}
+	case "go-mod-cache":
+		if s := shOut("go", "env", "GOMODCACHE"); s != "" {
+			return []string{s}
+		}
+	case "npm-cache":
+		if s := shOut("powershell", "-NoProfile", "-Command", "npm config get cache"); s != "" {
+			return []string{s}
+		}
+	case "pnpm-store":
+		if s := shOut("powershell", "-NoProfile", "-Command", "pnpm store path"); s != "" {
+			return []string{s}
+		}
+	case "pip-cache":
+		if s := shOut("pip", "cache", "dir"); s != "" {
+			return []string{s}
+		}
+	}
+	return c.Roots
+}
+
+// runCleanCmd 以 cmd /c 执行清理命令，返回合并输出（供诊断）。
+func runCleanCmd(cmdStr string) (string, error) {
+	cmd := exec.Command("cmd", "/c", cmdStr)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+	err := cmd.Run()
+	diagLogf("clean cmd [%s] err=%v out=%s", cmdStr, err, out.String())
+	return out.String(), err
+}
+
+// fileDeleteCategory 逐文件删除分类下匹配的文件（跳过被占用项），并尽力清理空目录。
+// 命令式清理失败时的兜底，也用于无 CleanCmd 的分类（如 gradle）。
+func fileDeleteCategory(c junkCategory) (freed, deleted, skipped int64) {
+	collectFiles(c, func(path string, size int64) {
+		if err := os.Remove(path); err != nil {
+			skipped++ // 文件被占用等，跳过不致命
+			return
+		}
+		freed += size
+		deleted++
+	})
+	for _, r := range c.Roots {
+		root := expandPath(r)
+		if c.SubGlob != "" {
+			if matches, _ := filepath.Glob(filepath.Join(root, c.SubGlob)); len(matches) > 0 {
+				for _, m := range matches {
+					pruneEmptyDirs(m)
+				}
+			}
+		} else {
+			pruneEmptyDirs(root)
+		}
+	}
+	return
 }
 
 // ---- 主循环 ----
@@ -512,6 +649,9 @@ func handleExecute(req rpcRequest) {
 func handleCategories(id int64) {
 	list := make([]map[string]interface{}, 0, len(junkCategories))
 	for _, c := range junkCategories {
+		if !catAvailable(c) {
+			continue
+		}
 		list = append(list, map[string]interface{}{
 			"key":       c.Key,
 			"name":      c.Name,
@@ -532,6 +672,9 @@ func handleScan(id int64, input map[string]interface{}) {
 		var totalSize int64
 		var totalFiles int64
 		for _, c := range junkCategories {
+			if !catAvailable(c) {
+				continue
+			}
 			var size int64
 			var count int64
 			collectFiles(c, func(_ string, s int64) {
@@ -617,30 +760,17 @@ func handleClean(id int64, input map[string]interface{}) {
 		var totalFreed int64
 		var totalDeleted int64
 		for _, c := range valid {
-			var freed int64
-			var deleted int64
-			var skipped int64
 			updateTaskMessage(t, "正在清理："+c.Name)
-			collectFiles(c, func(path string, size int64) {
-				if err := os.Remove(path); err != nil {
-					skipped++ // 文件被占用等，跳过不致命
-					return
+			var freed, deleted, skipped int64
+			if c.CleanCmd != "" && catAvailable(c) {
+				// 命令式清理：先统计占用，再执行对应工具原生命令（如 go clean -cache）
+				collectFiles(c, func(_ string, s int64) { freed += s; deleted++ })
+				if out, err := runCleanCmd(c.CleanCmd); err != nil {
+					diagLogf("clean cmd 失败 [%s] err=%v out=%s，回退文件删除", c.CleanCmd, err, out)
+					freed, deleted, skipped = fileDeleteCategory(c)
 				}
-				freed += size
-				deleted++
-			})
-			// 尽力删除已清空的目录
-			for _, r := range c.Roots {
-				root := expandPath(r)
-				if c.SubGlob != "" {
-					if matches, _ := filepath.Glob(filepath.Join(root, c.SubGlob)); len(matches) > 0 {
-						for _, m := range matches {
-							pruneEmptyDirs(m)
-						}
-					}
-				} else {
-					pruneEmptyDirs(root)
-				}
+			} else {
+				freed, deleted, skipped = fileDeleteCategory(c)
 			}
 			perCat = append(perCat, map[string]interface{}{
 				"key":     c.Key,

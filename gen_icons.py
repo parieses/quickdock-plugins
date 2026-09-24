@@ -4,13 +4,15 @@
 规范（「A 家族」唯一形态）：
   - viewBox 固定 `0 0 64 64`，根元素**不写** width/height（尺寸由宿主 CSS 决定）
   - 满幅背景圆角贴片 `<rect width="64" height="64" rx="14" fill="语义色"/>`
-  - 图形一律白色，落在安全区 12..52（40x40 居中）
+  - 图形主色：深色档白 / 浅色档品牌色，落在安全区 12..52（40x40 居中）
   - 线宽归一：图形内最粗的一笔在 64 网格上恒为 3
   - 白色图形只允许三档不透明度：主 1 / 次 .55 / 衬 .3
 
-两套主题：
-  icon.svg        深色主题图标（同时是所有消费方的默认回退）
-  icon.light.svg  浅色主题图标
+两套主题（几何 / 网格 / 安全区 / 线宽 100% 一致，只差色彩与贴片处理）：
+  icon.svg        深色主题图标：饱和同色系渐变贴片 + 白色字形（在暗色外壳上最跳）
+  icon.light.svg  浅色主题图标：白底贴片 + 品牌色描边圈 + 品牌色字形（在亮色外壳上清晰）
+                    字形主色 = 该组「深锚点」（在白底上对比度 ~3.7:1），强调色用浅档。
+                    两套摆在一起明显不同，但仍是同一个图标。
 宿主按当前主题取用，缺失则回退 icon.svg（老插件只带一个文件也能正常工作）。
 
 用法：
@@ -42,6 +44,7 @@ PLATE_INSET = 0.16                # 卡底贴片必须基本居中内缩（x/y �
 WHITE_MAX = 45.0                  # 渲染后白像素占比上限（%）—— 超了就是白块盖贴片
 PATCH_MIN = 25.0                  # 渲染后贴片色像素占比下限（%）
 OPACITY_TIERS = {"main": 1.0, "sub": 0.55, "faint": 0.3}
+LIGHT_RING_W = 2.4                # 浅色档贴片描边圈线宽（给白底贴片在亮背景上勾出边界）
 
 # ---------------------------------------------------------------- 语义色板
 # 6 个语义色 × 深/浅两档。两档均由 OKLCH 求解，硬约束：
@@ -111,15 +114,31 @@ def spec_for(name, theme):
     """把 COLOR_SPEC 的符号值解析成该主题的具体色值，得到「源色 -> hex」的直接映射。
 
     生成/校验都走这一层，避免 resolve_color 里再关心主题。
+
+    双主题差异：
+      · 主字形哨兵 #e6e6e6 -> 深色档白字 / 浅色档品牌字（深锚点）
+      · 锚点哨兵 #0000ff    -> 品牌字（作标记时等同于深锚点）
+      · 强调色 accent:x     -> 深色档取深档、浅色档取浅档
+      · color-converter 的三个点色：浅色档（白底）换成对比度更高的深档，避免浅绿点糊掉
     """
     g = GROUP.get(name)
-    anchor = PALETTE[g][theme] if g else "#fff"
-    out = {}
+    anchor = PALETTE[g]["dark"] if g else "#fff"   # 浅色档品牌字/描边圈统一用「深锚点」
+    out = {
+        "#e6e6e6": anchor if theme == "light" else "#fff",   # 主字形
+        "#0000ff": anchor,                                   # 锚点（标记用）
+    }
+    if name == "color-converter":
+        # 浅色档在白底上，点色需更深才能读得出
+        dots = ({"#ff00ff": "#ff5f6d", "#00ffff": "#4f8bff", "#ffff00": "#3ddc63"}
+                if theme == "dark" else
+                {"#ff00ff": "#e0324a", "#00ffff": "#1d66ff", "#ffff00": "#1a9a4a"})
+        out.update(dots)
+        return out
     for src_hex, target in (COLOR_SPEC.get(name) or {}).items():
         if target == ANCHOR:
             out[src_hex] = anchor
         elif target.startswith("accent:"):
-            out[src_hex] = ACCENT_HEX[target][theme]
+            out[src_hex] = ACCENT_HEX[target]["light" if theme == "light" else "dark"]
         else:
             out[src_hex] = target
     return out
@@ -129,15 +148,16 @@ GROUP = {}
 for _g, _names in {
     "blue": """calcsheet compare color-converter unit-converter time-converter rmb-upper
                batch-rename text-encoder type-trainer hanzi-copybook minesweeper emoji-search
-               qrcode markdown-preview md-table-converter pdf-toolkit mindmap""".split(),
+               qrcode markdown-preview md-table-converter pdf-toolkit mindmap
+               game-2048""".split(),
     "violet": """code-card formatter json-toolbox regex-extractor git-workbench
-                 cron-explainer package-check""".split(),
+                 cron-explainer package-check game-tetris""".split(),
     "teal": """api-mock api-loadtest http-client ws-tester port-scanner speed-test netdiag
-               mail-check wifi-manager hosts-manager curl-converter""".split(),
+               mail-check wifi-manager hosts-manager curl-converter game-sudoku""".split(),
     "amber": """crypto-toolbox hash-calc jwt-decoder login-tester dir-buster
-                subdomain-enum site-audit""".split(),
-    "green": "database data-generator disk-analyzer junk-cleaner".split(),
-    "pink": "image-studio ocr-tool exif-viewer image-uploader".split(),
+                subdomain-enum site-audit game-roguelike""".split(),
+    "green": "database data-generator disk-analyzer junk-cleaner game-snake".split(),
+    "pink": "image-studio ocr-tool exif-viewer image-uploader game-code-snake".split(),
 }.items():
     for _n in _names:
         GROUP[_n] = _g
@@ -318,19 +338,21 @@ ELEM_OPEN = re.compile(r'<([a-zA-Z][\w:-]*)\b([^>]*)>', re.S)
 OPACITY_ANY = re.compile(r'\s(fill-|stroke-)?opacity\s*=\s*"([^"]*)"')
 
 
-def resolve_color(val, spec, anchor):
+def resolve_color(val, spec, anchor, theme="dark"):
     """v1 源色 -> 目标色。返回 (hex, force_main)。
 
     锚点色本身也算命中（SOURCE_PATCH 会把 `@anchor` 直接代成锚点 hex 写进源里）。
     force_main=True 表示这不是锚点色（即强调色 / 直指定色）：彩色元素一律回主档
     不透明度 —— 半透明的彩色叠在彩色贴片上会糊出第三种颜色，语义反而不清。
+
+    浅色档未声明颜色默认回品牌色（深锚点），而非白——浅色档没有白色字形。
     """
     v = val.strip().lower()
     if v == anchor.lower():
         return anchor, False
     t = (spec or {}).get(v)
     if not t:
-        return "#fff", False
+        return (anchor if theme == "light" else "#fff"), False
     return t, t.lower() != anchor.lower()
 
 
@@ -349,8 +371,8 @@ def quantize_attrs(attrs):
     return OPACITY_ANY.sub(repl, attrs)
 
 
-def apply_colors(inner, spec, anchor):
-    """按 COLOR_SPEC 给图形着色，未声明的颜色一律白（v2 行为）。
+def apply_colors(inner, spec, anchor, theme="dark"):
+    """按 COLOR_SPEC 给图形着色，未声明的颜色：深色档白、浅色档品牌色。
 
     逐**属性**而非逐元素决策 —— 同一元素上可能一个颜色是强调色、另一个是白色描边
     （mail-check 的红角标 + 白环就是），逐元素整块替换会把环也吃掉。
@@ -367,7 +389,7 @@ def apply_colors(inner, spec, anchor):
             attr, val = mm.group(1), mm.group(2).strip()
             if val.lower() in ("", "none") or val.startswith("url("):
                 return mm.group(0)
-            t, fm = resolve_color(val, spec, anchor)
+            t, fm = resolve_color(val, spec, anchor, theme)
             if fm:
                 force_main[0] = True
             return f'{attr}="{t}"'
@@ -429,9 +451,13 @@ const data = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
     return json.loads(res.stdout)
 
 
-def build_icon(name, source_svg, color, grad, bbox, spec, anchor):
-    """把源图标重构成规范形态。bbox 是「图形（已含源变换）、不含背景」的渲染包围盒。"""
-    box, inner0, (t0x, t0y, s0) = prepare(source_svg, name, spec, anchor)
+def build_icon(name, source_svg, theme, anchor, grad, bbox, spec):
+    """把源图标重构成规范形态。bbox 是「图形（已含源变换）、不含背景」的渲染包围盒。
+
+    theme="dark"  -> 饱和同色系渐变贴片 + 白字（几何/线宽不变）
+    theme="light" -> 白底贴片 + 品牌色描边圈 + 品牌色字形（几何/线宽不变）
+    """
+    box, inner0, (t0x, t0y, s0) = prepare(source_svg, name, spec, anchor, theme)
     already_v3 = (t0x, t0y, s0) != (0.0, 0.0, 1.0)
 
     x0, y0, w, h, max_sw_spec = bbox["x0"], bbox["y0"], bbox["w"], bbox["h"], bbox["maxSw"]
@@ -449,7 +475,7 @@ def build_icon(name, source_svg, color, grad, bbox, spec, anchor):
 
     if already_v3 and abs(s - 1) <= GEOM_TOL:
         # 几何已在容差内：只换色，不重新拟合，保证重复生成逐字节一致
-        return _render(color, grad, t0x, t0y, s0, inner0)
+        return _render(theme, anchor, grad, t0x, t0y, s0, inner0)
 
     # 线宽归一：让「最粗的一笔」在 64 网格上恰为 BASE_STROKE。
     # 渲染后线宽 = 指定值 * 源变换 s0 * 本次变换 s，故补一个系数 k 把它拉回 3。
@@ -458,19 +484,36 @@ def build_icon(name, source_svg, color, grad, bbox, spec, anchor):
         inner0 = STROKE_W.sub(lambda m: f'stroke-width="{_fmt(float(m.group(1)) * k)}"', inner0)
 
     # 与源变换复合，避免每次重生成都多套一层 <g>
-    return _render(color, grad, tx + s * t0x, ty + s * t0y, s * s0, inner0)
+    return _render(theme, anchor, grad, tx + s * t0x, ty + s * t0y, s * s0, inner0)
 
 
 GRAD_ID = "pg"
 
 
-def _render(color, grad, fx, fy, fs, inner):
-    """贴片用同色系渐变：offset 0 = 锚点色（原语义色），offset 1 = 微调端。"""
+def _render(theme, anchor, grad, fx, fy, fs, inner):
+    """输出一个规范图标。两主题的几何/线宽完全一致，只差贴片：
+
+    dark  : <rect fill="url(#pg)"> 同色系渐变贴片 + 白字（anchor 是渐变 stop0，grad 是 stop1）
+    light : <rect fill="#fff" stroke=品牌色> 白底贴片 + 品牌色描边圈 + 品牌色字形
+    """
+    head = (
+        '  <rect width="64" height="64" rx="{r}" fill="#ffffff" '
+        'stroke="{st}" stroke-width="{sw}"/>\n'
+    ).format(r=RADIUS, st=anchor, sw=_fmt(LIGHT_RING_W))
+    if theme == "light":
+        return (
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">\n'
+            + head +
+            f'  <g transform="translate({_fmt(fx)},{_fmt(fy)}) scale({_fmt(fs)})">\n'
+            f'{_reindent(inner)}\n'
+            '  </g>\n'
+            '</svg>\n'
+        )
     return (
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">\n'
         '  <defs>\n'
         f'    <linearGradient id="{GRAD_ID}" x1="0" y1="0" x2="1" y2="1">\n'
-        f'      <stop offset="0" stop-color="{color}"/>\n'
+        f'      <stop offset="0" stop-color="{anchor}"/>\n'
         f'      <stop offset="1" stop-color="{grad}"/>\n'
         '    </linearGradient>\n'
         '  </defs>\n'
@@ -491,13 +534,19 @@ V3_HEAD = re.compile(
     r'<rect\b[^>]*width="64"[^>]*height="64"[^>]*rx="14"[^>]*/>\s*'
     r'<g\s+transform="translate\(([-\d.]+),\s*([-\d.]+)\)\s*scale\(([-\d.]+)\)">'
 )
+# 浅色档：白底贴片 + 品牌色描边圈，无渐变 defs
+V3_HEAD_LIGHT = re.compile(
+    r'<rect\b[^>]*width="64"[^>]*height="64"[^>]*rx="14"[^>]*fill="#ffffff"[^>]*'
+    r'stroke="#[0-9a-fA-F]{6}"[^>]*stroke-width="[\d.]+"[^>]*/>\s*'
+    r'<g\s+transform="translate\(([-\d.]+),\s*([-\d.]+)\)\s*scale\(([-\d.]+)\)">'
+)
 
 
 def split_source(text):
     """源 svg -> (viewBox, 图形 inner, (t0x,t0y,s0))。已是规范形态时把外层 <g> 拆出来，
     使生成过程幂等（重跑不会层层套 <g>、也不会重复着色）。v3 先于 v2 匹配。"""
     box, inner = parse_svg(text)
-    for pat in (V3_HEAD, V2_HEAD):
+    for pat in (V3_HEAD, V3_HEAD_LIGHT, V2_HEAD):
         m = pat.search(inner)
         if m:
             t0 = (float(m.group(1)), float(m.group(2)), float(m.group(3)))
@@ -512,12 +561,12 @@ ROOT_PRESENT = ("stroke", "fill", "stroke-width", "stroke-linecap", "stroke-line
                 "fill-rule", "opacity")
 
 
-def root_glyph_attrs(source_svg, spec, anchor):
+def root_glyph_attrs(source_svg, spec, anchor, theme="dark"):
     """把根 <svg> 上的表现属性拾回来（parse_svg 只取 inner，会丢掉它们）。
 
     大量 v1 图标写成 `<svg fill="none" stroke="#4a9eff" stroke-width="2">` + 裸几何，
     属性全在根上。丢掉后几何的 fill 回退成默认黑 -> 整个字形变黑块。
-    这里统一归一化：颜色按 COLOR_SPEC 解析（未声明即白），透明度 -> 三档，
+    这里统一归一化：颜色按 COLOR_SPEC 解析（未声明即白/品牌色），透明度 -> 三档，
     线宽原值保留（随后由线宽归一化按 k 缩放）。
     """
     m = SVG_OPEN.search(source_svg)
@@ -537,7 +586,7 @@ def root_glyph_attrs(source_svg, spec, anchor):
             elif v.startswith("url("):
                 continue
             else:
-                val, force_main = resolve_color(v, spec, anchor)
+                val, force_main = resolve_color(v, spec, anchor, theme)
         elif a in ("opacity", "fill-opacity", "stroke-opacity"):
             try:
                 f = float(v)
@@ -579,7 +628,7 @@ def uncolor(inner, name):
     return COLOR_ATTR.sub(swap, inner)
 
 
-def prepare(source_svg, name, spec, anchor):
+def prepare(source_svg, name, spec, anchor, theme="dark"):
     """源 svg -> (viewBox, 已着色的图形 inner, 源变换)。
 
     v1 源：剥背景 -> 接回根属性 -> 着色。
@@ -589,18 +638,18 @@ def prepare(source_svg, name, spec, anchor):
     box, inner, t0 = split_source(source_svg)
     if t0 == (0.0, 0.0, 1.0):
         inner = strip_background(inner, box)
-        attrs = root_glyph_attrs(source_svg, spec, anchor)
+        attrs = root_glyph_attrs(source_svg, spec, anchor, theme)
         if attrs:
             inner = f'<g {attrs}>\n{inner}\n</g>'
     else:
         inner = uncolor(inner, name)
-    return box, apply_colors(inner, spec, anchor), t0
+    return box, apply_colors(inner, spec, anchor, theme), t0
 
 
-def measure_svg(name, source_svg, spec=None, anchor="#fff"):
+def measure_svg(name, source_svg, spec=None, anchor="#fff", theme="dark"):
     """构造只含图形（无背景贴片）的 svg 供 Chrome 量盒；额外包一层无变换的 <g id="art">，
     这样 getBBox 结果无歧义地落在 viewBox 坐标系（源变换已计入）。"""
-    box, inner, (t0x, t0y, s0) = prepare(source_svg, name, spec, anchor)
+    box, inner, (t0x, t0y, s0) = prepare(source_svg, name, spec, anchor, theme)
     vb = f"{_fmt(box[0])} {_fmt(box[1])} {_fmt(box[2])} {_fmt(box[3])}"
     return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{vb}">'
             f'<g id="art"><g transform="translate({_fmt(t0x)},{_fmt(t0y)}) scale({_fmt(s0)})">'
@@ -645,13 +694,14 @@ def cmd_gen(names):
             print(f"  !! {n}: 未在 GROUP 里登记语义色，跳过")
             continue
         d = ROOT / n
+        anchor = PALETTE[g]["dark"]   # 两主题都用「深锚点」做品牌色（浅色档作字形/描边）
         for theme, fname in (("dark", "icon.svg"), ("light", "icon.light.svg")):
-            anchor = PALETTE[g][theme]
+            grad = PALETTE[g]["grad_dark"] if theme == "dark" else None
             (d / fname).write_text(
-                build_icon(n, apply_source_patch(n, src, anchor), anchor,
-                           PALETTE[g][f"grad_{theme}"], bb, spec_for(n, theme), anchor),
+                build_icon(n, apply_source_patch(n, src, anchor), theme, anchor,
+                           grad, bb, spec_for(n, theme)),
                 encoding="utf-8")
-        print(f"  OK {n:20s} {g:7s} {PALETTE[g]['dark']} -> {PALETTE[g]['grad_dark']}")
+        print(f"  OK {n:20s} {g:7s} {anchor} -> {PALETTE[g]['grad_dark']}")
         ok += 1
     return 0 if ok == len(names) else 1
 
@@ -662,14 +712,23 @@ def _lum_of(rgb):
 
 
 def palette_contrast_errors():
-    """色板级硬约束（比逐个图标检查更早暴露问题）：
-      · 白图形 对 贴片两端  >= 3.0:1   （图形在贴片上要读得出）
+    """色板级硬约束（比逐个图标检查更早暴露问题）。
+
+    深色档（饱和渐变贴片 + 白字）：
+      · 白图形 对 贴片两端  >= 3.0:1   （白字在贴片上要读得出）
       · 贴片两端 对 各自主题背景 >= 3.0:1（贴片在面板上要分得开）
+
+    浅色档（白底贴片 + 品牌色字形，显示在近白背景上）：
+      · 品牌字（深锚点）对白底 >= 3.0:1
+      · 强调色（浅档）对白底   >= 3.0:1
+      · 贴片是白底、故意与近白背景接近，不强制「贴片/背景」3:1（靠描边圈勾边界）
     渐变第二端是最亮/最暗的一头，所以两端都过 = 中间任意点都过。
     """
     errs = []
     for name, spec in PALETTE.items():
-        for theme in ("dark", "light"):
+        anchor = spec["dark"]                      # 浅色档品牌字/描边圈
+        # 深色档：白字对饱和贴片 + 贴片对暗背景
+        for theme in ("dark",):
             bg = contrast(hex_to_lum(spec[theme]), _lum_of(BG[theme]))
             if contrast(1.0, hex_to_lum(spec[theme])) < 3.0:
                 errs.append(f"色板 {name}/{theme}: 白图形对贴片 {spec[theme]} 对比度不足 3:1")
@@ -680,6 +739,18 @@ def palette_contrast_errors():
                 errs.append(f"色板 {name}/{theme}: 白图形对渐变端 {grad} 对比度不足 3:1")
             if contrast(hex_to_lum(grad), _lum_of(BG[theme])) < 3.0:
                 errs.append(f"色板 {name}/{theme}: 渐变端 {grad} 对背景 对比度不足 3:1")
+        # 浅色档：品牌字/强调色对白底
+        bg_lum = hex_to_lum("#ffffff")
+        if contrast(hex_to_lum(anchor), bg_lum) < 3.0:
+            errs.append(f"色板 {name}/light: 品牌字 {anchor} 对白底 对比度不足 3:1")
+        for acn, ac in ACCENT.items():
+            ac_l = ac["light"]
+            if contrast(hex_to_lum(ac_l), bg_lum) < 3.0:
+                errs.append(f"色板 {name}/light: 强调色 {acn}({ac_l}) 对白底 对比度不足 3:1")
+        # color-converter 浅档点色（白底）
+        for dot in ("#e0324a", "#1d66ff", "#1a9a4a"):
+            if contrast(hex_to_lum(dot), bg_lum) < 3.0:
+                errs.append(f"色板 {name}/light: color-converter 点色 {dot} 对白底 对比度不足 3:1")
     return errs
 
 
@@ -693,13 +764,19 @@ def cmd_check():
         g = GROUP.get(n)
         if not g:
             warns.append(f"{n}: 未登记语义色（GROUP 中缺失）")
-        # 该插件每个主题下允许出现的图形颜色：白 + 锚点色 + 声明里的强调/直指定色
-        allowed_by_theme = {
-            t: {"#fff", "#ffffff"}
-               | ({PALETTE[g][t].lower()} if g else set())
-               | {v.lower() for v in spec_for(n, t).values()}
-            for t in ("dark", "light")
-        }
+        # 该插件每个主题下允许出现的图形颜色：
+        #   深色档 -> 白 + 锚点色 + 强调/直指定色
+        #   浅色档 -> 品牌色(深锚点) + 强调/直指定色（浅色档无白字）
+        allowed_by_theme = {}
+        for t in ("dark", "light"):
+            if g:
+                anchor = PALETTE[g]["dark"]
+                allow = {anchor.lower()} | {v.lower() for v in spec_for(n, t).values()}
+            else:
+                allow = set()
+            if t == "dark":
+                allow |= {"#fff", "#ffffff"}
+            allowed_by_theme[t] = allow
         for theme, fname in (("dark", "icon.svg"), ("light", "icon.light.svg")):
             f = d / fname
             if not f.exists():
@@ -724,25 +801,37 @@ def cmd_check():
                 errs.append(f"{n}/{fname}: 不得使用 currentColor（<img> 下解析为黑色）")
             if "url(#" in text and "<defs" not in text:
                 errs.append(f"{n}/{fname}: 引用了不存在的 defs")
-            # 贴片：v3 是渐变（两 stop 必须等于该语义色/主题的两端）
-            mp = re.search(r'<rect\b[^>]*width="64"[^>]*height="64"[^>]*rx="14"[^>]*fill="url\(#([\w-]+)\)"', text)
-            if mp:
-                gid = mp.group(1)
-                stops = re.search(rf'<linearGradient[^>]*id="{gid}"[^>]*>([\s\S]*?)</linearGradient>', text)
-                cols = [c for _, c in COLOR_ATTR.findall(stops.group(1))] if stops else []
-                want = [PALETTE[g][theme], PALETTE[g][f"grad_{theme}"]] if g else []
-                if len(cols) != 2:
-                    errs.append(f"{n}/{fname}: 贴片渐变应有 2 个 stop，实为 {len(cols)}")
-                elif want and [c.lower() for c in cols] != [w.lower() for w in want]:
-                    errs.append(f"{n}/{fname}: 贴片渐变 {cols} != {g}/{theme} 应取的 {want}")
-            else:
-                mp = re.search(r'<rect\b[^>]*width="64"[^>]*height="64"[^>]*rx="14"[^>]*fill="(#[0-9a-fA-F]{6})"', text)
+            # 贴片：深色档=v3 渐变（两 stop 等于该语义色/主题两端）；浅色档=白底+品牌描边圈
+            if theme == "light":
+                mp = re.search(
+                    r'<rect\b[^>]*width="64"[^>]*height="64"[^>]*rx="14"[^>]*'
+                    r'fill="#ffffff"[^>]*stroke="(#[0-9a-fA-F]{6})"[^>]*'
+                    r'stroke-width="([\d.]+)"[^>]*/>', text)
                 if not mp:
-                    errs.append(f"{n}/{fname}: 缺规范贴片 <rect width=64 height=64 rx=14 fill=..>")
+                    errs.append(f"{n}/{fname}: 浅色档贴片应为白底+品牌描边圈 "
+                                f"<rect ... fill='#ffffff' stroke='品牌色' stroke-width='..'/>")
+                elif g and mp.group(1).lower() != PALETTE[g]["dark"].lower():
+                    errs.append(f"{n}/{fname}: 浅色档描边圈颜色 {mp.group(1)} "
+                                f"!= {g} 应取的品牌色 {PALETTE[g]['dark']}")
+            else:
+                mp = re.search(r'<rect\b[^>]*width="64"[^>]*height="64"[^>]*rx="14"[^>]*fill="url\(#([\w-]+)\)"', text)
+                if mp:
+                    gid = mp.group(1)
+                    stops = re.search(rf'<linearGradient[^>]*id="{gid}"[^>]*>([\s\S]*?)</linearGradient>', text)
+                    cols = [c for _, c in COLOR_ATTR.findall(stops.group(1))] if stops else []
+                    want = [PALETTE[g][theme], PALETTE[g][f"grad_{theme}"]] if g else []
+                    if len(cols) != 2:
+                        errs.append(f"{n}/{fname}: 贴片渐变应有 2 个 stop，实为 {len(cols)}")
+                    elif want and [c.lower() for c in cols] != [w.lower() for w in want]:
+                        errs.append(f"{n}/{fname}: 贴片渐变 {cols} != {g}/{theme} 应取的 {want}")
                 else:
-                    errs.append(f"{n}/{fname}: 贴片仍是纯色 {mp.group(1)}，应为同色系渐变")
+                    mp2 = re.search(r'<rect\b[^>]*width="64"[^>]*height="64"[^>]*rx="14"[^>]*fill="(#[0-9a-fA-F]{6})"', text)
+                    if not mp2:
+                        errs.append(f"{n}/{fname}: 缺规范贴片 <rect width=64 height=64 rx=14 fill=..>")
+                    else:
+                        errs.append(f"{n}/{fname}: 贴片仍是纯色 {mp2.group(1)}，应为同色系渐变")
             # 颜色只扫图形部分：贴片本身就是语义色，不能一并当「非白」报错
-            m = V3_HEAD.search(text) or V2_HEAD.search(text)
+            m = V3_HEAD.search(text) or V3_HEAD_LIGHT.search(text) or V2_HEAD.search(text)
             body = text[m.end():] if m else text
             if m:
                 cut = body.rfind("</g>")
@@ -829,8 +918,12 @@ const data = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
 def cmd_check_render():
     """渲染级校验：纯静态规则看不出「白块盖住贴片」，这里按真实像素判。
 
-    · 白像素占比过高 -> 卡底没剥干净、被涂白后盖住贴片
-    · 非白像素占比过低 -> 贴片基本被遮住，用户在 36px 下看到一块白方
+    深色档：
+      · 白像素占比过高 -> 卡底没剥干净、被涂白后盖住贴片
+      · 非白像素占比过低 -> 贴片基本被遮住，用户在 36px 下看到一块白方
+    浅色档：贴片本就是白底，白像素高是正常的——改判「白底在」+「品牌字形在」，
+      不再套白像素上限。
+
     · 图形包围盒越界 -> 缩放出错，图形溢出安全区
 
     注意贴片在 v3 是渐变，像素颜色是连续分布，所以这里只做「白 / 非白」二分，
@@ -862,18 +955,28 @@ def cmd_check_render():
 
     errs = []
     for name, s in stats.items():
-        if s["white"] > WHITE_MAX:
-            errs.append(f"{name}: 白像素占比 {s['white']:.1f}% > {WHITE_MAX}%，"
-                        f"疑似卡底未剥离（会盖住贴片）")
-        if s["colored"] < PATCH_MIN:
-            errs.append(f"{name}: 贴片像素占比 {s['colored']:.1f}% < {PATCH_MIN}%，"
-                        f"贴片基本被遮住")
+        is_light = name.endswith("icon.light.svg")
         bb = s["bb"]
         if bb:
             x, y, w, h = bb
             if x < SAFE - 1.5 or y < SAFE - 1.5 or x + w > GRID - SAFE + 1.5 or y + h > GRID - SAFE + 1.5:
                 errs.append(f"{name}: 图形包围盒 [{x:.1f},{y:.1f},{w:.1f},{h:.1f}] "
                             f"越出安全区 {SAFE:g}..{GRID - SAFE:g}")
+        if is_light:
+            # 浅色档：白底贴片（白像素高是正常的）+ 必须有品牌字形（非白像素）
+            if s["white"] < 40:
+                errs.append(f"{name}: 白像素占比 {s['white']:.1f}% < 40%，"
+                            f"浅色档白底贴片疑似缺失/被覆盖")
+            if s["colored"] < 4:
+                errs.append(f"{name}: 贴片像素占比 {s['colored']:.1f}% < 4%，"
+                            f"品牌字形疑似缺失")
+        else:
+            if s["white"] > WHITE_MAX:
+                errs.append(f"{name}: 白像素占比 {s['white']:.1f}% > {WHITE_MAX}%，"
+                            f"疑似卡底未剥离（会盖住贴片）")
+            if s["colored"] < PATCH_MIN:
+                errs.append(f"{name}: 贴片像素占比 {s['colored']:.1f}% < {PATCH_MIN}%，"
+                            f"贴片基本被遮住")
     return errs
 
 

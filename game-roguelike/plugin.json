@@ -1,0 +1,58 @@
+{
+  "id": "io.github.parieses.game-roguelike",
+  "name": "终端 Roguelike",
+  "version": "1.0.0",
+  "description": "纯键盘 ASCII 地牢探险：撞向怪物即攻击，拾取药水武器护甲，逐层下探，斩杀第 6 层的巨龙。永久死亡，比拼最深层数。",
+  "author": "QuickDock",
+  "icon": "icon.svg",
+  "category": "游戏娱乐",
+  "platforms": [
+    "windows"
+  ],
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "backend": {
+    "runtime": "none"
+  },
+  "host_apis": [],
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 560,
+    "height": 640
+  },
+  "commands": [
+    {
+      "id": "game-roguelike",
+      "title": "终端 Roguelike",
+      "keywords": [
+        "roguelike",
+        "地牢",
+        "文字冒险",
+        "终端",
+        "游戏",
+        "game"
+      ],
+      "aliases": [
+        "地牢探险",
+        "文字游戏",
+        "肉鸽"
+      ],
+      "title_i18n": {
+        "zh-CN": "终端 Roguelike",
+        "en-US": "Terminal Roguelike"
+      }
+    }
+  ],
+  "name_i18n": {
+    "zh-CN": "终端 Roguelike",
+    "en-US": "Terminal Roguelike"
+  },
+  "description_i18n": {
+    "zh-CN": "纯键盘 ASCII 地牢探险：撞向怪物即攻击，拾取药水武器护甲，逐层下探，斩杀第 6 层的巨龙。永久死亡，比拼最深层数。",
+    "en-US": "Pure-keyboard ASCII dungeon crawl: bump monsters to attack, grab potions/weapons/armor, descend floor by floor, slay the dragon on floor 6. Permadeath, deepest-floor leaderboard."
+  },
+  "changelog": "## v1.0.0\n\n- 程序生成地牢（BFS 保证楼梯可达）\n- 撞怪即战的回合制战斗，怪物随层数增强\n- 道具：药水回血 / 武器加攻 / 护甲加防 / 金币\n- 经验升级：生命上限提升并回满、攻击成长\n- 第 6 层巨龙 BOSS，击败即通关\n- 永久死亡，本地记录最深层数 / 最多金币\n- 纯键盘：方向键 / WASD 移动，空格跳过，R 重开"
+}

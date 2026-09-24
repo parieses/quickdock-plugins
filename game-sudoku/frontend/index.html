@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>数独</title>
+<link rel="stylesheet" href="qd-theme.css">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div class="sd-app">
+  <div class="sd-head">
+    <div class="sd-title">🧩 数独</div>
+    <label class="sd-diff">
+      <select id="diff">
+        <option value="easy">简单</option>
+        <option value="medium" selected>中等</option>
+        <option value="hard">困难</option>
+        <option value="expert">专家</option>
+      </select>
+    </label>
+    <button class="p-btn p-btn-primary" id="new" type="button">新局</button>
+  </div>
+  <div class="sd-bar">
+    <div class="sd-timer" id="timer">00:00</div>
+    <div class="sd-best" id="best">最佳 —</div>
+    <button class="p-btn" id="notes" type="button">笔记：关</button>
+    <button class="p-btn" id="hint" type="button">提示</button>
+  </div>
+  <div class="sd-board" id="board"></div>
+  <div class="sd-pad" id="pad"></div>
+  <div class="sd-msg" id="msg">点格子后按数字键 / 点数字盘填入</div>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

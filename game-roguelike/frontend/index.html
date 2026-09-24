@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>终端 Roguelike</title>
+<link rel="stylesheet" href="qd-theme.css">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div class="rl-app">
+  <div class="rl-head">
+    <div class="rl-logo">&#9612; ROGUELIKE</div>
+    <div class="rl-best" id="best">最深 0 · 最多金 0</div>
+  </div>
+  <pre class="rl-map" id="map" aria-label="地牢地图"></pre>
+  <div class="rl-hud" id="hud"></div>
+  <div class="rl-log" id="log" aria-live="polite"></div>
+  <div class="rl-foot"><span id="hint">&#8593;&#8595;&#8592;&#8594; / WASD 移动 · 撞怪攻击 · 空格跳过 · R 重开</span></div>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

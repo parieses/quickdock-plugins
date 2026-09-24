@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.disk-analyzer",
   "name": "磁盘分析器",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "可视化磁盘空间占用分析工具，类似 SpaceSniffer，支持树图展示目录结构",
   "author": "QuickDock",
   "icon": "icon.svg",
@@ -98,5 +98,5 @@
     "zh-CN": "可视化磁盘空间占用分析工具，类似 SpaceSniffer，支持树图展示目录结构",
     "en-US": "Visualize disk space usage like SpaceSniffer with a treemap of directory structure."
   },
-  "changelog": "## v1.0.2\n\n- 50 个插件的图形全部按各自功能重新绘制（原先是从老仓库图形迁移过来的通用件）\n- 统一的部分：64 网格 / 安全区 / 最粗一笔 3px / 同色系渐变底色 / 深浅两档主题\n- 不同的部分：字形本体，逐个对应插件功能（如 mail-check 为信封+对勾、jwt-decoder 为三段的凭证、unit-converter 为标尺+双向箭头）\n- 保留状态语义的强调色：绿 = 可用 / 生效 / 通过，红 = 删除，黄 = 告警\n- 图形源改为 glyphs.py 单点维护，改了重跑 glyphs.py + gen_icons.py --gen 即可\n\n\n## v1.0.1\n\n- 图标改用统一 64 网格满幅圆角贴片 + 白色图形，线宽归一\n- 新增浅色主题图标 `icon.light.svg`，随应用主题自动切换\n\n## v1.0.0\n\n- 可视化磁盘空间占用分析工具，类似 SpaceSniffer，支持树图展示目录结构\n"
+  "changelog": "## v1.0.3\n\n- 重写后端扫描：去掉每层重复整树遍历（dirSize 递归 WalkDir），改为 O(n) 递归后序累加，每个文件只在直接父目录计入一次，深目录树扫描速度大幅提升、不再轻易触发 3 分钟上限\n- 修复目录体积塌缩：之前子目录只统计直接文件大小、丢失下属子目录体积，treemap 大面积失真；现在每个节点 size 严格等于其子节点 size 之和（已端到端校验）\n- 新增 `disk-scan-stop` 真正取消后台扫描（取消 context，goroutine 不再跑满上限空耗 CPU/磁盘）\n- 到达最大深度不再返回 0，改用 dirSize 一次性算出该层完整体积（不丢数据）\n- 方块图升级为递归嵌套 treemap（SpaceSniffer 式：目录里套子目录方块，带层数/块数上限防卡顿），点击内层方块下钻\n- 进度条改用后端真实 progress（已耗时 / 整体上限），去掉无意义的 version%100\n\n## v1.0.2\n\n- 50 个插件的图形全部按各自功能重新绘制（原先是从老仓库图形迁移过来的通用件）\n- 统一的部分：64 网格 / 安全区 / 最粗一笔 3px / 同色系渐变底色 / 深浅两档主题\n- 浅色档 icon.light.svg 重做：白底贴片 + 品牌色描边圈 + 品牌色字形，与深色档（渐变贴片 + 白字）肉眼可辨地区分（原先两档只差色号，看起来一模一样）\n- 不同的部分：字形本体，逐个对应插件功能（如 mail-check 为信封+对勾、jwt-decoder 为三段的凭证、unit-converter 为标尺+双向箭头）\n- 保留状态语义的强调色：绿 = 可用 / 生效 / 通过，红 = 删除，黄 = 告警\n- 图形源改为 glyphs.py 单点维护，改了重跑 glyphs.py + gen_icons.py --gen 即可\n\n\n## v1.0.1\n\n- 图标改用统一 64 网格满幅圆角贴片 + 白色图形，线宽归一\n- 新增浅色主题图标 `icon.light.svg`，随应用主题自动切换\n\n## v1.0.0\n\n- 可视化磁盘空间占用分析工具，类似 SpaceSniffer，支持树图展示目录结构\n"
 }

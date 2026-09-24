@@ -1,0 +1,57 @@
+{
+  "id": "io.github.parieses.game-snake",
+  "name": "贪吃蛇",
+  "version": "1.0.0",
+  "description": "经典贪吃蛇：方向键 / WASD 控制，吃食物变长，撞墙或咬到自己即结束。本地记录最高分与最长长度。",
+  "author": "QuickDock",
+  "icon": "icon.svg",
+  "category": "游戏娱乐",
+  "platforms": [
+    "windows"
+  ],
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "backend": {
+    "runtime": "none"
+  },
+  "host_apis": [],
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 500,
+    "height": 620
+  },
+  "commands": [
+    {
+      "id": "game-snake",
+      "title": "贪吃蛇",
+      "keywords": [
+        "贪吃蛇",
+        "snake",
+        "蛇",
+        "游戏",
+        "game"
+      ],
+      "aliases": [
+        "贪吃蛇游戏",
+        "吃蛇",
+        "贪吃蛇经典"
+      ],
+      "title_i18n": {
+        "zh-CN": "贪吃蛇",
+        "en-US": "Snake"
+      }
+    }
+  ],
+  "name_i18n": {
+    "zh-CN": "贪吃蛇",
+    "en-US": "Snake"
+  },
+  "description_i18n": {
+    "zh-CN": "经典贪吃蛇：方向键 / WASD 控制，吃食物变长，撞墙或咬到自己即结束。本地记录最高分与最长长度。",
+    "en-US": "Classic Snake: steer with arrows / WASD, eat to grow, die on wall or self-bite. Tracks best score and longest length locally."
+  },
+  "changelog": "## v1.0.0\n\n- Canvas 经典贪吃蛇（20×20 网格）\n- 方向键 / WASD 转向，空格暂停\n- 吃食物得分并加速\n- 本地记录最高分与最长长度\n- 画面配色跟随宿主暗/亮主题"
+}

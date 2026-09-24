@@ -1,0 +1,57 @@
+{
+  "id": "io.github.parieses.game-tetris",
+  "name": "俄罗斯方块",
+  "version": "1.0.0",
+  "description": "经典俄罗斯方块：7 种方块、旋转、消行、等级加速。方向键 / X 旋转，空格硬降。本地记录最高分。",
+  "author": "QuickDock",
+  "icon": "icon.svg",
+  "category": "游戏娱乐",
+  "platforms": [
+    "windows"
+  ],
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "backend": {
+    "runtime": "none"
+  },
+  "host_apis": [],
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 540,
+    "height": 720
+  },
+  "commands": [
+    {
+      "id": "game-tetris",
+      "title": "俄罗斯方块",
+      "keywords": [
+        "俄罗斯方块",
+        "tetris",
+        "方块",
+        "游戏",
+        "game"
+      ],
+      "aliases": [
+        "俄罗斯方块游戏",
+        "落方块",
+        "tetris 经典"
+      ],
+      "title_i18n": {
+        "zh-CN": "俄罗斯方块",
+        "en-US": "Tetris"
+      }
+    }
+  ],
+  "name_i18n": {
+    "zh-CN": "俄罗斯方块",
+    "en-US": "Tetris"
+  },
+  "description_i18n": {
+    "zh-CN": "经典俄罗斯方块：7 种方块、旋转、消行、等级加速。方向键 / X 旋转，空格硬降。本地记录最高分。",
+    "en-US": "Classic Tetris: 7 tetrominoes, rotation, line clears, level-based speed-up. Arrows / X to rotate, space to hard drop. Best score saved locally."
+  },
+  "changelog": "## v1.0.0\n\n- Canvas 经典俄罗斯方块（10×20）\n- 7 种标准方块 + 旋转（含简单踢墙）\n- 消行计分、等级加速、落点预览（ghost）\n- 下一个方块预览\n- 本地记录最高分"
+}

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>俄罗斯方块</title>
+<link rel="stylesheet" href="qd-theme.css">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div class="t-app">
+  <div class="t-head"><div class="t-title">🧱 俄罗斯方块</div></div>
+  <div class="t-main">
+    <div class="t-board-wrap">
+      <canvas id="cv" width="260" height="520"></canvas>
+      <div class="t-over" id="over" hidden>
+        <div class="t-over-text" id="overText">游戏结束</div>
+        <button class="p-btn p-btn-primary" id="retry" type="button">再来一局</button>
+      </div>
+    </div>
+    <div class="t-side">
+      <div class="t-next-wrap">
+        <div class="t-label">下一个</div>
+        <canvas id="next" width="120" height="120"></canvas>
+      </div>
+      <div class="t-stat"><span>分数</span><b id="score">0</b></div>
+      <div class="t-stat"><span>消行</span><b id="lines">0</b></div>
+      <div class="t-stat"><span>等级</span><b id="level">1</b></div>
+      <div class="t-stat"><span>最佳</span><b id="best">0</b></div>
+      <button class="p-btn p-btn-primary" id="restart" type="button">重开</button>
+      <div class="t-keys">← → 移动<br>↑ / X 旋转<br>↓ 软降 · 空格 硬降<br>P 暂停</div>
+    </div>
+  </div>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

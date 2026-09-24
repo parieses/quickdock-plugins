@@ -420,6 +420,46 @@ GLYPH["mindmap"] = """
   <circle cx="19.4" cy="18.6" r="1.8"/>
 """
 
+GLYPH["game-2048"] = """
+  <rect x="3" y="3" width="18" height="18" rx="2.6"/>
+  <rect x="6.5" y="6.5" width="4.6" height="4.6" rx="1" fill="#e6e6e6" stroke="none"/>
+  <rect x="13" y="13" width="4.6" height="4.6" rx="1" fill="#e6e6e6" stroke="none"/>
+  <path d="M11.8 11.8l2.4 2.4" opacity="0.55"/>
+"""
+
+GLYPH["game-snake"] = """
+  <path d="M4 17c0-5 4-5 4-9s4-1 4 3 4 1 4-3 3-1 3 2"/>
+  <circle cx="19" cy="9" r="2.1" fill="#e6e6e6" stroke="none"/>
+"""
+
+GLYPH["game-tetris"] = """
+  <rect x="9.4" y="4" width="5.2" height="5.2" rx="1"/>
+  <rect x="4.2" y="9.2" width="5.2" height="5.2" rx="1"/>
+  <rect x="9.4" y="9.2" width="5.2" height="5.2" rx="1"/>
+  <rect x="14.6" y="9.2" width="5.2" height="5.2" rx="1"/>
+"""
+
+GLYPH["game-sudoku"] = """
+  <rect x="4" y="4" width="16" height="16" rx="2"/>
+  <path d="M4 12h16" opacity="0.55"/>
+  <path d="M12 4v16" opacity="0.55"/>
+  <path d="M8 4v16" opacity="0.3"/>
+  <path d="M4 8h16" opacity="0.3"/>
+"""
+
+GLYPH["game-code-snake"] = """
+  <path d="M5 18c0-6 5-6 5-10s5 0 5 4"/>
+  <circle cx="15" cy="12" r="2.1" fill="#e6e6e6" stroke="none"/>
+  <path d="M17 6l3 3-3 3" opacity="0.55"/>
+"""
+
+GLYPH["game-roguelike"] = """
+  <rect x="3" y="5" width="18" height="14" rx="2"/>
+  <path d="M6 9l2 2-2 2" opacity="0.9"/>
+  <rect x="11" y="10.3" width="2.4" height="2.4" fill="#e6e6e6" stroke="none"/>
+  <path d="M6 16h8" opacity="0.5"/>
+"""
+
 
 def main():
     made = []

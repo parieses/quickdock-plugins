@@ -1,0 +1,57 @@
+{
+  "id": "io.github.parieses.game-code-snake",
+  "name": "代码贪吃蛇",
+  "version": "1.0.0",
+  "description": "代码主题贪吃蛇：在「编辑器」里操控蛇吞掉散落的代码片段，每吃一个解锁一条开发小贴士（JS / PHP / Go / SQL 等）。本地记录分数与收集数。",
+  "author": "QuickDock",
+  "icon": "icon.svg",
+  "category": "游戏娱乐",
+  "platforms": [
+    "windows"
+  ],
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "backend": {
+    "runtime": "none"
+  },
+  "host_apis": [],
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 500,
+    "height": 700
+  },
+  "commands": [
+    {
+      "id": "game-code-snake",
+      "title": "代码贪吃蛇",
+      "keywords": [
+        "代码贪吃蛇",
+        "code snake",
+        "贪吃蛇",
+        "代码游戏",
+        "game"
+      ],
+      "aliases": [
+        "代码蛇",
+        "程序员工蛇",
+        "snake code"
+      ],
+      "title_i18n": {
+        "zh-CN": "代码贪吃蛇",
+        "en-US": "Code Snake"
+      }
+    }
+  ],
+  "name_i18n": {
+    "zh-CN": "代码贪吃蛇",
+    "en-US": "Code Snake"
+  },
+  "description_i18n": {
+    "zh-CN": "代码主题贪吃蛇：在「编辑器」里操控蛇吞掉散落的代码片段，每吃一个解锁一条开发小贴士。本地记录分数与收集数。",
+    "en-US": "Code-themed Snake: steer through an 'editor', eat code snippets, each unlocks a dev tip (JS / PHP / Go / SQL). Tracks score and snippets locally."
+  },
+  "changelog": "## v1.0.0\n\n- 代码编辑器风格的贪吃蛇（20×20 网格）\n- 食物为代码片段 token，吃到解锁开发小贴士\n- 方向键 / WASD 控制，空格暂停\n- 本地记录分数与收集片段数\n- 提示面板展示最新代码片段与说明"
+}

@@ -22,6 +22,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -115,9 +116,9 @@ const defaultBudget = 10 * time.Second
 
 // 后台全量扫描的全局上限：避免极端情况下把内存吃爆或扫到天荒地老。
 const (
-	maxJobNodes  = 20000            // 单任务返回节点数硬上限
+	maxJobNodes  = 60000            // 单任务返回节点数硬上限
 	maxJobDepth  = 4                // 最大扫描深度
-	jobOverall   = 3 * time.Minute  // 单任务整体耗时上限
+	jobOverall   = 3 * time.Minute // 单任务整体耗时上限
 	perDirBudget = 20 * time.Second // 单个目录体积统计的预算（后台，宽松）
 	walkSemSize  = 64               // 并发 walk 的目录数上限
 )
@@ -141,6 +142,7 @@ type scanJob struct {
 	scannedDirs int64
 	nodeCount   int64
 	version     int64 // 每次树结构变更自增，前端据此判定是否需要拉新快照
+	cancel      context.CancelFunc
 }
 
 var (
@@ -255,6 +257,8 @@ func handleExecute(req rpcRequest) {
 		handleScanFull(req.ID, input)
 	case "scan-status", "status":
 		handleScanStatus(req.ID, input)
+	case "scan-stop", "stop":
+		handleScanStop(req.ID, input)
 	case "list":
 		handleList(req.ID, input)
 	case "info":
@@ -453,16 +457,18 @@ func handleScanFull(id int64, input map[string]interface{}) {
 		})
 		return
 	}
+	ctx, cancel := context.WithCancel(context.Background())
 	j := &scanJob{
 		path:      path,
 		maxDepth:  maxDepth,
 		startedAt: time.Now(),
 		deadline:  time.Now().Add(jobOverall),
+		cancel:    cancel,
 	}
 	jobs[path] = j
 	jobsMu.Unlock()
 
-	go j.run()
+	go j.run(ctx)
 	respond(id, map[string]interface{}{
 		"jobId":    path,
 		"started":  true,
@@ -492,6 +498,14 @@ func handleScanStatus(id int64, input map[string]interface{}) {
 	if j.root != nil {
 		j.root.ElapsedMs = time.Since(j.startedAt).Milliseconds()
 	}
+	elapsedMs := time.Since(j.startedAt).Milliseconds()
+	progress := float64(elapsedMs) / float64(jobOverall.Milliseconds())
+	if j.done || j.truncated || progress > 1 {
+		progress = 1
+	}
+	if progress < 0 {
+		progress = 0
+	}
 	if since == j.version {
 		respond(id, map[string]interface{}{
 			"jobId":       path,
@@ -499,9 +513,10 @@ func handleScanStatus(id int64, input map[string]interface{}) {
 			"truncated":   j.truncated,
 			"scannedDirs": atomic.LoadInt64(&j.scannedDirs),
 			"elapsedMs":   time.Since(j.startedAt).Milliseconds(),
-			"version":     j.version,
-			"unchanged":   true,
-		})
+		"version":     j.version,
+		"progress":    progress,
+		"unchanged":   true,
+	})
 		return
 	}
 	raw, err := json.Marshal(j.root)
@@ -516,19 +531,46 @@ func handleScanStatus(id int64, input map[string]interface{}) {
 		"scannedDirs": atomic.LoadInt64(&j.scannedDirs),
 		"elapsedMs":   time.Since(j.startedAt).Milliseconds(),
 		"version":     j.version,
+		"progress":    progress,
 		"unchanged":   false,
 		"root":        json.RawMessage(raw),
 	})
 }
 
+// handleScanStop 取消指定路径的后台扫描任务（若存在）。取消后该 job 标记为完成，
+// 前端轮询会拿到 done=true 并停止。正在运行的 goroutine 会在 walk 的 ctx.Done() 检查处快速退出
+// （已发起的 ReadDir 系统调用无法中途取消，但不再继续下钻，开销可控）。
+func handleScanStop(id int64, input map[string]interface{}) {
+	path := strFrom(input, "path")
+	if path == "" {
+		path = rootPath()
+	}
+	jobsMu.Lock()
+	j, ok := jobs[path]
+	jobsMu.Unlock()
+	if !ok {
+		respond(id, map[string]interface{}{"ok": false, "msg": "没有该路径的活动扫描"})
+		return
+	}
+	if j.cancel != nil {
+		j.cancel()
+	}
+	j.mu.Lock()
+	j.done = true
+	j.version++
+	j.mu.Unlock()
+	respond(id, map[string]interface{}{"ok": true, "jobId": path})
+}
+
 // ---- 后台扫描实现 ----
 
-func (j *scanJob) run() {
+func (j *scanJob) run(ctx context.Context) {
 	defer func() {
 		if r := recover(); r != nil {
 			fmt.Fprintf(os.Stderr, "disk-analyzer scanJob.run panic: %v\n%s\n", r, debug.Stack())
 			j.mu.Lock()
 			j.done = true
+			j.truncated = true
 			j.version++
 			j.mu.Unlock()
 		}
@@ -540,12 +582,13 @@ func (j *scanJob) run() {
 		root.Total = st.Total
 		root.Free = st.Free
 		root.UsagePct = st.UsagePct
-		root.Size = int64(st.Used)
 	}
 	j.mu.Lock()
 	j.root = root
 	j.mu.Unlock()
-	j.walk(j.path, root, 0)
+	total, _ := j.walk(ctx, j.path, root, 0)
+	// walk 内部已通过原子累加把子树体积写入 root.Size，这里再显式对齐一次
+	atomic.StoreInt64(&root.Size, total)
 	j.mu.Lock()
 	j.done = true
 	j.version++
@@ -564,24 +607,44 @@ func (j *scanJob) run() {
 // 全局 j.mu 保护：占位节点挂载、子节点 Size/Scanning/Children 更新、version 自增、
 // 以及 disk-scan-status 的快照序列化，全部在同一把锁下，避免读到半更新状态。
 // 重活（os.ReadDir / dirSize）都在锁外完成。
-func (j *scanJob) walk(path string, node *dirNode, depth int) {
+// walk 递归扫描 path 子树（depth 层），返回该子树【已统计】的总体积与是否截断。
+// 渐进式（对齐 SpaceSniffer）：
+//  1. 刚 ReadDir 完，立刻把所有子项作为"占位节点"挂上 node.Children（目录 size=0
+//     且 Scanning=true），并 version++ —— 前端此时就能画出整版方块，而非干等。
+//  2. 各目录体积在后台并发递归统计，算完一个就把对应占位节点的 Size 就地更新、
+//     Scanning 置否、再 version++，并把该体积原子累加回父节点 node.Size —— 父方块长大。
+//  3. 未被截断的子目录继续递归下钻，过程同上，逐层渐进铺开。
+//
+// 性能修正：体积统计不再对每目录用 dirSize 递归整棵子树（O(n²) 重复 I/O），
+// 而是递归 walk 自身返回子目录真实体积并累加 —— 每个目录只 ReadDir 一次、
+// 每个文件只在直接父目录的 ReadDir 中通过 Info().Size() 计入一次，整体 O(n)。
+// 重活（os.ReadDir / Info）都在锁外完成；仅占位挂载、Size/Scanning/Children 更新、
+// version 自增、以及 disk-scan-status 的快照序列化在同一把 j.mu 下。
+func (j *scanJob) walk(ctx context.Context, path string, node *dirNode, depth int) (int64, bool) {
+	select {
+	case <-ctx.Done():
+		j.setTrunc()
+		return 0, true
+	default:
+	}
 	walkSem <- struct{}{}
 	defer func() { <-walkSem }()
 
 	if time.Now().After(j.deadline) {
 		j.setTrunc()
-		return
+		return 0, true
 	}
 	if depth >= j.maxDepth {
-		return
+		return 0, false
 	}
 	if atomic.LoadInt64(&j.nodeCount) > maxJobNodes {
 		j.setTrunc()
-		return
+		return 0, false
 	}
+
 	entries, err := os.ReadDir(path)
 	if err != nil {
-		return
+		return 0, false
 	}
 	atomic.AddInt64(&j.scannedDirs, 1)
 
@@ -594,12 +657,11 @@ func (j *scanJob) walk(path string, node *dirNode, depth int) {
 		}
 	}
 
-	// 立刻创建占位子节点：文件带真实大小（零成本），目录先 size=0 并标记 Scanning。
-	// 注意：文件条目可能因 Info() 失败或非普通文件（junction/符号链接/残留）被跳过，
-	// 所以"childNodes 里文件的个数"可能 < len(files)，不能拿 len(files) 当目录区起点，
-	// 否则目录占位节点下标整体偏移、并发统计时越界 panic。用 fileNodes 精确计数。
+	// 立即创建占位子节点：文件带真实大小（零成本），目录先 size=0 并标记 Scanning。
+	// 文件条目可能因 Info() 失败或非普通文件（junction/符号链接/残留）被跳过，
+	// 故目录占位节点统一排在文件之后，从下标 len(files) 起，无需额外计数变量。
 	childNodes := make([]*dirNode, 0, len(files)+len(dirs))
-	fileNodes := 0
+	var total int64 // 本目录直接文件的体积（最终累加进自身 node.Size）
 	for _, f := range files {
 		info, ie := f.Info()
 		if ie != nil {
@@ -608,13 +670,14 @@ func (j *scanJob) walk(path string, node *dirNode, depth int) {
 		if !info.Mode().IsRegular() {
 			continue
 		}
+		sz := info.Size()
+		total += sz
 		childNodes = append(childNodes, &dirNode{
 			Path:   filepath.Join(path, f.Name()),
 			Name:   f.Name(),
-			Size:   info.Size(),
+			Size:   sz,
 			IsFile: true,
 		})
-		fileNodes++
 	}
 	for _, d := range dirs {
 		childNodes = append(childNodes, &dirNode{
@@ -632,13 +695,15 @@ func (j *scanJob) walk(path string, node *dirNode, depth int) {
 	j.version++
 	j.mu.Unlock()
 
-	// 并发统计每个目录体积，完成后就地更新对应的占位节点
-	dirStart := fileNodes // 占位切片里目录从下标 dirStart 开始（精确对齐实际追加的文件数）
+	// 并发递归统计每个子目录体积，完成后就地更新占位节点
+	var trunc atomic.Bool
+	var subTotal int64 // 子目录完整子树体积之和（局部累加，避免与下层递归的累加相互干扰）
 	var wg sync.WaitGroup
 	sem := make(chan struct{}, scanWorkers())
 	for i, d := range dirs {
+		ph := childNodes[len(files)+i] // 目录占位节点（文件在前、目录在后，精确对齐下标）
 		wg.Add(1)
-		go func(i int, d os.DirEntry) {
+		go func(ph *dirNode) {
 			defer wg.Done()
 			defer func() {
 				if r := recover(); r != nil {
@@ -647,34 +712,31 @@ func (j *scanJob) walk(path string, node *dirNode, depth int) {
 			}()
 			sem <- struct{}{}
 			defer func() { <-sem }()
-			p2 := filepath.Join(path, d.Name())
-			size, trunc := dirSize(p2, j.deadline, perDirBudget)
-			if trunc {
+			var sz int64
+			var tr bool
+			if depth+1 >= j.maxDepth {
+				// 到达最大深度：不递归下钻，用 dirSize 一次性算出完整体积（不丢数据）
+				sz, tr = dirSize(filepath.Join(path, d.Name()), j.deadline, perDirBudget)
+			} else {
+				sz, tr = j.walk(ctx, filepath.Join(path, d.Name()), ph, depth+1)
+			}
+			if tr {
+				trunc.Store(true)
 				j.setTrunc()
 			}
-			ph := childNodes[dirStart+i] // 占位节点，复用同一对象，前端方块保持稳定
 			j.mu.Lock()
-			ph.Size = size
-			ph.Truncated = trunc
+			ph.Size = sz
+			ph.Truncated = tr
 			ph.Scanning = false
+			node.Size += sz    // 父方块随之长大（与下方 subTotal 同步累加）
+			subTotal += sz
 			j.version++
 			j.mu.Unlock()
-			if !trunc && depth+1 < j.maxDepth {
-				go func() {
-					defer func() {
-						if r := recover(); r != nil {
-							fmt.Fprintf(os.Stderr, "disk-analyzer walk panic: %v\n%s\n", r, debug.Stack())
-						}
-					}()
-					j.walk(p2, ph, depth+1)
-				}()
-			}
-		}(i, d)
+		}(ph)
 	}
 	wg.Wait()
 
-	// 本层所有目录体积已确定，按体积从大到小排序（大的方块更醒目），
-	// 再 version++ 让前端按最终顺序重绘这一层。
+	// 本层所有目录体积已确定，按体积从大到小排序（大的方块更醒目），再 version++
 	sort.Slice(node.Children, func(a, b int) bool {
 		if node.Children[a].Size != node.Children[b].Size {
 			return node.Children[a].Size > node.Children[b].Size
@@ -682,8 +744,14 @@ func (j *scanJob) walk(path string, node *dirNode, depth int) {
 		return node.Children[a].Name < node.Children[b].Name
 	})
 	j.mu.Lock()
+	node.Size += total // 加上本目录直接文件体积，得到完整子树体积
+	subTotal += total
 	j.version++
 	j.mu.Unlock()
+	if trunc.Load() {
+		j.setTrunc()
+	}
+	return subTotal, trunc.Load()
 }
 
 // scanWorkers 返回扫描工作池大小：CPU 核数 * 2，封顶 32，保底 4。

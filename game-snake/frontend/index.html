@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>贪吃蛇</title>
+<link rel="stylesheet" href="qd-theme.css">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div class="s-app">
+  <div class="s-head">
+    <div class="s-title">🐍 贪吃蛇</div>
+    <div class="s-scores">
+      <div class="s-score"><span>分数</span><b id="score">0</b></div>
+      <div class="s-score"><span>最佳</span><b id="best">0</b></div>
+      <div class="s-score"><span>最长</span><b id="bestLen">0</b></div>
+    </div>
+  </div>
+  <div class="s-bar">
+    <span class="s-tip" id="tip">方向键 / WASD 移动 · 空格暂停</span>
+    <div class="s-actions">
+      <button class="p-btn" id="pause" type="button">暂停</button>
+      <button class="p-btn p-btn-primary" id="restart" type="button">重开</button>
+    </div>
+  </div>
+  <canvas id="cv" class="s-canvas" width="440" height="440"></canvas>
+  <div class="s-over" id="over" hidden>
+    <div class="s-over-text" id="overText">游戏结束</div>
+    <button class="p-btn p-btn-primary" id="retry" type="button">再来一局</button>
+  </div>
+</div>
+<script src="app.js"></script>
+</body>
+</html>
