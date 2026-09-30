@@ -1034,11 +1034,26 @@ type scanSession struct {
 	Ports     []int
 	TimeoutMs int
 
-	mu      sync.Mutex
-	found   []*hostResult
-	scanned int
-	running bool
-	done    chan struct{}
+	mu        sync.Mutex
+	found     []*hostResult
+	scanned   int
+	running   bool
+	done      chan struct{}
+	closeOnce sync.Once
+}
+
+// closeDone 幂等地关闭 done：无论扫描自然结束还是用户点“停止”，只关一次，
+// 避免 "close of closed channel" panic。
+func (s *scanSession) closeDone() { s.closeOnce.Do(func() { close(s.done) }) }
+
+// isStopped 非阻塞地探测 done 是否已关闭（用户点了停止或扫描已结束）。
+func (s *scanSession) isStopped() bool {
+	select {
+	case <-s.done:
+		return true
+	default:
+		return false
+	}
 }
 
 var (
@@ -1131,11 +1146,14 @@ func lanHandleStart(id int64, input map[string]interface{}) {
 			s.mu.Lock()
 			s.running = false
 			s.mu.Unlock()
-			close(s.done)
+			s.closeDone()
 		}()
 		sem := make(chan struct{}, conc)
 		var wg sync.WaitGroup
 		for _, h := range hosts {
+			if s.isStopped() { // 用户已点停止：不再投递新的探测任务
+				break
+			}
 			wg.Add(1)
 			go func(ip string) {
 				defer wg.Done()
@@ -1146,6 +1164,9 @@ func lanHandleStart(id int64, input map[string]interface{}) {
 				}()
 				sem <- struct{}{}
 				defer func() { <-sem }()
+				if s.isStopped() { // 取到并发额度时已停止：跳过本次探测
+					return
+				}
 				r := probeHost(ip, ports, timeoutMs, useICMP)
 				s.mu.Lock()
 				s.scanned++
@@ -1205,11 +1226,9 @@ func lanHandleStop(id int64, input map[string]interface{}) {
 		return
 	}
 	s.mu.Lock()
-	if s.running {
-		s.running = false
-		close(s.done)
-	}
+	s.running = false
 	s.mu.Unlock()
+	s.closeDone() // 幂等关闭：与扫描完成时的关闭互不冲突，杜绝 double-close panic
 	snap := s.snapshot()
 	scanSessMu.Lock()
 	delete(scanSessions, s.ID)

@@ -156,17 +156,18 @@ func handleBisectStart(id int64, input map[string]interface{}) {
 		}
 	}
 
-	bisectMu.Lock()
-	bisects[path] = s
-	bisectMu.Unlock()
-
-	// checkout 第一个待测提交
+	// checkout 第一个待测提交（此刻 s 尚未发布到共享 map，安全原地变更）
 	if err := bisectCheckout(repo, s); err != nil {
 		respondError(id, -1, "checkout 失败: "+err.Error())
 		return
 	}
+	snap := bisectSnapshot(repo, s)
 
-	respond(id, bisectSnapshot(repo, s))
+	bisectMu.Lock()
+	bisects[path] = s
+	bisectMu.Unlock()
+
+	respond(id, snap)
 }
 
 // bisectCheckout 定位下一个待测提交并 checkout（detached HEAD）。
@@ -231,8 +232,8 @@ func handleBisectMark(id int64, input map[string]interface{}) {
 		return
 	}
 	bisectMu.Lock()
+	defer bisectMu.Unlock()
 	s, ok := bisects[path]
-	bisectMu.Unlock()
 	if !ok {
 		respondError(id, -1, "该仓库没有进行中的二分，请先 start")
 		return
@@ -307,14 +308,16 @@ func handleBisectStatus(id int64, input map[string]interface{}) {
 	}
 	bisectMu.Lock()
 	s, ok := bisects[path]
-	bisectMu.Unlock()
 	if !ok {
+		bisectMu.Unlock()
 		respond(id, map[string]interface{}{"ok": true, "active": false})
 		return
 	}
+	// 保持 bisectMu 覆盖整个读取+序列化，避免与 handleBisectMark 的变更撕裂
 	out := bisectSnapshot(repo, s)
 	out["active"] = true
 	respond(id, out)
+	bisectMu.Unlock()
 }
 
 func handleBisectReset(id int64, input map[string]interface{}) {

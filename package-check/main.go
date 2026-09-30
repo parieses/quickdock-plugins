@@ -116,6 +116,27 @@ func str(v interface{}) string {
 	return ""
 }
 
+// validPkgName 校验包名可安全拼进 registry URL 路径。允许字母数字与 -_.@/ ，
+// 但拒绝 ".."、空、过长，以及空格 / ? # & = % 等会改变请求目标或触发路径穿越的字符。
+// 允许 '/' 是为兼容 npm scoped（@scope/name）与 composer（vendor/package）。
+func validPkgName(name string) bool {
+	if name == "" || len(name) > 214 {
+		return false
+	}
+	if strings.Contains(name, "..") {
+		return false
+	}
+	for _, r := range name {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9':
+		case r == '-' || r == '_' || r == '.' || r == '@' || r == '/':
+		default:
+			return false
+		}
+	}
+	return true
+}
+
 func queryNPM(name string) pkgInfo {
 	client := newClient(8 * time.Second)
 	var d map[string]interface{}
@@ -195,15 +216,15 @@ func queryGo(name string) pkgInfo {
 // ---- OSV.dev 漏洞查询 ----
 
 type osvVuln struct {
-	ID              string                 `json:"id"`
-	Summary         string                 `json:"summary"`
-	Details         string                 `json:"details"`
-	Aliases         []string               `json:"aliases"`
-	Severity        []map[string]interface{} `json:"severity"`
-	DatabaseSpecific map[string]interface{} `json:"database_specific"`
-	References      []map[string]interface{} `json:"references"`
-	Published       string                 `json:"published"`
-	Modified        string                 `json:"modified"`
+	ID               string                   `json:"id"`
+	Summary          string                   `json:"summary"`
+	Details          string                   `json:"details"`
+	Aliases          []string                 `json:"aliases"`
+	Severity         []map[string]interface{} `json:"severity"`
+	DatabaseSpecific map[string]interface{}   `json:"database_specific"`
+	References       []map[string]interface{} `json:"references"`
+	Published        string                   `json:"published"`
+	Modified         string                   `json:"modified"`
 }
 
 type osvResponse struct {
@@ -322,11 +343,16 @@ func strFrom(input map[string]interface{}, key string) string {
 	return ""
 }
 
+// writeMu 保护 stdout 单行 JSON-RPC 原子写，避免并发回包交错破坏协议帧。
+var writeMu sync.Mutex
+
 func respond(id int64, result interface{}) {
 	out, _ := json.Marshal(map[string]interface{}{
 		"jsonrpc": "2.0", "id": id, "result": result,
 	})
+	writeMu.Lock()
 	fmt.Println(string(out))
+	writeMu.Unlock()
 }
 
 func respondError(id int64, code int, msg string) {
@@ -334,13 +360,19 @@ func respondError(id int64, code int, msg string) {
 		"jsonrpc": "2.0", "id": id,
 		"error": map[string]interface{}{"code": code, "message": msg},
 	})
+	writeMu.Lock()
 	fmt.Println(string(out))
+	writeMu.Unlock()
 }
 
 func handleQuery(id int64, input map[string]interface{}) {
 	name := strings.TrimSpace(strFrom(input, "name"))
 	if name == "" {
 		respondError(id, -32602, "缺少 name")
+		return
+	}
+	if !validPkgName(name) {
+		respondError(id, -32602, "非法的包名")
 		return
 	}
 	var mu sync.Mutex

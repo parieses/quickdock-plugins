@@ -181,6 +181,7 @@ function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;
   function esc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') }
 
   function copyText(t){
+    if (window.qdCopy) return window.qdCopy(t)
     try { if (window.host && window.host.clipboard && window.host.clipboard.write) return window.host.clipboard.write(t) } catch (e) {}
     if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(t)
     return new Promise(function(res){

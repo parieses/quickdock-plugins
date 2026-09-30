@@ -57,6 +57,10 @@
       var x = rnd(1, W - 2), y = rnd(1, H - 2);
       if (tiles[y][x] === 1) return { x: x, y: y };
     }
+    // 兜底：随机 400 次都没命中时全图扫描第一个可走格，避免回退到可能是墙的 (1,1)
+    for (var sy = 1; sy < H - 1; sy++)
+      for (var sx = 1; sx < W - 1; sx++)
+        if (tiles[sy][sx] === 1) return { x: sx, y: sy };
     return { x: 1, y: 1 };
   }
 

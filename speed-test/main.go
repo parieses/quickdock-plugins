@@ -59,9 +59,14 @@ func intFrom(m map[string]interface{}, k string, def int) int {
 	return def
 }
 
+// writeMu 保护 stdout 单行 JSON-RPC 原子写，避免并发回包交错破坏协议帧。
+var writeMu sync.Mutex
+
 func respond(id int64, result interface{}) {
 	out, _ := json.Marshal(map[string]interface{}{"jsonrpc": "2.0", "id": id, "result": result})
+	writeMu.Lock()
 	fmt.Println(string(out))
+	writeMu.Unlock()
 }
 
 func respondError(id int64, code int, msg string) {
@@ -69,7 +74,9 @@ func respondError(id int64, code int, msg string) {
 		"jsonrpc": "2.0", "id": id,
 		"error": map[string]interface{}{"code": code, "message": msg},
 	})
+	writeMu.Lock()
 	fmt.Println(string(out))
+	writeMu.Unlock()
 }
 
 /* ==================== 会话 ==================== */
@@ -184,10 +191,11 @@ func (s *session) run() {
 	s.mu.Unlock()
 
 	dl := int64(n)
+dlLoop:
 	for {
 		select {
 		case <-s.stopCh:
-			break
+			break dlLoop // 旧代码裸 break 只跳出 select，停不下来；加标签才真正退出下载循环
 		default:
 		}
 		nr, rerr := resp.Body.Read(buf)

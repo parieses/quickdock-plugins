@@ -372,6 +372,9 @@ type subdomain struct {
 // 不加限制会让 poll 响应撑爆宿主 1MB 单行 stdout 上限。
 const maxSubdomains = 2000
 
+// resolveTimeout 限制单次 DNS 解析耗时，避免挂起的解析永久占用 worker 与信号量槽。
+const resolveTimeout = 5 * time.Second
+
 type session struct {
 	ID      string
 	Domain  string
@@ -616,8 +619,10 @@ func (s *session) run() {
 				}
 			}()
 			sem <- struct{}{}
-			ips, err := net.LookupIP(name)
-			<-sem
+			defer func() { <-sem }() // defer 归还槽位：LookupIP panic/超时都不泄漏
+			ctx, cancel := context.WithTimeout(context.Background(), resolveTimeout)
+			defer cancel()
+			ips, err := net.DefaultResolver.LookupIP(ctx, "ip", name)
 			if err != nil || len(ips) == 0 {
 				return
 			}
@@ -700,10 +705,16 @@ func boolFrom(m map[string]interface{}, key string, def bool) bool {
 	return def
 }
 
+// writeMu 保护 stdout 单行 JSON-RPC 原子写：异步扫描任务并发回包时，裸 fmt.Println
+// 会与其它帧交错，破坏换行分隔协议。
+var writeMu sync.Mutex
+
 func respond(id int64, result interface{}) {
 	markAnswered(id)
 	out, _ := json.Marshal(map[string]interface{}{"jsonrpc": "2.0", "id": id, "result": result})
+	writeMu.Lock()
 	fmt.Println(string(out))
+	writeMu.Unlock()
 }
 
 func respondError(id int64, code int, msg string) {
@@ -712,7 +723,9 @@ func respondError(id int64, code int, msg string) {
 		"jsonrpc": "2.0", "id": id,
 		"error": map[string]interface{}{"code": code, "message": msg},
 	})
+	writeMu.Lock()
 	fmt.Println(string(out))
+	writeMu.Unlock()
 }
 
 func handleStart(id int64, input map[string]interface{}) {

@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"runtime/debug"
 	"strings"
+	"sync"
 	"sync/atomic"
 )
 
@@ -151,6 +152,11 @@ func handleExecute(req RPCRequest) {
 	}
 }
 
+// stdoutMu 保护 stdout 单条 JSON-RPC 行的原子写：respond/respondError 与
+// 后台 OCR、下载 goroutine 里的 hostLog→sendJSON 会并发写同一个 stdout，
+// 不加锁会让两帧交错、破坏协议流。
+var stdoutMu sync.Mutex
+
 func respond(id int64, result interface{}) {
 	data, _ := json.Marshal(RPCResponse{
 		JSONRPC: "2.0",
@@ -160,7 +166,9 @@ func respond(id int64, result interface{}) {
 	logf("respond id=%d resultLen=%d", id, len(data))
 	data = append(data, '\n')
 	answered = true
+	stdoutMu.Lock()
 	os.Stdout.Write(data)
+	stdoutMu.Unlock()
 }
 
 func respondError(id int64, code int, msg string) {
@@ -172,7 +180,9 @@ func respondError(id int64, code int, msg string) {
 	})
 	data = append(data, '\n')
 	answered = true
+	stdoutMu.Lock()
 	os.Stdout.Write(data)
+	stdoutMu.Unlock()
 }
 
 func mustMarshal(v interface{}) json.RawMessage {
@@ -208,5 +218,7 @@ func hostLog(level, format string, args ...interface{}) {
 func sendJSON(v interface{}) {
 	data, _ := json.Marshal(v)
 	data = append(data, '\n')
+	stdoutMu.Lock()
 	os.Stdout.Write(data)
+	stdoutMu.Unlock()
 }

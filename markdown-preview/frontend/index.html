@@ -58,6 +58,7 @@ window.copyViaHost=function(t,cb){var id='cp_'+(++window.__cpSeq),done=false;fun
   </div>
 </div>
 <script src="marked.min.js"></script>
+<script src="dompurify.min.js"></script>
 <script src="highlight.min.js"></script>
 <script>
 var mdInput=document.getElementById('mdInput'),mdPreview=document.getElementById('mdPreview')
@@ -80,7 +81,10 @@ function render(){
   var text=mdInput.value.trim()
   if(!text){mdPreview.innerHTML='<p style="color:var(--text-muted);font-size:13px">编辑 Markdown 查看实时预览</p>';return}
   if(window.marked){
-    mdPreview.innerHTML=marked.parse(text)
+    var html=marked.parse(text)
+    // marked 不消毒：原始 HTML、javascript: 链接、<img onerror> 会被注入执行到沙箱 iframe。
+    // 用 DOMPurify 净化后再写入（保留代码高亮的 <pre><code> 等安全标签）。
+    mdPreview.innerHTML=(window.DOMPurify?DOMPurify.sanitize(html,{ADD_ATTR:['target']}):html)
   }else{
     mdPreview.innerHTML='<p style="color:var(--text-muted);font-size:13px">Markdown 库未加载，请重装插件</p>'
   }

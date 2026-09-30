@@ -20,8 +20,10 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"runtime/debug"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -732,7 +734,43 @@ func getPDFInfo(path string) (map[string]interface{}, error) {
 		info["sizeFormatted"] = formatSize(fi.Size())
 	}
 
+	// 解析真实页数：优先 pdfcpu "pages count"，失败则回退到统计 raw info 里的 pageN: 标记
+	if pc, perr := runPDFCommandT([]string{"pages", "count", path}, 15*time.Second); perr == nil {
+		if n, ok := firstInt(string(pc)); ok {
+			info["pages"] = n
+		}
+	}
+	if info["pages"] == 0 {
+		if m := pageMarkerRe.FindAllStringSubmatch(string(out), -1); len(m) > 0 {
+			info["pages"] = len(m)
+		}
+	}
+
 	return info, nil
+}
+
+// pageMarkerRe 匹配 pdfcpu info 输出中的逐页标记行，如 "page1:"、"page12:"
+var pageMarkerRe = regexp.MustCompile(`(?i)\bpage\d+:`)
+
+// firstInt 从字符串中扫描第一段连续数字并转为 int；无数字返回 (0,false)
+func firstInt(s string) (int, bool) {
+	start := -1
+	for i := 0; i <= len(s); i++ {
+		isDigit := i < len(s) && s[i] >= '0' && s[i] <= '9'
+		if isDigit {
+			if start < 0 {
+				start = i
+			}
+			continue
+		}
+		if start >= 0 {
+			if n, err := strconv.Atoi(s[start:i]); err == nil {
+				return n, true
+			}
+			start = -1
+		}
+	}
+	return 0, false
 }
 
 // ---- PDF 命令执行 ----
@@ -801,24 +839,51 @@ func copyToClipboard(text string) (bool, error) {
 	case "darwin":
 		// pbcopy
 		cmd := exec.Command("pbcopy")
-		stdin, _ := cmd.StdinPipe()
-		cmd.Start()
-		stdin.Write([]byte(text))
+		stdin, err := cmd.StdinPipe()
+		if err != nil {
+			return false, err
+		}
+		if err := cmd.Start(); err != nil {
+			return false, err
+		}
+		if _, err := stdin.Write([]byte(text)); err != nil {
+			stdin.Close()
+			cmd.Wait()
+			return false, err
+		}
 		stdin.Close()
 		return true, cmd.Wait()
 	default:
 		// Linux: xclip 或 xsel
 		cmd := exec.Command("xclip", "-selection", "clipboard")
-		stdin, _ := cmd.StdinPipe()
-		cmd.Start()
-		stdin.Write([]byte(text))
+		stdin, err := cmd.StdinPipe()
+		if err != nil {
+			return false, err
+		}
+		if err := cmd.Start(); err != nil {
+			return false, err
+		}
+		if _, err := stdin.Write([]byte(text)); err != nil {
+			stdin.Close()
+			cmd.Wait()
+			return false, err
+		}
 		stdin.Close()
-		if err := cmd.Wait(); err != nil {
+		if werr := cmd.Wait(); werr != nil {
 			// 尝试 xsel
 			cmd = exec.Command("xsel", "--clipboard", "--input")
-			stdin, _ = cmd.StdinPipe()
-			cmd.Start()
-			stdin.Write([]byte(text))
+			stdin, err = cmd.StdinPipe()
+			if err != nil {
+				return false, err
+			}
+			if err := cmd.Start(); err != nil {
+				return false, err
+			}
+			if _, err := stdin.Write([]byte(text)); err != nil {
+				stdin.Close()
+				cmd.Wait()
+				return false, err
+			}
 			stdin.Close()
 			return true, cmd.Wait()
 		}
@@ -829,7 +894,14 @@ func copyToClipboard(text string) (bool, error) {
 func openFolder(path string) error {
 	switch gOS {
 	case "windows":
-		return exec.Command("explorer", path).Start()
+		cmd := exec.Command("explorer", path)
+		if err := cmd.Start(); err != nil {
+			return err
+		}
+		// explorer.exe 立即返回且成功时也可能给出非零退出码；
+		// 后台 Wait 仅用于回收进程句柄，避免僵尸/句柄泄漏，忽略其错误。
+		go func() { _ = cmd.Wait() }()
+		return nil
 	case "darwin":
 		return exec.Command("open", path).Run()
 	default:

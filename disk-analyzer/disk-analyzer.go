@@ -118,9 +118,10 @@ const defaultBudget = 10 * time.Second
 const (
 	maxJobNodes  = 60000            // 单任务返回节点数硬上限
 	maxJobDepth  = 4                // 最大扫描深度
-	jobOverall   = 3 * time.Minute // 单任务整体耗时上限
+	jobOverall   = 3 * time.Minute  // 单任务整体耗时上限
 	perDirBudget = 20 * time.Second // 单个目录体积统计的预算（后台，宽松）
 	walkSemSize  = 64               // 并发 walk 的目录数上限
+	jobRetention = 10 * time.Minute // 完成任务的结果树在 jobs 里保留多久，之后可回收
 )
 
 var stdout = bufio.NewWriter(os.Stdout)
@@ -149,6 +150,17 @@ var (
 	jobsMu sync.Mutex
 	jobs   = map[string]*scanJob{}
 )
+
+// pruneJobsLocked 回收已完成且超过保留期的扫描任务（连带其整棵结果树），
+// 防止反复扫描不同路径导致 jobs 无限增长、内存泄漏。调用方须已持有 jobsMu。
+func pruneJobsLocked() {
+	now := time.Now()
+	for p, j := range jobs {
+		if j.isDone() && now.Sub(j.startedAt) > jobRetention {
+			delete(jobs, p)
+		}
+	}
+}
 
 func (j *scanJob) setTrunc() {
 	j.mu.Lock()
@@ -465,6 +477,7 @@ func handleScanFull(id int64, input map[string]interface{}) {
 		deadline:  time.Now().Add(jobOverall),
 		cancel:    cancel,
 	}
+	pruneJobsLocked()
 	jobs[path] = j
 	jobsMu.Unlock()
 
@@ -513,10 +526,10 @@ func handleScanStatus(id int64, input map[string]interface{}) {
 			"truncated":   j.truncated,
 			"scannedDirs": atomic.LoadInt64(&j.scannedDirs),
 			"elapsedMs":   time.Since(j.startedAt).Milliseconds(),
-		"version":     j.version,
-		"progress":    progress,
-		"unchanged":   true,
-	})
+			"version":     j.version,
+			"progress":    progress,
+			"unchanged":   true,
+		})
 		return
 	}
 	raw, err := json.Marshal(j.root)
@@ -627,9 +640,6 @@ func (j *scanJob) walk(ctx context.Context, path string, node *dirNode, depth in
 		return 0, true
 	default:
 	}
-	walkSem <- struct{}{}
-	defer func() { <-walkSem }()
-
 	if time.Now().After(j.deadline) {
 		j.setTrunc()
 		return 0, true
@@ -642,7 +652,13 @@ func (j *scanJob) walk(ctx context.Context, path string, node *dirNode, depth in
 		return 0, false
 	}
 
+	// walkSem 只保护真正的磁盘 I/O（os.ReadDir）：取到即读、读完立刻释放。
+	// 旧实现在函数入口获取、并用 defer 在函数末尾（wg.Wait 之后）才释放，等于父 walk
+	// 在等待所有子目录递归期间仍占着槽位；当并发 walk 数达到 walkSem 容量时，全部槽位
+	// 被“正等子节点”的父节点占满，而子节点永远拿不到槽位 → 自等待死锁，后台扫描永久卡死。
+	walkSem <- struct{}{}
 	entries, err := os.ReadDir(path)
+	<-walkSem
 	if err != nil {
 		return 0, false
 	}
@@ -728,7 +744,7 @@ func (j *scanJob) walk(ctx context.Context, path string, node *dirNode, depth in
 			ph.Size = sz
 			ph.Truncated = tr
 			ph.Scanning = false
-			node.Size += sz    // 父方块随之长大（与下方 subTotal 同步累加）
+			node.Size += sz // 父方块随之长大（与下方 subTotal 同步累加）
 			subTotal += sz
 			j.version++
 			j.mu.Unlock()
@@ -736,14 +752,16 @@ func (j *scanJob) walk(ctx context.Context, path string, node *dirNode, depth in
 	}
 	wg.Wait()
 
-	// 本层所有目录体积已确定，按体积从大到小排序（大的方块更醒目），再 version++
+	// 本层所有目录体积已确定，按体积从大到小排序（大的方块更醒目），再 version++。
+	// 排序会就地重排 node.Children，而 handleScanStatus 在 j.mu 下 marshal 整棵树时会
+	// 读到同一 Children；不持锁并发“排序 vs 序列化”会撕裂切片甚至越界 panic，故排序入锁。
+	j.mu.Lock()
 	sort.Slice(node.Children, func(a, b int) bool {
 		if node.Children[a].Size != node.Children[b].Size {
 			return node.Children[a].Size > node.Children[b].Size
 		}
 		return node.Children[a].Name < node.Children[b].Name
 	})
-	j.mu.Lock()
 	node.Size += total // 加上本目录直接文件体积，得到完整子树体积
 	subTotal += total
 	j.version++

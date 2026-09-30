@@ -228,10 +228,14 @@ func handleRepoRemote(id int64, input map[string]interface{}) {
 			sha, _ := c["sha"].(string)
 			commit, _ := c["commit"].(map[string]interface{})
 			author, _ := commit["author"].(map[string]interface{})
+			date := strVal(author["date"])
+			if len(date) >= 10 {
+				date = date[:10] // 截 YYYY-MM-DD；缺失或异常短串时保留原值，避免越界 panic
+			}
 			commits = append(commits, commitInfo{
 				Hash:    shortStr(sha),
 				Author:  strVal(author["name"]),
-				Time:    strVal(author["date"])[:10],
+				Time:    date,
 				Message: firstLine(strVal(commit["message"])),
 			})
 		}

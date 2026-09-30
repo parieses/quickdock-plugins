@@ -143,7 +143,7 @@
       score += 10
       snips++
       showTip(curList()[food.tok])
-      if (score % 50 === 0 && tickMs > 70) tickMs -= 8
+      if (score % 50 === 0 && tickMs > 70) { tickMs -= 8; loop() }
       placeFood()
     } else {
       snake.pop()

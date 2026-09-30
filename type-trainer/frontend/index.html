@@ -671,6 +671,7 @@ body { height: 100vh; overflow: hidden; }
   });
 
   function copyText(t) {
+    if (window.qdCopy) { window.qdCopy(t).then(function () { toast('成绩已复制'); }); return; }
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(t).then(function () { toast('成绩已复制'); }, function () { fallbackCopy(t); });
     } else fallbackCopy(t);

@@ -89,10 +89,10 @@ func handleConnect(id int64, input map[string]interface{}) {
 		respondError(id, -1, "连接失败: "+err.Error())
 		return
 	}
-	connSeq++
+	connsMu.Lock()
+	connSeq++ // 并发 connect 时必须持锁自增，否则 cid 可能重复
 	cid := fmt.Sprintf("ws-%d", connSeq)
 	wc := &wsConn{id: cid, conn: c, messages: []map[string]interface{}{}}
-	connsMu.Lock()
 	conns[cid] = wc
 	connsMu.Unlock()
 
@@ -192,7 +192,10 @@ func handleTaskStatus(id int64, input map[string]interface{}) {
 		respond(id, map[string]interface{}{"status": "missing", "taskId": cid})
 		return
 	}
-	msgs := wc.messages
+	// 在锁内复制切片，锁外再截断/序列化；否则读 goroutine 持续 append 会与锁外的
+	// json.Marshal 读写同一底层数组 → 数据竞争 / 读到半更新元素。
+	msgs := make([]map[string]interface{}, len(wc.messages))
+	copy(msgs, wc.messages)
 	state := "open"
 	if wc.closed {
 		state = "closed"

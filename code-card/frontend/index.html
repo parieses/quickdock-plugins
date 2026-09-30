@@ -315,29 +315,35 @@ textarea:focus{border-color:var(--accent,#4a9eff)}
     return c
   }
 
-  el('btnPng').addEventListener('click', function(){
-    var c = makeCanvas()
-    c.toBlob(function(blob){
-      if (!blob) { flash('导出失败'); return }
+  function downloadPng(c) {
+    c.toBlob(function (blob) {
+      if (!blob) { flash(L('导出失败')); return }
       var url = URL.createObjectURL(blob)
       var a = document.createElement('a')
       a.href = url; a.download = 'code-card.png'
       document.body.appendChild(a); a.click(); a.remove()
-      setTimeout(function(){ URL.revokeObjectURL(url) }, 1000)
+      setTimeout(function () { URL.revokeObjectURL(url) }, 1000)
       flash(L('已导出'))
     }, 'image/png')
+  }
+
+  el('btnPng').addEventListener('click', function () {
+    downloadPng(makeCanvas())
   })
 
-  el('btnCopy').addEventListener('click', function(){
+  el('btnCopy').addEventListener('click', function () {
     var c = makeCanvas()
-    c.toBlob(function(blob){
+    c.toBlob(function (blob) {
       if (!blob) { flash(L('复制失败，请用「导出 PNG」')); return }
+      // 沙箱 iframe 里 image 型 clipboard.write 常因 opaque-origin 被拒；
+      // 失败或宿主不支持时自动退回到下载 PNG，保证「复制」按钮始终有可用产出。
+      var autoFallback = function () { flash(L('剪贴板不可用，已改为导出 PNG')); downloadPng(c) }
       if (navigator.clipboard && navigator.clipboard.write && window.ClipboardItem) {
         navigator.clipboard.write([new window.ClipboardItem({ 'image/png': blob })])
-          .then(function(){ flash(L('已复制到剪贴板（图片）')) })
-          .catch(function(){ flash(L('复制失败，请用「导出 PNG」')) })
+          .then(function () { flash(L('已复制到剪贴板（图片）')) })
+          .catch(autoFallback)
       } else {
-        flash(L('复制失败，请用「导出 PNG」'))
+        autoFallback()
       }
     }, 'image/png')
   })

@@ -9,6 +9,17 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/object"
 )
 
+// safeRepoPath 校验用户传入的相对路径 file 解析后仍落在仓库根 root 之内，
+// 防止形如 "../../" 的路径穿越读写仓库外的文件。返回 ok=false 表示越界。
+func safeRepoPath(root, file string) (string, bool) {
+	full := filepath.Join(root, file)
+	rel, err := filepath.Rel(root, full)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return "", false
+	}
+	return full, true
+}
+
 // ---- 冲突标记解析 ----
 
 type conflictBlock struct {
@@ -158,7 +169,11 @@ func handleConflictLoad(id int64, input map[string]interface{}) {
 		return
 	}
 	root := worktreeRoot(wt)
-	full := filepath.Join(root, file)
+	full, ok := safeRepoPath(root, file)
+	if !ok {
+		respondError(id, -1, "非法路径: "+file)
+		return
+	}
 
 	merged := ""
 	if b, err := os.ReadFile(full); err == nil {
@@ -267,7 +282,11 @@ func handleConflictResolve(id int64, input map[string]interface{}) {
 	}
 
 	root := worktreeRoot(wt)
-	full := filepath.Join(root, file)
+	full, okPath := safeRepoPath(root, file)
+	if !okPath {
+		respondError(id, -1, "非法路径: "+file)
+		return
+	}
 	if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
 		respondError(id, -1, "创建目录失败: "+err.Error())
 		return

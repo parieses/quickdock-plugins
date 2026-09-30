@@ -16,9 +16,12 @@ function handleExecute(params) {
     var pattern = params.input.pattern || ''
     var flags = params.input.flags || 'g'
     if (!text || !pattern) return { error: '需要文本和正则' }
+    // exec-loop 依赖 global 标志推进 lastIndex；缺 g 时 exec 每次返回同一匹配 → 无限循环挂死
+    if (flags.indexOf('g') === -1) flags += 'g'
     try {
       var re = new RegExp(pattern, flags)
       var matches = []
+      var maxMatches = 5000
       var m
       while ((m = re.exec(text)) !== null) {
         matches.push({
@@ -27,8 +30,9 @@ function handleExecute(params) {
           groups: m.slice(1)
         })
         if (m.index === re.lastIndex) re.lastIndex++
+        if (matches.length >= maxMatches) break
       }
-      return { text: JSON.stringify(matches), matches: matches }
+      return { text: JSON.stringify(matches), matches: matches, truncated: matches.length >= maxMatches }
     } catch (e) {
       return { error: '正则错误: ' + e.message }
     }

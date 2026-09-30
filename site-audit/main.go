@@ -81,8 +81,14 @@ func intFrom(m map[string]interface{}, k string, def int) int {
 	return def
 }
 
+// writeMu 保护 stdout 的并发写：dispatch 会为每个请求起独立 goroutine，
+// whois/http/tls 等长任务并发回包时若不加锁，两条 JSON-RPC 行会在管道上交错，破坏协议帧。
+var writeMu sync.Mutex
+
 func respond(id int64, result interface{}) {
 	out, _ := json.Marshal(map[string]interface{}{"jsonrpc": "2.0", "id": id, "result": result})
+	writeMu.Lock()
+	defer writeMu.Unlock()
 	fmt.Println(string(out))
 }
 
@@ -91,6 +97,8 @@ func respondError(id int64, code int, msg string) {
 		"jsonrpc": "2.0", "id": id,
 		"error": map[string]interface{}{"code": code, "message": msg},
 	})
+	writeMu.Lock()
+	defer writeMu.Unlock()
 	fmt.Println(string(out))
 }
 

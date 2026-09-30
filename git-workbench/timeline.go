@@ -108,7 +108,7 @@ func runTimeline(t *asyncTask, repo *git.Repository, c *object.Commit, file stri
 	byAuthor := make(map[string]*authorAgg)
 	total := 0
 
-	for i := start - 1; i < end && i < len(res.Lines); i++ {
+	for i := start - 1; i >= 0 && i < end && i < len(res.Lines); i++ {
 		l := res.Lines[i]
 		if l == nil {
 			continue

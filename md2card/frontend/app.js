@@ -718,7 +718,10 @@
     // 自定义主题
     ['ctBg', 'ctFg', 'ctHeading', 'ctAccent', 'ctCodeBg'].forEach(function (id) {
       $(id).addEventListener('input', function () {
-        ct[id.replace('ct', '').toLowerCase()] = this.value;
+        // 去掉 'ct' 前缀后只把首字母小写，保留内部驼峰（否则 ctCodeBg -> codebg，
+        // 而渲染读的是 ct.codeBg，导致“码底”配色改了不生效）。
+        var key = id.charAt(2).toLowerCase() + id.slice(3);
+        ct[key] = this.value;
         customThemeOn = true; selTheme.value = 'custom';
         save(); render();
       });

@@ -2,15 +2,52 @@ function handleInitialize(params) {
   return { status: 'ready', version: '0.2.0' }
 }
 
-// 标准 Base64 URL 解码
-function b64UrlDecode(str) {
-  var s = str.replace(/-/g, '+').replace(/_/g, '/')
-  while (s.length % 4) s += '='
-  try {
-    return decodeURIComponent(escape(atob(s)))
-  } catch (e) {
-    try { return atob(s) } catch (e2) { return '' }
+// 标准 Base64 URL 解码。
+// 注意：goja 运行时不提供浏览器端的 atob/btoa/decodeURIComponent/escape，
+// 因此这里用纯 JS 实现 base64 -> 字节 -> UTF-8 字符串，保证在命令模式下可用。
+var B64CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+
+function b64ToBytes(input) {
+  var s = input.replace(/-/g, '+').replace(/_/g, '/')
+  var clean = ''
+  for (var i = 0; i < s.length; i++) {
+    var c = s.charAt(i)
+    if (c === '=') break
+    if (B64CHARS.indexOf(c) >= 0) clean += c
   }
+  var bytes = []
+  var buffer = 0, bits = 0
+  for (var j = 0; j < clean.length; j++) {
+    buffer = (buffer << 6) | B64CHARS.indexOf(clean.charAt(j))
+    bits += 6
+    if (bits >= 8) { bits -= 8; bytes.push((buffer >> bits) & 0xFF) }
+  }
+  return bytes
+}
+
+function utf8Decode(bytes) {
+  var out = ''
+  for (var i = 0; i < bytes.length;) {
+    var b1 = bytes[i++]
+    if (b1 < 0x80) {
+      out += String.fromCharCode(b1)
+    } else if (b1 >= 0xC0 && b1 < 0xE0) {
+      var b2 = bytes[i++]; out += String.fromCharCode(((b1 & 0x1F) << 6) | (b2 & 0x3F))
+    } else if (b1 >= 0xE0 && b1 < 0xF0) {
+      var b2 = bytes[i++], b3 = bytes[i++]
+      out += String.fromCharCode(((b1 & 0x0F) << 12) | ((b2 & 0x3F) << 6) | (b3 & 0x3F))
+    } else {
+      var b2 = bytes[i++], b3 = bytes[i++], b4 = bytes[i++]
+      var cp = ((b1 & 0x07) << 18) | ((b2 & 0x3F) << 12) | ((b3 & 0x3F) << 6) | (b4 & 0x3F)
+      cp -= 0x10000
+      out += String.fromCharCode(0xD800 + (cp >> 10), 0xDC00 + (cp & 0x3FF))
+    }
+  }
+  return out
+}
+
+function b64UrlDecode(str) {
+  try { return utf8Decode(b64ToBytes(str)) } catch (e) { return '' }
 }
 
 // 解析 JWT

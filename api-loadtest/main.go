@@ -95,6 +95,7 @@ type benchRun struct {
 	target      int64  // 请求数模式的目标
 	mode        string // "requests" | "duration"
 	sent        int64
+	planned     int64 // requests 模式下已"占位"待发送的请求数，保证总量不超 target
 	success     int64
 	failed      int64
 	sumLatency  int64 // 累计延迟(ms)，用于均值
@@ -194,10 +195,12 @@ func (r *benchRun) snapshot() map[string]interface{} {
 	if total > 0 {
 		errRate = float64(failed) / float64(total) * 100
 	}
-	p50, p90, p95, p99 := r.percentiles()
-
+	// 原子逐桶读取，得到一致性快照，供 percentiles 复用（避免与 worker 的 atomic 写撕裂）
 	hist := make([]int64, len(r.buckets))
-	copy(hist, r.buckets)
+	for i := range r.buckets {
+		hist[i] = atomic.LoadInt64(&r.buckets[i])
+	}
+	p50, p90, p95, p99 := r.percentiles(hist)
 
 	return map[string]interface{}{
 		"sent":        sent,
@@ -225,9 +228,9 @@ func (r *benchRun) snapshot() map[string]interface{} {
 }
 
 // percentiles 通过直方图累计估算 p50/p90/p95/p99（线性插值）
-func (r *benchRun) percentiles() (p50, p90, p95, p99 int64) {
+func (r *benchRun) percentiles(hist []int64) (p50, p90, p95, p99 int64) {
 	total := int64(0)
-	for _, c := range r.buckets {
+	for _, c := range hist {
 		total += c
 	}
 	if total == 0 {
@@ -240,13 +243,13 @@ func (r *benchRun) percentiles() (p50, p90, p95, p99 int64) {
 			rank = 1
 		}
 		cum := int64(0)
-		for i := 0; i < len(r.buckets); i++ {
+		for i := 0; i < len(hist); i++ {
 			lo := int64(0)
 			if i > 0 {
 				lo = latBounds[i-1]
 			}
 			hi := latBounds[i]
-			cnt := r.buckets[i]
+			cnt := hist[i]
 			if cum+cnt >= rank {
 				if cnt == 0 {
 					return hi
@@ -254,7 +257,7 @@ func (r *benchRun) percentiles() (p50, p90, p95, p99 int64) {
 				frac := float64(rank-cum) / float64(cnt)
 				val := lo + int64(frac*float64(hi-lo))
 				// 落在最后(+inf)桶时用真实最大延迟更准
-				if i == len(r.buckets)-1 && maxLat > hi {
+				if i == len(hist)-1 && maxLat > hi {
 					return maxLat
 				}
 				return val
@@ -618,8 +621,12 @@ func (r *benchRun) worker(client *http.Client, ctx context.Context, wg *sync.Wai
 		if r.stopped.Load() {
 			return
 		}
-		if r.mode == "requests" && atomic.LoadInt64(&r.sent) >= r.target {
-			return
+		if r.mode == "requests" {
+			// 原子占位：只有拿到一个未超 target 的名额才真正发请求，避免多 worker 同时通过上界检查导致超发
+			if atomic.AddInt64(&r.planned, 1) > r.target {
+				atomic.AddInt64(&r.planned, -1)
+				return
+			}
 		}
 		latency, statusCode, isErr, errMsg := doRequest(client, ctx, r.cfg)
 		r.record(latency, statusCode, isErr, errMsg)

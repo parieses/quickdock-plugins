@@ -88,7 +88,7 @@ func getWifiPassword(ssid string) (string, error) {
 	defer procWlanFreeMemory.Call(uintptr(unsafe.Pointer(profileXML)))
 
 	// 3. 解析 XML
-	xmlStr := syscall.UTF16ToString((*[1 << 20]uint16)(unsafe.Pointer(profileXML))[:])
+	xmlStr := utf16NulToString(profileXML)
 	var profile wlanProfileXML
 	if err := xml.Unmarshal([]byte(xmlStr), &profile); err != nil {
 		return "", fmt.Errorf("解析配置文件 XML 失败: %w", err)
@@ -99,4 +99,23 @@ func getWifiPassword(ssid string) (string, error) {
 	}
 
 	return profile.MSM.Security.SharedKey.KeyMaterial, nil
+}
+
+// utf16NulToString 安全地把原生以 NUL 结尾的 UTF-16 指针转成 Go 字符串。
+// 逐元素读取直到遇到 0 终止符；用上限保护，避免终止符缺失时无限越界读。
+func utf16NulToString(p *uint16) string {
+	if p == nil {
+		return ""
+	}
+	const maxLen = 1 << 20 // 安全上限：WiFi 配置文件远小于此
+	buf := make([]uint16, 0, 64)
+	base := unsafe.Pointer(p)
+	for i := 0; i < maxLen; i++ {
+		c := *(*uint16)(unsafe.Add(base, uintptr(i)*2))
+		if c == 0 {
+			break
+		}
+		buf = append(buf, c)
+	}
+	return syscall.UTF16ToString(buf)
 }

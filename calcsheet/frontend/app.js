@@ -29,7 +29,7 @@ window.addEventListener('message', (e) => {
 class CalcEngine {
   static FUNCS = { sqrt:Math.sqrt, sin:Math.sin, cos:Math.cos, tan:Math.tan, asin:Math.asin, acos:Math.acos, atan:Math.atan, log:Math.log10, ln:Math.log, log2:Math.log2, exp:Math.exp, abs:Math.abs, round:Math.round, floor:Math.floor, ceil:Math.ceil, min:Math.min, max:Math.max, pow:Math.pow }
   static eval(expr, lv={}, vars={}) {
-    expr = expr.replace(/,(?=\d)/g, '') // 去掉千位分隔逗号
+    expr = expr.replace(/(?<=\d),(?=\d{3}(?!\d))/g, '') // 仅去千位分隔逗号，保留函数实参逗号
     expr = expr.replace(/#(\d{3,})/g, (_, id) => { if (lv[id]===undefined) throw new Error('行 #'+id+' 无值'); return lv[id] })
     for (const [k,v] of Object.entries(vars)) expr = expr.replace(new RegExp('\\b'+k+'\\b','g'), v)
     return CalcEngine._parse(expr)
@@ -51,7 +51,7 @@ class CalcEngine {
     }
     function pa() {
       sk(); const ch=pk()
-      if (ch==='-') { const n=pos+1; if (n<s.length && /[0-9.]/.test(s[n])) return pn(); pos++; if (pk()==='('){pos++;const v=pe();ex(')');return -v}; const id=pi(); if (id!==null) return -id; throw new Error('一元负号后缺表达式') }
+      if (ch==='-') { pos++; sk(); if (pk()==='('){pos++;const v=pe();ex(')');return -v}; if (/[0-9.]/.test(pk())) return -pn(); const id=pi(); if (id!==null) return -id; throw new Error('一元负号后缺表达式') }
       if (ch==='(') { pos++; const v=pe(); ex(')'); return v }
       if (/[0-9.]/.test(ch)) return pn(); const id=pi(); if (id!==null) return id
       throw new Error('非法字符 "'+ch+'" 在 '+pos)

@@ -307,6 +307,16 @@ func evalSuccess(cfg testConfig, status int, body, location, setCookie string) b
 	}
 }
 
+// sharedTransport 复用一个带界的连接池。旧实现每次 attempt 都 new 一个
+// http.Transport（keep-alive 默认开启且从不关闭空闲连接），在爆破/撞库的并发
+// 循环里会累积大量空闲连接/套接字导致 fd 泄漏、TIME_WAIT 堆积。
+var sharedTransport = &http.Transport{
+	TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
+	MaxIdleConns:        200,
+	MaxIdleConnsPerHost: 32,
+	IdleConnTimeout:     30 * time.Second,
+}
+
 func (s *session) attempt(user, pass string) attemptResult {
 	cfg := s.cfg
 	fields := map[string]string{}
@@ -337,7 +347,7 @@ func (s *session) attempt(user, pass string) attemptResult {
 			}
 			return nil
 		},
-		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
+		Transport: sharedTransport,
 	}
 
 	var req *http.Request

@@ -159,6 +159,9 @@ func flipV(img image.Image) *image.RGBA {
 
 func scale(img image.Image, w, h int) image.Image {
 	src := img.Bounds()
+	if src.Dx() <= 0 || src.Dy() <= 0 {
+		return img // 源图无有效尺寸，避免等比换算时整数除零 panic
+	}
 	if w <= 0 && h <= 0 {
 		return img
 	}

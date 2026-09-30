@@ -171,6 +171,9 @@ func redisKeySet(id int64, input map[string]interface{}) {
 	}
 	ctx := redisCtx()
 	ttl := intFrom(input, "ttl", -1)
+	// 先删除同名 key，保证"整体覆盖"语义：HSet/RPush/SAdd/ZAdd 默认是追加/合并，
+	// 且若已存在其它类型的同名字段会触发 WRONGTYPE。删除后从空态写入，编辑才符合预期。
+	conn.redis.Del(ctx, key)
 	var setErr error
 	switch rtype {
 	case "string":

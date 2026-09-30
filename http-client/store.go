@@ -642,14 +642,17 @@ func (d *DB) ReorderFolders(projectID, parentID string, ids []string) error {
 }
 
 func (d *DB) UpdateFolderSubtreeProject(rootID, projectID string) error {
+	// 注意：folderSubtreeIDs 内部经 d.q 获取 d.mu，而 d.tx 的回调已在 d.mu 之下运行；
+	// 在回调里再调用它会用同一把非重入锁自锁死，冻结该 goroutine 及后续所有 DB 操作。
+	// 因此把子树 id 查询提到事务之外，再把结果带入事务做更新。
+	ids, err := d.folderSubtreeIDs([]string{rootID})
+	if err != nil {
+		return err
+	}
+	if len(ids) == 0 {
+		return nil
+	}
 	return d.tx(func(tx *sql.Tx) error {
-		ids, err := d.folderSubtreeIDs([]string{rootID})
-		if err != nil {
-			return err
-		}
-		if len(ids) == 0 {
-			return nil
-		}
 		ph := make([]string, len(ids))
 		args := make([]interface{}, 0, len(ids)+1)
 		args = append(args, projectID)

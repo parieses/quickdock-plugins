@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"net"
 	"os"
@@ -26,7 +25,11 @@ func handleHostsCommand(id int64, cmd string, input map[string]interface{}) {
 }
 
 func hostsPath() string {
-	return filepath.Join(os.Getenv("SystemRoot"), "System32", "drivers", "etc", "hosts")
+	root := os.Getenv("SystemRoot")
+	if root == "" {
+		root = `C:\Windows` // SystemRoot 未设置时的兜底，避免拼出相对路径误读写
+	}
+	return filepath.Join(root, "System32", "drivers", "etc", "hosts")
 }
 
 // uncommentHostsLine 移除一行动态 hosts 条目最前面的单个 '#' 及其后紧跟的空白，
@@ -38,6 +41,42 @@ func uncommentHostsLine(line string) string {
 		s = s[1:] // 去掉第一个 '#'
 	}
 	return strings.TrimLeft(s, " \t") // 去掉 '#' 后的空白
+}
+
+// writeHostsFile 以"备份 + 原子替换"的方式写回 hosts（系统关键文件，禁止裸 os.WriteFile）。
+// 流程：先把现有内容备份成 hosts.bak，再写入同目录临时文件、sync 落盘，最后 os.Rename 原子覆盖。
+// 这样即使中途崩溃/断电，也不会把 hosts 写成半截损坏内容。
+func writeHostsFile(path, content string) error {
+	// 1. 备份原文件（尽力而为，失败不阻断——首次可能不存在 .bak 目录权限等）
+	if data, rerr := os.ReadFile(path); rerr == nil {
+		_ = os.WriteFile(path+".bak", data, 0644)
+	}
+	// 2. 同目录临时文件，保证 rename 在同一卷内是原子操作
+	tmp := path + ".qdtmp"
+	f, err := os.OpenFile(tmp, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	if _, err = f.WriteString(content); err != nil {
+		f.Close()
+		os.Remove(tmp)
+		return err
+	}
+	if err = f.Sync(); err != nil {
+		f.Close()
+		os.Remove(tmp)
+		return err
+	}
+	if err = f.Close(); err != nil {
+		os.Remove(tmp)
+		return err
+	}
+	// 3. 原子替换
+	if err = os.Rename(tmp, path); err != nil {
+		os.Remove(tmp)
+		return err
+	}
+	return nil
 }
 
 type HostsEntry struct {
@@ -125,7 +164,7 @@ func hostsToggle(id int64, input map[string]interface{}) {
 	}
 
 	result := strings.Join(lines, "\n")
-	if err := os.WriteFile(path, []byte(result), 0644); err != nil {
+	if err := writeHostsFile(path, result); err != nil {
 		respondError(id, -1, "写入 hosts 文件失败: "+err.Error())
 		return
 	}
@@ -163,16 +202,25 @@ func hostsAdd(id int64, input map[string]interface{}) {
 	}
 
 	path := hostsPath()
-	f, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0644)
+	data, err := os.ReadFile(path)
 	if err != nil {
-		respondError(id, -1, "打开 hosts 文件失败: "+err.Error())
+		respondError(id, -1, "读取 hosts 文件失败: "+err.Error())
 		return
 	}
-	defer f.Close()
+	existing := string(data)
+	nl := "\n"
+	if strings.Contains(existing, "\r\n") {
+		nl = "\r\n" // 保持与原文件一致的 Windows 行尾，避免混排 CRLF/LF
+	}
+	if existing != "" && !strings.HasSuffix(existing, "\n") {
+		existing += nl // 追加前先确保原文件以换行结尾
+	}
+	existing += ip + "\t" + host + nl
 
-	writer := bufio.NewWriter(f)
-	fmt.Fprintf(writer, "\n%s\t%s\n", ip, host)
-	writer.Flush()
+	if err := writeHostsFile(path, existing); err != nil {
+		respondError(id, -1, "写入 hosts 文件失败: "+err.Error())
+		return
+	}
 
 	respond(id, map[string]interface{}{"success": true, "ip": ip, "host": host})
 }
@@ -214,7 +262,7 @@ func hostsSave(id int64, input map[string]interface{}) {
 	}
 
 	result := strings.Join(lines, "\n")
-	if err := os.WriteFile(path, []byte(result), 0644); err != nil {
+	if err := writeHostsFile(path, result); err != nil {
 		respondError(id, -1, "写入 hosts 文件失败: "+err.Error())
 		return
 	}

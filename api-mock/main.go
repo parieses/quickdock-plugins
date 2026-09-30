@@ -15,6 +15,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"runtime/debug"
@@ -148,24 +149,32 @@ func appendLog(method, path, matched string, status int) {
 	}
 }
 
-func startServer(port int) {
+func startServer(port int) error {
 	mu.Lock()
 	if srv != nil {
 		_ = srv.Close()
 		srv = nil
 	}
+	addr := fmt.Sprintf("127.0.0.1:%d", port)
+	// 先同步 Listen 探测端口是否可用；旧实现把 ListenAndServe 丢进 goroutine，
+	// 端口被占时主线程仍会返回 running:true，导致“启动失败被误报成成功”。
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		mu.Unlock()
+		return err
+	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", handler)
-	addr := fmt.Sprintf("127.0.0.1:%d", port)
 	srv = &http.Server{Addr: addr, Handler: mux}
-	listenAddr = "http://" + addr
+	listenAddr = "http://" + ln.Addr().String()
 	mu.Unlock()
 
 	go func() {
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := srv.Serve(ln); err != nil && err != http.ErrServerClosed {
 			log.Printf("[api-mock] server error: %v", err)
 		}
 	}()
+	return nil
 }
 
 func stopServer() {
@@ -198,9 +207,15 @@ type executeParams struct {
 	Input   map[string]interface{} `json:"input"`
 }
 
+// writeMu 保护 stdout 单行 JSON-RPC 原子写：并发 handler（尤其异步任务回包）
+// 直接 fmt.Println 会与其它帧交错，破坏换行分隔的协议。
+var writeMu sync.Mutex
+
 func respond(id int64, result interface{}) {
 	out, _ := json.Marshal(map[string]interface{}{"jsonrpc": "2.0", "id": id, "result": result})
+	writeMu.Lock()
 	fmt.Println(string(out))
+	writeMu.Unlock()
 }
 
 func respondError(id int64, code int, msg string) {
@@ -208,7 +223,9 @@ func respondError(id int64, code int, msg string) {
 		"jsonrpc": "2.0", "id": id,
 		"error": map[string]interface{}{"code": code, "message": msg},
 	})
+	writeMu.Lock()
 	fmt.Println(string(out))
+	writeMu.Unlock()
 }
 
 func strFrom(input map[string]interface{}, key string) string {
@@ -225,7 +242,10 @@ func handleExec(id int64, cmd string, input map[string]interface{}) {
 		if p, ok := input["port"].(float64); ok && p > 0 {
 			port = int(p)
 		}
-		startServer(port)
+		if err := startServer(port); err != nil {
+			respondError(id, -1, "启动失败: "+err.Error())
+			return
+		}
 		mu.RLock()
 		addr := listenAddr
 		mu.RUnlock()

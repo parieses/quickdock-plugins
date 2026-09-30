@@ -224,9 +224,13 @@ function computeNextRuns(fields, count) {
   var dows = expandField(fields.dow, 0, 7)
 
   // 把星期 7 映射到 0（某些 cron 格式周日可以是 0 或 7）
+  // 注意：expandField 对 '*' 返回 null（通配）。此时保持 dowMap 为空，
+  // dowMatch 对空表即视为“每天匹配”，不可对 null 取 .length。
   var dowMap = {}
-  for (var di = 0; di < dows.length; di++) {
-    dowMap[dows[di] === 7 ? 0 : dows[di]] = true
+  if (dows) {
+    for (var di = 0; di < dows.length; di++) {
+      dowMap[dows[di] === 7 ? 0 : dows[di]] = true
+    }
   }
 
   var attempts = 0

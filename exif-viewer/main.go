@@ -54,6 +54,10 @@ type visitor struct {
 }
 
 func (v *visitor) Walk(name exif.FieldName, tag *tiff.Tag) error {
+	if tag == nil {
+		v.tags[string(name)] = ""
+		return nil
+	}
 	v.tags[string(name)] = tag.String()
 	return nil
 }
@@ -65,9 +69,14 @@ func strFrom(m map[string]interface{}, key string) string {
 	return ""
 }
 
+// writeMu 保护 stdout 单行 JSON-RPC 原子写，避免并发回包交错破坏协议帧。
+var writeMu sync.Mutex
+
 func respond(id int64, result interface{}) {
 	out, _ := json.Marshal(map[string]interface{}{"jsonrpc": "2.0", "id": id, "result": result})
+	writeMu.Lock()
 	fmt.Println(string(out))
+	writeMu.Unlock()
 }
 
 func respondError(id int64, code int, msg string) {
@@ -75,7 +84,9 @@ func respondError(id int64, code int, msg string) {
 		"jsonrpc": "2.0", "id": id,
 		"error": map[string]interface{}{"code": code, "message": msg},
 	})
+	writeMu.Lock()
 	fmt.Println(string(out))
+	writeMu.Unlock()
 }
 
 func handleRead(id int64, input map[string]interface{}) {

@@ -873,18 +873,83 @@ func handleScanEmpty(id int64, input map[string]interface{}) {
 	respond(id, map[string]interface{}{"async": true, "taskId": t.ID})
 }
 
+// recyclePathsViaShell 把一批路径送进 Windows 回收站（可恢复），替代永久删除。
+// 单次 PowerShell 进程处理全部路径：既避免逐文件反复冷启动 powershell，
+// 也避免把用户路径拼进脚本文本导致注入——路径经临时文件以 UTF-8 传入，失败清单经第二个临时文件读回。
+// 返回"回收失败（磁盘上仍然存在）"的路径列表。
+func recyclePathsViaShell(paths []string) (failed []string, err error) {
+	if len(paths) == 0 {
+		return nil, nil
+	}
+	suffix := fmt.Sprintf("%d-%d", os.Getpid(), time.Now().UnixNano())
+	inPath := filepath.Join(os.TempDir(), "qd-recycle-in-"+suffix+".txt")
+	outPath := filepath.Join(os.TempDir(), "qd-recycle-out-"+suffix+".txt")
+	defer os.Remove(inPath)
+	defer os.Remove(outPath)
+
+	// UTF-8 BOM，确保 PowerShell 正确解析中文路径
+	payload := append([]byte{0xEF, 0xBB, 0xBF}, []byte(strings.Join(paths, "\n"))...)
+	if err := os.WriteFile(inPath, payload, 0600); err != nil {
+		return nil, err
+	}
+	script := `
+Add-Type -AssemblyName Microsoft.VisualBasic
+$inPath = [string]$args[0]
+$outPath = [string]$args[1]
+$paths = [System.IO.File]::ReadAllLines($inPath, [System.Text.Encoding]::UTF8)
+$fail = New-Object System.Collections.Generic.List[string]
+foreach ($p in $paths) {
+  if ([string]::IsNullOrWhiteSpace($p)) { continue }
+  try {
+    if (Test-Path -LiteralPath $p -PathType Container) {
+      [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteDirectory($p,'OnlyErrorDialogs','SendToRecycleBin')
+    } else {
+      [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile($p,'OnlyErrorDialogs','SendToRecycleBin')
+    }
+    if (Test-Path -LiteralPath $p) { $fail.Add($p) }
+  } catch { $fail.Add($p) }
+}
+[System.IO.File]::WriteAllLines($outPath, $fail, (New-Object System.Text.UTF8Encoding($false)))
+`
+	cmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
+		"-Command", script, inPath, outPath)
+	var outb bytes.Buffer
+	cmd.Stdout = &outb
+	cmd.Stderr = &outb
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("回收站机制不可用: %w (%s)", err, strings.TrimSpace(outb.String()))
+	}
+	data, _ := os.ReadFile(outPath)
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimRight(line, "\r")
+		if line != "" {
+			failed = append(failed, line)
+		}
+	}
+	return failed, nil
+}
+
 func handleCleanEmpty(id int64, input map[string]interface{}) {
 	items := emptyItemsFrom(input)
 	if len(items) == 0 {
 		respondError(id, -32602, "未选择要清理的项目")
 		return
 	}
-	// 深路径优先删除：父空目录需等子项先删
-	sort.Slice(items, func(i, j int) bool { return len(items[i]) > len(items[j]) })
+	// 送进回收站（可恢复）而非永久删除：空文件夹多属用户自选，误删应可找回。
+	// 注意这与 handleClean 的垃圾分类清理不同——后者目标是释放磁盘空间，永久删除才合理。
+	remained, err := recyclePathsViaShell(items)
+	if err != nil {
+		respondError(id, -1, err.Error())
+		return
+	}
+	failedSet := make(map[string]bool, len(remained))
+	for _, p := range remained {
+		failedSet[p] = true
+	}
 	var deleted, skipped int
 	var failed []string
 	for _, p := range items {
-		if err := os.Remove(p); err != nil {
+		if failedSet[p] {
 			skipped++
 			failed = append(failed, p)
 		} else {

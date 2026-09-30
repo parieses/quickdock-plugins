@@ -126,12 +126,12 @@ window.copyViaHost=function(t,cb){var id='cp_'+(++window.__cpSeq),done=false;fun
   function cpMinifyFn(code,lang){
     if(lang==='html')return code.replace(/<!--[\s\S]*?-->/g,'').replace(/>\s+</g,'><').replace(/\s{2,}/g,' ').trim()
     if(lang==='css')return code.replace(/\/\*[\s\S]*?\*\//g,'').replace(/\s+/g,' ').replace(/\s*([{}:;,>~+])\s*/g,'$1').trim()
-    return code.replace(/\/\/[^\n]*/g,'').replace(/\/\*[\s\S]*?\*\//g,'').replace(/\s+/g,' ').replace(/\s*([=+\-*/%&|^~!?:;{}()\[\],<>])\s*/g,'$1').replace(/;}/g,'}').trim()
+    return code.replace(/(?<!:)\/\/[^\n]*/g,'').replace(/\/\*[\s\S]*?\*\//g,'').replace(/\s+/g,' ').replace(/\s*([=+\-*/%&|^~!?:;{}()\[\],<>])\s*/g,'$1').replace(/;}/g,'}').trim()
   }
   function cpPrettifyFn(code,lang){
     if(lang==='html'){var out='',ind=0,i=0;while(i<code.length){if(code[i]==='<'){var tag='';while(i<code.length&&code[i]!=='>'){tag+=code[i];i++}tag+='>';if(tag.indexOf('</')===0)ind=Math.max(0,ind-1);if(out.length>0&&out[out.length-1]!=='\n')out+='\n';for(var s=0;s<ind;s++)out+='  ';out+=tag;if(tag.indexOf('</')<0&&tag.indexOf('/>')<0&&tag.indexOf('<!')!==0)ind++}else out+=code[i];i++}return out.trim()}
     if(lang==='css'){code=code.replace(/\/\*[\s\S]*?\*\//g,'');var out2='';for(var j=0;j<code.length;j++){var c=code[j];if(c==='{'){out2+=' {\n  '}else if(c==='}'){out2+='\n}\n'}else if(c===';'){out2+=';\n  '}else out2+=c}return out2.trim()}
-    code=code.replace(/\/\/[^\n]*/g,'').replace(/\/\*[\s\S]*?\*\//g,'')
+    code=code.replace(/(?<!:)\/\/[^\n]*/g,'').replace(/\/\*[\s\S]*?\*\//g,'')
     var out3='',indent=0,inStr=false,sc=''
     for(var k=0;k<code.length;k++){var ch=code[k],next=code[k+1]||''
       if(inStr){out3+=ch;if(ch==='\\'&&next){out3+=next;k++}else if(ch===sc)inStr=false;continue}

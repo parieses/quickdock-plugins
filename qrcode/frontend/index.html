@@ -86,23 +86,25 @@ function genQR() {
 }
 
 function savePNG() {
-  var svg = $('qrBox').querySelector('svg')
-  if (!svg) return
-  var xml = new XMLSerializer().serializeToString(svg)
-  var svg64 = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(xml)))
-  var img = new Image()
-  img.onload = function () {
+  // 所附 qrcode.min.js 渲染为 <canvas>（旧浏览器回退 <img>），根本没有 <svg>，
+  // 原实现 querySelector('svg') 恒为 null，导致“保存 PNG”静默失效。
+  var a = document.createElement('a')
+  a.download = 'qrcode.png'
+  var src = $('qrBox').querySelector('canvas')
+  if (src) {
+    var scale = 3
     var canvas = document.createElement('canvas')
-    canvas.width = img.width * 3; canvas.height = img.height * 3
+    canvas.width = src.width * scale; canvas.height = src.height * scale
     var ctx = canvas.getContext('2d')
     ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height)
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-    var a = document.createElement('a')
-    a.download = 'qrcode.png'
+    ctx.imageSmoothingEnabled = false
+    ctx.drawImage(src, 0, 0, canvas.width, canvas.height)
     a.href = canvas.toDataURL('image/png')
     a.click()
+    return
   }
-  img.src = svg64
+  var img = $('qrBox').querySelector('img')
+  if (img && img.src) { a.href = img.src; a.click() }
 }
 
 // ---- 识别 ----
@@ -171,7 +173,7 @@ $('btnScanPick').addEventListener('click', function () {
       }
       scanFromDataURL(res.content)
     }, function () { $('scanLoading').style.display = 'none'; $('scanResult').textContent = '读取失败' })
-  })
+  }, function () { $('scanLoading').style.display = 'none'; $('scanResult').textContent = '选择文件失败' })
 })
 $('btnCopy').addEventListener('click', copyResult)
 $('btnOpenResult').addEventListener('click', openResult)

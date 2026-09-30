@@ -260,6 +260,12 @@ func portKill(id int64, input map[string]interface{}) {
 
 	// 获取进程名，检查是否属于已知系统进程
 	procName := getProcessName(pid)
+	if procName == "" {
+		// 无法从 tasklist 定位到该 PID 的进程名：可能是 PID 不存在，也可能是 tasklist 调用失败。
+		// 此时系统进程白名单校验形同虚设，贸然 taskkill 会误杀无关/关键进程，故拒绝。
+		respondError(id, -1, "拒绝操作：无法确认该 PID 对应的进程，请刷新端口列表后重试")
+		return
+	}
 	if isSystemProcess(procName) {
 		respondError(id, -1, "拒绝操作：系统关键进程: "+procName)
 		return

@@ -105,8 +105,12 @@
 
   function build(id) {
     var b = BUILD.filter(function (x) { return x.id === id; })[0];
-    if (s.b[id] || !canAfford(b.cost)) return;
-    pay(b.cost); s.b[id] = true;
+    // 小屋必须可重复建造：否则 popCap 永久锁在 6（初值3+首座3），而胜利要求 pop>=8，
+    // 探索补员又被 popCap 封顶，正常游玩几乎无法达成好结局。其它建筑仍为一次性。
+    if (id !== 'hut' && s.b[id]) return;
+    if (!canAfford(b.cost)) return;
+    pay(b.cost);
+    if (id === 'hut') { s.b.hut = (s.b.hut || 0) + 1; } else { s.b[id] = true; }
     if (id === 'hut') { s.popCap += 3; s.pop++; log('小屋落成，能容纳更多村民了。', 'good'); }
     else if (id === 'farm') log('农场开荒，以后每天都有收成。', 'good');
     else if (id === 'trap') log('陷阱布好，坐等猎物上门。', 'good');
@@ -178,10 +182,14 @@
       return '<div class="dr-stat' + (v <= d.low ? ' low' : '') + '">' + d.n + ' <b>' + v + '</b></div>';
     }).join('');
     els.build.innerHTML = BUILD.map(function (b) {
-      var done = s.b[b.id], ok = canAfford(b.cost);
+      var repeatable = b.id === 'hut';
+      var count = repeatable ? (s.b.hut || 0) : 0;
+      var done = repeatable ? false : s.b[b.id];   // 小屋可续建，永不置灰
+      var ok = canAfford(b.cost);
       var cost = Object.keys(b.cost).map(function (k) { var d = STAT_DEFS.filter(function (x) { return x.k === k; })[0]; return (d ? d.n : k) + b.cost[k]; }).join(' ');
+      var name = b.n + (repeatable && count ? ' ×' + count : '');
       return '<button class="p-btn" data-id="' + b.id + '"' + ((done || !ok) ? ' disabled' : '') + '>' +
-        (done ? '✓' : '') + b.n + '<span class="cost">' + (done ? b.desc : cost) + '</span></button>';
+        (done ? '✓' : '') + name + '<span class="cost">' + (done ? b.desc : cost) + '</span></button>';
     }).join('');
     if (s.merchant) {
       els.trade.hidden = false;

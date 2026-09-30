@@ -390,7 +390,7 @@ function scanBraces(s, start){
   var depth = 0, inS = null;
   for (var i = start; i < s.length; i++){
     var c = s[i];
-    if (inS){ if (c === inS && s[i-1] !== '\\\\') inS = null; }
+    if (inS){ if (c === inS && s[i-1] !== '\\') inS = null; }
     else if (c === '"' || c === "'" || c === BQ) inS = c;
     else if (c === '{') depth++;
     else if (c === '}'){ depth--; if (depth === 0) return i; }
@@ -415,7 +415,7 @@ function fromPython(src){
   if (!mc) throw new Error(isEn() ? 'No requests.* call found' : '未找到 requests 调用');
   var method = mc[1].toUpperCase();
   if (mc[1].toLowerCase() === 'request'){
-    var mm = src.slice(mc.index).match(/request\s*\(\s*['"](\\w+)['"]/i);
+    var mm = src.slice(mc.index).match(/request\s*\(\s*['"](\w+)['"]/i);
     if (mm) method = mm[1].toUpperCase();
   }
   var urlm = src.match(/['"](https?:\/\/[^'"]+)['"]/);
@@ -446,7 +446,7 @@ function fromJs(src){
     var oe = scanBraces(rest, ob);
     if (oe > ob){
       var blk = rest.slice(ob + 1, oe);
-      var mm = blk.match(/method\s*:\s*['"](\\w+)['"]/i);
+      var mm = blk.match(/method\s*:\s*['"](\w+)['"]/i);
       if (mm) req.method = mm[1].toUpperCase();
       var hb = findBlock(blk, /headers\s*:\s*\{/);
       if (hb) dictPairs(hb).forEach(function(p){ req.headers.push(p[0] + ': ' + p[1]); });
@@ -467,11 +467,16 @@ function buildCurl(req){
   var parts = ['curl'];
   if (req.method && req.method !== 'GET') parts.push('-X ' + req.method);
   parts.push(shStr(req.url));
+  var hadJsonCT = false;
   req.headers.forEach(function(h){
-    if (/^content-type:\s*application\/json/i.test(h) && req.body) return;
+    // JSON 的 Content-Type 先摘出，稍后与 body 一起按规范顺序补回（否则会被整个丢弃）。
+    if (/^content-type:\s*application\/json/i.test(h) && req.body) { hadJsonCT = true; return; }
     parts.push('-H ' + shStr(h));
   });
-  if (req.body) parts.push('--data-raw ' + shStr(req.body));
+  if (req.body) {
+    if (hadJsonCT) parts.push('-H ' + shStr('Content-Type: application/json'));
+    parts.push('--data-raw ' + shStr(req.body));
+  }
   return parts.join(' \\\n  ');
 }
 

@@ -221,8 +221,19 @@ function randomInt(max){ // [0, max)
     var limit = Math.floor(256 / max) * max, a = new Uint8Array(1);
     for (;;){ crypto.getRandomValues(a); if (a[0] < limit) return a[0] % max; }
   }
-  var lim = Math.floor(4294967296 / max) * max, w = new Uint32Array(1);
-  for (;;){ crypto.getRandomValues(w); if (w[0] < lim) return w[0] % max; }
+  if (max <= 4294967296){
+    var lim = Math.floor(4294967296 / max) * max, w = new Uint32Array(1);
+    for (;;){ crypto.getRandomValues(w); if (w[0] < lim) return w[0] % max; }
+  }
+  // max 超过 2^32（如按时间戳随机取日期）时，上面的 lim 会变成 0 导致死循环。
+  // 改用 53 位安全整数空间的拒绝采样，仍走 crypto 保证均匀。
+  var hi = new Uint32Array(1), lo = new Uint32Array(1);
+  var cap = Math.floor(9007199254740992 / max) * max; // 2^53 内 max 的最大整数倍
+  for (;;){
+    crypto.getRandomValues(hi); crypto.getRandomValues(lo);
+    var v = hi[0] * 2097152 + (lo[0] >>> 11); // [0, 2^53)
+    if (v < cap) return v % max;
+  }
 }
 function randIntRange(min, max){ return min + randomInt(max - min + 1) }
 function pick(arr){ return arr[randomInt(arr.length)] }

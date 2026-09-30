@@ -72,7 +72,9 @@ function decode() {
     $('headerOutput').textContent = JSON.stringify(header, null, 2)
     $('payloadOutput').textContent = JSON.stringify(payload, null, 2)
     showInfo(payload)
-    parent.postMessage({type:'plugin:copied', data:{text:JSON.stringify({header,payload},null,2)}}, '*')
+    var __jwtCopy = JSON.stringify({header,payload},null,2)
+    if (window.qdCopy) { window.qdCopy(__jwtCopy) }
+    else { parent.postMessage({type:'plugin:copy', id:'jwt_'+Date.now(), text:__jwtCopy}, '*') }
   } catch(e) {
     showError('解码失败: ' + e.message)
   }

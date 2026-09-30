@@ -150,14 +150,15 @@ func clampInt(v, lo, hi int) int {
 // ---- 异步任务（带进度与取消）----
 
 type asyncTask struct {
-	ID       string                 `json:"id"`
-	Status   string                 `json:"status"` // running | done | error | cancelled
-	Progress int                    `json:"progress"`
-	Message  string                 `json:"message"`
-	Result   map[string]interface{} `json:"result,omitempty"`
-	Error    string                 `json:"error,omitempty"`
-	cancel   chan struct{}
-	finished time.Time
+	ID         string                 `json:"id"`
+	Status     string                 `json:"status"` // running | done | error | cancelled
+	Progress   int                    `json:"progress"`
+	Message    string                 `json:"message"`
+	Result     map[string]interface{} `json:"result,omitempty"`
+	Error      string                 `json:"error,omitempty"`
+	cancel     chan struct{}
+	finished   time.Time
+	cancelOnce sync.Once
 }
 
 var (
@@ -200,6 +201,12 @@ func (t *asyncTask) cancelled() bool {
 	default:
 		return false
 	}
+}
+
+// requestCancel 幂等地关闭 cancel 通道：多次取消同一 task 不会触发
+// "close of closed channel" panic。
+func (t *asyncTask) requestCancel() {
+	t.cancelOnce.Do(func() { close(t.cancel) })
 }
 
 func (t *asyncTask) done(result map[string]interface{}) {
@@ -256,7 +263,7 @@ func handleTaskCancel(id int64, input map[string]interface{}) {
 		respondError(id, -1, "任务不存在: "+taskID)
 		return
 	}
-	close(t.cancel)
+	t.requestCancel()
 	tasksMu.Lock()
 	t.Status = "cancelled"
 	t.finished = time.Now()
