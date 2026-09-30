@@ -394,6 +394,14 @@ GLYPH["markdown-preview"] = """
   <path d="M13.4 13.2l2 2 2-2"/>
 """
 
+GLYPH["md2card"] = """
+  <path d="M5.4 4.6h11.6l4.4 4.2v11a1.6 1.6 0 0 1-1.6 1.6H5.4a1.6 1.6 0 0 1-1.6-1.6V6.2A1.6 1.6 0 0 1 5.4 4.6z" opacity="0.3"/>
+  <rect x="3.2" y="6.6" width="17.6" height="14" rx="3"/>
+  <path d="M7.4 17V10.6l2.6 3.3 2.6-3.3V17"/>
+  <path d="M14.2 10.6v6.4"/>
+  <path d="M12.2 15.2l2 2 2-2"/>
+"""
+
 GLYPH["md-table-converter"] = """
   <rect x="2.8" y="4.6" width="18.4" height="14.8" rx="2.6"/>
   <path d="M2.8 9.4h18.4"/>
@@ -501,6 +509,12 @@ GLYPH["game-proxx"] = """
   <path d="M12 3v3.2M12 17.8v3.2M3 12h3.2M17.8 12h3.2M5.7 5.7l2.2 2.2M18.3 5.7l-2.2 2.2M5.7 18.3l2.2-2.2M18.3 18.3l-2.2-2.2" opacity="0.55"/>
 """
 
+GLYPH["photo-library"] = """
+  <rect x="3" y="6.5" width="12" height="12" rx="2" opacity="0.55"/>
+  <rect x="7.5" y="3.5" width="13" height="13" rx="2"/>
+  <circle cx="11.5" cy="7.5" r="1.5" fill="#e6e6e6" stroke="none"/>
+  <path d="M8.2 13.6l3.4-3 2 1.7 1.7-1.5 2.2 2" opacity="0.55"/>
+"""
 
 def main():
     made = []

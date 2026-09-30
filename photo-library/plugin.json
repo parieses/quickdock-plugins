@@ -1,0 +1,62 @@
+{
+  "id": "io.github.parieses.photo-library",
+  "name": "照片库浏览",
+  "version": "1.3.0",
+  "description": "选择本地文件夹，网格缩略图浏览照片，按日期/文件夹筛选，点击查看 EXIF 拍摄信息与参数",
+  "author": "QuickDock",
+  "category": "文件工具",
+  "platforms": [
+    "windows"
+  ],
+  "icon": "icon.svg",
+  "backend": {
+    "runtime": "native",
+    "entry": "photo-library",
+    "args": []
+  },
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 960,
+    "height": 700
+  },
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "permissions": {
+    "filesystem": true
+  },
+  "commands": [
+    {
+      "id": "browse",
+      "title": "照片库浏览",
+      "keywords": [
+        "photo",
+        "照片",
+        "相册",
+        "图库",
+        "缩略图",
+        "浏览"
+      ],
+      "aliases": [
+        "浏览照片",
+        "照片库",
+        "本地照片"
+      ],
+      "title_i18n": {
+        "zh-CN": "照片库浏览",
+        "en-US": "Photo Library"
+      }
+    }
+  ],
+  "name_i18n": {
+    "zh-CN": "照片库浏览",
+    "en-US": "Photo Library"
+  },
+  "description_i18n": {
+    "zh-CN": "选择本地文件夹，网格缩略图浏览照片，按日期/文件夹筛选，点击查看 EXIF 拍摄信息与参数",
+    "en-US": "Browse a local folder as a grid of photo thumbnails; filter by date/folder and view EXIF metadata on click."
+  },
+  "changelog": "## v1.3.0\n\n- 时间线视图竖排修复：月份段改为纵向堆叠（之前被网格多列并排成横排），更符合「时间线」直觉，每段带 sticky 月份表头\n- 全量 EXIF 面板：相机/镜头型号、曝光参数（光圈 f/、快门 1/x s、ISO、焦距 mm、曝光程序/测光模式/闪光灯/白平衡译名）全部美化展示\n- GPS 地图点位：有地理位置的照片，详情侧栏渲染以拍摄点为中心的小地图（XYZ 瓦片拼接，标记 📍），底图默认 OpenStreetMap（免密钥，需联网）\n- 地图设置弹窗：⚙ 可切换底图为「天地图（中国）」并填写自己的应用 Token（tk），联网获取天地图底图，适配国内合规需求\n\n## v1.2.0\n\n- 基础编辑：预览页新增「编辑」面板，支持裁剪（拖拽框选）、亮度 / 对比度滑块、滤镜（原图 / 黑白 / 复古 / 暖色 / 冷色）、旋转；「保存副本」在原图同目录生成 `_edited` 新文件，不破坏原图\n- 批量模式：网格多选（✓ 标记），批量旋转、按前缀批量重命名、导出选中到目标文件夹（复制）\n- 时间线视图：网格 / 时间线切换，按拍摄（修改）日期的「年-月」分组并 sticky 表头\n- 启动记忆：重新打开插件自动回到上次浏览的文件夹或资料库（session.json 持久化）\n- 补充缺失中英文字串与批量 / 编辑相关 i18n\n\n## v1.1.0\n\n- 后端引入 golang.org/x/image，新增 WebP / TIFF / BMP 解码（纯 Go，无 CGO），消除大量占位块\n- 缩略图磁盘缓存：按 path+mtime+尺寸哈希落盘到用户缓存目录，重开文件夹秒开\n- 预览图支持上一张/下一张（←/→ 键）、滚轮缩放、拖拽平移，与旋转统一为 translate→rotate→scale\n- 幻灯片播放：预览工具条播放/暂停，默认 3 秒自动翻页\n- 收藏星标：写入用户缓存目录 favorites.json，重开仍在；网格与预览联动\n- 资料库：可把多个文件夹加入资料库，聚合浏览（library.json 持久化）\n- 重复/相似图片检测：aHash 平均哈希 + 汉明距离分组，只标记不删除\n- 修复旋转动画跳变：角度累加（不再 %360），首次左旋/连续右转不再绕圈\n\n## v1.0.1\n\n- 大图预览支持旋转：预览区底部悬浮工具条（向左旋转 / 向右旋转 / 重置）\n- 快捷键：R 向右旋转、Shift+R 向左旋转、Esc 关闭预览\n- 旋转时按容器尺寸自动缩放，保证旋转后图片不溢出裁剪\n- 文件夹条改为单行横向滚动，子文件夹多时不再挤压图片网格可视区\n\n## v1.0.0\n\n- 初版：本地照片库浏览（native runtime，Go 子进程直接读目录，绕过宿主文件白名单）\n- 选文件夹 → 网格缩略图（JPEG/PNG/GIF 解码生成，其它格式占位）\n- 按日期（年/月）、文件名搜索、文件夹导航筛选\n- 点击查看大图预览 + EXIF（拍摄时间/相机/镜头/参数/GPS）\n"
+}

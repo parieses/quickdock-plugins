@@ -38,6 +38,30 @@
 .cs-tip { font-size: var(--fs-sm); color: var(--text-muted); }
 .cs-actions { display: flex; gap: 8px; }
 
+.cs-themes {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  max-width: 440px;
+  flex-wrap: wrap;
+}
+.cs-themes-label { font-size: var(--fs-xs); color: var(--text-muted); margin-right: 2px; }
+.cs-theme {
+  padding: 4px 10px;
+  font-size: var(--fs-sm);
+  border-radius: 999px;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+.cs-theme.is-active {
+  background: var(--violet, #916aff);
+  color: #fff;
+  border-color: var(--violet, #916aff);
+}
+
 .cs-canvas {
   border-radius: var(--radius-lg);
   background: var(--bg-secondary);

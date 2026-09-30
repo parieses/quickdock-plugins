@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <link rel="stylesheet" href="qd-theme.css">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>照片库浏览</title>
+<style>
+  .p-app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+</style>
+</head>
+<body>
+<div class="p-app">
+  <div class="p-head">
+    <span style="font-size:16px">🖼️</span>
+    <span class="p-head-title" data-i18n="照片库浏览">照片库浏览</span>
+    <div class="p-head-actions">
+      <span class="p-head-path" id="path-label"></span>
+      <button class="p-btn p-btn-primary" id="pick-btn" data-i18n="选择文件夹">选择文件夹</button>
+    </div>
+  </div>
+
+  <div class="p-toolbar">
+    <input type="text" class="p-input" id="search" data-i18n-ph="搜索文件名…" placeholder="搜索文件名…" style="width:180px">
+    <select class="p-select" id="sort">
+      <option value="date" data-i18n="日期（新→旧）">日期（新→旧）</option>
+      <option value="date-asc" data-i18n="日期（旧→新）">日期（旧→新）</option>
+      <option value="name" data-i18n="名称">名称</option>
+      <option value="size" data-i18n="大小">大小</option>
+    </select>
+    <select class="p-select" id="date-filter">
+      <option value="" data-i18n="全部时间">全部时间</option>
+    </select>
+    <select class="p-select" id="view-mode">
+      <option value="grid" data-i18n="网格">网格</option>
+      <option value="timeline" data-i18n="时间线">时间线</option>
+    </select>
+    <div class="p-spacer" style="flex:1"></div>
+    <button class="p-btn p-btn-sm" id="btn-dup" data-i18n="查重">查重</button>
+    <button class="p-btn p-btn-sm" id="btn-batch" data-i18n="批量">批量</button>
+    <button class="p-btn p-btn-sm" id="btn-addlib" data-i18n="加入资料库">加入资料库</button>
+    <button class="p-btn p-btn-sm" id="btn-library" data-i18n="资料库">资料库</button>
+    <button class="p-btn p-btn-sm" id="btn-settings" title="设置">⚙</button>
+  </div>
+
+  <div class="p-toolbar" id="batch-bar" style="display:none">
+    <button class="p-btn p-btn-sm" id="batch-all" data-i18n="全选">全选</button>
+    <span class="batch-count" id="batch-count"></span>
+    <button class="p-btn p-btn-sm" id="batch-rot-l" title="←">↺</button>
+    <button class="p-btn p-btn-sm" id="batch-rot-r" title="→">↻</button>
+    <button class="p-btn p-btn-sm" id="batch-rename" data-i18n="重命名">重命名</button>
+    <button class="p-btn p-btn-sm" id="batch-export" data-i18n="导出">导出</button>
+    <div class="p-spacer" style="flex:1"></div>
+    <button class="p-btn p-btn-sm" id="batch-exit" data-i18n="退出批量">退出批量</button>
+  </div>
+
+  <div class="p-toolbar" id="folder-bar" style="display:none;padding-top:0;padding-bottom:0">
+    <div class="p-chips" id="folder-chips"></div>
+  </div>
+
+  <div class="p-body">
+    <div class="p-scroll">
+      <div class="p-empty" id="empty">
+        <div class="icon">📂</div>
+        <div data-i18n="选择一个文件夹开始浏览本地照片">选择一个文件夹开始浏览本地照片</div>
+      </div>
+      <div class="thumb-grid" id="grid" style="display:none"></div>
+    </div>
+    <div class="p-statusbar" id="status"></div>
+  </div>
+</div>
+
+<div class="detail-overlay" id="overlay">
+  <div class="detail-panel">
+    <div class="detail-preview">
+      <img id="detail-img" alt="">
+      <div class="preview-nav prev" id="prev-btn" title="上一张 (←)">‹</div>
+      <div class="preview-nav next" id="next-btn" title="下一张 (→)">›</div>
+      <div class="preview-tools">
+        <button class="iconbtn" id="rot-left" title="向左旋转 (Shift+R)">↺</button>
+        <button class="iconbtn" id="rot-right" title="向右旋转 (R)">↻</button>
+        <button class="iconbtn" id="rot-reset" title="重置旋转">⟳</button>
+        <span class="pt-sep"></span>
+        <button class="iconbtn" id="zoom-out" title="缩小 (-)">－</button>
+        <button class="iconbtn" id="zoom-reset" title="重置缩放 (0)">⤢</button>
+        <button class="iconbtn" id="zoom-in" title="放大 (+)">＋</button>
+        <span class="pt-sep"></span>
+        <button class="iconbtn" id="slide-btn" title="幻灯片 (空格)">▶</button>
+        <button class="iconbtn" id="edit-btn" title="编辑">🖌</button>
+        <button class="iconbtn" id="fav-btn" title="收藏 (F)">☆</button>
+      </div>
+    </div>
+    <div class="detail-side">
+      <div class="detail-side-head">
+        <span class="name" id="detail-name"></span>
+        <button class="iconbtn" id="detail-close" title="关闭">✕</button>
+      </div>
+      <div class="detail-side-body" id="detail-body">
+        <div class="p-muted" data-i18n="加载中…">加载中…</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="detail-overlay" id="dup-overlay">
+  <div class="dup-panel">
+    <div class="dup-head">
+      <span data-i18n="重复 / 相似图片">重复 / 相似图片</span>
+      <button class="iconbtn" id="dup-close" title="关闭">✕</button>
+    </div>
+    <div class="dup-body" id="dup-body"></div>
+  </div>
+</div>
+
+<div class="detail-overlay" id="edit-overlay">
+  <div class="edit-panel">
+    <div class="edit-head">
+      <span data-i18n="编辑">编辑</span>
+      <span class="edit-name" id="edit-name"></span>
+      <button class="iconbtn" id="edit-close" title="关闭">✕</button>
+    </div>
+    <div class="edit-body">
+      <div class="edit-stage" id="edit-stage">
+        <img id="edit-img" alt="">
+        <div class="edit-crop" id="edit-crop" style="display:none"></div>
+      </div>
+    </div>
+    <div class="edit-controls">
+      <div class="edit-row">
+        <button class="p-btn p-btn-sm" id="edit-crop-btn" data-i18n="裁剪">裁剪</button>
+        <button class="p-btn p-btn-sm" id="edit-rot-l" title="↺">↺</button>
+        <button class="p-btn p-btn-sm" id="edit-rot-r" title="↻">↻</button>
+        <button class="p-btn p-btn-sm" id="edit-reset" data-i18n="重置">重置</button>
+      </div>
+      <div class="edit-row">
+        <label class="edit-label" data-i18n="亮度">亮度</label>
+        <input type="range" id="edit-brightness" min="-100" max="100" value="0">
+        <label class="edit-label" data-i18n="对比度">对比度</label>
+        <input type="range" id="edit-contrast" min="-100" max="100" value="0">
+      </div>
+      <div class="edit-row">
+        <span class="edit-label" data-i18n="滤镜">滤镜</span>
+        <button class="filter-btn active" data-filter="none" data-i18n="原图">原图</button>
+        <button class="filter-btn" data-filter="grayscale" data-i18n="黑白">黑白</button>
+        <button class="filter-btn" data-filter="sepia" data-i18n="复古">复古</button>
+        <button class="filter-btn" data-filter="warm" data-i18n="暖色">暖色</button>
+        <button class="filter-btn" data-filter="cool" data-i18n="冷色">冷色</button>
+      </div>
+      <div class="edit-row edit-actions">
+        <button class="p-btn p-btn-primary" id="edit-save" data-i18n="保存副本">保存副本</button>
+        <button class="p-btn" id="edit-cancel" data-i18n="取消">取消</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="detail-overlay" id="settings-overlay">
+  <div class="settings-panel">
+    <div class="settings-head">
+      <span data-i18n="设置">设置</span>
+      <button class="iconbtn" id="settings-close" title="关闭">✕</button>
+    </div>
+    <div class="settings-body">
+      <div class="settings-section">
+        <h4 data-i18n="地图">地图</h4>
+        <div class="settings-row">
+          <label class="edit-label" data-i18n="地图底图">地图底图</label>
+          <select class="p-select" id="set-provider">
+            <option value="osm" data-i18n="OpenStreetMap（默认，免密钥）">OpenStreetMap（默认，免密钥）</option>
+            <option value="tianditu" data-i18n="天地图（中国，需密钥）">天地图（中国，需密钥）</option>
+          </select>
+        </div>
+        <div class="settings-row" id="set-key-row">
+          <label class="edit-label" data-i18n="天地图 Token">天地图 Token</label>
+          <input type="text" class="p-input" id="set-key" placeholder="tk / Token" style="flex:1;min-width:120px">
+        </div>
+        <div class="settings-hint" id="set-hint"></div>
+      </div>
+    </div>
+    <div class="settings-foot">
+      <button class="p-btn p-btn-primary" id="settings-save" data-i18n="保存">保存</button>
+      <button class="p-btn" id="settings-cancel" data-i18n="取消">取消</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==================== i18n ====================
+const L10N = {
+  'en-US': {
+    '照片库浏览': 'Photo Library',
+    '选择文件夹': 'Choose Folder',
+    '搜索文件名…': 'Search file name…',
+    '日期（新→旧）': 'Date (new→old)',
+    '日期（旧→新）': 'Date (old→new)',
+    '名称': 'Name',
+    '大小': 'Size',
+    '全部时间': 'All time',
+    '选择一个文件夹开始浏览本地照片': 'Pick a folder to browse local photos',
+    '返回上级': 'Up',
+    '加载中…': 'Loading…',
+    '张照片': ' photos',
+    '无 EXIF 信息': 'No EXIF metadata',
+    '该格式不含标准 EXIF': 'This format has no standard EXIF',
+    '全部 EXIF 字段': 'All EXIF fields',
+    '拍摄信息': 'Capture info',
+    '文件信息': 'File info',
+    '相机': 'Camera',
+    '镜头': 'Lens',
+    '拍摄时间': 'Date taken',
+    '光圈': 'Aperture',
+    '快门': 'Shutter',
+    'ISO': 'ISO',
+    '焦距': 'Focal length',
+    '软件': 'Software',
+    '尺寸': 'Dimensions',
+    '大小（字节）': 'Size (bytes)',
+    '修改时间': 'Modified',
+    '格式': 'Format',
+    'GPS': 'GPS',
+    '已截断：目录内图片超过': 'Truncated: more than ',
+    '张，仅显示前': ' images in folder, showing first ',
+    '张': ' ',
+    '资料库': 'Library',
+    '加入资料库': 'Add to library',
+    '查重': 'Find dupes',
+    '重复 / 相似图片': 'Duplicate / similar',
+    '未发现重复或相似的图片': 'No duplicate or similar images found',
+    '正在计算指纹…': 'Computing fingerprints…',
+    '收藏': 'Favorite',
+    '已收藏': 'Favorited',
+    '共': 'Total ',
+    '张（仅检测前': ' (scanned first ',
+    '张）': ' images)',
+    '网格': 'Grid',
+    '时间线': 'Timeline',
+    '批量': 'Batch',
+    '退出批量': 'Exit',
+    '全选': 'Select all',
+    '已选': 'Selected',
+    '向左旋转': 'Rotate left',
+    '向右旋转': 'Rotate right',
+    '重命名': 'Rename',
+    '导出': 'Export',
+    '编辑': 'Edit',
+    '取消': 'Cancel',
+    '保存副本': 'Save copy',
+    '亮度': 'Brightness',
+    '对比度': 'Contrast',
+    '原图': 'Original',
+    '黑白': 'B&W',
+    '复古': 'Sepia',
+    '暖色': 'Warm',
+    '冷色': 'Cool',
+    '裁剪': 'Crop',
+    '重置': 'Reset',
+    '该文件夹没有图片文件': 'This folder has no images',
+    '没有匹配的照片': 'No matching photos',
+    '已加入资料库': 'Added to library',
+    '重命名前缀': 'Rename prefix',
+    '已导出': 'Exported',
+    '张到': ' images to ',
+    '编辑已保存': 'Edit saved',
+    '收藏夹为空': 'No favorites yet',
+    '时间线': 'Timeline',
+    '请先选择照片': 'Select photos first',
+    '批量旋转完成': 'Batch rotate done',
+    '批量重命名完成': 'Batch rename done',
+    '在图片上拖拽框选裁剪区域': 'Drag on the image to select a crop area',
+    '设置': 'Settings',
+    '地图': 'Map',
+    '地图底图': 'Base map',
+    '天地图 Token': 'Tianditu Token',
+    '天地图（中国，需密钥）': 'Tianditu (China, requires key)',
+    'OpenStreetMap（默认，免密钥）': 'OpenStreetMap (default, no key)',
+    '保存': 'Save',
+    '经纬度': 'Lat / Lng',
+    '在地图中查看': 'View on map',
+    '无 GPS 信息': 'No GPS info',
+    '地图底图需要联网获取': 'Map tiles require internet access',
+    '尚未配置天地图密钥': 'Tianditu key not configured',
+    '已保存设置': 'Settings saved',
+    '相机制造商': 'Camera make',
+    '相机型号': 'Camera model',
+    '镜头制造商': 'Lens make',
+    '镜头型号': 'Lens model',
+    '曝光程序': 'Exposure program',
+    '测光模式': 'Metering mode',
+    '白平衡': 'White balance',
+    '闪光灯': 'Flash',
+    '闪光灯开启': 'Flash fired',
+    '闪光灯关闭': 'No flash',
+    '自动': 'Auto',
+    '手动': 'Manual',
+    '未定义': 'Undefined',
+    '中央重点': 'Center-weighted',
+    '点测光': 'Spot',
+    '分区': 'Matrix',
+    '局部': 'Partial',
+    '未知': 'Unknown',
+    '其他': 'Other',
+    '路径': 'Path',
+  }
+};
+function L(key){const loc=(document.documentElement.getAttribute('lang')||'zh-CN');const map=L10N[loc]||L10N[loc.split('-')[0]]||{};return (map&&map[key]!==undefined)?map[key]:key;}
+function applyStaticL10n(){
+  document.querySelectorAll('[data-i18n]').forEach(el=>{let src=el.getAttribute('data-orig');if(!src){src=el.textContent.trim();el.setAttribute('data-orig',src);}if(src)el.textContent=L(src);});
+  document.querySelectorAll('[data-i18n-ph]').forEach(el=>{let ph=el.getAttribute('data-orig-ph');if(!ph){ph=el.getAttribute('placeholder')||'';el.setAttribute('data-orig-ph',ph);}if(ph)el.setAttribute('placeholder',L(ph));});
+}
+window.addEventListener('message',(e)=>{const d=e.data;if(d&&d.type==='plugin:theme'&&d.data&&d.data.locale){document.documentElement.setAttribute('lang',d.data.locale);applyStaticL10n();}});
+applyStaticL10n();
+
+// ==================== Bridge ====================
+let _msgId=0;
+const bridge={
+  send(cmd,input={}){
+    return new Promise((resolve,reject)=>{
+      const id=++_msgId;
+      window.parent.postMessage({type:'plugin:execute',id,command:cmd,input},'*');
+      const handler=(e)=>{
+        if(e.data&&e.data.type==='plugin:result'&&e.data.id===id){
+          window.removeEventListener('message',handler);
+          if(e.data.error){reject(new Error(e.data.error));}
+          else{resolve(e.data.data);}
+        }
+      };
+      window.addEventListener('message',handler);
+      setTimeout(()=>{window.removeEventListener('message',handler);reject(new Error('Timeout'));},30000);
+    });
+  },
+  async pickFolder(title){
+    const p=await qdPickFolder({title:title||L('选择文件夹')});
+    return p||null;
+  }
+};
+
+// ==================== 工具 ====================
+function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function formatSize(bytes){
+  if(bytes<1024)return bytes+' B';
+  if(bytes<1048576)return (bytes/1024).toFixed(1)+' KB';
+  if(bytes<1073741824)return (bytes/1048576).toFixed(1)+' MB';
+  return (bytes/1073741824).toFixed(2)+' GB';
+}
+function formatDate(ts){
+  const d=new Date(ts*1000);
+  const p=n=>String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes());
+}
+function dirname(p){const i=Math.max(p.lastIndexOf('\\'),p.lastIndexOf('/'));return i>0?p.slice(0,i):p;}
+// 两个 16 位十六进制字符串（64bit）的汉明距离
+function hamming(a,b){
+  let d=0;
+  for(let i=0;i<16;i++){
+    const x=parseInt(a[i]||'0',16),y=parseInt(b[i]||'0',16);
+    let v=x^y;
+    while(v){d+=v&1;v>>=1;}
+  }
+  return d;
+}
+
+// ==================== 控制器 ====================
+class PhotoLibrary{
+  constructor(){
+    this.currentPath='';
+    this.lastSinglePath='';
+    this.files=[];
+    this.folders=[];
+    this.thumbs={};
+    this.loaded=new Set();
+    this.activeDate='';
+    this.fav=new Set();
+    this.libraryMode=false;
+    this.rot=0;
+    this.zoom=1;
+    this.panX=0;
+    this.panY=0;
+    this.detailIndex=-1;
+    this.slideshow=null;
+    this.dragging=false;
+    this.viewMode='grid';
+    this.selection=new Set();
+    this.batchMode=false;
+    this.editPath='';
+    this.editOps={brightness:0,contrast:0,filter:'none',rotate:0,crop:null};
+    this._editTimer=null;
+    this._cropDrag=null;
+    this.config={mapProvider:'osm',tiandituKey:''};
+    this.init();
+  }
+  init(){
+    document.getElementById('pick-btn').addEventListener('click',()=>this.pick());
+    document.getElementById('search').addEventListener('input',()=>this.render());
+    document.getElementById('sort').addEventListener('change',()=>this.render());
+    document.getElementById('date-filter').addEventListener('change',(e)=>{this.activeDate=e.target.value;this.render();});
+    document.getElementById('detail-close').addEventListener('click',()=>this.closeDetail());
+    document.getElementById('overlay').addEventListener('click',(e)=>{if(e.target.id==='overlay')this.closeDetail();});
+    document.getElementById('rot-left').addEventListener('click',()=>this.rotate(-90));
+    document.getElementById('rot-right').addEventListener('click',()=>this.rotate(90));
+    document.getElementById('rot-reset').addEventListener('click',()=>this.resetRot());
+    document.getElementById('zoom-in').addEventListener('click',()=>this.zoomBy(1.25));
+    document.getElementById('zoom-out').addEventListener('click',()=>this.zoomBy(0.8));
+    document.getElementById('zoom-reset').addEventListener('click',()=>this.resetZoom());
+    document.getElementById('prev-btn').addEventListener('click',()=>this.prev());
+    document.getElementById('next-btn').addEventListener('click',()=>this.next());
+    document.getElementById('slide-btn').addEventListener('click',()=>this.toggleSlideshow());
+    document.getElementById('fav-btn').addEventListener('click',()=>this.toggleFavCurrent());
+    document.getElementById('btn-library').addEventListener('click',()=>this.toggleLibrary());
+    document.getElementById('btn-addlib').addEventListener('click',()=>this.addToLibrary());
+    document.getElementById('btn-dup').addEventListener('click',()=>this.toggleDup());
+    document.getElementById('dup-close').addEventListener('click',()=>this.closeDup());
+    document.getElementById('dup-overlay').addEventListener('click',(e)=>{if(e.target.id==='dup-overlay')this.closeDup();});
+    // 视图模式（网格 / 时间线）
+    document.getElementById('view-mode').addEventListener('change',(e)=>{this.viewMode=e.target.value;this.render();});
+    // 批量模式
+    document.getElementById('btn-batch').addEventListener('click',()=>this.toggleBatch());
+    document.getElementById('batch-all').addEventListener('click',()=>this.selectAll());
+    document.getElementById('batch-rot-l').addEventListener('click',()=>this.batchRotate(-90));
+    document.getElementById('batch-rot-r').addEventListener('click',()=>this.batchRotate(90));
+    document.getElementById('batch-rename').addEventListener('click',()=>this.batchRename());
+    document.getElementById('batch-export').addEventListener('click',()=>this.batchExport());
+    document.getElementById('batch-exit').addEventListener('click',()=>this.exitBatch());
+    // 编辑面板
+    document.getElementById('edit-btn').addEventListener('click',()=>this.openEditor());
+    document.getElementById('edit-close').addEventListener('click',()=>this.closeEditor());
+    document.getElementById('edit-overlay').addEventListener('click',(e)=>{if(e.target.id==='edit-overlay')this.closeEditor();});
+    document.getElementById('edit-crop-btn').addEventListener('click',()=>this.startCrop());
+    document.getElementById('edit-rot-l').addEventListener('click',()=>{this.editOps.rotate=(this.editOps.rotate-90);this.applyEdit();});
+    document.getElementById('edit-rot-r').addEventListener('click',()=>{this.editOps.rotate=(this.editOps.rotate+90);this.applyEdit();});
+    document.getElementById('edit-reset').addEventListener('click',()=>this.resetEdit());
+    document.getElementById('edit-save').addEventListener('click',()=>this.saveEdit());
+    document.getElementById('edit-cancel').addEventListener('click',()=>this.closeEditor());
+    document.getElementById('edit-brightness').addEventListener('input',(e)=>{this.editOps.brightness=parseInt(e.target.value,10);this.applyEdit();});
+    document.getElementById('edit-contrast').addEventListener('input',(e)=>{this.editOps.contrast=parseInt(e.target.value,10);this.applyEdit();});
+    document.querySelectorAll('.filter-btn').forEach(b=>b.addEventListener('click',()=>{
+      document.querySelectorAll('.filter-btn').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+      this.editOps.filter=b.getAttribute('data-filter');this.applyEdit();
+    }));
+    // 设置弹窗（地图 / 天地图密钥）
+    document.getElementById('btn-settings').addEventListener('click',()=>this.openSettings());
+    document.getElementById('settings-close').addEventListener('click',()=>this.closeSettings());
+    document.getElementById('settings-cancel').addEventListener('click',()=>this.closeSettings());
+    document.getElementById('settings-overlay').addEventListener('click',(e)=>{if(e.target.id==='settings-overlay')this.closeSettings();});
+    document.getElementById('settings-save').addEventListener('click',()=>this.saveSettings());
+    document.getElementById('set-provider').addEventListener('change',(e)=>{document.getElementById('set-key-row').style.display=e.target.value==='tianditu'?'flex':'none';});
+    // 启动加载插件配置（地图提供方 / 天地图密钥）
+    this.loadConfig();
+    // 启动时恢复上次浏览位置
+    this.recallSession();
+    document.addEventListener('keydown',(e)=>{
+      if(document.getElementById('overlay').classList.contains('open')){
+        if(e.key==='Escape'){e.preventDefault();this.closeDetail();return;}
+        if(e.key==='ArrowLeft'){e.preventDefault();this.prev();return;}
+        if(e.key==='ArrowRight'){e.preventDefault();this.next();return;}
+        if(e.key==='r'||e.key==='R'){e.preventDefault();this.rotate(e.shiftKey?-90:90);return;}
+        if(e.key==='+'||e.key==='='){e.preventDefault();this.zoomBy(1.25);return;}
+        if(e.key==='-'||e.key==='_'){e.preventDefault();this.zoomBy(0.8);return;}
+        if(e.key==='0'){e.preventDefault();this.resetZoom();return;}
+        if(e.key===' '){e.preventDefault();this.toggleSlideshow();return;}
+        if(e.key==='f'||e.key==='F'){e.preventDefault();this.toggleFavCurrent();return;}
+      }
+    });
+    window.addEventListener('resize',()=>{if(document.getElementById('overlay').classList.contains('open'))this.applyView();});
+    // 预览区滚轮缩放 + 拖拽平移
+    const prev=document.querySelector('.detail-preview');
+    prev.addEventListener('wheel',(e)=>{e.preventDefault();this.zoomBy(e.deltaY<0?1.12:0.89);},{passive:false});
+    prev.addEventListener('pointerdown',(e)=>{if(e.target.id==='detail-img'){this.dragging=true;this._lx=e.clientX;this._ly=e.clientY;prev.setPointerCapture(e.pointerId);}});
+    prev.addEventListener('pointermove',(e)=>{if(this.dragging){this.panX+=e.clientX-this._lx;this.panY+=e.clientY-this._ly;this._lx=e.clientX;this._ly=e.clientY;this.applyView();}});
+    prev.addEventListener('pointerup',(e)=>{this.dragging=false;});
+    // 启动时加载收藏列表
+    this.loadFavs();
+  }
+  async loadFavs(){
+    try{const r=await bridge.send('fav',{action:'list'});(r.favorites||[]).forEach(p=>this.fav.add(p));}catch(e){}
+  }
+  async pick(){
+    const p=await bridge.pickFolder();
+    if(p){this.libraryMode=false;this.scan(p);}
+  }
+  async scan(path,opts={}){
+    this.currentPath=path;
+    if(path && path!=='(library)')this.lastSinglePath=path;
+    document.getElementById('path-label').textContent=(this.libraryMode?L('资料库')+' · ':'')+path;
+    this.thumbs={};this.loaded.clear();this.activeDate='';
+    document.getElementById('date-filter').value='';
+    try{
+      const input={path};
+      if(this.libraryMode)input.library=true;
+      const r=await bridge.send('scan',input);
+      this.files=r.files||[];
+      this.folders=r.folders||[];
+      if(r.truncated){
+        this.setStatus(L('已截断：目录内图片超过')+(r.total)+L('张，仅显示前')+this.files.length+L('张'));
+      }else{
+        this.setStatus(this.files.length+L('张照片'));
+      }
+      this.buildDateFilter();
+      this.renderFolderChips();
+      this.render();
+    }catch(err){
+      this.setStatus('扫描失败：'+err.message);
+    }
+  }
+  buildDateFilter(){
+    const sel=document.getElementById('date-filter');
+    sel.innerHTML='<option value="">'+L('全部时间')+'</option>';
+    const months={};
+    this.files.forEach(f=>{const d=new Date(f.mtime*1000);const k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');months[k]=(months[k]||0)+1;});
+    Object.keys(months).sort().reverse().forEach(k=>{
+      const o=document.createElement('option');o.value=k;o.textContent=k+' ('+months[k]+')';sel.appendChild(o);
+    });
+  }
+  renderFolderChips(){
+    const bar=document.getElementById('folder-bar');
+    const box=document.getElementById('folder-chips');
+    box.innerHTML='';
+    const roots=this.libraryMode?this.folders:null;
+    if(this.libraryMode){
+      bar.style.display='flex';
+      const lib=document.createElement('span');lib.className='p-chip active';lib.textContent='📚 '+L('资料库');
+      box.appendChild(lib);
+      this.folders.forEach(f=>{
+        const c=document.createElement('span');c.className='p-chip';c.textContent='📁 '+f.name;
+        c.addEventListener('click',()=>{this.libraryMode=false;this.scan(f.path);});
+        box.appendChild(c);
+      });
+      return;
+    }
+    if(!this.folders.length && (!this.currentPath || this.currentPath.indexOf('\\')<0 && this.currentPath.indexOf('/')<0)){
+      bar.style.display='none';return;
+    }
+    bar.style.display='flex';
+    if(this.currentPath){
+      const up=document.createElement('span');up.className='p-chip';up.textContent='⬆ '+L('返回上级');
+      up.addEventListener('click',()=>this.scan(dirname(this.currentPath)));
+      box.appendChild(up);
+    }
+    this.folders.forEach(f=>{
+      const c=document.createElement('span');c.className='p-chip';c.textContent='📁 '+f.name;
+      c.addEventListener('click',()=>this.scan(f.path));
+      box.appendChild(c);
+    });
+  }
+  visibleFiles(){
+    const q=document.getElementById('search').value.trim().toLowerCase();
+    const sort=document.getElementById('sort').value;
+    let arr=this.files.slice();
+    if(q)arr=arr.filter(f=>f.name.toLowerCase().includes(q));
+    if(this.activeDate)arr=arr.filter(f=>{const d=new Date(f.mtime*1000);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')===this.activeDate;});
+    arr.sort((a,b)=>{
+      if(sort==='name')return a.name.localeCompare(b.name);
+      if(sort==='size')return b.size-a.size;
+      if(sort==='date-asc')return a.mtime-b.mtime;
+      return b.mtime-a.mtime;
+    });
+    return arr;
+  }
+  render(){
+    const grid=document.getElementById('grid');
+    const empty=document.getElementById('empty');
+    const arr=this.visibleFiles();
+    if(!this.currentPath||arr.length===0){
+      grid.style.display='none';empty.style.display='flex';
+      if(this.currentPath)empty.querySelector('div:last-child').textContent=this.files.length===0?L('该文件夹没有图片文件'):L('没有匹配的照片');
+      return;
+    }
+    empty.style.display='none';grid.innerHTML='';
+    if(this.viewMode==='timeline'){
+      grid.className='thumb-grid tl';   // 时间线：纵向堆叠，月份段不再被 grid 多列并排
+      grid.style.display='block';
+      this.renderTimeline(grid,arr);
+    }else{
+      grid.className='thumb-grid';
+      grid.style.display='grid';
+      const frag=document.createDocumentFragment();
+      arr.forEach(f=>frag.appendChild(this.buildCard(f)));
+      grid.appendChild(frag);
+    }
+    this.loadThumbs(arr.map(f=>f.path));
+  }
+  buildCard(f){
+    const card=document.createElement('div');
+    card.className='thumb-card';card.dataset.path=f.path;
+    if(this.batchMode&&this.selection.has(f.path))card.classList.add('selected');
+    const t=this.thumbs[f.path];
+    let inner;
+    if(t&&t.ok){
+      inner='<img class="thumb-img" src="'+t.dataUrl+'" alt="'+escapeHtml(f.name)+'">';
+    }else if(t&&!t.ok){
+      inner='<div class="thumb-ph"><span class="ext">'+escapeHtml((f.ext||'').replace('.',''))+'</span><span style="font-size:10px">'+L('无预览')+'</span></div>';
+    }else{
+      inner='<div class="thumb-ph"><div class="spin"></div></div>';
+    }
+    const fav=this.fav.has(f.path)?'<span class="thumb-star">★</span>':'';
+    const sel=this.batchMode?'<span class="thumb-check'+(this.selection.has(f.path)?' on':'')+'">'+(this.selection.has(f.path)?'✓':'')+'</span>':'';
+    card.innerHTML=inner+'<div class="thumb-name" title="'+escapeHtml(f.name)+'">'+escapeHtml(f.name)+'</div><div class="thumb-meta">'+formatSize(f.size)+'</div>'+fav+sel;
+    const star=card.querySelector('.thumb-star');
+    if(star)star.addEventListener('click',(e)=>{e.stopPropagation();this.toggleFav(f);});
+    if(this.batchMode){
+      card.addEventListener('click',()=>this.toggleSelect(f));
+    }else{
+      card.addEventListener('click',()=>this.openDetail(f));
+    }
+    return card;
+  }
+  renderTimeline(grid,arr){
+    const groups={};
+    arr.forEach(f=>{
+      const d=new Date(f.mtime*1000);
+      const k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+      (groups[k]=groups[k]||[]).push(f);
+    });
+    Object.keys(groups).sort().reverse().forEach(k=>{
+      const sec=document.createElement('div');sec.className='tl-section';
+      const head=document.createElement('div');head.className='tl-head';head.textContent=k+' ('+groups[k].length+')';
+      sec.appendChild(head);
+      const g=document.createElement('div');g.className='thumb-grid';
+      const frag=document.createDocumentFragment();
+      groups[k].forEach(f=>frag.appendChild(this.buildCard(f)));
+      g.appendChild(frag);
+      sec.appendChild(g);
+      grid.appendChild(sec);
+    });
+  }
+  updateStar(path){
+    const card=document.querySelector('.thumb-card[data-path="'+cssEscape(path)+'"]');
+    if(!card)return;
+    let star=card.querySelector('.thumb-star');
+    if(this.fav.has(path)){if(!star){star=document.createElement('span');star.className='thumb-star';star.textContent='★';star.addEventListener('click',(e)=>{e.stopPropagation();const f=this.files.find(x=>x.path===path);if(f)this.toggleFav(f);});card.appendChild(star);}}
+    else if(star){star.remove();}
+  }
+  async loadThumbs(paths){
+    const pending=paths.filter(p=>!this.loaded.has(p));
+    if(!pending.length)return;
+    pending.forEach(p=>this.loaded.add(p));
+    const batchSize=12,concurrency=3;
+    const batches=[];
+    for(let i=0;i<pending.length;i+=batchSize)batches.push(pending.slice(i,i+batchSize));
+    let idx=0;
+    const worker=async()=>{
+      while(idx<batches.length){
+        const b=batches[idx++];
+        try{
+          const r=await bridge.send('thumb',{paths:b});
+          (r.items||[]).forEach(it=>{
+            this.thumbs[it.path]={ok:it.ok,dataUrl:it.dataUrl,kind:it.kind};
+            const card=document.querySelector('.thumb-card[data-path="'+cssEscape(it.path)+'"]');
+            if(card){
+              const t=this.thumbs[it.path];
+              const ph=card.querySelector('.thumb-ph');
+              if(t.ok){const img=document.createElement('img');img.className='thumb-img';img.src=t.dataUrl;img.alt='';ph.replaceWith(img);}
+              else if(ph){ph.querySelector('.spin')&&ph.querySelector('.spin').remove();let ext=card.querySelector('.ext');if(!ext){ext=document.createElement('span');ext.className='ext';const m=it.path.match(/\.([^.\\/]+)$/);ext.textContent=m?m[1].toUpperCase():'';ph.appendChild(ext);}ph.insertAdjacentHTML('beforeend','<span style="font-size:10px">'+L('无预览')+'</span>');}
+            }
+          });
+        }catch(err){/* 单个批次失败不影响其它 */}
+      }
+    };
+    const ws=[];for(let i=0;i<concurrency;i++)ws.push(worker());
+    await Promise.all(ws);
+  }
+  async openDetail(f){
+    const overlay=document.getElementById('overlay');
+    const img=document.getElementById('detail-img');
+    const body=document.getElementById('detail-body');
+    const arr=this.visibleFiles();
+    this.detailIndex=arr.findIndex(x=>x.path===f.path);
+    document.getElementById('detail-name').textContent=f.name;
+    document.getElementById('fav-btn').textContent=this.fav.has(f.path)?'★':'☆';
+    overlay.classList.add('open');
+    this.rot=0;this.zoom=1;this.panX=0;this.panY=0;
+    img.style.transform='';img.style.width='';img.style.height='';
+    img.src='';body.innerHTML='<div class="p-muted">'+L('加载中…')+'</div>';
+    img.onload=()=>this.applyView();
+    try{
+      const pr=await bridge.send('preview',{path:f.path});
+      if(pr&&pr.ok)img.src=pr.dataUrl;
+      else img.onload=null;
+    }catch(e){img.onload=null;}
+    try{
+      const ex=await bridge.send('exif',{path:f.path});
+      this.renderExif(body,f,ex);
+    }catch(e){body.innerHTML='<div class="p-muted">'+escapeHtml(e.message)+'</div>';}
+  }
+  prev(){this.step(-1);}
+  next(){this.step(1);}
+  step(dir){
+    const arr=this.visibleFiles();
+    if(!arr.length||this.detailIndex<0)return;
+    let i=this.detailIndex+dir;
+    if(i<0)i=arr.length-1;
+    if(i>=arr.length)i=0;
+    this.openDetail(arr[i]);
+  }
+  renderExif(body,f,ex){
+    let html='';
+    const flds=ex.fields||{};
+    const rows=[];
+    if(ex.datetime)rows.push([L('拍摄时间'),ex.datetime]);
+    const capRows=[
+      ['make',L('相机制造商')],
+      ['model',L('相机型号')],
+      ['lensMake',L('镜头制造商')],
+      ['lensModel',L('镜头型号')],
+      ['fNumber',L('光圈')],
+      ['exposureTime',L('快门')],
+      ['iso',L('ISO')],
+      ['focalLength',L('焦距')],
+      ['exposureProgram',L('曝光程序')],
+      ['meteringMode',L('测光模式')],
+      ['flash',L('闪光灯')],
+      ['whiteBalance',L('白平衡')],
+      ['software',L('软件')],
+    ];
+    capRows.forEach(([k,label])=>{if(flds[k])rows.push([label,this.fmtExif(k,flds[k])]);});
+    if(rows.length){
+      html+='<div class="detail-section"><h4>'+L('拍摄信息')+'</h4>';
+      rows.forEach(r=>{html+='<div class="kv"><span class="k">'+r[0]+'</span><span class="v">'+r[1]+'</span></div>';});
+      html+='</div>';
+    }else if(ex.note){
+      html+='<div class="detail-section"><div class="p-muted">'+escapeHtml(ex.note)+'</div></div>';
+    }
+    if(ex.gps){
+      html+='<div class="detail-section"><h4>'+L('GPS')+'</h4>';
+      html+='<div class="gps-coord">'+ex.gps.lat.toFixed(6)+', '+ex.gps.lng.toFixed(6)+'</div>';
+      html+='<div class="gps-map" id="gps-map"></div>';
+      html+='<div class="p-muted gps-hint">'+L('地图底图需要联网获取')+'</div>';
+      html+='</div>';
+    }
+    html+='<div class="detail-section"><h4>'+L('文件信息')+'</h4>';
+    html+='<div class="kv"><span class="k">'+L('尺寸')+'</span><span class="v">'+(ex.width||'-')+' × '+(ex.height||'-')+'</span></div>';
+    html+='<div class="kv"><span class="k">'+L('格式')+'</span><span class="v">'+escapeHtml((f.ext||'').replace('.','').toUpperCase())+'</span></div>';
+    html+='<div class="kv"><span class="k">'+L('大小（字节）')+'</span><span class="v">'+formatSize(f.size)+'</span></div>';
+    html+='<div class="kv"><span class="k">'+L('修改时间')+'</span><span class="v">'+formatDate(f.mtime)+'</span></div>';
+    html+='<div class="kv"><span class="k">'+L('路径')+'</span><span class="v" style="word-break:break-all">'+escapeHtml(f.path)+'</span></div>';
+    html+='</div>';
+    if(ex.tags&&Object.keys(ex.tags).length){
+      html+='<div class="detail-section"><h4>'+L('全部 EXIF 字段')+'</h4><div class="detail-tags">';
+      Object.keys(ex.tags).sort().forEach(k=>{html+=escapeHtml(k)+' = '+escapeHtml(String(ex.tags[k]))+'\n';});
+      html+='</div></div>';
+    }
+    body.innerHTML=html;
+    if(ex.gps)this.renderGpsMap(ex.gps.lat,ex.gps.lng);
+  }
+  // 把 EXIF 原始字符串美化成更易读的展示值
+  fmtExif(key,raw){
+    const v=String(raw).trim();
+    if(key==='fNumber'){const n=this.parseRational(v);return n==null?escapeHtml(v):'f/'+this.fmtNum(n);}
+    if(key==='focalLength'){const n=this.parseRational(v);return n==null?escapeHtml(v):this.fmtNum(n)+' mm';}
+    if(key==='exposureTime'){
+      const m=v.match(/^(\d+)\/(\d+)$/);
+      if(m){return (m[1]==='1'?'1/'+m[2]:m[1]+'/'+m[2])+' s';}
+      const f=parseFloat(v);if(!isNaN(f)&&f>0){return '1/'+Math.round(1/f)+' s';}
+      return escapeHtml(v);
+    }
+    if(key==='iso'){return 'ISO '+v;}
+    if(key==='exposureProgram'){const m={'0':L('未定义'),'1':L('手动'),'2':L('程序自动'),'3':L('光圈优先'),'4':L('快门优先'),'5':L('慢速同步'),'6':L('运动'),'7':L('人像'),'8':L('风景')};return m[v]||m['0'];}
+    if(key==='meteringMode'){const m={'0':L('未知'),'1':L('平均'),'2':L('中央重点'),'3':L('点测光'),'4':L('多点'),'5':L('分区'),'6':L('局部'),'255':L('其他')};return m[v]||m['0'];}
+    if(key==='flash'){const n=parseInt(v,10);if(isNaN(n))return escapeHtml(v);return (n&1)===1?L('闪光灯开启'):L('闪光灯关闭');}
+    if(key==='whiteBalance'){return v==='1'?L('手动'):L('自动');}
+    return escapeHtml(v);
+  }
+  parseRational(s){
+    s=String(s).trim();
+    const m=s.match(/^(\d+)\/(\d+)$/);
+    if(m){const d=parseFloat(m[2]);return d?parseFloat(m[1])/d:0;}
+    const f=parseFloat(s);return isNaN(f)?null:f;
+  }
+  fmtNum(n){return (Math.round(n*10)/10).toString();}
+  // 用 XYZ 瓦片拼一张以 GPS 为中心的小地图（OSM 默认免密钥；天地图需 tk）
+  renderGpsMap(lat,lng){
+    const el=document.getElementById('gps-map');
+    if(!el)return;
+    const T=256,z=14,n=Math.pow(2,z),la=lat,lon=lng;
+    const fx=((lon+180)/360*n);
+    const fy=((1-Math.log(Math.tan(la*Math.PI/180)+1/Math.cos(la*Math.PI/180))/Math.PI)/2*n);
+    const cx=Math.floor(fx),cy=Math.floor(fy);
+    const cfg=this.config||{mapProvider:'osm'};
+    const useTD=cfg.mapProvider==='tianditu'&&cfg.tiandituKey;
+    const inner=document.createElement('div');
+    inner.className='gps-inner';
+    inner.style.width=(3*T)+'px';inner.style.height=(3*T)+'px';
+    inner.style.position='absolute';inner.style.left='50%';inner.style.top='50%';
+    const mx=(1+(fx-cx))*T,my=(1+(fy-cy))*T;
+    inner.style.transform='translate(-'+mx+'px,-'+my+'px)';
+    for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+      const tx=cx+dx,ty=cy+dy;
+      if(tx<0||ty<0||tx>=n||ty>=n)continue;
+      const img=document.createElement('img');
+      img.className='gps-tile';
+      img.style.position='absolute';img.style.left=((dx+1)*T)+'px';img.style.top=((dy+1)*T)+'px';
+      img.style.width=T+'px';img.style.height=T+'px';img.alt='';img.loading='lazy';
+      if(useTD){
+        const srv='t'+(((tx+ty)%8));
+        img.src='https://'+srv+'.tianditu.gov.cn/DataServer?T=vec_w&x='+tx+'&y='+ty+'&l='+z+'&tk='+encodeURIComponent(cfg.tiandituKey);
+      }else{
+        img.src='https://tile.openstreetmap.org/'+z+'/'+tx+'/'+ty+'.png';
+      }
+      img.onerror=()=>{img.style.visibility='hidden';};
+      inner.appendChild(img);
+    }
+    const marker=document.createElement('div');
+    marker.className='gps-marker';marker.style.left=mx+'px';marker.style.top=my+'px';marker.textContent='📍';
+    inner.appendChild(marker);
+    el.innerHTML='';el.appendChild(inner);
+  }
+  rotate(delta){this.rot+=delta;this.applyView();}
+  resetRot(){this.rot=0;this.applyView();}
+  zoomBy(factor){this.zoom=Math.max(0.2,Math.min(6,this.zoom*factor));this.applyView();}
+  resetZoom(){this.zoom=1;this.panX=0;this.panY=0;this.applyView();}
+  applyView(){
+    const img=document.getElementById('detail-img');
+    const prev=img.parentElement;
+    const nw=img.naturalWidth||0,nh=img.naturalHeight||0;
+    if(!nw||!nh)return;
+    const cs=getComputedStyle(prev);
+    const cw=prev.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight);
+    const ch=prev.clientHeight-parseFloat(cs.paddingTop)-parseFloat(cs.paddingBottom);
+    if(cw<=0||ch<=0)return;
+    const base=Math.min(cw/nw,ch/nh,1);
+    const w=nw*base*this.zoom,h=nh*base*this.zoom;
+    const r=this.rot*Math.PI/180;
+    const bbW=Math.abs(w*Math.cos(r))+Math.abs(h*Math.sin(r));
+    const bbH=Math.abs(w*Math.sin(r))+Math.abs(h*Math.cos(r));
+    const fit=Math.min(cw/bbW,ch/bbH,1);
+    img.style.width=(w*fit)+'px';
+    img.style.height=(h*fit)+'px';
+    img.style.transform='translate('+this.panX+'px,'+this.panY+'px) rotate('+this.rot+'deg) scale('+fit+')';
+  }
+  toggleSlideshow(){
+    if(this.slideshow){this.stopSlideshow();return;}
+    if(this.detailIndex<0)return;
+    document.getElementById('slide-btn').textContent='⏸';
+    this.slideshow=setInterval(()=>this.next(),3000);
+  }
+  stopSlideshow(){
+    if(this.slideshow){clearInterval(this.slideshow);this.slideshow=null;}
+    document.getElementById('slide-btn').textContent='▶';
+  }
+  closeDetail(){this.stopSlideshow();document.getElementById('overlay').classList.remove('open');}
+  async toggleFav(f){
+    const on=!this.fav.has(f.path);
+    if(on)this.fav.add(f.path);else this.fav.delete(f.path);
+    this.updateStar(f.path);
+    document.getElementById('fav-btn').textContent=this.fav.has(f.path)?'★':'☆';
+    try{await bridge.send('fav',{action:'toggle',path:f.path});}catch(e){}
+  }
+  toggleFavCurrent(){
+    if(this.detailIndex<0)return;
+    const arr=this.visibleFiles();
+    const f=arr[this.detailIndex];
+    if(f)this.toggleFav(f);
+  }
+  async toggleLibrary(){
+    this.libraryMode=!this.libraryMode;
+    document.getElementById('btn-library').classList.toggle('p-btn-primary',this.libraryMode);
+    if(this.libraryMode){
+      await this.scan('(library)',{library:true});
+    }else if(this.lastSinglePath){
+      await this.scan(this.lastSinglePath);
+    }else{
+      this.currentPath='';this.files=[];this.folders=[];this.render();this.setStatus('');
+    }
+  }
+  async addToLibrary(){
+    const p=await bridge.pickFolder(L('加入资料库'));
+    if(!p)return;
+    try{
+      await bridge.send('library',{action:'add',path:p});
+      this.setStatus(L('已加入资料库')+': '+p);
+      if(this.libraryMode)await this.scan('(library)',{library:true});
+    }catch(e){this.setStatus('资料库操作失败：'+e.message);}
+  }
+  async toggleDup(){
+    if(document.getElementById('dup-overlay').classList.contains('open')){this.closeDup();return;}
+    const arr=this.visibleFiles();
+    if(!arr.length){this.setStatus(L('没有可检测的照片'));return;}
+    const capped=arr.slice(0,600);
+    const bodies=capped.length<arr.length?L('共')+arr.length+L('张（仅检测前')+capped.length+L('张）'):'';
+    this.setStatus(L('正在计算指纹…')+bodies);
+    try{
+      const hashes={};
+      for(let i=0;i<capped.length;i+=12){
+        const batch=capped.slice(i,i+12).map(f=>f.path);
+        const r=await bridge.send('phash',{paths:batch});
+        (r.items||[]).forEach(it=>{if(it.ok)hashes[it.path]=it.hash;});
+      }
+      const paths=Object.keys(hashes);
+      const groups=[];
+      const visited=new Set();
+      for(let i=0;i<paths.length;i++){
+        if(visited.has(paths[i]))continue;
+        const g=[paths[i]];visited.add(paths[i]);
+        for(let j=i+1;j<paths.length;j++){
+          if(visited.has(paths[j]))continue;
+          if(hamming(hashes[paths[i]],hashes[paths[j]])<=10){g.push(paths[j]);visited.add(paths[j]);}
+        }
+        if(g.length>1)groups.push(g);
+      }
+      this.renderDup(groups);
+    }catch(e){this.setStatus('查重失败：'+e.message);}
+  }
+  renderDup(groups){
+    const overlay=document.getElementById('dup-overlay');
+    const body=document.getElementById('dup-body');
+    if(!groups.length){
+      this.setStatus(L('未发现重复或相似的图片'));
+      return;
+    }
+    overlay.classList.add('open');
+    let html='<div class="dup-intro">'+L('发现')+' '+groups.length+' '+L('组重复 / 相似图片（点击可查看）')+'</div>';
+    groups.forEach((g,gi)=>{
+      html+='<div class="dup-group"><div class="dup-group-head">'+(gi+1)+'. '+L('共')+g.length+L('张')+'</div><div class="dup-members">';
+      g.forEach(p=>{
+        const t=this.thumbs[p];
+        const f=this.files.find(x=>x.path===p);
+        const name=f?f.name:p.split(/[\\/]/).pop();
+        const thumb=t&&t.ok?'<img src="'+t.dataUrl+'" alt="">':'<div class="dup-ph">'+escapeHtml((name.split('.').pop()||'').toUpperCase())+'</div>';
+        html+='<div class="dup-member" data-path="'+escapeHtml(p)+'">'+thumb+'<span class="dup-name" title="'+escapeHtml(name)+'">'+escapeHtml(name)+'</span></div>';
+      });
+      html+='</div></div>';
+    });
+    body.innerHTML=html;
+    body.querySelectorAll('.dup-member').forEach(el=>{
+      el.addEventListener('click',()=>{
+        const p=el.getAttribute('data-path');
+        const f=this.files.find(x=>x.path===p);
+        if(f){this.closeDup();this.openDetail(f);}
+      });
+    });
+  }
+  closeDup(){document.getElementById('dup-overlay').classList.remove('open');}
+  // ---- 批量模式 ----
+  toggleBatch(){
+    this.batchMode=!this.batchMode;
+    document.getElementById('btn-batch').classList.toggle('p-btn-primary',this.batchMode);
+    document.getElementById('batch-bar').style.display=this.batchMode?'flex':'none';
+    if(!this.batchMode)this.selection.clear();
+    this.updateBatchCount();
+    this.render();
+  }
+  selectAll(){
+    this.visibleFiles().forEach(f=>this.selection.add(f.path));
+    this.updateBatchCount();
+    this.render();
+  }
+  toggleSelect(f){
+    if(this.selection.has(f.path))this.selection.delete(f.path);else this.selection.add(f.path);
+    this.updateBatchCount();
+    const card=document.querySelector('.thumb-card[data-path="'+cssEscape(f.path)+'"]');
+    if(card){
+      card.classList.toggle('selected',this.selection.has(f.path));
+      const chk=card.querySelector('.thumb-check');
+      if(chk){chk.classList.toggle('on',this.selection.has(f.path));chk.textContent=this.selection.has(f.path)?'✓':'';}
+    }
+  }
+  updateBatchCount(){
+    const el=document.getElementById('batch-count');
+    if(el)el.textContent=L('已选')+': '+this.selection.size;
+  }
+  batchRotate(angle){
+    const paths=[...this.selection];
+    if(!paths.length){this.setStatus(L('请先选择照片'));return;}
+    bridge.send('batch',{action:'rotate',paths:paths,angle:angle}).then(r=>{
+      this.setStatus(L('批量旋转完成')+': '+(r.count||0));
+      this.exitBatch();this.refreshSilent();
+    }).catch(e=>this.setStatus('旋转失败：'+e.message));
+  }
+  batchRename(){
+    const paths=[...this.selection];
+    if(!paths.length){this.setStatus(L('请先选择照片'));return;}
+    const pat=prompt(L('重命名前缀'),'photo');
+    if(pat===null)return;
+    bridge.send('batch',{action:'rename',paths:paths,pattern:pat}).then(r=>{
+      this.setStatus(L('批量重命名完成'));this.exitBatch();this.refreshSilent();
+    }).catch(e=>this.setStatus('重命名失败：'+e.message));
+  }
+  batchExport(){
+    const paths=[...this.selection];
+    if(!paths.length){this.setStatus(L('请先选择照片'));return;}
+    bridge.pickFolder(L('导出')).then(dest=>{
+      if(!dest)return;
+      bridge.send('batch',{action:'export',paths:paths,dest:dest}).then(r=>{
+        this.setStatus(L('已导出')+' '+(r.count||0)+L('张到')+dest);
+        this.exitBatch();
+      }).catch(e=>this.setStatus('导出失败：'+e.message));
+    });
+  }
+  exitBatch(){
+    this.batchMode=false;this.selection.clear();
+    document.getElementById('btn-batch').classList.remove('p-btn-primary');
+    document.getElementById('batch-bar').style.display='none';
+    this.updateBatchCount();this.render();
+  }
+  refreshSilent(){
+    if(this.libraryMode)this.scan('(library)',{library:true});
+    else if(this.currentPath)this.scan(this.currentPath);
+  }
+  // ---- 编辑面板 ----
+  openEditor(){
+    if(this.detailIndex<0)return;
+    const arr=this.visibleFiles();
+    const f=arr[this.detailIndex];
+    if(!f)return;
+    this.editPath=f.path;
+    this.resetEditState();
+    document.getElementById('edit-name').textContent=f.name;
+    document.getElementById('edit-overlay').classList.add('open');
+    this.applyEdit();
+  }
+  resetEditState(){
+    this.editOps={brightness:0,contrast:0,filter:'none',rotate:0,crop:null};
+    document.getElementById('edit-brightness').value=0;
+    document.getElementById('edit-contrast').value=0;
+    document.querySelectorAll('.filter-btn').forEach(x=>x.classList.toggle('active',x.getAttribute('data-filter')==='none'));
+  }
+  resetEdit(){this.resetEditState();this.applyEdit();}
+  applyEdit(){
+    if(!this.editPath)return;
+    const ops={brightness:this.editOps.brightness,contrast:this.editOps.contrast,filter:this.editOps.filter,rotate:this.editOps.rotate};
+    if(this.editOps.crop)ops.crop=this.editOps.crop;
+    clearTimeout(this._editTimer);
+    this._editTimer=setTimeout(()=>{
+      bridge.send('edit',{path:this.editPath,ops:ops}).then(r=>{
+        if(r&&r.ok){document.getElementById('edit-img').src=r.dataUrl;}
+      }).catch(e=>{});
+    },180);
+  }
+  startCrop(){
+    this.editOps.crop=null;this.applyEdit();
+    const stage=document.getElementById('edit-stage');
+    const crop=document.getElementById('edit-crop');
+    const img=document.getElementById('edit-img');
+    crop.style.display='none';
+    if(this._cropHandler){img.removeEventListener('pointerdown',this._cropHandler);this._cropHandler=null;}
+    const onDown=(e)=>{
+      e.preventDefault();
+      const r=img.getBoundingClientRect();
+      this._cropDrag={sx:Math.max(0,Math.min(1,(e.clientX-r.left)/r.width)),sy:Math.max(0,Math.min(1,(e.clientY-r.top)/r.height))};
+      crop.style.display='block';crop.style.left='0';crop.style.top='0';crop.style.width='0';crop.style.height='0';
+      const onMove=(ev)=>{
+        const rr=img.getBoundingClientRect();
+        const cx=Math.max(0,Math.min(1,(ev.clientX-rr.left)/rr.width));
+        const cy=Math.max(0,Math.min(1,(ev.clientY-rr.top)/rr.height));
+        const x=Math.min(this._cropDrag.sx,cx),y=Math.min(this._cropDrag.sy,cy);
+        const w=Math.abs(cx-this._cropDrag.sx),h=Math.abs(cy-this._cropDrag.sy);
+        crop.style.left=(x*100)+'%';crop.style.top=(y*100)+'%';crop.style.width=(w*100)+'%';crop.style.height=(h*100)+'%';
+        this._cropRect={x:x,y:y,w:w,h:h};
+      };
+      const onUp=(ev)=>{
+        stage.removeEventListener('pointermove',onMove);
+        stage.removeEventListener('pointerup',onUp);
+        if(this._cropRect&&this._cropRect.w>0.02&&this._cropRect.h>0.02){
+          this.editOps.crop=this._cropRect;this.applyEdit();
+        }else{
+          crop.style.display='none';
+        }
+        this._cropRect=null;this._cropDrag=null;
+      };
+      stage.addEventListener('pointermove',onMove);
+      stage.addEventListener('pointerup',onUp);
+    };
+    this._cropHandler=onDown;
+    img.addEventListener('pointerdown',onDown);
+    this.setStatus(L('在图片上拖拽框选裁剪区域'));
+  }
+  saveEdit(){
+    if(!this.editPath)return;
+    const ops={brightness:this.editOps.brightness,contrast:this.editOps.contrast,filter:this.editOps.filter,rotate:this.editOps.rotate};
+    if(this.editOps.crop)ops.crop=this.editOps.crop;
+    bridge.send('saveEdit',{path:this.editPath,ops:ops}).then(r=>{
+      if(r&&r.ok){this.setStatus(L('编辑已保存')+': '+r.path);this.closeEditor();this.refreshSilent();}
+    }).catch(e=>this.setStatus('保存失败：'+e.message));
+  }
+  closeEditor(){
+    document.getElementById('edit-overlay').classList.remove('open');
+    if(this._cropHandler){document.getElementById('edit-img').removeEventListener('pointerdown',this._cropHandler);this._cropHandler=null;}
+    this.editPath='';
+  }
+  async recallSession(){
+    try{
+      const r=await bridge.send('session',{action:'get'});
+      if(r&&r.mode==='library'){
+        this.libraryMode=true;document.getElementById('btn-library').classList.add('p-btn-primary');
+        await this.scan('(library)',{library:true});
+      }else if(r&&r.mode==='folder'&&r.path){
+        await this.scan(r.path);
+      }
+    }catch(e){}
+  }
+  async loadConfig(){
+    try{
+      const r=await bridge.send('config',{action:'get'});
+      if(r&&r.config)this.config=r.config;
+    }catch(e){}
+  }
+  openSettings(){
+    const c=this.config||{mapProvider:'osm',tiandituKey:''};
+    document.getElementById('set-provider').value=c.mapProvider||'osm';
+    document.getElementById('set-key').value=c.tiandituKey||'';
+    document.getElementById('set-key-row').style.display=(c.mapProvider==='tianditu')?'flex':'none';
+    document.getElementById('set-hint').textContent='';
+    document.getElementById('settings-overlay').classList.add('open');
+  }
+  closeSettings(){document.getElementById('settings-overlay').classList.remove('open');}
+  saveSettings(){
+    const provider=document.getElementById('set-provider').value;
+    const key=document.getElementById('set-key').value.trim();
+    const hint=document.getElementById('set-hint');
+    if(provider==='tianditu'&&!key){
+      hint.textContent=L('尚未配置天地图密钥');
+      hint.style.color='var(--danger)';
+      return;
+    }
+    bridge.send('config',{action:'set',mapProvider:provider,tiandituKey:key}).then(r=>{
+      if(r&&r.config)this.config=r.config;
+      this.setStatus(L('已保存设置'));
+      this.closeSettings();
+    }).catch(e=>{hint.textContent='保存失败：'+e.message;hint.style.color='var(--danger)';});
+  }
+  setStatus(s){document.getElementById('status').textContent=s;}
+}
+function cssEscape(s){return s.replace(/["\\]/g,'\\$&');}
+
+window.addEventListener('DOMContentLoaded',()=>{new PhotoLibrary();});
+</script>
+</body>
+</html>

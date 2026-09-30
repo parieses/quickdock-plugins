@@ -1,0 +1,71 @@
+{
+  "id": "io.github.parieses.md2card",
+  "name": "图文卡片",
+  "version": "1.4.2",
+  "description": "Markdown 与纯文字一键变身高颜值图文卡片：双模式、9 种文字模板、28 套主题、自定义背景图、尺寸预设、字体/圆角/阴影/留白可调、水印、二维码、自定义主题，自动分页、实时预览，导出长图 / PNG / HTML，复制图片，支持宿主打印通道。",
+  "author": "QuickDock",
+  "icon": "icon.svg",
+  "category": "内容创作",
+  "platforms": [
+    "windows"
+  ],
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "backend": {
+    "runtime": "none"
+  },
+  "host_apis": [],
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 980,
+    "height": 700
+  },
+  "commands": [
+    {
+      "id": "md2card",
+      "title": "Markdown 卡片",
+      "keywords": [
+        "md2card",
+        "markdown",
+        "卡片",
+        "知识卡片",
+        "文字转图片",
+        "语录",
+        "金句",
+        "便签",
+        "小红书",
+        "图文",
+        "分享",
+        "图片",
+        "长图",
+        "二维码",
+        "水印",
+        "复制图片"
+      ],
+      "aliases": [
+        "markdown转卡片",
+        "md转图",
+        "知识卡片",
+        "文字转图",
+        "语录卡片",
+        "金句卡片"
+      ],
+      "title_i18n": {
+        "zh-CN": "图文卡片",
+        "en-US": "Image Card"
+      }
+    }
+  ],
+  "name_i18n": {
+    "zh-CN": "图文卡片",
+    "en-US": "Image Card"
+  },
+  "description_i18n": {
+    "zh-CN": "Markdown 与纯文字一键变身高颜值图文卡片：双模式、5 种文字模板、28 套主题、自定义背景图、自动分页、实时预览，导出 PNG / HTML。",
+    "en-US": "Turn Markdown and plain text into beautiful shareable cards: dual mode, 5 text templates, 28 themes, custom background image, auto-pagination, live preview, export to PNG / HTML."
+  },
+  "changelog": "## v1.4.2\n\n- 布局修正：恢复「编辑(左) → 图片(右)」主分栏（撤销 v1.4.1 误将整体对调）\n- 外观 / 自定义主题面板改为预览区右侧的竖向侧栏，点「外观 ▾」展开，调主题与样式时直接对照图片\n\n## v1.4.1\n\n- 修复主题切换失效：启用自定义主题后再选内置主题无反应（customThemeOn 残留导致自定义变量覆盖内置主题）\n- 布局微调（描述见 v1.4.2）\n\n- 修复主题切换失效：启用自定义主题后再选内置主题无反应（customThemeOn 残留导致自定义变量覆盖内置主题）\n- 布局调整：编辑栏移至生成图片右侧（原在左侧）\n\n## v1.4.0\n\n- 导出长图（整段 / 多页合成一张）+ 复制到剪贴板（沙箱不可用时自动降级为下载）\n- 尺寸预设：自由 / 小红书 3:4 / 公众号 16:9 / 方图 1:1 / 横幅 21:9\n- 文字模板扩至 9 种：新增引用卡（带作者）/ 待办清单 / 时间轴 / 步骤\n- 字体选择（系统字体，导出走 skipFonts）+ 圆角 / 阴影 / 留白滑块\n- 水印（平铺 / 右下角）、二维码角标（右下 / 左下）\n- 自定义主题：调色板实时调并套用\n- 背景图微调：缩放 / 水平 / 垂直定位\n- Markdown 模式支持拖入图片自动内联\n\n## v1.3.0\n\n- 新增「自定义背景图」：上传本地图片作卡片背景（canvas 自动压缩 ≤1200px / JPEG 0.85，便于持久化与导出）\n- 新增遮罩强度滑块（0–80%），遮罩色自动跟随主题文字亮度（深字白遮罩 / 浅字黑遮罩），任何主题都保证文字可读\n- 背景以卡片 inline style 注入，导出 PNG / HTML / 打印自动携带，无需额外处理\n\n## v1.2.0\n\n- 主题扩至 28 套，下拉改为按调性分组（浅色柔和 / 深色质感 / 缤纷渐变 / 材质复古）\n- 浅色柔和新增：柠檬黄 / 薰衣草 / 柿子橙\n- 深色质感新增：靛蓝 / 森林 / 石墨 / 星空\n- 缤纷渐变新增：晚霞 / 玫瑰金 / 中国红\n- 材质复古新增：羊皮纸 / 竹青（牛皮纸、报纸风归入本组）\n\n## v1.1.0\n\n- 新增「文字转图片」模式：纯文字一键成卡\n- 新增 5 种文字模板：段落 / 金句（装饰引号）/ 标题卡（首行作标题）/ 便签（胶带装饰）/ 公告（顶部色条）\n- 主题扩至 16 套（新增莫兰迪 / 报纸风 / 樱花粉 / 极光 / 焦糖 / 薄荷 / 牛皮纸 / 海洋）\n- 模式与模板选择持久化；Markdown 模式能力不变\n\n## v1.0.0\n\n- 初版：Markdown → 知识卡片\n- 8 套主题（温暖柔和 / 简约高级灰 / 梦幻渐变 / 清新自然 / 极简黑白 / 暗黑科技 / 小红书 / 商务简报）\n- 自动分页、实时预览、语法高亮\n- 导出 PNG（html-to-image）/ HTML，支持宿主 qdPrint 打印通道\n"
+}

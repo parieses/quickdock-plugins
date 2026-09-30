@@ -37,6 +37,11 @@
 }
 .s-tip { font-size: var(--fs-sm); color: var(--text-muted); }
 .s-actions { display: flex; gap: 8px; }
+#wrap.is-on {
+  background: var(--success);
+  color: #fff;
+  border-color: var(--success);
+}
 
 .s-canvas {
   border-radius: var(--radius-lg);

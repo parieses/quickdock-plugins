@@ -157,7 +157,7 @@ for _g, _names in {
     "amber": """crypto-toolbox hash-calc jwt-decoder login-tester dir-buster
                 subdomain-enum site-audit game-roguelike""".split(),
     "green": "database data-generator disk-analyzer junk-cleaner game-snake game-gomoku game-proxx".split(),
-    "pink": "image-studio ocr-tool exif-viewer image-uploader game-code-snake".split(),
+    "pink": "image-studio ocr-tool exif-viewer image-uploader game-code-snake photo-library md2card".split(),
 }.items():
     for _n in _names:
         GROUP[_n] = _g

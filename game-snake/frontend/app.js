@@ -11,6 +11,7 @@
   var ctx = cv.getContext('2d')
 
   var snake, dir, nextDir, food, score, alive, paused
+  var wrap = false, boost = null, boostTimer = null, tickCount = 0
   var best = parseInt(LS.get('gameSnake.best') || '0', 10) || 0
   var bestLen = parseInt(LS.get('gameSnake.bestLen') || '0', 10) || 0
   var timer = null, tickMs = 130
@@ -30,7 +31,8 @@
       grid: v('--border', '#2b2d33'),
       snake: v('--accent', '#4a9eff'),
       head: v('--success', '#28c864'),
-      food: v('--danger', '#e24b4a')
+      food: v('--danger', '#e24b4a'),
+      boost: v('--warning', '#f5a623')
     }
   }
 
@@ -42,10 +44,15 @@
     alive = true
     paused = false
     tickMs = 130
+    tickCount = 0
+    boost = null
+    wrap = false
+    if (elWrap) { elWrap.textContent = '穿墙: 关'; elWrap.classList.remove('is-on') }
+    if (boostTimer) { clearTimeout(boostTimer); boostTimer = null }
     placeFood()
     elOver.hidden = true
     updateHud()
-    elTip.textContent = '方向键 / WASD 移动 · 空格暂停'
+    elTip.textContent = '方向键 / WASD 移动 · 空格暂停 · 金色星=加速道具 · 可开穿墙'
     document.getElementById('pause').textContent = '暂停'
   }
 
@@ -73,11 +80,16 @@
     var nx = head.x + dir.x
     var ny = head.y + dir.y
 
-    // 撞墙
-    if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) return die()
+    // 撞墙：穿墙模式从对侧出现，否则死
+    if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) {
+      if (!wrap) return die()
+      nx = (nx + COLS) % COLS
+      ny = (ny + ROWS) % ROWS
+    }
     // 撞自己（尾部这步会移走，除非正在吃长）
     var eating = (nx === food.x && ny === food.y)
-    var body = eating ? snake : snake.slice(0, snake.length - 1)
+    var eatingBoost = boost && nx === boost.x && ny === boost.y
+    var body = (eating || eatingBoost) ? snake : snake.slice(0, snake.length - 1)
     for (var i = 0; i < body.length; i++) {
       if (body[i].x === nx && body[i].y === ny) return die()
     }
@@ -85,15 +97,43 @@
     snake.unshift({ x: nx, y: ny })
     if (eating) {
       score += 10
-      if (score % 50 === 0 && tickMs > 70) tickMs -= 8
+      if (score % 50 === 0 && tickMs > 70) { tickMs -= 8; loop() }
       placeFood()
+    } else if (eatingBoost) {
+      score += 20
+      boost = null
+      tickMs = Math.max(60, tickMs - 30)
+      loop()
+      if (boostTimer) clearTimeout(boostTimer)
+      boostTimer = setTimeout(function () {
+        tickMs = Math.min(130, tickMs + 30)
+        loop()
+        boostTimer = null
+      }, 4000)
     } else {
       snake.pop()
     }
+    // 每 15 步尝试生成一个加速道具
+    tickCount++
+    if (tickCount % 15 === 0 && !boost && alive) spawnBoost()
     if (snake.length > bestLen) { bestLen = snake.length; LS.set('gameSnake.bestLen', bestLen) }
     if (score > best) { best = score; LS.set('gameSnake.best', best) }
     updateHud()
     draw()
+  }
+
+  function spawnBoost() {
+    var occupied = {}
+    snake.forEach(function (s) { occupied[s.x + ',' + s.y] = 1 })
+    occupied[food.x + ',' + food.y] = 1
+    if (boost) occupied[boost.x + ',' + boost.y] = 1
+    var free = []
+    for (var x = 0; x < COLS; x++)
+      for (var y = 0; y < ROWS; y++)
+        if (!occupied[x + ',' + y]) free.push({ x: x, y: y })
+    if (!free.length) return
+    var p = free[(Math.random() * free.length) | 0]
+    boost = { x: p.x, y: p.y }
   }
 
   function die() {
@@ -125,6 +165,23 @@
     ctx.fillStyle = c.food
     roundRect(food.x * CELL + 3, food.y * CELL + 3, CELL - 6, CELL - 6, 5)
     ctx.fill()
+
+    // 加速道具（金色五角星）
+    if (alive && boost) {
+      var gx = boost.x * CELL + CELL / 2
+      var gy = boost.y * CELL + CELL / 2
+      var r = CELL / 2 - 4
+      ctx.fillStyle = c.boost
+      ctx.beginPath()
+      for (var a = 0; a < 5; a++) {
+        var ang = -Math.PI / 2 + a * 2 * Math.PI / 5
+        var px = gx + Math.cos(ang) * r
+        var py = gy + Math.sin(ang) * r
+        if (a === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py)
+      }
+      ctx.closePath()
+      ctx.fill()
+    }
 
     // 蛇
     for (var s = snake.length - 1; s >= 0; s--) {
@@ -190,12 +247,21 @@
     if (!alive) return
     paused = !paused
     document.getElementById('pause').textContent = paused ? '继续' : '暂停'
-    elTip.textContent = paused ? '已暂停' : '方向键 / WASD 移动 · 空格暂停'
+    elTip.textContent = paused ? '已暂停' : '方向键 / WASD 移动 · 空格暂停 · 金色星=加速道具 · 可开穿墙'
   }
 
   document.getElementById('pause').addEventListener('click', togglePause)
   document.getElementById('restart').addEventListener('click', function () { reset(); loop() })
   document.getElementById('retry').addEventListener('click', function () { reset(); loop() })
+
+  var elWrap = document.getElementById('wrap')
+  if (elWrap) {
+    elWrap.addEventListener('click', function () {
+      wrap = !wrap
+      elWrap.textContent = '穿墙: ' + (wrap ? '开' : '关')
+      elWrap.classList.toggle('is-on', wrap)
+    })
+  }
 
   // 主题切换时重绘
   if (window.MutationObserver) {

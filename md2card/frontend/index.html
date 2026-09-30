@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>图文卡片</title>
+<link rel="stylesheet" href="qd-theme.css">
+<link rel="stylesheet" href="components.css">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div class="app">
+  <div class="toolbar" id="toolbar">
+    <span class="p-label">模式</span>
+    <div class="seg" id="segMode">
+      <button type="button" class="seg-btn active" data-mode="md">Markdown</button>
+      <button type="button" class="seg-btn" data-mode="text">文字</button>
+    </div>
+
+    <span class="p-label">主题</span>
+    <select id="selTheme" class="select" style="width:auto"></select>
+
+    <span class="p-label tpl-label">模板</span>
+    <select id="selTemplate" class="select tpl-label" style="width:auto"></select>
+
+    <span class="p-label">尺寸</span>
+    <select id="selSize" class="select" style="width:auto">
+      <option value="free">自由</option>
+      <option value="xhs">小红书 3:4</option>
+      <option value="mp">公众号 16:9</option>
+      <option value="square">方图 1:1</option>
+      <option value="banner">横幅 21:9</option>
+    </select>
+
+    <span class="p-label">宽度</span>
+    <select id="selWidth" class="select" style="width:auto">
+      <option value="480">480</option>
+      <option value="540">540</option>
+      <option value="600" selected>600</option>
+      <option value="680">680</option>
+      <option value="700">700</option>
+      <option value="760">760</option>
+      <option value="900">900</option>
+    </select>
+
+    <span class="p-label">字号</span>
+    <select id="selFont" class="select" style="width:auto">
+      <option value="14">14</option>
+      <option value="15">15</option>
+      <option value="16" selected>16</option>
+      <option value="17">17</option>
+      <option value="18">18</option>
+    </select>
+
+    <span class="p-label">字体</span>
+    <select id="selCardFont" class="select" style="width:auto">
+      <option value="">系统默认</option>
+      <option value="'Microsoft YaHei', 'PingFang SC', sans-serif">微软雅黑</option>
+      <option value="'PingFang SC', 'Microsoft YaHei', sans-serif">苹方</option>
+      <option value="'Hiragino Sans GB', 'Microsoft YaHei', sans-serif">黑体</option>
+      <option value="Georgia, 'Songti SC', 'SimSun', serif">宋体 / 衬线</option>
+      <option value="'KaiTi', 'STKaiti', serif">楷体</option>
+      <option value="'DengXian', 'Microsoft YaHei', sans-serif">等线</option>
+    </select>
+
+    <span class="p-label">背景</span>
+    <button type="button" class="btn" id="btnBg">背景图</button>
+    <button type="button" class="btn hide" id="btnBgClear">清除背景</button>
+    <input type="file" id="bgInput" accept="image/*" hidden>
+    <label class="chk" title="调节背景图上的遮罩强度，提升文字可读性"><span>遮罩</span><input type="range" id="rngOverlay" min="0" max="80" value="28" style="width:64px;vertical-align:middle"></label>
+
+    <button type="button" class="btn" id="btnAdv">外观 ▾</button>
+
+    <label class="chk"><input type="checkbox" id="chkPaginate" checked><span>自动分页</span></label>
+    <label class="chk"><input type="checkbox" id="chkFooter"><span>页脚</span></label>
+
+    <span class="p-spacer"></span>
+    <button class="btn" id="btnSample">示例</button>
+    <button class="btn" id="btnClear">清空</button>
+    <button class="btn" id="btnHtml">导出 HTML</button>
+    <button class="btn" id="btnPrint">打印</button>
+    <button class="btn" id="btnCopy">复制图片</button>
+    <button class="btn btn-primary" id="btnPng">导出长图</button>
+  </div>
+
+  <div class="workspace">
+    <div class="pane-edit">
+      <textarea id="editor" class="md-editor" placeholder="在这里输入 Markdown…（可直接把图片拖进来）" spellcheck="false"></textarea>
+      <div class="drop-hint" id="dropHint">松开把图片放入卡片</div>
+    </div>
+    <div class="pane-preview" id="preview">
+      <div class="md-stage" id="stage"></div>
+    </div>
+
+    <!-- 外观 / 自定义主题：预览右侧竖向侧栏，点「外观 ▾」展开 -->
+    <aside class="adv-panel hide" id="advPanel">
+      <div class="adv-row">
+        <span class="adv-label">圆角</span>
+        <input type="range" id="rngRound" min="0" max="48" value="16">
+      </div>
+      <div class="adv-row">
+        <span class="adv-label">阴影</span>
+        <input type="range" id="rngShadow" min="0" max="3" value="2">
+      </div>
+      <div class="adv-row">
+        <span class="adv-label">留白</span>
+        <input type="range" id="rngPad" min="20" max="72" value="40">
+      </div>
+      <div class="adv-row">
+        <span class="adv-label">背景缩放</span>
+        <input type="range" id="rngBgScale" min="100" max="220" value="100">
+      </div>
+      <div class="adv-row">
+        <span class="adv-label">水平</span>
+        <input type="range" id="rngBgX" min="0" max="100" value="50">
+      </div>
+      <div class="adv-row">
+        <span class="adv-label">垂直</span>
+        <input type="range" id="rngBgY" min="0" max="100" value="50">
+      </div>
+      <div class="adv-row">
+        <span class="adv-label">水印</span>
+        <input type="text" id="wmText" class="text-in" placeholder="水印文字">
+      </div>
+      <div class="adv-row">
+        <span class="adv-label">水印位置</span>
+        <select id="selWmPos" class="select"><option value="tile">平铺</option><option value="corner">右下角</option></select>
+      </div>
+      <div class="adv-row">
+        <span class="adv-label">二维码</span>
+        <input type="text" id="qrText" class="text-in" placeholder="网址或文字">
+      </div>
+      <div class="adv-row">
+        <span class="adv-label">二维码位置</span>
+        <select id="selQrPos" class="select"><option value="br">右下</option><option value="bl">左下</option></select>
+      </div>
+      <div class="adv-row adv-custom">
+        <span class="adv-label">自定义主题</span>
+        <div class="custom-theme">
+          <label class="color-in">底<input type="color" id="ctBg" value="#ffffff"></label>
+          <label class="color-in">字<input type="color" id="ctFg" value="#222222"></label>
+          <label class="color-in">标题<input type="color" id="ctHeading" value="#111111"></label>
+          <label class="color-in">强调<input type="color" id="ctAccent" value="#e0324a"></label>
+          <label class="color-in">码底<input type="color" id="ctCodeBg" value="#f0f0f0"></label>
+          <button type="button" class="btn" id="btnApplyCustom">应用到卡片</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script src="marked.min.js"></script>
+<script src="highlight.min.js"></script>
+<script src="html-to-image.js"></script>
+<script src="qrcode.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
