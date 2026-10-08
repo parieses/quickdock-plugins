@@ -576,22 +576,37 @@ func handleTaskStatus(id int64, input map[string]interface{}) {
 		respondError(id, -32602, "缺少 taskId 参数")
 		return
 	}
-	t, ok := getPDFTask(taskID)
+	tasksMu.Lock()
+	t, ok := tasks[taskID]
 	if !ok {
+		tasksMu.Unlock()
 		respondError(id, -32604, "任务不存在或已过期: "+taskID)
 		return
 	}
+	// 在锁内快照可变字段，锁外只读局部副本；
+	// finishPDFTask / updatePDFTaskMessage 会在后台持锁写这些字段，
+	// 未快照会与被 json.Marshal 读到的 Result(map) 并发撕裂。
+	status := t.Status
+	msg := t.Message
+	e := t.Error
+	var res map[string]interface{}
+	if status == "done" {
+		res = t.Result
+	}
+	id0 := t.ID
+	tasksMu.Unlock()
+
 	resp := map[string]interface{}{
 		"ok":      true,
-		"id":      t.ID,
-		"status":  t.Status,
-		"message": t.Message,
+		"id":      id0,
+		"status":  status,
+		"message": msg,
 	}
-	if t.Status == "done" {
-		resp["result"] = t.Result
+	if status == "done" {
+		resp["result"] = res
 	}
-	if t.Status == "error" {
-		resp["error"] = t.Error
+	if status == "error" {
+		resp["error"] = e
 	}
 	respond(id, resp)
 }

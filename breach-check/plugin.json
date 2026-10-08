@@ -1,0 +1,62 @@
+{
+  "id": "io.github.parieses.breach-check",
+  "name": "泄露查询",
+  "version": "1.0.0",
+  "description": "基于 Have I Been Pwned 检查密码是否出现在泄露库中（k-匿名，密码不出本机）；邮箱泄露需自备 API Key。",
+  "author": "QuickDock",
+  "category": "安全工具",
+  "platforms": [
+    "windows"
+  ],
+  "icon": "icon.svg",
+  "backend": {
+    "runtime": "native",
+    "entry": "breach-check"
+  },
+  "host_apis": [],
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 560,
+    "height": 540
+  },
+  "permissions": {
+    "network": true
+  },
+  "commands": [
+    {
+      "id": "breach-password",
+      "title": "密码泄露检查",
+      "keywords": [
+        "breach",
+        "pwned",
+        "泄露",
+        "密码",
+        "hibp"
+      ],
+      "aliases": [
+        "泄露查询",
+        "密码泄露"
+      ],
+      "prefix": "/breach",
+      "acceptsInput": true,
+      "title_i18n": {
+        "zh-CN": "密码泄露检查",
+        "en-US": "Password Breach Check"
+      }
+    }
+  ],
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "name_i18n": {
+    "zh-CN": "泄露查询",
+    "en-US": "Breach Check"
+  },
+  "description_i18n": {
+    "zh-CN": "基于 HIBP 检查密码/邮箱是否出现在泄露库中",
+    "en-US": "Check passwords/emails against Have I Been Pwned."
+  },
+  "changelog": "## v1.0.0\n\n- 密码 k-匿名泄露检查（无需 Key）；邮箱泄露查询（需 HIBP API Key）"
+}

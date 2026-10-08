@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>背单词卡</title>
+<link rel="stylesheet" href="qd-theme.css">
+<link rel="stylesheet" href="components.css">
+<style>
+body{margin:0}
+.app{display:flex;flex-direction:column;height:100vh;padding:12px;gap:10px;box-sizing:border-box}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.btn{height:32px;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:inherit}
+.btn:hover{color:var(--text-primary)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.inp{height:32px;padding:0 10px;background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit}
+.card{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;min-height:0}
+.card .w{font-size:34px;font-weight:600;color:var(--text-primary)}
+.card .m{font-size:18px;color:var(--text-secondary);max-width:80%;text-align:center}
+.card .hint{font-size:12px;color:var(--text-muted)}
+.rates{display:flex;gap:8px;justify-content:center}
+.rt{height:36px;padding:0 18px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:inherit}
+.rt:hover{color:var(--text-primary)}
+.empty{display:flex;align-items:center;justify-content:center;flex:1;color:var(--text-muted);font-size:13px;text-align:center}
+#imp{display:none}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="row">
+    <button class="btn" id="reset">重置进度</button>
+    <button class="btn" id="impb">导入词单</button>
+    <input type="file" id="imp">
+    <span style="flex:1"></span>
+    <span id="cnt" class="btn" style="cursor:default"></span>
+  </div>
+  <div class="card" id="card"><div class="empty">点击「导入词单」或开始默认词库</div></div>
+  <div class="rates" id="rates" style="display:none">
+    <button class="rt" data-q="1">忘记</button>
+    <button class="rt" data-q="3">模糊</button>
+    <button class="rt" data-q="4">记得</button>
+    <button class="rt" data-q="5">熟练</button>
+  </div>
+</div>
+<script>
+window.__cpSeq=0;
+window.copyViaHost=function(t,cb){var id='cp_'+(++window.__cpSeq),done=false;function onMsg(e){var d=e&&e.data;if(d&&d.type==='plugin:copy-result'&&d.id===id){done=true;window.removeEventListener('message',onMsg);cb&&cb(!!d.ok)}}window.addEventListener('message',onMsg);parent.postMessage({type:'plugin:copy',id:id,text:t},'*');setTimeout(function(){if(!done)window.removeEventListener('message',onMsg)},300)};
+var DEFAULT="abandon\t放弃\nability\t能力\nabsolute\t绝对的\nacademic\t学术的\naccept\t接受\naccess\t访问\naccommodate\t容纳\naccompany\t陪伴\naccomplish\t完成\naccurate\t准确的\nachieve\t实现\nacquire\t获得\nadequate\t充足的\nadjust\t调整\nadmire\t钦佩\nadmit\t承认\nadopt\t采纳\nadvance\t推进\nadvantage\t优势\naffect\t影响\nafford\t负担得起\nalternative\t替代方案\nanalyze\t分析\nancient\t古老的\nannounce\t宣布\napparent\t明显的\nappeal\t吸引\napplaud\t鼓掌\napply\t申请\napproach\t方法";
+var words=null,prog={},idx=0,showing=false;
+function load(){try{words=JSON.parse(localStorage.getItem('fc_words')||'null')}catch(e){}if(!words)words=parse(DEFAULT);try{prog=JSON.parse(localStorage.getItem('fc_prog')||'{}')}catch(e){prog={}}}
+function parse(t){return t.split('\n').filter(function(l){return l.trim()}).map(function(l){var p=l.split('\t');return{w:p[0],m:p[1]||''}})}
+function save(){try{localStorage.setItem('fc_words',JSON.stringify(words));localStorage.setItem('fc_prog',JSON.stringify(prog))}catch(e){}}
+function due(){var d=[];for(var i=0;i<words.length;i++){var p=prog[i]||{iv:0,rep:0,e:2.5};if((p.iv||0)<=0)d.push(i)}return d.length?d:words.map(function(_,i){return i})}
+var queue=[];
+function next(){if(!queue.length)queue=due().sort(function(){return Math.random()-0.5});if(!queue.length){document.getElementById('card').innerHTML='<div class="empty">全部复习完 🎉</div>';document.getElementById('rates').style.display='none';return}idx=queue.shift();showing=false;var w=words[idx];document.getElementById('card').innerHTML='<div class="w">'+esc(w.w)+'</div><div class="hint">点击显示释义</div>';document.getElementById('rates').style.display='none';updCnt()}
+function flip(){if(showing)return;showing=true;var w=words[idx];document.getElementById('card').innerHTML='<div class="w">'+esc(w.w)+'</div><div class="m">'+esc(w.m)+'</div>';document.getElementById('rates').style.display='flex'}
+function rate(q){var p=prog[idx]||{iv:0,rep:0,e:2.5};if(q<3){p.rep=0;p.iv=0}else{var e=p.e+(0.1+(q-3)*(0.08+(q-3)*0.02));e=Math.max(1.3,e);p.e=e;p.rep=(p.rep||0)+1;var iv=q===3?1:q===4?3:Math.round((p.iv||1)*(p.e||2.5));if(p.rep===1)iv=1;p.iv=iv}prog[idx]=p;save();next()}
+function updCnt(){document.getElementById('cnt').textContent='剩余 '+queue.length+' / 总 '+words.length}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+document.getElementById('card').onclick=flip;
+document.querySelectorAll('.rt').forEach(function(b){b.onclick=function(){rate(+b.dataset.q)}});
+document.getElementById('reset').onclick=function(){prog={};save();queue=[];next()};
+document.getElementById('impb').onclick=function(){document.getElementById('imp').click()};
+document.getElementById('imp').onchange=function(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(){words=parse(r.result);prog={};save();queue=[];next()};r.readAsText(f)};
+load();next();
+</script>
+</body>
+</html>

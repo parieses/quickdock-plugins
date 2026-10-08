@@ -156,6 +156,7 @@
   var cells = []
 
   var board, prevBoard, turn, over, lock
+  var aiTimer = null
 
   function buildGrid() {
     grid.innerHTML = ''
@@ -233,7 +234,9 @@
     }
     lock = true
     elStatus.textContent = '电脑思考中…'
-    setTimeout(function () {
+    if (aiTimer != null) clearTimeout(aiTimer)
+    aiTimer = setTimeout(function () {
+      aiTimer = null
       var depth = parseInt(elDiff.value, 10) || 4
       var mv = bestMove(board, AI, depth)
       lock = false
@@ -275,6 +278,7 @@
   }
 
   function newGame() {
+    if (aiTimer != null) { clearTimeout(aiTimer); aiTimer = null }
     board = initialBoard()
     prevBoard = null
     turn = HUMAN

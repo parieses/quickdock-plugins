@@ -31,10 +31,23 @@ function parseTime(text) {
     // 1. "now" → 当前时间
     if (text.toLowerCase() === 'now') return new Date()
 
-    // 2. Unix 时间戳（纯数字）
+    // 2. 纯数字：先区分「紧凑日期」与「Unix 时间戳」，避免 YYYYMMDD 被当成年初秒数
     if (/^\d+$/.test(text)) {
+        // 2a. 紧凑日期：8 位(YYYYMMDD) 或 14 位(YYYYMMDDHHMMSS)，且月/日合法时才按日期解析
+        var cc = text.match(/^(\d{4})(\d{2})(\d{2})(?:(\d{2})(\d{2})(\d{2}))?$/)
+        if (cc) {
+            var cmo = parseInt(cc[2], 10), cday = parseInt(cc[3], 10)
+            if (cmo >= 1 && cmo <= 12 && cday >= 1 && cday <= 31) {
+                return new Date(
+                    parseInt(cc[1], 10), cmo - 1, cday,
+                    parseInt(cc[4] || '0', 10),
+                    parseInt(cc[5] || '0', 10),
+                    parseInt(cc[6] || '0', 10)
+                )
+            }
+        }
+        // 2b. 否则按 Unix 时间戳：毫秒级（>1e12）vs 秒级
         var num = parseInt(text, 10)
-        // 毫秒级时间戳（13 位）vs 秒级（10 位）
         if (num > 1e12) return new Date(num)
         return new Date(num * 1000)
     }

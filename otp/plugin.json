@@ -1,0 +1,61 @@
+{
+  "id": "io.github.parieses.otp",
+  "name": "OTP 验证器",
+  "version": "1.0.0",
+  "description": "本地 TOTP 两步验证码生成器（兼容 Google Authenticator），密钥仅存本机，离线可用。",
+  "author": "QuickDock",
+  "category": "安全工具",
+  "platforms": [
+    "windows"
+  ],
+  "icon": "icon.svg",
+  "backend": {
+    "runtime": "none"
+  },
+  "host_apis": [],
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 520,
+    "height": 600
+  },
+  "permissions": {
+    "clipboard": true
+  },
+  "commands": [
+    {
+      "id": "otp",
+      "title": "OTP 验证器",
+      "keywords": [
+        "otp",
+        "totp",
+        "2fa",
+        "验证器",
+        "两步"
+      ],
+      "aliases": [
+        "验证器",
+        "otp",
+        "2fa"
+      ],
+      "prefix": "/otp",
+      "title_i18n": {
+        "zh-CN": "OTP 验证器",
+        "en-US": "OTP Authenticator"
+      }
+    }
+  ],
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "name_i18n": {
+    "zh-CN": "OTP 验证器",
+    "en-US": "OTP Authenticator"
+  },
+  "description_i18n": {
+    "zh-CN": "本地 TOTP 两步验证码生成器，密钥仅存本机",
+    "en-US": "Local TOTP authenticator; secrets stored only on this machine."
+  },
+  "changelog": "## v1.0.0\n\n- 本地 TOTP 两步验证码生成（HMAC-SHA1），密钥存本机"
+}

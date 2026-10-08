@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>启动项管理</title>
+<link rel="stylesheet" href="qd-theme.css">
+<link rel="stylesheet" href="components.css">
+<style>
+body{margin:0}
+.app{display:flex;flex-direction:column;height:100vh;padding:12px;gap:8px;box-sizing:border-box}
+.bar{display:flex;gap:8px}
+.btn{height:34px;padding:0 16px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:inherit}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.sm{height:26px;padding:0 10px;font-size:12px}
+.list{flex:1;overflow:auto;display:flex;flex-direction:column;gap:6px}
+.sec{font-size:12px;color:var(--text-muted);margin-top:4px}
+.row{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius)}
+.row .meta{flex:1;min-width:0}
+.row .name{font-size:13px;color:var(--text-primary);font-weight:600}
+.row .sub{font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.badge{font-size:11px;padding:2px 8px;border-radius:10px;flex-shrink:0}
+.b-on{background:rgba(52,153,62,.18);color:#35c268}
+.b-off{background:rgba(226,75,74,.18);color:#e24b4a}
+#msg{font-size:12px;color:#e24b4a;min-height:14px}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="bar">
+    <button class="btn primary" id="go">刷新</button>
+  </div>
+  <div id="msg"></div>
+  <div class="list" id="list"><div style="font-size:11px;color:var(--text-muted)">点击「刷新」加载启动项</div></div>
+</div>
+<script>
+window.__cpSeq=0;
+window.copyViaHost=function(t,cb){var id='cp_'+(++window.__cpSeq),done=false;function onMsg(e){var d=e&&e.data;if(d&&d.type==='plugin:copy-result'&&d.id===id){done=true;window.removeEventListener('message',onMsg);cb&&cb(!!d.ok)}}window.addEventListener('message',onMsg);parent.postMessage({type:'plugin:copy',id:id,text:t},'*');setTimeout(function(){if(!done)window.removeEventListener('message',onMsg)},300)};
+window.__qdNativeBound=true;(function(){var seq=0,pend={};window.pluginExec=function(c,i){return new Promise(function(res,rej){var id='qd_'+(++seq);pend[id]={res:res,rej:rej};parent.postMessage({type:'plugin:execute',id:id,command:c,input:i||{}},'*')})};window.addEventListener('message',function(e){var d=e.data;if(!d||d.type!=='plugin:result'||!d.id||!pend[d.id])return;var p=pend[d.id];delete pend[d.id];if(d.error)p.rej(new Error(typeof d.error==='string'?d.error:(d.error.message||'error')));else p.res(d.data||{})})})();
+function row(item){var el=document.createElement('div');el.className='row';
+  var b=item.enabled?'<span class="badge b-on">已启用</span>':'<span class="badge b-off">已禁用</span>';
+  var act=item.enabled?'<button class="btn sm" data-act="0" data-id="'+item.id+'">禁用</button>':'<button class="btn sm primary" data-act="1" data-id="'+item.id+'">启用</button>';
+  var sub=item.command?item.command:item.location;
+  el.innerHTML='<div class="meta"><div class="name">'+item.name+'</div><div class="sub" data-copy="1">'+sub+'</div></div>'+b+'<div class="acts">'+act+'</div>';
+  return el}
+function render(d){var l=document.getElementById('list');l.innerHTML='';
+  var reg=d.registry||[];var fol=d.folders||[];
+  var h=document.createElement('div');h.className='sec';h.textContent='注册表启动项（'+reg.length+'）';l.appendChild(h);
+  if(reg.length){reg.forEach(function(it){l.appendChild(row(it)})}else{var e=document.createElement('div');e.className='sec';e.textContent='无';l.appendChild(e)}
+  var h2=document.createElement('div');h2.className='sec';h2.textContent='启动文件夹（'+fol.length+'）';l.appendChild(h2);
+  if(fol.length){fol.forEach(function(it){l.appendChild(row(it)})}else{var e2=document.createElement('div');e2.className='sec';e2.textContent='无';l.appendChild(e2)}}
+document.getElementById('list').addEventListener('click',function(e){
+  if(e.target.dataset.copy)window.copyViaHost(e.target.textContent);
+  if(e.target.dataset.act!==undefined){var id=e.target.dataset.id,en=e.target.dataset.act==='1';
+    document.getElementById('msg').textContent='切换中…';
+    pluginExec('startup-toggle',{id:id,enabled:en}).then(function(data){var d=typeof data==='string'?JSON.parse(data):data;if(d.error){document.getElementById('msg').textContent=d.error.message||'切换失败';return}document.getElementById('msg').textContent='';go()}).catch(function(e2){document.getElementById('msg').textContent='切换失败: '+(e2.message||e2)})}});
+function go(){document.getElementById('msg').textContent='加载中…';pluginExec('startup-list',{}).then(function(data){var d=typeof data==='string'?JSON.parse(data):data;if(d.error){document.getElementById('msg').textContent=d.error.message||'加载失败';return}document.getElementById('msg').textContent='';render(d)}).catch(function(e){document.getElementById('msg').textContent='加载失败: '+(e.message||e)})}
+document.getElementById('go').onclick=go;
+go();
+</script>
+</body>
+</html>

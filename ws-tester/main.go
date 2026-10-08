@@ -36,6 +36,7 @@ type executeParams struct {
 type wsConn struct {
 	id       string
 	conn     *websocket.Conn
+	writeMu  sync.Mutex // 序列化 conn.WriteMessage，不阻塞 connsMu
 	messages []map[string]interface{}
 	closed   bool
 }
@@ -45,6 +46,10 @@ var (
 	conns   = map[string]*wsConn{}
 	connSeq int64
 )
+
+// outMu 序列化 stdout 写入：每个请求在独立 goroutine 中 dispatch，
+// 并发 fmt.Println 会交错输出、破坏 JSON-RPC 逐行协议。
+var outMu sync.Mutex
 
 // responded 记录每个请求 id 是否已回包，panic recover 时据此避免重复回包污染 JSON-RPC 流
 var (
@@ -64,7 +69,9 @@ func respond(id int64, result interface{}) {
 	responded[id] = true
 	respondedMu.Unlock()
 	out, _ := json.Marshal(map[string]interface{}{"jsonrpc": "2.0", "id": id, "result": result})
+	outMu.Lock()
 	fmt.Println(string(out))
+	outMu.Unlock()
 }
 
 func respondError(id int64, code int, msg string) {
@@ -75,7 +82,9 @@ func respondError(id int64, code int, msg string) {
 		"jsonrpc": "2.0", "id": id,
 		"error": map[string]interface{}{"code": code, "message": msg},
 	})
+	outMu.Lock()
 	fmt.Println(string(out))
+	outMu.Unlock()
 }
 
 func handleConnect(id int64, input map[string]interface{}) {
@@ -149,8 +158,20 @@ func handleSend(id int64, input map[string]interface{}) {
 		respondError(id, -1, "连接不存在或已关闭")
 		return
 	}
+	connsMu.Unlock()
+
+	// 网络写不持全局 connsMu（对端不收会阻塞），用 per-conn writeMu 序列化
+	// gorilla/websocket 的 WriteMessage（其本身也不允许多 goroutine 并发写）。
+	wc.writeMu.Lock()
 	err := wc.conn.WriteMessage(websocket.TextMessage, []byte(msg))
-	if err == nil {
+	wc.writeMu.Unlock()
+
+	if err != nil {
+		respond(id, map[string]interface{}{"ok": false, "error": err.Error()})
+		return
+	}
+	connsMu.Lock()
+	if !wc.closed {
 		wc.messages = append(wc.messages, map[string]interface{}{
 			"dir":  "send",
 			"type": "text",
@@ -159,10 +180,6 @@ func handleSend(id int64, input map[string]interface{}) {
 		})
 	}
 	connsMu.Unlock()
-	if err != nil {
-		respond(id, map[string]interface{}{"ok": false, "error": err.Error()})
-		return
-	}
 	respond(id, map[string]interface{}{"ok": true})
 }
 

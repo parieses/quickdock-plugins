@@ -217,6 +217,9 @@
       <label style="display:flex; align-items:center; gap:6px; font-size:var(--fs-sm); color:var(--text-secondary); margin-top:8px">
         <input type="checkbox" id="f-follow"> 跟随重定向（默认不跟随，便于识别 302 跳转成功）
       </label>
+      <label style="display:flex; align-items:center; gap:6px; font-size:var(--fs-sm); color:var(--text-secondary); margin-top:8px">
+        <input type="checkbox" id="f-insecure"> 跳过 TLS 证书校验（仅限自签名内部测试目标；存在中间人风险，默认关闭）
+      </label>
     </div>
 
     <div class="p-section">
@@ -389,6 +392,7 @@ function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;
       maxRequests:intVal('f-max',0),
       timeoutMs:intVal('f-timeout',10000),
       followRedirects:$('f-follow').checked,
+      insecureTLS: $('f-insecure') ? $('f-insecure').checked : false,
       csrf:csrf
     }
   }

@@ -1,0 +1,63 @@
+{
+  "id": "io.github.parieses.word-count",
+  "name": "字数统计",
+  "version": "1.0.0",
+  "description": "实时统计文本的字数、词数、行数、段落数、字节数与阅读时长，支持中英文混合。",
+  "author": "QuickDock",
+  "category": "办公效率",
+  "platforms": [
+    "windows"
+  ],
+  "icon": "icon.svg",
+  "backend": {
+    "runtime": "none"
+  },
+  "host_apis": [],
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 660,
+    "height": 560
+  },
+  "permissions": {
+    "clipboard": true
+  },
+  "commands": [
+    {
+      "id": "word-count",
+      "title": "字数统计",
+      "keywords": [
+        "word",
+        "count",
+        "字数",
+        "字數",
+        "统计",
+        "计数"
+      ],
+      "aliases": [
+        "字数",
+        "字数统计",
+        "wc"
+      ],
+      "prefix": "/wc",
+      "acceptsInput": true,
+      "title_i18n": {
+        "zh-CN": "字数统计",
+        "en-US": "Word Count"
+      }
+    }
+  ],
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "name_i18n": {
+    "zh-CN": "字数统计",
+    "en-US": "Word Count"
+  },
+  "description_i18n": {
+    "zh-CN": "实时统计文本的字数、词数、行数、段落数、字节数与阅读时长",
+    "en-US": "Live count of characters, words, lines, paragraphs, bytes and reading time."
+  },
+  "changelog": "## v1.0.0\n\n- 实时统计字数/词数/行数/段落数/字节数/阅读时长，中英文混合"
+}

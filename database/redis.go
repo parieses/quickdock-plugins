@@ -185,7 +185,7 @@ func redisKeySet(id int64, input map[string]interface{}) {
 			return
 		}
 		setErr = conn.redis.HSet(ctx, key, toIfaceMap(fields)).Err()
-		if setErr == nil && ttl >= 0 {
+		if setErr == nil && ttl > 0 {
 			conn.redis.Expire(ctx, key, ttlToDur(ttl))
 		}
 	case "list":
@@ -200,7 +200,7 @@ func redisKeySet(id int64, input map[string]interface{}) {
 				return
 			}
 		}
-		if ttl >= 0 {
+		if ttl > 0 {
 			conn.redis.Expire(ctx, key, ttlToDur(ttl))
 		}
 	case "set":
@@ -210,7 +210,7 @@ func redisKeySet(id int64, input map[string]interface{}) {
 			return
 		}
 		setErr = conn.redis.SAdd(ctx, key, toIfaceSlice(members)...).Err()
-		if setErr == nil && ttl >= 0 {
+		if setErr == nil && ttl > 0 {
 			conn.redis.Expire(ctx, key, ttlToDur(ttl))
 		}
 	case "zset":
@@ -224,7 +224,7 @@ func redisKeySet(id int64, input map[string]interface{}) {
 			zs = append(zs, redis.Z{Score: it.score, Member: it.member})
 		}
 		setErr = conn.redis.ZAdd(ctx, key, zs...).Err()
-		if setErr == nil && ttl >= 0 {
+		if setErr == nil && ttl > 0 {
 			conn.redis.Expire(ctx, key, ttlToDur(ttl))
 		}
 	default:

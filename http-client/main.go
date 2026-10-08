@@ -28,6 +28,9 @@ import (
 // Server 持有插件级状态（主要是数据库连接）。
 type Server struct {
 	db *DB
+	// bgWg 跟踪「响应后仍在后台运行」的 goroutine（如 RecordHistory）。
+	// 主线程在 db.Close() 前必须等它们跑完，否则出现 use-after-close。
+	bgWg sync.WaitGroup
 }
 
 var srv *Server
@@ -162,6 +165,9 @@ func main() {
 	defer db.Close()
 
 	srv = &Server{db: db}
+	// LIFO：此 defer 在 db.Close 之前执行，等待 RecordHistory 等后台 goroutine 收尾，
+	// 避免 stdin EOF 时 db.Close() 抢在后台写入前触发 use-after-close。
+	defer srv.bgWg.Wait()
 
 	reader := bufio.NewReader(os.Stdin)
 	var wg sync.WaitGroup

@@ -74,9 +74,15 @@ func intFrom(m map[string]interface{}, k string, def int) int {
 	return def
 }
 
+// outMu 序列化 stdout 写入：每个请求在独立 goroutine 中 dispatch，
+// 并发 fmt.Println 会交错输出、破坏 JSON-RPC 逐行协议。
+var outMu sync.Mutex
+
 func respond(id int64, result interface{}) {
 	out, _ := json.Marshal(map[string]interface{}{"jsonrpc": "2.0", "id": id, "result": result})
+	outMu.Lock()
 	fmt.Println(string(out))
+	outMu.Unlock()
 }
 
 func respondError(id int64, code int, msg string) {
@@ -84,7 +90,9 @@ func respondError(id int64, code int, msg string) {
 		"jsonrpc": "2.0", "id": id,
 		"error": map[string]interface{}{"code": code, "message": msg},
 	})
+	outMu.Lock()
 	fmt.Println(string(out))
+	outMu.Unlock()
 }
 
 /* ==================== 会话 ==================== */
@@ -163,7 +171,11 @@ func (s *session) run(candidates []string, timeoutMs int) {
 					fmt.Fprintf(os.Stderr, "[panic] dir-buster worker: %v\n%s\n", r, debug.Stack())
 				}
 			}()
-			sem <- struct{}{}
+			select {
+			case sem <- struct{}{}:
+			case <-s.stopCh:
+				return
+			}
 			defer func() { <-sem }()
 			s.probe(client, path)
 			s.mu.Lock()

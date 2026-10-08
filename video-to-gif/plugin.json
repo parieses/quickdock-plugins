@@ -1,0 +1,58 @@
+{
+  "id": "io.github.parieses.video-to-gif",
+  "name": "视频转 GIF",
+  "version": "1.0.2",
+  "description": "浏览器内把视频片段转换为 GIF 动图，基于 ffmpeg.wasm，可调起止时间、尺寸与帧率，数据不出本机。",
+  "author": "QuickDock",
+  "category": "内容创作",
+  "platforms": [
+    "windows"
+  ],
+  "icon": "icon.svg",
+  "backend": {
+    "runtime": "none"
+  },
+  "host_apis": [],
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 720,
+    "height": 600
+  },
+  "permissions": {},
+  "commands": [
+    {
+      "id": "video-to-gif",
+      "title": "视频转 GIF",
+      "keywords": [
+        "gif",
+        "video",
+        "视频",
+        "动图",
+        "转gif"
+      ],
+      "aliases": [
+        "视频转gif",
+        "转gif"
+      ],
+      "prefix": "/gif",
+      "title_i18n": {
+        "zh-CN": "视频转 GIF",
+        "en-US": "Video to GIF"
+      }
+    }
+  ],
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "name_i18n": {
+    "zh-CN": "视频转 GIF",
+    "en-US": "Video to GIF"
+  },
+  "description_i18n": {
+    "zh-CN": "浏览器内视频转 GIF，基于 ffmpeg.wasm，可调起止/尺寸/帧率",
+    "en-US": "Convert video clips to GIF in-browser via ffmpeg.wasm."
+  },
+  "changelog": "## v1.0.2\n\n- 修正 ffmpeg.wasm 0.12 UMD 全局名（FFmpegWASM），修复转换时报「读取 FFmpeg 失败」\n\n## v1.0.1\n\n- 美化视频文件选择按钮\n\n## v1.0.0\n\n- 视频转 GIF（ffmpeg.wasm），可调起止时间/尺寸/帧率"
+}

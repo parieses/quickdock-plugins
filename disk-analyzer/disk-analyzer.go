@@ -600,8 +600,8 @@ func (j *scanJob) run(ctx context.Context) {
 	j.root = root
 	j.mu.Unlock()
 	total, _ := j.walk(ctx, j.path, root, 0)
-	// walk 内部已通过原子累加把子树体积写入 root.Size，这里再显式对齐一次
-	atomic.StoreInt64(&root.Size, total)
+	_ = total // walk 已在 j.mu 下把子树体积累加进 root.Size（node.Size += total），此处无需再对齐；
+	// 若在锁外用 atomic.Store 覆盖同一字段会与 handleScanStatus/walk 的普通读写撕裂（数据竞争）。
 	j.mu.Lock()
 	j.done = true
 	j.version++

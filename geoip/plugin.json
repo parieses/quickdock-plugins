@@ -1,0 +1,62 @@
+{
+  "id": "io.github.parieses.geoip",
+  "name": "IP 归属地",
+  "version": "1.0.1",
+  "description": "查询 IP 的地理位置、运营商、时区与坐标，支持指定 IP 或查询本机公网 IP。",
+  "author": "QuickDock",
+  "category": "网络工具",
+  "platforms": [
+    "windows"
+  ],
+  "icon": "icon.svg",
+  "backend": {
+    "runtime": "native",
+    "entry": "geoip"
+  },
+  "host_apis": [],
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 580,
+    "height": 520
+  },
+  "permissions": {
+    "network": true
+  },
+  "commands": [
+    {
+      "id": "geoip-lookup",
+      "title": "IP 归属地查询",
+      "keywords": [
+        "geoip",
+        "ip",
+        "归属地",
+        "运营商",
+        "位置"
+      ],
+      "aliases": [
+        "IP归属地",
+        "归属地查询"
+      ],
+      "prefix": "/geoip",
+      "acceptsInput": true,
+      "title_i18n": {
+        "zh-CN": "IP 归属地查询",
+        "en-US": "GeoIP Lookup"
+      }
+    }
+  ],
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "name_i18n": {
+    "zh-CN": "IP 归属地",
+    "en-US": "GeoIP Lookup"
+  },
+  "description_i18n": {
+    "zh-CN": "查询 IP 的地理位置、运营商、时区与坐标",
+    "en-US": "Look up IP geolocation, ISP, timezone and coordinates."
+  },
+  "changelog": "## v1.0.1\n\n- 查询状态增加旋转加载动画\n\n## v1.0.0\n\n- 查询 IP 归属地/运营商/时区/坐标，支持指定 IP 或查本机公网 IP"
+}

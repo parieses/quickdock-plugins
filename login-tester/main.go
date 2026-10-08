@@ -33,6 +33,7 @@ import (
 	"runtime/debug"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -108,9 +109,15 @@ func boolFrom(m map[string]interface{}, k string, def bool) bool {
 	return def
 }
 
+// outMu 序列化 stdout 写入：每个请求在独立 goroutine 中 dispatch，
+// 并发 fmt.Println 会交错输出、破坏 JSON-RPC 逐行协议。
+var outMu sync.Mutex
+
 func respond(id int64, result interface{}) {
 	out, _ := json.Marshal(map[string]interface{}{"jsonrpc": "2.0", "id": id, "result": result})
+	outMu.Lock()
 	fmt.Println(string(out))
+	outMu.Unlock()
 }
 
 func respondError(id int64, code int, msg string) {
@@ -118,7 +125,9 @@ func respondError(id int64, code int, msg string) {
 		"jsonrpc": "2.0", "id": id,
 		"error": map[string]interface{}{"code": code, "message": msg},
 	})
+	outMu.Lock()
 	fmt.Println(string(out))
+	outMu.Unlock()
 }
 
 /* ==================== 内置密码库 ==================== */
@@ -192,6 +201,7 @@ type testConfig struct {
 	MaxRequests     int               `json:"maxRequests"`
 	TimeoutMs       int               `json:"timeoutMs"`
 	FollowRedirects bool              `json:"followRedirects"`
+	InsecureTLS     bool              `json:"insecureTLS"`
 	CSRF            csrfCfg           `json:"csrf"`
 }
 
@@ -221,8 +231,8 @@ var (
 )
 
 func newSessionID() string {
-	seq++
-	return fmt.Sprintf("lt_%d_%d", time.Now().UnixNano(), seq)
+	n := atomic.AddInt64(&seq, 1)
+	return fmt.Sprintf("lt_%d_%d", time.Now().UnixNano(), n)
 }
 
 /* ==================== 测试执行 ==================== */
@@ -307,10 +317,18 @@ func evalSuccess(cfg testConfig, status int, body, location, setCookie string) b
 	}
 }
 
-// sharedTransport 复用一个带界的连接池。旧实现每次 attempt 都 new 一个
-// http.Transport（keep-alive 默认开启且从不关闭空闲连接），在爆破/撞库的并发
-// 循环里会累积大量空闲连接/套接字导致 fd 泄漏、TIME_WAIT 堆积。
+// sharedTransport / insecureTransport 各复用一个带界连接池。旧实现每次 attempt 都 new
+// 一个 http.Transport（keep-alive 默认开启且从不关闭空闲连接），在爆破/撞库的并发循环里
+// 会累积大量空闲连接/套接字导致 fd 泄漏、TIME_WAIT 堆积。二者池参数一致，仅 TLS 校验不同：
+// sharedTransport 默认校验证书；insecureTransport 仅在用户显式勾选 insecureTLS 时使用。
 var sharedTransport = &http.Transport{
+	MaxIdleConns:        200,
+	MaxIdleConnsPerHost: 32,
+	IdleConnTimeout:     30 * time.Second,
+}
+
+// insecureTransport 供 insecureTLS=true 的会话使用（自签测试目标），显式跳过证书校验。
+var insecureTransport = &http.Transport{
 	TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
 	MaxIdleConns:        200,
 	MaxIdleConnsPerHost: 32,
@@ -336,6 +354,10 @@ func (s *session) attempt(user, pass string) attemptResult {
 		}
 	}
 
+	var rt http.RoundTripper = sharedTransport
+	if cfg.InsecureTLS {
+		rt = insecureTransport
+	}
 	client := &http.Client{
 		Timeout: time.Duration(cfg.TimeoutMs) * time.Millisecond,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
@@ -347,7 +369,7 @@ func (s *session) attempt(user, pass string) attemptResult {
 			}
 			return nil
 		},
-		Transport: sharedTransport,
+		Transport: rt,
 	}
 
 	var req *http.Request
@@ -494,9 +516,18 @@ func runSession(s *session) {
 	}()
 
 	jobs := make(chan [2]string, s.total)
+	// 只填 s.total 条即停（s.total = min(Users*Passes, MaxRequests)），
+	// 否则当 MaxRequests < Users*Passes 时 channel 满、填充循环会永久阻塞在
+	// worker 启动之前——runSession goroutine 泄漏、请求永不返回。
+	pushed := 0
+FillLoop:
 	for _, u := range s.cfg.Users {
 		for _, p := range s.cfg.PassList {
+			if pushed >= s.total {
+				break FillLoop
+			}
 			jobs <- [2]string{u, p}
+			pushed++
 		}
 	}
 	close(jobs)
@@ -570,6 +601,7 @@ func handleStart(id int64, input map[string]interface{}) {
 		MaxRequests:     intFrom(input, "maxRequests", 0),
 		TimeoutMs:       intFrom(input, "timeoutMs", 10000),
 		FollowRedirects: boolFrom(input, "followRedirects", false),
+		InsecureTLS:     boolFrom(input, "insecureTLS", false),
 	}
 	if csrf, ok := input["csrf"].(map[string]interface{}); ok {
 		cfg.CSRF = csrfCfg{

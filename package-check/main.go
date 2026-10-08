@@ -139,6 +139,7 @@ func validPkgName(name string) bool {
 
 func queryNPM(name string) pkgInfo {
 	client := newClient(8 * time.Second)
+	defer client.CloseIdleConnections()
 	var d map[string]interface{}
 	if err := getJSON(client, "https://registry.npmjs.org/"+name, &d); err != nil {
 		return pkgInfo{Found: false}
@@ -165,6 +166,7 @@ func queryNPM(name string) pkgInfo {
 
 func queryPyPI(name string) pkgInfo {
 	client := newClient(8 * time.Second)
+	defer client.CloseIdleConnections()
 	var d map[string]interface{}
 	if err := getJSON(client, "https://pypi.org/pypi/"+name+"/json", &d); err != nil {
 		return pkgInfo{Found: false}
@@ -184,6 +186,7 @@ func queryComposer(name string) pkgInfo {
 		return pkgInfo{Found: false}
 	}
 	client := newClient(8 * time.Second)
+	defer client.CloseIdleConnections()
 	var d map[string]interface{}
 	if err := getJSON(client, "https://repo.packagist.org/p2/"+name+".json", &d); err != nil {
 		return pkgInfo{Found: false}
@@ -203,6 +206,7 @@ func queryComposer(name string) pkgInfo {
 
 func queryGo(name string) pkgInfo {
 	client := newClient(8 * time.Second)
+	defer client.CloseIdleConnections()
 	var d map[string]interface{}
 	if err := getJSON(client, "https://proxy.golang.org/"+name+"/@latest", &d); err != nil {
 		return pkgInfo{Found: false}
@@ -264,6 +268,7 @@ func queryOSV(kind, name, version string) interface{} {
 		return map[string]interface{}{"error": err.Error()}
 	}
 	client := newClient(10 * time.Second)
+	defer client.CloseIdleConnections()
 	req, err := http.NewRequest("POST", "https://api.osv.dev/v1/query", bytes.NewReader(payload))
 	if err != nil {
 		return map[string]interface{}{"error": err.Error()}

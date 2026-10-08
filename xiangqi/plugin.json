@@ -1,0 +1,57 @@
+{
+  "id": "io.github.parieses.xiangqi",
+  "name": "中国象棋",
+  "version": "1.0.2",
+  "description": "单机中国象棋，完整走子与吃子规则，含基于局面评估的简易 AI 对手。",
+  "author": "QuickDock",
+  "category": "游戏娱乐",
+  "platforms": [
+    "windows"
+  ],
+  "icon": "icon.svg",
+  "backend": {
+    "runtime": "none"
+  },
+  "host_apis": [],
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 560,
+    "height": 660
+  },
+  "permissions": {},
+  "commands": [
+    {
+      "id": "xiangqi",
+      "title": "中国象棋",
+      "keywords": [
+        "xiangqi",
+        "chess",
+        "象棋",
+        "中国象棋"
+      ],
+      "aliases": [
+        "象棋",
+        "中国象棋"
+      ],
+      "prefix": "/xiangqi",
+      "title_i18n": {
+        "zh-CN": "中国象棋",
+        "en-US": "Chinese Chess"
+      }
+    }
+  ],
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "name_i18n": {
+    "zh-CN": "中国象棋",
+    "en-US": "Chinese Chess"
+  },
+  "description_i18n": {
+    "zh-CN": "单机中国象棋，含基础 AI 对手",
+    "en-US": "Single-player Chinese chess with a basic AI opponent."
+  },
+  "changelog": "## v1.0.2\n\n- 修复走子函数花括号失衡导致整段脚本解析失败、棋盘与「新对局」按钮无响应\n\n## v1.0.1\n\n- 修复 AI 走子后状态未回切、新增将/被将合法性判定\n\n## v1.0.0\n\n- 单机中国象棋，完整走子规则 + 简易 AI"
+}

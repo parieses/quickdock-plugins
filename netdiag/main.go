@@ -126,10 +126,16 @@ func intSliceFrom(m map[string]interface{}, key string) []int {
 	return out
 }
 
+// outMu 序列化 stdout 写入：每个请求在独立 goroutine 中 dispatch，
+// 并发 fmt.Println 会交错输出、破坏 JSON-RPC 逐行协议。
+var outMu sync.Mutex
+
 func respond(id int64, result interface{}) {
 	markAnswered(id)
 	out, _ := json.Marshal(map[string]interface{}{"jsonrpc": "2.0", "id": id, "result": result})
+	outMu.Lock()
 	fmt.Println(string(out))
+	outMu.Unlock()
 }
 
 func respondError(id int64, code int, msg string) {
@@ -138,7 +144,9 @@ func respondError(id int64, code int, msg string) {
 		"jsonrpc": "2.0", "id": id,
 		"error": map[string]interface{}{"code": code, "message": msg},
 	})
+	outMu.Lock()
 	fmt.Println(string(out))
+	outMu.Unlock()
 }
 
 /* ==================== ICMP（Windows iphlpapi，统一实现） ==================== */

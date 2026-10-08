@@ -113,6 +113,7 @@
   var cells = []
 
   var board, lastMove, winCells, over, lock
+  var aiTimer = null
 
   function buildGrid() {
     grid.innerHTML = ''
@@ -197,7 +198,9 @@
     if (over) return
     lock = true
     elStatus.textContent = '电脑思考中…'
-    setTimeout(function () {
+    if (aiTimer != null) clearTimeout(aiTimer)
+    aiTimer = setTimeout(function () {
+      aiTimer = null
       lock = false
       var mv = chooseMove(board, AI)
       if (!mv) { over = true; elOverText.textContent = '和棋'; record('d'); render(); return }
@@ -223,6 +226,7 @@
   }
 
   function newGame() {
+    if (aiTimer != null) { clearTimeout(aiTimer); aiTimer = null }
     board = new Array(N * N).fill(0)
     lastMove = null
     winCells = null

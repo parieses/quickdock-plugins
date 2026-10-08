@@ -1,0 +1,61 @@
+{
+  "id": "io.github.parieses.vault",
+  "name": "密码库",
+  "version": "1.0.2",
+  "description": "本地加密密码库：主密码解锁，AES-GCM 加密存储，支持导出/导入加密备份文件。数据不出本机。",
+  "author": "QuickDock",
+  "category": "安全工具",
+  "platforms": [
+    "windows"
+  ],
+  "icon": "icon.svg",
+  "backend": {
+    "runtime": "none"
+  },
+  "host_apis": [],
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 620,
+    "height": 640
+  },
+  "permissions": {
+    "clipboard": true,
+    "filesystem": true
+  },
+  "commands": [
+    {
+      "id": "vault",
+      "title": "密码库",
+      "keywords": [
+        "vault",
+        "password",
+        "密码",
+        "保管",
+        "保险库"
+      ],
+      "aliases": [
+        "密码库",
+        "密码保管"
+      ],
+      "prefix": "/vault",
+      "title_i18n": {
+        "zh-CN": "密码库",
+        "en-US": "Password Vault"
+      }
+    }
+  ],
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "name_i18n": {
+    "zh-CN": "密码库",
+    "en-US": "Password Vault"
+  },
+  "description_i18n": {
+    "zh-CN": "本地加密密码库，主密码解锁，AES-GCM 加密",
+    "en-US": "Local encrypted password vault with master password and AES-GCM."
+  },
+  "changelog": "## v1.0.2\n\n- 修复列表点击监听在 #list 渲染前于脚本顶层执行导致初始化崩溃（unlock 无响应、列表不显示）\n\n## v1.0.1\n\n- 沙箱非安全源下 crypto.subtle 缺失时降级为 JS 异或混淆，修复 unlock 无响应\n\n## v1.0.0\n\n- 本地加密密码库：主密码解锁 + AES-GCM 存储 + 加密备份导入导出"
+}

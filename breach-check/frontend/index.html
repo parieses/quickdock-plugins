@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>泄露查询</title>
+<link rel="stylesheet" href="qd-theme.css">
+<link rel="stylesheet" href="components.css">
+<style>
+body{margin:0}
+.app{display:flex;flex-direction:column;height:100vh;padding:12px;gap:10px;box-sizing:border-box}
+.tabs{display:flex;gap:8px}
+.tab{padding:6px 14px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;cursor:pointer;color:var(--text-secondary)}
+.tab.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.block{display:none;flex-direction:column;gap:8px}
+.block.on{display:flex}
+.row{display:flex;gap:8px;align-items:center}
+.inp{flex:1;height:34px;padding:0 12px;background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius);font-size:14px;font-family:inherit}
+.inp.sec{width:100%}
+.btn{height:34px;padding:0 16px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:inherit}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.list{flex:1;overflow:auto;display:flex;flex-direction:column;gap:6px}
+.result{padding:12px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius);font-size:13px}
+.safe{color:#35c268}
+.danger{color:#e24b4a}
+.breach{display:flex;justify-content:space-between;gap:10px;padding:8px 10px;background:var(--bg-tertiary);border-radius:var(--radius);font-size:12px}
+#msg{font-size:12px;color:#e24b4a;min-height:14px}
+.hint{font-size:11px;color:var(--text-muted);line-height:1.5}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="tabs">
+    <div class="tab on" data-t="pw">密码检查</div>
+    <div class="tab" data-t="em">邮箱检查</div>
+  </div>
+  <div class="block on" id="b-pw">
+    <div class="hint">采用 HIBP k-匿名性：只发送 SHA1 哈希前 5 位，密码原文不出本机。</div>
+    <div class="row">
+      <input class="inp" id="pw" type="password" placeholder="输入要检查的密码">
+      <button class="btn primary" id="pwgo">检查</button>
+    </div>
+  </div>
+  <div class="block" id="b-em">
+    <div class="hint">邮箱查询需要 HIBP API Key（haveibeenpwned.com 免费申请）。</div>
+    <input class="inp" id="em" placeholder="邮箱地址">
+    <input class="inp sec" id="key" type="password" placeholder="HIBP API Key">
+    <button class="btn primary" id="emgo">检查</button>
+  </div>
+  <div id="msg"></div>
+  <div class="list" id="list"></div>
+</div>
+<script>
+window.__cpSeq=0;
+window.copyViaHost=function(t,cb){var id='cp_'+(++window.__cpSeq),done=false;function onMsg(e){var d=e&&e.data;if(d&&d.type==='plugin:copy-result'&&d.id===id){done=true;window.removeEventListener('message',onMsg);cb&&cb(!!d.ok)}}window.addEventListener('message',onMsg);parent.postMessage({type:'plugin:copy',id:id,text:t},'*');setTimeout(function(){if(!done)window.removeEventListener('message',onMsg)},300)};
+window.__qdNativeBound=true;(function(){var seq=0,pend={};window.pluginExec=function(c,i){return new Promise(function(res,rej){var id='qd_'+(++seq);pend[id]={res:res,rej:rej};parent.postMessage({type:'plugin:execute',id:id,command:c,input:i||{}},'*')})};window.addEventListener('message',function(e){var d=e.data;if(!d||d.type!=='plugin:result'||!d.id||!pend[d.id])return;var p=pend[d.id];delete pend[d.id];if(d.error)p.rej(new Error(typeof d.error==='string'?d.error:(d.error.message||'error')));else p.res(d.data||{})})})();
+document.querySelectorAll('.tab').forEach(function(t){t.onclick=function(){document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('on')});document.querySelectorAll('.block').forEach(function(x){x.classList.remove('on')});t.classList.add('on');document.getElementById('b-'+t.dataset.t).classList.add('on')}});
+function show(msg,cls){var l=document.getElementById('list');var d=document.createElement('div');d.className='result '+(cls||'');d.textContent=msg;l.innerHTML='';l.appendChild(d)}
+function breachesHtml(arr){var l=document.getElementById('list');l.innerHTML='';if(!arr.length){show('未发现该邮箱的泄露记录 ✅','safe');return}var h=document.createElement('div');h.className='result danger';h.textContent='该邮箱出现在 '+arr.length+' 次泄露中：';l.appendChild(h);arr.forEach(function(b){var el=document.createElement('div');el.className='breach';el.innerHTML='<span>'+b.Name+'</span><span>'+(b.BreachDate||'')+'</span>';l.appendChild(el)})}
+document.getElementById('pwgo').onclick=function(){var pw=document.getElementById('pw').value;if(!pw){document.getElementById('msg').textContent='请输入密码';return}document.getElementById('msg').textContent='查询中…';pluginExec('breach-password',{password:pw}).then(function(data){var d=typeof data==='string'?JSON.parse(data):data;if(d.error){document.getElementById('msg').textContent=d.error.message;return}document.getElementById('msg').textContent='';if(d.breached)show('⚠️ 该密码已在泄露库中出现 '+d.count+' 次，请立即更换！','danger');else show('✅ 未发现该密码的泄露记录（基于 HIBP 已知库）','safe')}).catch(function(e){document.getElementById('msg').textContent='查询失败: '+(e.message||e)})};
+document.getElementById('emgo').onclick=function(){var em=document.getElementById('em').value,key=document.getElementById('key').value;if(!em){document.getElementById('msg').textContent='请输入邮箱';return}document.getElementById('msg').textContent='查询中…';pluginExec('breach-email',{email:em,apiKey:key}).then(function(data){var d=typeof data==='string'?JSON.parse(data):data;if(d.error){document.getElementById('msg').textContent=d.error.message;return}document.getElementById('msg').textContent='';breachesHtml(d.breaches||[])}).catch(function(e){document.getElementById('msg').textContent='查询失败: '+(e.message||e)})};
+</script>
+</body>
+</html>

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>服务管理</title>
+<link rel="stylesheet" href="qd-theme.css">
+<link rel="stylesheet" href="components.css">
+<style>
+body{margin:0}
+.app{display:flex;flex-direction:column;height:100vh;padding:12px;gap:10px;box-sizing:border-box}
+.bar{display:flex;gap:8px}
+.inp{height:34px;padding:0 12px;flex:1;background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius);font-size:14px;font-family:inherit}
+.btn{height:34px;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:inherit}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.sm{height:26px;padding:0 10px;font-size:12px}
+.list{flex:1;overflow:auto;display:flex;flex-direction:column;gap:4px}
+.row{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius)}
+.row .meta{flex:1;min-width:0}
+.row .name{font-size:13px;color:var(--text-primary);font-weight:600}
+.row .sub{font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .acts{display:flex;gap:6px;flex-shrink:0}
+.badge{font-size:11px;padding:2px 8px;border-radius:10px;flex-shrink:0}
+.b-run{background:rgba(52,153,62,.18);color:#35c268}
+.b-stop{background:rgba(226,75,74,.18);color:#e24b4a}
+.b-pen{background:rgba(212,102,21,.18);color:#d46615}
+#msg{font-size:12px;color:#e24b4a;min-height:14px}
+.hint{font-size:11px;color:var(--text-muted)}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="bar">
+    <input class="inp" id="filter" placeholder="按名称筛选（如 Spooler / Windows Update）">
+    <button class="btn primary" id="go">查询</button>
+  </div>
+  <div id="msg"></div>
+  <div class="list" id="list"><div class="hint">输入筛选条件后点击「查询」</div></div>
+</div>
+<script>
+window.__cpSeq=0;
+window.copyViaHost=function(t,cb){var id='cp_'+(++window.__cpSeq),done=false;function onMsg(e){var d=e&&e.data;if(d&&d.type==='plugin:copy-result'&&d.id===id){done=true;window.removeEventListener('message',onMsg);cb&&cb(!!d.ok)}}window.addEventListener('message',onMsg);parent.postMessage({type:'plugin:copy',id:id,text:t},'*');setTimeout(function(){if(!done)window.removeEventListener('message',onMsg)},300)};
+window.__qdNativeBound=true;(function(){var seq=0,pend={};window.pluginExec=function(c,i){return new Promise(function(res,rej){var id='qd_'+(++seq);pend[id]={res:res,rej:rej};parent.postMessage({type:'plugin:execute',id:id,command:c,input:i||{}},'*')})};window.addEventListener('message',function(e){var d=e.data;if(!d||d.type!=='plugin:result'||!d.id||!pend[d.id])return;var p=pend[d.id];delete pend[d.id];if(d.error)p.rej(new Error(typeof d.error==='string'?d.error:(d.error.message||'error')));else p.res(d.data||{})})})();
+function badge(s){if(s==='Running')return '<span class="badge b-run">运行中</span>';if(s==='Stopped')return '<span class="badge b-stop">已停止</span>';return '<span class="badge b-pen">'+s+'</span>'}
+function render(list){var l=document.getElementById('list');l.innerHTML='';
+  if(!list.length){l.innerHTML='<div class="hint">无匹配服务</div>';return}
+  list.forEach(function(s){var el=document.createElement('div');el.className='row';
+    var acts='';
+    if(s.status==='Running'){acts+='<button class="btn sm" data-act="stop" data-name="'+s.name+'">停止</button><button class="btn sm" data-act="restart" data-name="'+s.name+'">重启</button>'}
+    else {acts+='<button class="btn sm primary" data-act="start" data-name="'+s.name+'">启动</button>'}
+    el.innerHTML='<div class="meta"><div class="name">'+s.name+'</div><div class="sub">'+s.displayName+' · '+s.startType+'</div></div>'+badge(s.status)+'<div class="acts">'+acts+'</div>';
+    l.appendChild(el)});
+  l.querySelectorAll('button[data-act]').forEach(function(b){b.onclick=function(){act(b.dataset.name,b.dataset.act)}})}
+function act(name,a){document.getElementById('msg').textContent=a+' 操作中…';pluginExec('service-action',{name:name,action:a}).then(function(data){var d=typeof data==='string'?JSON.parse(data):data;if(d.error){document.getElementById('msg').textContent=d.error.message||'操作失败';return}document.getElementById('msg').textContent='';go()}).catch(function(e){document.getElementById('msg').textContent='操作失败: '+(e.message||e)})}
+function go(){var f=document.getElementById('filter').value.trim();document.getElementById('msg').textContent='查询中…';pluginExec('service-list',{filter:f}).then(function(data){var d=typeof data==='string'?JSON.parse(data):data;if(d.error){document.getElementById('msg').textContent=d.error.message||'查询失败';return}document.getElementById('msg').textContent='';render(d.services||[])}).catch(function(e){document.getElementById('msg').textContent='查询失败: '+(e.message||e)})}
+document.getElementById('go').onclick=go;
+document.getElementById('filter').addEventListener('keydown',function(e){if(e.key==='Enter')go()});
+window.addEventListener('message',function(e){if(e.data&&e.data.type==='plugin:init'){if(e.data.data&&e.data.data.text)document.getElementById('filter').value=e.data.data.text;go()}});
+</script>
+</body>
+</html>

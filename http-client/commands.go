@@ -144,7 +144,9 @@ func cmdReqSend(id int64, input map[string]interface{}) {
 		respondError(id, -32603, err.Error())
 		return
 	}
+	srv.bgWg.Add(1)
 	go func() {
+		defer srv.bgWg.Done()
 		_, _ = srv.db.RecordHistory(&HttpRequestHistory{
 			ProjectID:  cp.ProjectID,
 			Name:       cp.Name,

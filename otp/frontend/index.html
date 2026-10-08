@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>OTP 验证器</title>
+<link rel="stylesheet" href="qd-theme.css">
+<link rel="stylesheet" href="components.css">
+<style>
+body{margin:0}
+.app{display:flex;flex-direction:column;height:100vh;padding:12px;gap:10px;box-sizing:border-box}
+.row{display:flex;gap:8px;align-items:center}
+.inp{height:32px;padding:0 10px;background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit}
+.btn{height:32px;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:inherit}
+.btn:hover{color:var(--text-primary)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.list{flex:1;overflow:auto;display:flex;flex-direction:column;gap:8px}
+.item{display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius)}
+.item .lab{flex:1;min-width:0}
+.item .lab .n{font-size:14px;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .lab .s{font-size:11px;color:var(--text-muted);word-break:break-all}
+.item .code{font-size:22px;font-weight:600;font-family:var(--font-mono);color:var(--accent);letter-spacing:2px}
+.item .cd{font-size:11px;color:var(--text-muted);width:34px;text-align:center}
+.item .del{color:#e24b4a;cursor:pointer;font-size:13px;padding:0 4px}
+.empty{display:flex;align-items:center;justify-content:center;flex:1;color:var(--text-muted);font-size:13px}
+#bar{height:3px;background:var(--accent);border-radius:2px;transition:width .9s linear}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="row">
+    <input class="inp" id="label" placeholder="名称，如 GitHub" style="flex:1">
+    <input class="inp" id="secret" placeholder="Base32 密钥" style="flex:1.4">
+    <button class="btn primary" id="add">添加</button>
+  </div>
+  <div id="bar"></div>
+  <div class="list" id="list"></div>
+</div>
+<script>
+window.__cpSeq=0;
+window.copyViaHost=function(t,cb){var id='cp_'+(++window.__cpSeq),done=false;function onMsg(e){var d=e&&e.data;if(d&&d.type==='plugin:copy-result'&&d.id===id){done=true;window.removeEventListener('message',onMsg);cb&&cb(!!d.ok)}}window.addEventListener('message',onMsg);parent.postMessage({type:'plugin:copy',id:id,text:t},'*');setTimeout(function(){if(!done)window.removeEventListener('message',onMsg)},300)};
+var store={get:function(){try{return JSON.parse(localStorage.getItem('otp_accounts')||'[]')}catch(e){return MEM}},set:function(v){MEM=v;try{localStorage.setItem('otp_accounts',JSON.stringify(v))}catch(e){}}},MEM=[];
+function b32(s){s=s.toUpperCase().replace(/=+$/,'').replace(/\s/g,'');var A='ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';var bits='',out=[];for(var i=0;i<s.length;i++){var v=A.indexOf(s[i]);if(v<0)continue;bits+=('00000'+v.toString(2)).slice(-5)}for(var j=0;j+8<=bits.length;j+=8)out.push(parseInt(bits.substr(j,8),2));return new Uint8Array(out)}
+async function totp(secret){var key=b32(secret);var kc=await crypto.subtle.importKey('raw',key,{name:'HMAC',hash:'SHA-1'},false,['sign']);var t=Math.floor(Date.now()/1000/30);var buf=new ArrayBuffer(8),dv=new DataView(buf);dv.setUint32(4,t);var h=new Uint8Array(await crypto.subtle.sign('HMAC',kc,buf));var o=h[19]&0xf;var code=(h[o]&0x7f)<<24|h[o+1]<<16|h[o+2]<<8|h[o+3];return('000000'+(code%1000000)).slice(-6)}
+var list=document.getElementById('list');
+async function render(){var accs=store.get();if(!accs.length){list.innerHTML='<div class="empty">还没有账号，添加第一个</div>';return}var now=Math.floor(Date.now()/1000),left=30-now%30;document.getElementById('bar').style.width=(left/30*100)+'%';list.innerHTML='';for(var i=0;i<accs.length;i++){var a=accs[i];var code='……';try{code=await totp(a.secret)}catch(e){code='密钥错误'}var el=document.createElement('div');el.className='item';el.innerHTML='<div class="lab"><div class="n">'+esc(a.label)+'</div><div class="s">'+esc(a.secret)+'</div></div><div class="code" data-i="'+i+'">'+code+'</div><div class="cd">'+left+'</div><div class="del" data-i="'+i+'">删</div>';list.appendChild(el)}}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+document.getElementById('add').onclick=function(){var lab=document.getElementById('label').value.trim(),sec=document.getElementById('secret').value.trim();if(!sec){return}var accs=store.get();accs.push({label:lab||'未命名',secret:sec});store.set(accs);document.getElementById('label').value='';document.getElementById('secret').value='';render()};
+list.addEventListener('click',function(e){if(e.target.classList.contains('del')){var accs=store.get();accs.splice(+e.target.dataset.i,1);store.set(accs);render()}else if(e.target.classList.contains('code')){window.copyViaHost(e.target.textContent)}});
+setInterval(render,1000);render();
+</script>
+</body>
+</html>

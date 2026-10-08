@@ -1,0 +1,59 @@
+{
+  "id": "io.github.parieses.flashcards",
+  "name": "背单词卡",
+  "version": "1.0.2",
+  "description": "本地单词闪卡与间隔重复记忆（SM-2 算法），内置常用词库，支持自定义词单导入。",
+  "author": "QuickDock",
+  "category": "教育学习",
+  "platforms": [
+    "windows"
+  ],
+  "icon": "icon.svg",
+  "backend": {
+    "runtime": "none"
+  },
+  "host_apis": [],
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 640,
+    "height": 600
+  },
+  "permissions": {},
+  "commands": [
+    {
+      "id": "flashcards",
+      "title": "背单词卡",
+      "keywords": [
+        "flashcard",
+        "word",
+        "背单词",
+        "闪卡",
+        "记忆"
+      ],
+      "aliases": [
+        "背单词",
+        "闪卡",
+        "单词卡"
+      ],
+      "prefix": "/fc",
+      "title_i18n": {
+        "zh-CN": "背单词卡",
+        "en-US": "Flashcards"
+      }
+    }
+  ],
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "name_i18n": {
+    "zh-CN": "背单词卡",
+    "en-US": "Flashcards"
+  },
+  "description_i18n": {
+    "zh-CN": "本地单词闪卡与间隔重复记忆，内置词库可导入",
+    "en-US": "Local flashcards with spaced repetition; built-in word lists."
+  },
+  "changelog": "## v1.0.2\n\n- 修复默认词库判空逻辑缺陷导致进入即提示「复习完成」\n\n## v1.0.1\n\n- 修复评级按钮 dataset 属性导致 SM2 失效\n\n## v1.0.0\n\n- 本地单词闪卡 + SM-2 间隔重复，内置词库可导入"
+}

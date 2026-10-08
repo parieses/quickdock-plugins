@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>视频转 GIF</title>
+<link rel="stylesheet" href="qd-theme.css">
+<link rel="stylesheet" href="components.css">
+<style>
+body{margin:0}
+.app{display:flex;flex-direction:column;height:100vh;padding:12px;gap:10px;box-sizing:border-box}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.lbl{font-size:12px;color:var(--text-muted)}
+.inp{height:32px;padding:0 10px;background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit}
+.btn{height:32px;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:inherit}
+.btn:hover:not(:disabled){color:var(--text-primary)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+#out{flex:1;display:flex;align-items:center;justify-content:center;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius);overflow:auto;min-height:0}
+#out img{max-width:100%;max-height:100%}
+#msg{font-size:12px;color:var(--text-muted);min-height:14px}
+#prog{font-size:12px;color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="row">
+    <label class="btn" id="pickBtn" for="file">选择视频</label>
+    <input type="file" id="file" accept="video/*" style="display:none">
+    <span class="lbl">起始(s)</span><input class="inp" id="ss" value="0" style="width:54px">
+    <span class="lbl">时长(s)</span><input class="inp" id="dur" value="3" style="width:54px">
+    <span class="lbl">帧率</span><input class="inp" id="fps" value="10" style="width:48px">
+    <span class="lbl">宽(px)</span><input class="inp" id="w" value="320" style="width:60px">
+  </div>
+  <div class="row">
+    <button class="btn primary" id="conv" disabled>转换</button>
+    <button class="btn" id="dl" disabled>下载</button>
+    <span id="prog"></span>
+    <span style="flex:1"></span>
+    <span id="msg">首次转换需联网加载 ffmpeg.wasm</span>
+  </div>
+  <div id="out"><span style="color:var(--text-muted);font-size:13px">选择视频后转换</span></div>
+</div>
+<script>
+var ffmpeg=null,loaded=false,lastBlob=null;
+document.getElementById('file').addEventListener('change',function(){var f=this.files[0];document.getElementById('conv').disabled=!f;if(f)document.getElementById('pickBtn').textContent=f.name.length>24?f.name.slice(0,21)+'…':f.name;});
+async function ensure(){if(loaded)return;document.getElementById('msg').textContent='加载 ffmpeg.wasm 中…';var s=document.createElement('script');s.src='https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js';await new Promise(function(r,j){s.onload=r;s.onerror=function(){j(new Error('加载失败'))};document.head.appendChild(s)});var FF=window.FFmpegWASM||window.FFmpeg;ffmpeg=new FF.FFmpeg();ffmpeg.on('progress',function(p){document.getElementById('prog').textContent='进度 '+Math.round((p.progress||0)*100)+'%'});await ffmpeg.load({coreURL:'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js',wasmURL:'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.wasm'});loaded=true;document.getElementById('msg').textContent='就绪'}
+document.getElementById('conv').onclick=async function(){try{await ensure()}catch(e){document.getElementById('msg').textContent='加载失败：'+e.message;return}var f=document.getElementById('file').files[0];if(!f)return;var name=f.name.split('.').slice(0,-1).join('.')||'video';document.getElementById('msg').textContent='转换中…';var buf=new Uint8Array(await f.arrayBuffer());await ffmpeg.writeFile('in.mp4',buf);await ffmpeg.exec(['-i','in.mp4','-ss',document.getElementById('ss').value,'-t',document.getElementById('dur').value,'-vf','fps='+document.getElementById('fps').value+',scale='+document.getElementById('w').value+':-1','out.gif']);var d=await ffmpeg.readFile('out.gif');lastBlob=new Blob([d.buffer],{type:'image/gif'});document.getElementById('out').innerHTML='<img src="'+URL.createObjectURL(lastBlob)+'">';document.getElementById('dl').disabled=false;document.getElementById('msg').textContent='完成'};
+document.getElementById('dl').onclick=function(){if(!lastBlob)return;var a=document.createElement('a');a.href=URL.createObjectURL(lastBlob);a.download='output.gif';a.click()};
+</script>
+</body>
+</html>

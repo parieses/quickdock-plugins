@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>代码运行沙箱</title>
+<link rel="stylesheet" href="qd-theme.css">
+<link rel="stylesheet" href="components.css">
+<style>
+body{margin:0}
+.app{display:flex;flex-direction:column;height:100vh;padding:12px;gap:10px;box-sizing:border-box}
+.tabs{display:flex;gap:6px;flex-shrink:0}
+.tab{height:30px;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:inherit}
+.tab.active{color:var(--accent);border-color:var(--accent)}
+.main{flex:1;display:flex;gap:10px;min-height:0}
+.col{flex:1;display:flex;flex-direction:column;gap:6px;min-width:0}
+.cap{font-size:12px;color:var(--text-muted)}
+#code{flex:1;width:100%;resize:none;padding:10px;font-size:13px;line-height:1.5;font-family:var(--font-mono);background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius);box-sizing:border-box}
+#out{flex:1;width:100%;resize:none;padding:10px;font-size:12px;line-height:1.45;font-family:var(--font-mono);white-space:pre-wrap;overflow:auto;background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius);box-sizing:border-box}
+#preview{flex:1;width:100%;border:1px solid var(--border);border-radius:var(--radius);background:#fff;display:none}
+.bar{display:flex;gap:8px;align-items:center;flex-shrink:0}
+.btn{height:32px;padding:0 16px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:inherit}
+.btn:hover{color:var(--text-primary)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+#hint{font-size:11px;color:var(--text-muted)}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="tabs">
+    <button class="tab active" data-m="js">JavaScript</button>
+    <button class="tab" data-m="html">HTML</button>
+    <button class="tab" data-m="py">Python</button>
+  </div>
+  <div class="main">
+    <div class="col">
+      <span class="cap">代码</span>
+      <textarea id="code" spellcheck="false"></textarea>
+    </div>
+    <div class="col" id="outCol">
+      <span class="cap" id="outCap">输出</span>
+      <textarea id="out" readonly placeholder="运行结果…"></textarea>
+      <iframe id="preview" sandbox="allow-scripts"></iframe>
+    </div>
+  </div>
+  <div class="bar">
+    <button class="btn primary" id="run">运行</button>
+    <span id="hint">JS/HTML 本地运行；Python 首次需从 CDN 加载 Pyodide</span>
+    <span style="flex:1"></span>
+    <button class="btn" id="sample">示例</button>
+  </div>
+</div>
+<script>
+var mode='js',pyReady=false,pyLoad=null;
+var SAMPLES={
+ js:"// JavaScript\nconsole.log('hello', 1+2);\n[1,2,3].map(x=>x*x).forEach(console.log);",
+ html:"<h2 style='font-family:sans-serif'>Hello</h2>\n<button onclick='alert(1)'>点我</button>",
+ py:"# Python\nimport math\nprint('pi =', round(math.pi, 4))\nfor i in range(3):\n    print('num', i)"
+};
+document.querySelectorAll('.tab').forEach(function(b){b.onclick=function(){mode=b.dataset.m;document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});b.classList.add('active');document.getElementById('outCap').textContent=mode==='html'?'预览':(mode==='py'?'输出':'输出');swapView()}});
+function swapView(){var html=mode==='html';document.getElementById('out').style.display=html?'none':'flex';var pv=document.getElementById('preview');pv.style.display=html?'block':'none';document.getElementById('outCap').textContent=html?'预览':'输出'}
+var code=document.getElementById('code'),out=document.getElementById('out');
+document.getElementById('sample').onclick=function(){code.value=SAMPLES[mode]||''};
+document.getElementById('run').onclick=function(){
+  if(mode==='js'){runJS()}
+  else if(mode==='html'){var p=document.getElementById('preview');p.srcdoc=code.value}
+  else{runPy()}
+};
+function runJS(){out.value='';var logs=[];try{var stub='var console={log:function(){logs.push(Array.prototype.slice.call(arguments).map(fmt).join(" "))},error:function(){logs.push("[err] "+Array.prototype.slice.call(arguments).map(fmt).join(" "))},warn:function(){logs.push("[warn] "+Array.prototype.slice.call(arguments).map(fmt).join(" "))}};';var fn=new Function(stub+'try{'+(code.value)+'\n}catch(e){logs.push("[err] "+(e&&e.stack||e))}');fn();out.value=logs.join('\n')||'(无输出)'}catch(e){out.value='[err] '+(e&&e.stack||e)}}
+function fmt(v){if(typeof v==='object'){try{return JSON.stringify(v)}catch(e){return String(v)}}return String(v)}
+function loadPy(){if(pyReady)return Promise.resolve();if(pyLoad)return pyLoad;pyLoad= new Promise(function(res,rej){var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js';s.onload=function(){pyodide.loadPackage([]).then(function(){pyReady=true;res()})};s.onerror=function(){rej(new Error('Pyodide 加载失败（需联网）'))};document.head.appendChild(s)});return pyLoad}
+function runPy(){out.value='加载/运行中…';loadPy().then(function(){return pyodide.runPythonAsync(code.value)}).then(function(r){out.value=String(r||'')}).catch(function(e){out.value='[err] '+e})}
+code.value=SAMPLES.js;
+</script>
+</body>
+</html>

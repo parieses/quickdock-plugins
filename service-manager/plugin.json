@@ -1,0 +1,61 @@
+{
+  "id": "io.github.parieses.service-manager",
+  "name": "服务管理",
+  "version": "1.0.0",
+  "description": "查看本机 Windows 服务列表，按名称筛选，并启动 / 停止 / 重启服务。",
+  "author": "QuickDock",
+  "category": "系统工具",
+  "platforms": [
+    "windows"
+  ],
+  "icon": "icon.svg",
+  "backend": {
+    "runtime": "native",
+    "entry": "service-manager"
+  },
+  "host_apis": [],
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 680,
+    "height": 560
+  },
+  "permissions": {
+    "network": false
+  },
+  "commands": [
+    {
+      "id": "service-list",
+      "title": "列出 Windows 服务",
+      "keywords": [
+        "service",
+        "服务",
+        "windows",
+        "system"
+      ],
+      "aliases": [
+        "服务管理",
+        "Windows 服务"
+      ],
+      "prefix": "/service",
+      "acceptsInput": true,
+      "title_i18n": {
+        "zh-CN": "列出 Windows 服务",
+        "en-US": "List Windows Services"
+      }
+    }
+  ],
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "name_i18n": {
+    "zh-CN": "服务管理",
+    "en-US": "Service Manager"
+  },
+  "description_i18n": {
+    "zh-CN": "查看 Windows 服务列表并启动/停止/重启",
+    "en-US": "List Windows services and start/stop/restart them."
+  },
+  "changelog": "## v1.0.0\n\n- 枚举 Windows 服务、按名筛选、启动/停止/重启"
+}

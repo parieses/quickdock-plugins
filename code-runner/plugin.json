@@ -1,0 +1,60 @@
+{
+  "id": "io.github.parieses.code-runner",
+  "name": "代码运行沙箱",
+  "version": "1.0.2",
+  "description": "在浏览器内运行 JS / HTML 片段并实时预览，可选加载 Pyodide 运行 Python。无需安装任何环境。",
+  "author": "QuickDock",
+  "category": "开发者日常",
+  "platforms": [
+    "windows"
+  ],
+  "icon": "icon.svg",
+  "backend": {
+    "runtime": "none"
+  },
+  "host_apis": [],
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 960,
+    "height": 680
+  },
+  "permissions": {},
+  "commands": [
+    {
+      "id": "code-run",
+      "title": "代码运行",
+      "keywords": [
+        "run",
+        "code",
+        "snippet",
+        "沙箱",
+        "运行代码"
+      ],
+      "aliases": [
+        "代码运行",
+        "运行代码",
+        "沙箱"
+      ],
+      "prefix": "/run",
+      "acceptsInput": true,
+      "title_i18n": {
+        "zh-CN": "代码运行",
+        "en-US": "Code Runner"
+      }
+    }
+  ],
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "name_i18n": {
+    "zh-CN": "代码运行沙箱",
+    "en-US": "Code Runner"
+  },
+  "description_i18n": {
+    "zh-CN": "浏览器内运行 JS/HTML 片段并实时预览，可选 Pyodide 运行 Python",
+    "en-US": "Run JS/HTML snippets in-browser with live preview; optional Pyodide for Python."
+  },
+  "changelog": "## v1.0.2\n\n- 修复 JS 脚本解析错误（多余右花括号）导致运行/预览按钮无响应\n\n## v1.0.1\n\n- 修复 HTML/预览视图切换失效\n\n## v1.0.0\n\n- 浏览器内运行 JS/HTML 并实时预览；可选 Pyodide 运行 Python"
+}

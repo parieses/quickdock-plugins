@@ -466,7 +466,8 @@ $('fLocale').addEventListener('change', doGenFake);
 $('fGen').addEventListener('click', doGenFake);
 $('fCopyAll').addEventListener('click', function(){
   if ($('fType').value === 'person' && lastPersonRows.length){
-    var csv = '姓名,手机号,邮箱,地址\n' + lastPersonRows.map(function(r){ return r.join(','); }).join('\n');
+    var esc = function (f) { f = String(f == null ? '' : f); return /[",\n\r]/.test(f) ? '"' + f.replace(/"/g, '""') + '"' : f; };
+    var csv = '姓名,手机号,邮箱,地址\n' + lastPersonRows.map(function (r) { return r.map(esc).join(','); }).join('\n');
     window.copyViaHost(csv, function(){ status(L('导出CSV(含表头） ') + lastPersonRows.length); });
   } else { copyAll('fake'); }
 });

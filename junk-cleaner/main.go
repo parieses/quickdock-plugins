@@ -965,19 +965,34 @@ func handleTaskStatus(id int64, input map[string]interface{}) {
 		respondError(id, -32602, "缺少 taskId")
 		return
 	}
-	t, ok := getTask(taskID)
+	tasksMu.Lock()
+	t, ok := tasks[taskID]
 	if !ok {
+		tasksMu.Unlock()
 		respondError(id, -32602, "任务不存在或已过期")
 		return
 	}
-	out := map[string]interface{}{"id": t.ID, "status": t.Status}
-	if t.Message != "" {
-		out["message"] = t.Message
+	// 锁内快照可变字段，锁外仅读局部副本；
+	// 后台 finishTask/updateTaskMessage 持 tasksMu 写这些字段，
+	// 未快照会与 json.Marshal 读到的 Result(map) 并发撕裂。
+	status := t.Status
+	msg := t.Message
+	e := t.Error
+	var res map[string]interface{}
+	if status == "done" {
+		res = t.Result
 	}
-	if t.Status == "done" {
-		out["result"] = t.Result
-	} else if t.Status == "error" {
-		out["error"] = t.Error
+	id0 := t.ID
+	tasksMu.Unlock()
+
+	out := map[string]interface{}{"id": id0, "status": status}
+	if msg != "" {
+		out["message"] = msg
+	}
+	if status == "done" {
+		out["result"] = res
+	} else if status == "error" {
+		out["error"] = e
 	}
 	respond(id, out)
 }

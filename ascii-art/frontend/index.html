@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>ASCII 艺术</title>
+<link rel="stylesheet" href="qd-theme.css">
+<link rel="stylesheet" href="components.css">
+<style>
+body{margin:0}
+.app{display:flex;flex-direction:column;height:100vh;padding:12px;gap:10px;box-sizing:border-box}
+.tabs{display:flex;gap:6px;flex-shrink:0}
+.tab{height:30px;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:inherit}
+.tab.active{color:var(--accent);border-color:var(--accent)}
+.panel{display:none;flex-direction:column;gap:10px;flex:1;min-height:0}
+.panel.active{display:flex}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.lbl{font-size:12px;color:var(--text-muted)}
+.inp{height:32px;padding:0 10px;background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit}
+#imgFile{font-size:12px;color:var(--text-muted)}
+#ta{flex:1;width:100%;resize:none;padding:10px;font-size:11px;line-height:1.05;font-family:var(--font-mono);white-space:pre;overflow:auto;background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius);box-sizing:border-box}
+.btn{height:32px;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:inherit}
+.btn:hover{color:var(--text-primary)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+#err{color:#e24b4a;font-size:12px;min-height:14px}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="tabs">
+    <button class="tab active" data-t="img">图片转字符画</button>
+    <button class="tab" data-t="txt">文字大字母</button>
+  </div>
+
+  <div class="panel active" id="pImg">
+    <div class="row">
+      <label class="btn" id="pickImg" for="imgFile">选择图片</label>
+      <input type="file" id="imgFile" accept="image/*" style="display:none">
+      <span class="lbl">宽度(字符)</span>
+      <input class="inp" id="aw" type="number" value="80" min="20" max="200" style="width:64px">
+      <span class="lbl">字符集</span>
+      <select class="inp" id="ach">
+        <option value=" .:-=+*#%@">标准</option>
+        <option value=" .'`^&quot;,:;Il!i&gt;&lt;~+_-?][}{1)(|/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&amp;8%B@$">密集</option>
+      </select>
+      <label class="lbl"><input type="checkbox" id="ainv"> 反相</label>
+    </div>
+    <div id="err"></div>
+    <textarea id="ta" readonly placeholder="选择图片后自动生成字符画…"></textarea>
+  </div>
+
+  <div class="panel" id="pTxt">
+    <div class="row">
+      <input class="inp" id="tw" type="text" value="HELLO" maxlength="20" style="width:160px">
+      <span class="lbl">填充</span>
+      <select class="inp" id="tch"><option value="#">#</option><option value="*">*</option><option value="@">@</option><option value="$">$</option></select>
+    </div>
+    <textarea id="ta2" readonly placeholder="生成的文字大字母…"></textarea>
+  </div>
+
+  <div class="row">
+    <span style="flex:1"></span>
+    <button class="btn" id="copy">复制</button>
+  </div>
+</div>
+<script>
+window.__cpSeq=0;
+window.copyViaHost=function(t,cb){var id='cp_'+(++window.__cpSeq),done=false;function onMsg(e){var d=e&&e.data;if(d&&d.type==='plugin:copy-result'&&d.id===id){done=true;window.removeEventListener('message',onMsg);cb&&cb(!!d.ok)}}window.addEventListener('message',onMsg);parent.postMessage({type:'plugin:copy',id:id,text:t},'*');setTimeout(function(){if(!done)window.removeEventListener('message',onMsg)},300)};
+document.querySelectorAll('.tab').forEach(function(b){b.onclick=function(){document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});document.querySelectorAll('.panel').forEach(function(x){x.classList.remove('active')});b.classList.add('active');document.getElementById(b.dataset.t==='img'?'pImg':'pTxt').classList.add('active')}});
+var FONT={"A":["01110","10001","10001","11111","10001"],"B":["11110","10001","11110","10001","11110"],"C":["01110","10001","10001","10001","01110"],"D":["11110","10001","10001","10001","11110"],"E":["11111","10000","11110","10000","11111"],"F":["11111","10000","11110","10000","10000"],"G":["01110","10001","10001","10101","01101"],"H":["10001","10001","11111","10001","10001"],"I":["11111","00100","00100","00100","11111"],"J":["00111","00010","00010","10010","01100"],"K":["10001","10010","11100","10010","10001"],"L":["10000","10000","10000","10000","11111"],"M":["10001","11011","10101","10001","10001"],"N":["10001","11001","10101","10011","10001"],"O":["01110","10001","10001","10001","01110"],"P":["11110","10001","11110","10000","10000"],"Q":["01110","10001","10001","10110","01111"],"R":["11110","10001","11110","10010","10001"],"S":["01111","10000","01110","00001","11110"],"T":["11111","00100","00100","00100","00100"],"U":["10001","10001","10001","10001","01110"],"V":["10001","10001","10001","01010","00100"],"W":["10001","10001","10101","11011","10001"],"X":["10001","01010","00100","01010","10001"],"Y":["10001","01010","00100","00100","00100"],"Z":["11111","00010","00100","01000","11111"],"0":["01110","10011","10101","11001","01110"],"1":["00100","01100","00100","00100","01110"],"2":["11110","00001","01110","10000","11111"],"3":["11110","00001","01110","00001","11110"],"4":["10010","10110","11111","00100","00100"],"5":["11111","10000","11110","00001","11110"],"6":["01110","10000","11110","10001","01110"],"7":["11111","00010","00100","00100","00100"],"8":["01110","10001","01110","10001","01110"],"9":["01110","10001","01111","00001","01110"]};
+function renderText(){var w=(document.getElementById('tw').value||'').toUpperCase();var ch=document.getElementById('tch').value;var out=[];for(var r=0;r<5;r++){var line='';for(var i=0;i<w.length;i++){var g=FONT[w[i]]||FONT[' ']||["00000","00000","00000","00000","00000"];for(var c=0;c<5;c++)line+=g[r][c]==='1'?ch:' ';line+='  '}out.push(line)}document.getElementById('ta2').value=out.join('\n')}
+document.getElementById('tw').addEventListener('input',renderText);
+document.getElementById('tch').addEventListener('change',renderText);renderText();
+var cv=document.createElement('canvas'),cx=cv.getContext('2d');
+function toAscii(){var f=document.getElementById('imgFile').files[0];if(!f)return;document.getElementById('err').textContent='';var img=new Image();img.onerror=function(){document.getElementById('err').textContent='图片读取失败'};img.onload=function(){var W=parseInt(document.getElementById('aw').value)||80;var sc=document.getElementById('ach').value;if(document.getElementById('ainv').checked)sc=sc.split('').reverse().join('');var ar=sc.split('');var hh=Math.max(1,Math.round(W*img.height/img.width/2));cv.width=W;cv.height=hh;cx.drawImage(img,0,0,W,hh);var d=cx.getImageData(0,0,W,hh).data;var lines=[];for(var y=0;y<hh;y++){var row='';for(var x=0;x<W;x++){var i=(y*W+x)*4;var lum=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];var idx=Math.round((255-lum)/255*(ar.length-1));row+=ar[idx]}lines.push(row)}document.getElementById('ta').value=lines.join('\n')};img.src=URL.createObjectURL(f)}
+document.getElementById('imgFile').addEventListener('change',function(){var f=this.files[0];if(f)document.getElementById('pickImg').textContent=f.name.length>20?f.name.slice(0,17)+'…':f.name;toAscii()});
+['aw','ach','ainv'].forEach(function(id){document.getElementById(id).addEventListener('change',toAscii)});
+document.getElementById('copy').addEventListener('click',function(){var el=document.querySelector('.panel.active').id==='pImg'?document.getElementById('ta'):document.getElementById('ta2');window.copyViaHost(el.value)});
+</script>
+</body>
+</html>

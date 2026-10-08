@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>系统信息</title>
+<link rel="stylesheet" href="qd-theme.css">
+<link rel="stylesheet" href="components.css">
+<style>
+body{margin:0}
+.app{display:flex;flex-direction:column;height:100vh;padding:12px;gap:10px;box-sizing:border-box}
+.bar{display:flex;gap:8px}
+.btn{height:34px;padding:0 16px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:inherit}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.list{flex:1;overflow:auto;display:flex;flex-direction:column;gap:6px}
+.item{display:flex;justify-content:space-between;gap:12px;padding:9px 12px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius)}
+.item .k{font-size:13px;color:var(--text-muted);white-space:nowrap}
+.item .v{font-size:13px;color:var(--text-primary);text-align:right;max-width:62%;word-break:break-all}
+.disk{margin-top:4px;padding:8px 12px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius)}
+.disk .top{display:flex;justify-content:space-between;font-size:13px;color:var(--text-primary)}
+.disk .meter{height:6px;background:var(--border);border-radius:3px;margin-top:6px;overflow:hidden}
+.disk .fill{height:100%;background:var(--accent)}
+#msg{font-size:12px;color:#e24b4a;min-height:14px}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="bar">
+    <button class="btn primary" id="go">采集</button>
+  </div>
+  <div id="msg"></div>
+  <div class="list" id="list"><div style="font-size:11px;color:var(--text-muted)">点击「采集」查看本机概览</div></div>
+</div>
+<script>
+window.__cpSeq=0;
+window.copyViaHost=function(t,cb){var id='cp_'+(++window.__cpSeq),done=false;function onMsg(e){var d=e&&e.data;if(d&&d.type==='plugin:copy-result'&&d.id===id){done=true;window.removeEventListener('message',onMsg);cb&&cb(!!d.ok)}}window.addEventListener('message',onMsg);parent.postMessage({type:'plugin:copy',id:id,text:t},'*');setTimeout(function(){if(!done)window.removeEventListener('message',onMsg)},300)};
+window.__qdNativeBound=true;(function(){var seq=0,pend={};window.pluginExec=function(c,i){return new Promise(function(res,rej){var id='qd_'+(++seq);pend[id]={res:res,rej:rej};parent.postMessage({type:'plugin:execute',id:id,command:c,input:i||{}},'*')})};window.addEventListener('message',function(e){var d=e.data;if(!d||d.type!=='plugin:result'||!d.id||!pend[d.id])return;var p=pend[d.id];delete pend[d.id];if(d.error)p.rej(new Error(typeof d.error==='string'?d.error:(d.error.message||'error')));else p.res(d.data||{})})})();
+var MB=1024*1024, GB=1024*1024*1024;
+function fmtSize(b){if(b===undefined||b===null||b===0)return '-';if(b>=GB)return (b/GB).toFixed(1)+' GB';return (b/MB).toFixed(0)+' MB'}
+var MAP={hostname:'主机名',os:'操作系统',osVersion:'系统版本',osBuild:'内部版本',arch:'架构',uptimeDays:'运行时长(天)',cpu:'CPU',cpuCores:'物理核心',cpuThreads:'逻辑线程',totalRam:'内存总量',gpu:'显卡'};
+function render(d){var l=document.getElementById('list');l.innerHTML='';
+  for(var k in MAP){if(d[k]===undefined||d[k]==='')continue;var v=d[k];if(k==='totalRam')v=fmtSize(v);
+    var el=document.createElement('div');el.className='item';el.innerHTML='<span class="k">'+MAP[k]+'</span><span class="v" data-copy="1">'+String(v)+'</span>';l.appendChild(el)}
+  if(d.disks&&d.disks.length){var dh=document.createElement('div');dh.className='item';dh.innerHTML='<span class="k">磁盘</span><span class="v">'+d.disks.length+' 个</span>';l.appendChild(dh);
+    d.disks.forEach(function(x){var used=(x.size||0)-(x.free||0);var pct=x.size?Math.round(used/x.size*100):0;var el=document.createElement('div');el.className='disk';el.innerHTML='<div class="top"><span>'+x.device+'</span><span>'+fmtSize(x.free)+' 可用 / '+fmtSize(x.size)+'</span></div><div class="meter"><div class="fill" style="width:'+pct+'%"></div></div>';l.appendChild(el)})}
+  if(!l.children.length)l.innerHTML='<div style="font-size:11px;color:var(--text-muted)">无数据</div>'}
+document.getElementById('list').addEventListener('click',function(e){if(e.target.dataset.copy)window.copyViaHost(e.target.textContent)});
+function go(){document.getElementById('msg').textContent='采集中…';pluginExec('system-info-collect',{}).then(function(data){var d=typeof data==='string'?JSON.parse(data):data;if(d.error){document.getElementById('msg').textContent=d.error.message||'采集失败';return}document.getElementById('msg').textContent='';render(d)}).catch(function(e){document.getElementById('msg').textContent='采集失败: '+(e.message||e)})}
+document.getElementById('go').onclick=go;
+go();
+</script>
+</body>
+</html>

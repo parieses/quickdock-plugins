@@ -529,35 +529,45 @@ func checkValidity(email string) validityResult {
 	if !syntaxOK {
 		return v
 	}
-	mxDone := make(chan struct{})
+	type mxRes struct {
+		hosts []string
+		has   bool
+	}
+	mxCh := make(chan mxRes, 1) // 缓冲 1，超时后 goroutine 仍能安全退出
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
 				_, _ = fmt.Fprintf(os.Stderr, "PANIC in checkValidity mx lookup: %v\n%s", r, debug.Stack())
 			}
 		}()
-		defer close(mxDone)
+		var res mxRes
 		mxs, err := net.LookupMX(domain)
 		if err == nil {
 			sort.SliceStable(mxs, func(i, j int) bool { return mxs[i].Pref < mxs[j].Pref })
 			for _, mx := range mxs {
 				h := strings.TrimSuffix(mx.Host, ".")
 				if h != "" {
-					v.MXHosts = append(v.MXHosts, h)
+					res.hosts = append(res.hosts, h)
 				}
 			}
-			if len(v.MXHosts) > 0 {
-				v.HasMX = true
+			if len(res.hosts) > 0 {
+				res.has = true
+				mxCh <- res
 				return
 			}
 		}
 		if ips, err := net.LookupIP(domain); err == nil && len(ips) > 0 {
-			v.MXHosts = []string{domain + " (直接 A 记录)"}
+			res.hosts = []string{domain + " (直接 A 记录)"}
 		}
+		mxCh <- res
 	}()
 	select {
-	case <-mxDone:
+	case res := <-mxCh:
+		// 仅主 goroutine 写 v，无竞争
+		v.MXHosts = res.hosts
+		v.HasMX = res.has
 	case <-time.After(5 * time.Second):
+		// 超时：goroutine 后续写入 buffered chan 即退出，不再触碰到 v
 	}
 	if len(v.MXHosts) > 0 {
 		probeSMTP(&v, email)

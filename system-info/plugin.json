@@ -1,0 +1,62 @@
+{
+  "id": "io.github.parieses.system-info",
+  "name": "系统信息",
+  "version": "1.0.0",
+  "description": "neofetch 式一键采集本机操作系统、CPU、内存、显卡、磁盘与运行时长等信息。",
+  "author": "QuickDock",
+  "category": "系统工具",
+  "platforms": [
+    "windows"
+  ],
+  "icon": "icon.svg",
+  "backend": {
+    "runtime": "native",
+    "entry": "system-info"
+  },
+  "host_apis": [],
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 560,
+    "height": 560
+  },
+  "permissions": {
+    "network": false
+  },
+  "commands": [
+    {
+      "id": "system-info-collect",
+      "title": "采集系统信息",
+      "keywords": [
+        "system",
+        "neofetch",
+        "系统信息",
+        "硬件",
+        "配置"
+      ],
+      "aliases": [
+        "系统信息",
+        "硬件信息"
+      ],
+      "prefix": "/sysinfo",
+      "acceptsInput": true,
+      "title_i18n": {
+        "zh-CN": "采集系统信息",
+        "en-US": "Collect System Info"
+      }
+    }
+  ],
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "name_i18n": {
+    "zh-CN": "系统信息",
+    "en-US": "System Info"
+  },
+  "description_i18n": {
+    "zh-CN": "neofetch 式采集操作系统、CPU、内存、显卡、磁盘与运行时长",
+    "en-US": "neofetch-style overview of OS, CPU, RAM, GPU, disks and uptime."
+  },
+  "changelog": "## v1.0.0\n\n- 一键采集系统/硬件概览（OS、CPU、内存、显卡、磁盘、运行时长）"
+}

@@ -491,7 +491,10 @@ func handleExport(id int64) {
 	snap := r.snapshot()
 	snap["config"] = r.cfg
 	snap["runId"] = r.seq
-	snap["stopTime"] = r.stopTime.Format(time.RFC3339)
+	r.mu.Lock()
+	st := r.stopTime
+	r.mu.Unlock()
+	snap["stopTime"] = st.Format(time.RFC3339)
 	respond(id, snap)
 }
 
@@ -539,7 +542,9 @@ func callHostMethod(method string, params interface{}) (json.RawMessage, error) 
 
 func (r *benchRun) run() {
 	defer func() {
+		r.mu.Lock()
 		r.stopTime = time.Now()
+		r.mu.Unlock()
 		r.done.Store(true)
 	}()
 	defer func() {

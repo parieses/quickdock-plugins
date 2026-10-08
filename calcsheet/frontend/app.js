@@ -77,7 +77,7 @@ function splitComment(raw) {
   for (let i=0;i<raw.length;i++) {
     if (raw[i]==='(') d++; else if (raw[i]===')') d--
     else if (d===0 && raw[i]==='/' && i+1<raw.length && raw[i+1]==='/') return { expr: raw.slice(0,i).trimEnd(), comment: raw.slice(i+2).trim() }
-    else if (d===0 && raw[i]==='#' && (i===0||raw[i-1]===' ')) return { expr: raw.slice(0,i).trimEnd(), comment: raw.slice(i+1).trim() }
+    else if (d===0 && raw[i]==='#' && (i===0||raw[i-1]===' ') && !/^\d{3,}/.test(raw.slice(i+1))) return { expr: raw.slice(0,i).trimEnd(), comment: raw.slice(i+1).trim() }
   }
   return { expr: raw.trim(), comment: '' }
 }

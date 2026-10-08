@@ -138,12 +138,16 @@
 
   function die() {
     alive = false
+    if (timer) { clearInterval(timer); timer = null }
+    if (boostTimer) { clearTimeout(boostTimer); boostTimer = null }
     elOver.hidden = false
     elOverText.textContent = '💀 游戏结束 · 得分 ' + score
   }
 
   function win() {
     alive = false
+    if (timer) { clearInterval(timer); timer = null }
+    if (boostTimer) { clearTimeout(boostTimer); boostTimer = null }
     elOver.hidden = false
     elOverText.textContent = '🏆 通关！蛇填满了棋盘'
   }

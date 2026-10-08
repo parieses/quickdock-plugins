@@ -35,7 +35,7 @@
 /* QuickDock sandbox 剪贴板桥接：iframe 内 navigator.clipboard 被 Permissions-Policy 禁用 */
 window.__cpSeq=0;
 window.execCopyFallback=function(t){try{var a=document.createElement('textarea');a.value=t;a.style.position='fixed';a.style.opacity='0';a.style.top='0';document.body.appendChild(a);a.select();var ok=document.execCommand('copy');document.body.removeChild(a);return ok}catch(e){return false}};
-window.copyViaHost=function(t,cb){var id='cp_'+(++window.__cpSeq),done=false;function onMsg(e){var d=e&&e.data;if(d&&d.type==='plugin:copy-result'&&d.id===id){done=true;window.removeEventListener('message',onMsg);cb&&cb(!!d.ok)}}window.addEventListener('message',onMsg);parent.postMessage({type:'plugin:copy',id:id,text:t},'*');setTimeout(function(){if(!done){window.removeEventListener('message',onMsg);cb&&cb(window.execCopyFallback(t))}},300)};
+window.copyViaHost=function(t,cb){var id='cp_'+(++window.__cpSeq),done=false;function onMsg(e){var d=e&&e.data;if(d&&d.type==='plugin:copy-result'&&d.id===id){done=true;window.removeEventListener('message',onMsg);var ok=!!d.ok;if(!ok){ok=window.execCopyFallback(t)}cb&&cb(ok)}}window.addEventListener('message',onMsg);parent.postMessage({type:'plugin:copy',id:id,text:t},'*');setTimeout(function(){if(!done){window.removeEventListener('message',onMsg);cb&&cb(window.execCopyFallback(t))}},300)};
 </script>
 <svg style="display:none" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><symbol id="icon-box" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></symbol></svg>
 <svg style="display:none" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><symbol id="icon-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></symbol><symbol id="icon-send" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></symbol><symbol id="icon-git-branch" viewBox="0 0 24 24"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></symbol><symbol id="icon-trash-2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></symbol><symbol id="icon-shield-alert" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></symbol><symbol id="icon-hard-drive" viewBox="0 0 24 24"><line x1="2" y1="12" x2="22" y2="12"></line><path d="M17 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></symbol><symbol id="icon-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></symbol><symbol id="icon-file-text" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></symbol><symbol id="icon-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></symbol><symbol id="icon-gauge" viewBox="0 0 24 24"><path d="M12 15l-2-2"></path><path d="M19.07 4.93a10 10 0 1 1-14.14 0"></path><path d="M12 2v4"></path></symbol><symbol id="icon-box" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></symbol></svg>
@@ -123,15 +123,34 @@ window.copyViaHost=function(t,cb){var id='cp_'+(++window.__cpSeq),done=false;fun
     var diff=text.length-result.length
     cpStatus.textContent='✅ '+lang.toUpperCase()+' '+(cpMode==='minify'?'压缩':'美化')+'完成 | '+(diff>0?'缩小 '+diff+' 字符':diff<0?'增大 '+(-diff)+' 字符':'大小不变')
   }
+  // 字符串感知的 JS 注释剥离：跳过 '...' / "..." / `...` 内的 // 和 /*，
+  // 避免把 URL（https://、//cdn）、含斜杠的字符串误判为注释。
+  function cpStripComments(src){
+    var out='', i=0, n=src.length, q=''
+    while(i<n){
+      var c=src[i], d=src[i+1]
+      if(q){
+        out+=c
+        if(c==='\\'){ if(i+1<n){ out+=src[i+1]; i+=2; continue } i++; continue }
+        if(c===q){ q='' }
+        i++; continue
+      }
+      if(c==='"'||c==="'"||c==='`'){ q=c; out+=c; i++; continue }
+      if(c==='/'&&d==='/'){ while(i<n&&src[i]!=='\n') i++; continue }
+      if(c==='/'&&d==='*'){ i+=2; while(i<n&&!(src[i]==='*'&&src[i+1]==='/')) i++; i+=2; continue }
+      out+=c; i++
+    }
+    return out
+  }
   function cpMinifyFn(code,lang){
     if(lang==='html')return code.replace(/<!--[\s\S]*?-->/g,'').replace(/>\s+</g,'><').replace(/\s{2,}/g,' ').trim()
     if(lang==='css')return code.replace(/\/\*[\s\S]*?\*\//g,'').replace(/\s+/g,' ').replace(/\s*([{}:;,>~+])\s*/g,'$1').trim()
-    return code.replace(/(?<!:)\/\/[^\n]*/g,'').replace(/\/\*[\s\S]*?\*\//g,'').replace(/\s+/g,' ').replace(/\s*([=+\-*/%&|^~!?:;{}()\[\],<>])\s*/g,'$1').replace(/;}/g,'}').trim()
+    return cpStripComments(code).replace(/\s+/g,' ').replace(/\s*([=+\-*/%&|^~!?:;{}()\[\],<>])\s*/g,'$1').replace(/;}/g,'}').trim()
   }
   function cpPrettifyFn(code,lang){
     if(lang==='html'){var out='',ind=0,i=0;while(i<code.length){if(code[i]==='<'){var tag='';while(i<code.length&&code[i]!=='>'){tag+=code[i];i++}tag+='>';if(tag.indexOf('</')===0)ind=Math.max(0,ind-1);if(out.length>0&&out[out.length-1]!=='\n')out+='\n';for(var s=0;s<ind;s++)out+='  ';out+=tag;if(tag.indexOf('</')<0&&tag.indexOf('/>')<0&&tag.indexOf('<!')!==0)ind++}else out+=code[i];i++}return out.trim()}
     if(lang==='css'){code=code.replace(/\/\*[\s\S]*?\*\//g,'');var out2='';for(var j=0;j<code.length;j++){var c=code[j];if(c==='{'){out2+=' {\n  '}else if(c==='}'){out2+='\n}\n'}else if(c===';'){out2+=';\n  '}else out2+=c}return out2.trim()}
-    code=code.replace(/(?<!:)\/\/[^\n]*/g,'').replace(/\/\*[\s\S]*?\*\//g,'')
+    code=cpStripComments(code)
     var out3='',indent=0,inStr=false,sc=''
     for(var k=0;k<code.length;k++){var ch=code[k],next=code[k+1]||''
       if(inStr){out3+=ch;if(ch==='\\'&&next){out3+=next;k++}else if(ch===sc)inStr=false;continue}

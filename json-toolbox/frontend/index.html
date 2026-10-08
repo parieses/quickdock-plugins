@@ -34,7 +34,7 @@
 .je-code{flex:1 1 auto;padding:4px 8px;outline:none;min-width:0;white-space:pre}
 .je-code>div{height:20px;line-height:20px;white-space:pre}
 .je-code .je-line-error{background:rgba(226,75,74,.20);box-shadow:inset 2px 0 0 var(--danger)}
-.je-hint{position:absolute;top:8px;left:56px;right:12px;color:var(--text-muted);font-family:var(--font-mono);font-size:12px;pointer-events:none;line-height:1.6}
+.je-hint{position:absolute;top:8px;left:56px;right:12px;color:var(--text-muted);font-family:var(--font-mono);font-size:12px;pointer-events:none;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere;z-index:2}
 .je-hint[hidden]{display:none}
 .je-error{color:var(--danger)}
 .je-status .ok{color:var(--success)}
@@ -110,7 +110,7 @@ window.copyViaHost=function(t,cb){var id='cp_'+(++window.__cpSeq),done=false;fun
           <div class="je-editor" id="jeEditor">
             <div class="je-gutter" id="jeGutter"></div>
             <div class="je-code" id="jeCode" contenteditable="true" spellcheck="false"></div>
-            <div class="je-hint" id="jeHint">在此粘贴 JSON（自动美化），或点击右上角“打开文件”…<br>{ "name": "QuickDock", "features": ["format", "edit", "fold"] }</div>
+            <div class="je-hint" id="jeHint">粘贴 JSON 自动美化，或打开文件</div>
           </div>
         </div>
       </div>
@@ -471,7 +471,7 @@ window.copyViaHost=function(t,cb){var id='cp_'+(++window.__cpSeq),done=false;fun
     var text = (e.clipboardData || window.clipboardData).getData('text/plain'); if (!text) return
     var f = tryFormat(text)
     if (f != null) { renderEditor(f); parseNow(); flashStatus('已粘贴并美化') }
-    else { document.execCommand('insertText', false, text) }
+    else { renderEditor(text); parseNow(); flashStatus('已粘贴') }
   })
   jeCode.addEventListener('keydown', function (e) { if (e.key === 'Tab') { e.preventDefault(); document.execCommand('insertText', false, '  ') } })
   jeGutter.addEventListener('click', function (e) { var t = e.target; if (t && t.classList && t.classList.contains('je-fold')) toggleFold(parseInt(t.getAttribute('data-start'), 10)) })

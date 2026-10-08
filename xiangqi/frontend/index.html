@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>中国象棋</title>
+<link rel="stylesheet" href="qd-theme.css">
+<link rel="stylesheet" href="components.css">
+<style>
+body{margin:0;display:flex;flex-direction:column;align-items:center;height:100vh;padding:10px;box-sizing:border-box;gap:8px}
+#cv{touch-action:none}
+.bar{display:flex;gap:8px}
+.btn{height:32px;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:inherit}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+#st{font-size:13px;color:var(--text-muted)}
+</style>
+</head>
+<body>
+<canvas id="cv" width="450" height="500"></canvas>
+<div class="bar">
+  <button class="btn primary" id="new">新对局</button>
+  <button class="btn" id="undo">悔棋</button>
+</div>
+<div id="st">红方先走（你执红）</div>
+<script>
+var CW=450,CH=500,cx=50,cy=50,cell=50;
+var cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+var board=[],sel=null,history=[],over=false,redTurn=true;
+var N={r:{K:'帅',A:'仕',E:'相',H:'马',R:'车',C:'炮',P:'兵'},b:{K:'将',A:'士',E:'象',H:'马',R:'车',C:'炮',P:'卒'}};
+var VAL={K:10000,A:120,E:120,H:270,R:600,C:300,P:30};
+function init(){board=Array.from({length:10},function(){return Array(9).fill(null)});
+ var top=['R','H','E','A','K','A','E','H','R'];
+ for(var x=0;x<9;x++){board[0][x]={t:top[x],c:'b'};board[9][x]={t:top[x],c:'r'}}
+ board[2][1]={t:'C',c:'b'};board[2][7]={t:'C',c:'b'};board[7][1]={t:'C',c:'r'};board[7][7]={t:'C',c:'r'};
+ for(var i=0;i<5;i++){board[3][i*2]={t:'P',c:'b'};board[6][i*2]={t:'P',c:'r'}}
+ sel=null;history=[];over=false;redTurn=true;document.getElementById('st').textContent='红方先走（你执红）';draw()}
+function inB(x,y){return x>=0&&x<9&&y>=0&&y<10}
+function at(x,y){return inB(x,y)?board[y][x]:null}
+function palace(x,y,c){return x>=3&&x<=5&&(c==='r'?y>=7&&y<=9:y>=0&&y<=2)}
+function moves(x,y){
+  var p=at(x,y); if(!p) return [];
+  var m=[];
+  if(p.t==='K'){
+    [[1,0],[-1,0],[0,1],[0,-1]].forEach(function(d){
+      var nx=x+d[0],ny=y+d[1],q=at(nx,ny);
+      if(inB(nx,ny)&&palace(nx,ny,p.c)&&(!q||q.c!==p.c)) m.push([nx,ny]);
+    });
+  } else if(p.t==='A'){
+    [[1,1],[1,-1],[-1,1],[-1,-1]].forEach(function(d){
+      var nx=x+d[0],ny=y+d[1],q=at(nx,ny);
+      if(inB(nx,ny)&&palace(nx,ny,p.c)&&(!q||q.c!==p.c)) m.push([nx,ny]);
+    });
+  } else if(p.t==='E'){
+    var dirs=[[2,2],[2,-2],[-2,2],[-2,-2]];
+    dirs.forEach(function(d){
+      var nx=x+d[0],ny=y+d[1];
+      if(!inB(nx,ny)) return;
+      if(p.c==='r'&&ny<5) return;
+      if(p.c==='b'&&ny>4) return;
+      if(at(x+d[0]/2,y+d[1]/2)) return;
+      var q=at(nx,ny);
+      if(!q||q.c!==p.c) m.push([nx,ny]);
+    });
+  } else if(p.t==='H'){
+    var L=[[1,2,1,0],[1,-2,1,0],[-1,2,-1,0],[-1,-2,-1,0],[2,1,0,1],[2,-1,0,-1],[-2,1,0,1],[-2,-1,0,-1]];
+    L.forEach(function(d){
+      var nx=x+d[0],ny=y+d[1];
+      if(at(x+d[2],y+d[3])) return;
+      var q=at(nx,ny);
+      if(inB(nx,ny)&&(!q||q.c!==p.c)) m.push([nx,ny]);
+    });
+  } else if(p.t==='R'){
+    [[1,0],[-1,0],[0,1],[0,-1]].forEach(function(d){
+      for(var i=1;i<10;i++){
+        var nx=x+d[0]*i,ny=y+d[1]*i,q=at(nx,ny);
+        if(!inB(nx,ny)) break;
+        if(!q){ m.push([nx,ny]); }
+        else { if(q.c!==p.c) m.push([nx,ny]); break; }
+      }
+    });
+  } else if(p.t==='C'){
+    [[1,0],[-1,0],[0,1],[0,-1]].forEach(function(d){
+      var seen=false;
+      for(var i=1;i<10;i++){
+        var nx=x+d[0]*i,ny=y+d[1]*i,q=at(nx,ny);
+        if(!inB(nx,ny)) break;
+        if(!q){ if(!seen) m.push([nx,ny]); }
+        else { if(!seen) seen=true; else { if(q.c!==p.c) m.push([nx,ny]); break; } }
+      }
+    });
+  } else if(p.t==='P'){
+    var fy=p.c==='r'?-1:1;
+    var cand=[[0,fy]];
+    if((p.c==='r'&&y<=4)||(p.c==='b'&&y>=5)) cand.push([1,0],[-1,0]);
+    cand.forEach(function(d){
+      var nx=x+d[0],ny=y+d[1],q=at(nx,ny);
+      if(inB(nx,ny)&&(!q||q.c!==p.c)) m.push([nx,ny]);
+    });
+  }
+  return m;
+}
+function allMoves(c){var r=[];for(var y=0;y<10;y++)for(var x=0;x<9;x++){var p=board[y][x];if(p&&p.c===c)moves(x,y).forEach(function(t){r.push([x,y,t[0],t[1]])})}return r}
+function apply(m){var p=board[m[1]][m[0]];history.push({m:m,cap:board[m[3]][m[2]]});board[m[3]][m[2]]=p;board[m[1]][m[0]]=null}
+function unapply(){var h=history.pop();board[h.m[1]][h.m[0]]=board[h.m[3]][h.m[2]];board[h.m[3]][h.m[2]]=h.cap}
+function score(){var s=0;for(var y=0;y<10;y++)for(var x=0;x<9;x++){var p=board[y][x];if(p)s+=p.c==='b'?VAL[p.t]:-VAL[p.t]}return s}
+function findKing(c){for(var y=0;y<10;y++)for(var x=0;x<9;x++){var p=board[y][x];if(p&&p.c===c&&p.t==='K')return[x,y]}return null}
+function attacked(x,y,by){for(var yy=0;yy<10;yy++)for(var xx=0;xx<9;xx++){var p=board[yy][xx];if(!p||p.c!==by)continue;var ms=moves(xx,yy);for(var i=0;i<ms.length;i++){if(ms[i][0]===x&&ms[i][1]===y)return true}}return false}
+function flyingGeneral(c){var k=findKing(c),e=findKing(c==='r'?'b':'r');if(!k||!e)return true;if(k[0]!==e[0])return false;var y1=Math.min(k[1],e[1]),y2=Math.max(k[1],e[1]);for(var y=y1+1;y<y2;y++){if(board[y][k[0]])return false}return true}
+function inCheck(c){if(flyingGeneral(c))return true;var k=findKing(c);if(!k)return true;return attacked(k[0],k[1],c==='r'?'b':'r')}
+function ai(){var ms=allMoves('b');if(!ms.length){over=true;document.getElementById('st').textContent='黑方无子可动，红方胜';return}
+ var legal=[];ms.forEach(function(m){apply(m);if(!inCheck('b'))legal.push(m);unapply()});
+ if(!legal.length){over=true;document.getElementById('st').textContent='黑方被将死，红方胜';return}
+ var best=null,bv=-1e9;legal.forEach(function(m){apply(m);var v=score()+(Math.random()*20-10);if(v>bv){bv=v;best=m}unapply()});
+ if(best){apply(best);
+  if(inCheck('r')){over=true;draw();document.getElementById('st').textContent='将军！红方被将死，黑方胜';return}
+  redTurn=true;draw();
+  var canMove=false;allMoves('r').forEach(function(m){apply(m);if(!inCheck('r'))canMove=true;unapply()});
+  if(!canMove){over=true;document.getElementById('st').textContent='红方被将死，黑方胜';return}
+  document.getElementById('st').textContent='红方走（你执红）'}}
+function draw(){ctx.clearRect(0,0,CW,CH);ctx.strokeStyle='#888';ctx.lineWidth=1;ctx.fillStyle='#caa46a';ctx.fillRect(0,0,CW,CH);
+ ctx.strokeStyle='#3a2a14';
+ for(var y=0;y<10;y++){ctx.beginPath();ctx.moveTo(cx,cy+y*cell);ctx.lineTo(cx+8*cell,cy+y*cell);ctx.stroke()}
+ for(var x=0;x<9;x++){if(x>0&&x<8){ctx.beginPath();ctx.moveTo(cx+x*cell,cy);ctx.lineTo(cx+x*cell,cy+4*cell);ctx.stroke();ctx.beginPath();ctx.moveTo(cx+x*cell,cy+5*cell);ctx.lineTo(cx+x*cell,cy+9*cell);ctx.stroke()}else{ctx.beginPath();ctx.moveTo(cx+x*cell,cy);ctx.lineTo(cx+x*cell,cy+9*cell);ctx.stroke()}}
+ [[3,0,5,2],[3,7,5,9]].forEach(function(p){ctx.beginPath();ctx.moveTo(cx+p[0]*cell,cy+p[1]*cell);ctx.lineTo(cx+p[2]*cell,cy+p[1]*cell);ctx.lineTo(cx+p[2]*cell,cy+p[3]*cell);ctx.lineTo(cx+p[0]*cell,cy+p[3]*cell);ctx.closePath();ctx.stroke()});
+ for(var yy=0;yy<10;yy++)for(var xx=0;xx<9;xx++){var pc=board[yy][xx];if(!pc)continue;var px=cx+xx*cell,py=cy+yy*cell;ctx.beginPath();ctx.arc(px,py,21,0,7);ctx.fillStyle=pc.c==='r'?'#c0392b':'#2c3e50';ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();ctx.fillStyle='#fff';ctx.font='20px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(N[pc.c][pc.t],px,py)}
+ if(sel){ctx.strokeStyle='#f1c40f';ctx.lineWidth=3;ctx.strokeRect(cx+sel[0]*cell-23,cy+sel[1]*cell-23,46,46);moves(sel[0],sel[1]).forEach(function(t){ctx.beginPath();ctx.arc(cx+t[0]*cell,cy+t[1]*cell,6,0,7);ctx.fillStyle='rgba(241,196,15,.7)';ctx.fill()})}
+}
+cv.addEventListener('click',function(e){if(over||!redTurn)return;var r=cv.getBoundingClientRect();var x=Math.round((e.clientX-r.left-cx)/cell),y=Math.round((e.clientY-r.top-cy)/cell);if(!inB(x,y))return;var p=at(x,y);if(sel){var mv=moves(sel[0],sel[1]).find(function(t){return t[0]===x&&t[1]===y});if(mv){var m=[sel[0],sel[1],x,y];apply(m);if(inCheck('r')){unapply();document.getElementById('st').textContent='不能送将，请换一步';draw();return}sel=null;redTurn=false;draw();document.getElementById('st').textContent='黑方思考中…';setTimeout(ai,250);return}if(p&&p.c==='r'){sel=[x,y]}else sel=null}else if(p&&p.c==='r'){sel=[x,y]}draw()});
+document.getElementById('new').onclick=init;
+document.getElementById('undo').onclick=function(){if(history.length>=2){unapply();unapply()}sel=null;redTurn=true;over=false;document.getElementById('st').textContent='红方先走';draw()};
+init();
+</script>
+</body>
+</html>

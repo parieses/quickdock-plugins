@@ -1,0 +1,61 @@
+{
+  "id": "io.github.parieses.startup-manager",
+  "name": "启动项管理",
+  "version": "1.0.0",
+  "description": "查看并启停本机开机启动项，覆盖注册表 Run 键与「启动」文件夹中的快捷方式。",
+  "author": "QuickDock",
+  "category": "系统工具",
+  "platforms": [
+    "windows"
+  ],
+  "icon": "icon.svg",
+  "backend": {
+    "runtime": "native",
+    "entry": "startup-manager"
+  },
+  "host_apis": [],
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 640,
+    "height": 580
+  },
+  "permissions": {
+    "network": false
+  },
+  "commands": [
+    {
+      "id": "startup-list",
+      "title": "列出启动项",
+      "keywords": [
+        "startup",
+        "启动项",
+        "开机",
+        "自启"
+      ],
+      "aliases": [
+        "启动项管理",
+        "开机启动"
+      ],
+      "prefix": "/startup",
+      "acceptsInput": true,
+      "title_i18n": {
+        "zh-CN": "列出启动项",
+        "en-US": "List Startup Items"
+      }
+    }
+  ],
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "name_i18n": {
+    "zh-CN": "启动项管理",
+    "en-US": "Startup Manager"
+  },
+  "description_i18n": {
+    "zh-CN": "查看并启停注册表 Run 键与启动文件夹的开机项",
+    "en-US": "List and toggle registry Run keys and Startup folder shortcuts."
+  },
+  "changelog": "## v1.0.0\n\n- 枚举并启停注册表 Run 键与启动文件夹中的开机项"
+}

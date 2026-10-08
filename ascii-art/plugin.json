@@ -1,0 +1,61 @@
+{
+  "id": "io.github.parieses.ascii-art",
+  "name": "ASCII 艺术",
+  "version": "1.0.2",
+  "description": "图片转字符画（亮度映射到字符集），或输入文字生成 ASCII 艺术字（figlet 风格）。",
+  "author": "QuickDock",
+  "category": "内容创作",
+  "platforms": [
+    "windows"
+  ],
+  "icon": "icon.svg",
+  "backend": {
+    "runtime": "none"
+  },
+  "host_apis": [],
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 760,
+    "height": 620
+  },
+  "permissions": {
+    "clipboard": true
+  },
+  "commands": [
+    {
+      "id": "ascii-art",
+      "title": "ASCII 艺术",
+      "keywords": [
+        "ascii",
+        "art",
+        "字符画",
+        "字符艺术",
+        "figlet"
+      ],
+      "aliases": [
+        "字符画",
+        "ascii艺术"
+      ],
+      "prefix": "/aa",
+      "acceptsInput": true,
+      "title_i18n": {
+        "zh-CN": "ASCII 艺术",
+        "en-US": "ASCII Art"
+      }
+    }
+  ],
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "name_i18n": {
+    "zh-CN": "ASCII 艺术",
+    "en-US": "ASCII Art"
+  },
+  "description_i18n": {
+    "zh-CN": "图片转字符画，或文字生成 ASCII 艺术字",
+    "en-US": "Turn images into ASCII art, or render text as ASCII banner."
+  },
+  "changelog": "## v1.0.2\n\n- 确认脚本无错误并随本轮统一重打包（图片/文字字符画 + 复制均正常）\n\n## v1.0.1\n\n- 美化图片文件选择按钮\n\n## v1.0.0\n\n- 图片转字符画（亮度映射）+ 文字 ASCII 艺术字生成"
+}

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>IP 归属地</title>
+<link rel="stylesheet" href="qd-theme.css">
+<link rel="stylesheet" href="components.css">
+<style>
+body{margin:0}
+.app{display:flex;flex-direction:column;height:100vh;padding:12px;gap:10px;box-sizing:border-box}
+.row{display:flex;gap:8px;align-items:center}
+.inp{height:34px;padding:0 12px;flex:1;background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius);font-size:14px;font-family:inherit}
+.btn{height:34px;padding:0 16px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:inherit}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.list{flex:1;overflow:auto;display:flex;flex-direction:column;gap:8px}
+.item{display:flex;justify-content:space-between;gap:12px;padding:10px 12px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius)}
+.item .k{font-size:13px;color:var(--text-muted)}
+.item .v{font-size:13px;color:var(--text-primary);text-align:right;max-width:60%;word-break:break-all}
+#msg{font-size:12px;color:#e24b4a;min-height:14px;display:flex;align-items:center;gap:6px}
+#msg.loading{color:var(--text-muted)}
+#msg.loading::before{content:'';width:12px;height:12px;border:2px solid var(--text-muted);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.hint{font-size:11px;color:var(--text-muted)}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="row">
+    <input class="inp" id="ip" placeholder="留空=查本机公网 IP，或输入 IP">
+    <button class="btn primary" id="go">查询</button>
+  </div>
+  <div id="msg"></div>
+  <div class="list" id="list"><div class="hint">输入 IP 或点击查询</div></div>
+</div>
+<script>
+window.__cpSeq=0;
+window.copyViaHost=function(t,cb){var id='cp_'+(++window.__cpSeq),done=false;function onMsg(e){var d=e&&e.data;if(d&&d.type==='plugin:copy-result'&&d.id===id){done=true;window.removeEventListener('message',onMsg);cb&&cb(!!d.ok)}}window.addEventListener('message',onMsg);parent.postMessage({type:'plugin:copy',id:id,text:t},'*');setTimeout(function(){if(!done)window.removeEventListener('message',onMsg)},300)};
+window.__qdNativeBound=true;(function(){var seq=0,pend={};window.pluginExec=function(c,i){return new Promise(function(res,rej){var id='qd_'+(++seq);pend[id]={res:res,rej:rej};parent.postMessage({type:'plugin:execute',id:id,command:c,input:i||{}},'*')})};window.addEventListener('message',function(e){var d=e.data;if(!d||d.type!=='plugin:result'||!d.id||!pend[d.id])return;var p=pend[d.id];delete pend[d.id];if(d.error)p.rej(new Error(typeof d.error==='string'?d.error:(d.error.message||'error')));else p.res(d.data||{})})})();
+var MAP={query:'IP',country:'国家',countryCode:'国家码',region:'省/州',city:'城市',isp:'运营商',org:'组织',as:'ASN',timezone:'时区',lat:'纬度',lon:'经度',status:'状态'};
+function render(d){var l=document.getElementById('list');l.innerHTML='';for(var k in MAP){if(d[k]===undefined||d[k]==='')continue;var el=document.createElement('div');el.className='item';el.innerHTML='<span class="k">'+MAP[k]+'</span><span class="v" data-copy="1">'+String(d[k])+'</span>';l.appendChild(el)}if(!l.children.length)l.innerHTML='<div class="hint">无结果</div>'}
+document.getElementById('list').addEventListener('click',function(e){if(e.target.dataset.copy)window.copyViaHost(e.target.textContent)});
+function go(){var ip=document.getElementById('ip').value.trim();var msg=document.getElementById('msg');msg.className='loading';msg.textContent='查询中…';pluginExec('geoip-lookup',{ip:ip}).then(function(data){var d=typeof data==='string'?JSON.parse(data):data;msg.className='';if(d.error){msg.textContent=d.error.message||'查询失败';return}msg.textContent='';render(d)}).catch(function(e){msg.className='';msg.textContent='查询失败: '+(e.message||e)})}
+document.getElementById('go').onclick=go;
+window.addEventListener('message',function(e){if(e.data&&e.data.type==='plugin:init'){if(e.data.data&&e.data.data.text)document.getElementById('ip').value=e.data.data.text;go()}});
+</script>
+</body>
+</html>

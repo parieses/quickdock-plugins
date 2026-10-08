@@ -223,6 +223,7 @@
 
   function gameOver() {
     alive = false
+    if (timer) { clearInterval(timer); timer = null }
     elOver.hidden = false
     elOverText.textContent = '💥 游戏结束 · ' + score + ' 分'
   }

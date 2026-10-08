@@ -107,7 +107,7 @@ def build_native(plugin_dir: Path, manifest: dict, platform: str, build_root: Pa
 
     if bin_path.exists():
         # 源码比产物新 → 缓存过期，强制重编译（否则改了 .go 会永远打出旧二进制）
-        src_files = list(plugin_dir.glob("*.go")) + [plugin_dir / "go.mod"]
+        src_files = list(plugin_dir.rglob("*.go")) + [plugin_dir / "go.mod"]
         newest_src = max((p.stat().st_mtime for p in src_files if p.exists()), default=0.0)
         if newest_src <= bin_path.stat().st_mtime:
             print(f"✓ 编译产物已存在: {bin_name}（{platform}），跳过编译")

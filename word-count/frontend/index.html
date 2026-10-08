@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>字数统计</title>
+<link rel="stylesheet" href="qd-theme.css">
+<link rel="stylesheet" href="components.css">
+<style>
+body{margin:0}
+.app{display:flex;flex-direction:column;height:100vh;padding:12px;gap:10px;box-sizing:border-box}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;flex-shrink:0}
+.stat{background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px}
+.stat .n{font-size:20px;font-weight:600;color:var(--text-primary)}
+.stat .l{font-size:11px;color:var(--text-muted);margin-top:2px}
+#ta{flex:1;width:100%;resize:none;padding:12px;font-size:14px;line-height:1.6;font-family:var(--font-mono);background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius);box-sizing:border-box}
+.bar{display:flex;gap:8px;align-items:center;flex-shrink:0}
+.btn{height:32px;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:inherit}
+.btn:hover{color:var(--text-primary)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+#cnt{font-size:12px;color:var(--text-muted)}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="stats" id="stats"></div>
+  <textarea id="ta" placeholder="粘贴或输入文本，实时统计…" spellcheck="false"></textarea>
+  <div class="bar">
+    <span id="cnt">0 字符</span>
+    <span style="flex:1"></span>
+    <button class="btn" id="clear">清空</button>
+    <button class="btn primary" id="copy">复制统计</button>
+  </div>
+</div>
+<script>
+window.__cpSeq=0;
+window.copyViaHost=function(t,cb){var id='cp_'+(++window.__cpSeq),done=false;function onMsg(e){var d=e&&e.data;if(d&&d.type==='plugin:copy-result'&&d.id===id){done=true;window.removeEventListener('message',onMsg);cb&&cb(!!d.ok)}}window.addEventListener('message',onMsg);parent.postMessage({type:'plugin:copy',id:id,text:t},'*');setTimeout(function(){if(!done)window.removeEventListener('message',onMsg)},300)};
+var ta=document.getElementById('ta'),statsEl=document.getElementById('stats'),cnt=document.getElementById('cnt');
+function count(){
+  var s=ta.value;
+  var chars=s.length;
+  var charsNoSpace=s.replace(/\s/g,'').length;
+  var cjk=(s.match(/[\u4e00-\u9fff\u3400-\u4dbf]/g)||[]).length;
+  var enWords=(s.replace(/[\u4e00-\u9fff\u3400-\u4dbf]/g,' ').match(/[A-Za-z0-9']+/g)||[]).length;
+  var words=cjk+enWords;
+  var lines=s===''?0:s.split('\n').length;
+  var paras=s.trim()===''?0:s.trim().split(/\n\s*\n/).filter(function(p){return p.trim()}).length;
+  var bytes=new TextEncoder().encode(s).length;
+  var min=Math.max(1,Math.round(words/300));
+  var data=[['字符数',chars],['不含空格',charsNoSpace],['词数',words],['中文字',cjk],['行数',lines],['段落数',paras],['字节(UTF-8)',bytes],['阅读(分)',min],['空行',lines-(s.split(/\n/).filter(function(x){return x.trim()===''}).length)]];
+  statsEl.innerHTML=data.map(function(d){return '<div class="stat"><div class="n">'+d[1]+'</div><div class="l">'+d[0]+'</div></div>'}).join('');
+  cnt.textContent=chars+' 字符 · '+words+' 词';
+}
+function copyStats(){var txt=Array.from(statsEl.children).map(function(c){return c.querySelector('.l').textContent+': '+c.querySelector('.n').textContent}).join('\n');window.copyViaHost(txt)}
+ta.addEventListener('input',count);
+document.getElementById('copy').addEventListener('click',copyStats);
+document.getElementById('clear').addEventListener('click',function(){ta.value='';count();ta.focus()});
+window.addEventListener('message',function(e){if(e.data&&e.data.type==='plugin:init'&&e.data.data&&e.data.data.text){ta.value=e.data.data.text;count()}});
+count();
+</script>
+</body>
+</html>
