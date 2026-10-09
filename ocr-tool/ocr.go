@@ -53,6 +53,11 @@ const (
 	maxOcrTasks = 32
 )
 
+const (
+	// 单次轮询返回的行数上限，避免识别结果整帧超过宿主约 1MB 单行 stdout 上限被截断。
+	maxOcrLinesSent = 4000
+)
+
 var (
 	tasks   = map[string]*ocrTask{}
 	taskMu  sync.Mutex
@@ -242,7 +247,12 @@ func ocrTaskPoll(id int64, input map[string]interface{}) {
 		"total":    t.total,
 	}
 	if t.state == taskStateDone {
-		resp["result"] = t.result
+		res := t.result
+		if len(res.Lines) > maxOcrLinesSent {
+			res.Lines = res.Lines[:maxOcrLinesSent]
+			resp["linesTruncated"] = true
+		}
+		resp["result"] = res
 	}
 	if t.state == taskStateError {
 		resp["error"] = t.errMsg

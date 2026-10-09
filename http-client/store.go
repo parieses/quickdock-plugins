@@ -75,6 +75,28 @@ func decryptAuth(encoded string) (string, error) {
 	return string(plaintext), nil
 }
 
+// storeCred 加密凭据后入库；加密失败则回退明文，避免写入中断。空串直接返回空串。
+func storeCred(v string) string {
+	if v == "" {
+		return ""
+	}
+	if e, err := encryptAuth(v); err == nil {
+		return e
+	}
+	return v
+}
+
+// loadCred 读取时解密凭据；若解密失败（兼容旧版明文数据）则原样返回。
+func loadCred(v string) string {
+	if v == "" {
+		return ""
+	}
+	if d, err := decryptAuth(v); err == nil {
+		return d
+	}
+	return v
+}
+
 // ---------- 实体结构（JSON 字段保持 camelCase，便于前端直接消费） ----------
 
 type HttpProject struct {
@@ -752,6 +774,9 @@ func (d *DB) ListRequests() ([]ApiRequest, error) {
 		if r.Headers == "" {
 			r.Headers = "{}"
 		}
+		r.AuthToken = loadCred(r.AuthToken)
+		r.AuthUser = loadCred(r.AuthUser)
+		r.AuthPass = loadCred(r.AuthPass)
 		out = append(out, r)
 	}
 	return out, rows.Err()
@@ -770,6 +795,9 @@ func (d *DB) GetRequest(id string) (*ApiRequest, error) {
 	if r.Headers == "" {
 		r.Headers = "{}"
 	}
+	r.AuthToken = loadCred(r.AuthToken)
+	r.AuthUser = loadCred(r.AuthUser)
+	r.AuthPass = loadCred(r.AuthPass)
 	return &r, nil
 }
 
@@ -788,7 +816,7 @@ func (d *DB) CreateRequest(r *ApiRequest) error {
 		(id, name, project_id, folder_id, method, url, headers, body, body_type, auth_type, auth_token, auth_user, auth_pass, sort, created_at, updated_at)
 		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 		r.ID, r.Name, r.ProjectID, r.FolderID, r.Method, r.URL, r.Headers, r.Body, r.BodyType,
-		r.AuthType, r.AuthToken, r.AuthUser, r.AuthPass, r.Sort, r.CreatedAt, r.UpdatedAt)
+		r.AuthType, storeCred(r.AuthToken), storeCred(r.AuthUser), storeCred(r.AuthPass), r.Sort, r.CreatedAt, r.UpdatedAt)
 	return err
 }
 
@@ -802,7 +830,7 @@ func (d *DB) UpdateRequest(r *ApiRequest) error {
 		auth_token=?, auth_user=?, auth_pass=?, sort=?, updated_at=?
 		WHERE id=?`,
 		r.Name, r.ProjectID, r.FolderID, r.Method, r.URL, r.Headers, r.Body, r.BodyType, r.AuthType,
-		r.AuthToken, r.AuthUser, r.AuthPass, r.Sort, r.UpdatedAt, r.ID)
+		storeCred(r.AuthToken), storeCred(r.AuthUser), storeCred(r.AuthPass), r.Sort, r.UpdatedAt, r.ID)
 	return err
 }
 
@@ -846,7 +874,7 @@ func (d *DB) RecordHistory(h *HttpRequestHistory) (*HttpRequestHistory, error) {
 		 auth_type, auth_token, auth_user, auth_pass, status_code, ok, duration_ms, size, created_ts)
 		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 		h.ID, h.ProjectID, h.Name, h.Method, h.URL, h.Headers, h.Body, h.BodyType,
-		h.AuthType, h.AuthToken, h.AuthUser, h.AuthPass, h.StatusCode, b2i(h.OK), h.DurationMs, h.Size, h.CreatedTs); err != nil {
+		h.AuthType, storeCred(h.AuthToken), storeCred(h.AuthUser), storeCred(h.AuthPass), h.StatusCode, b2i(h.OK), h.DurationMs, h.Size, h.CreatedTs); err != nil {
 		return nil, err
 	}
 	if _, err := d.e(
@@ -886,6 +914,9 @@ func (d *DB) ListHistory(projectID string, limit int) ([]HttpRequestHistory, err
 		if h.Headers == "" {
 			h.Headers = "{}"
 		}
+		h.AuthToken = loadCred(h.AuthToken)
+		h.AuthUser = loadCred(h.AuthUser)
+		h.AuthPass = loadCred(h.AuthPass)
 		out = append(out, h)
 	}
 	return out, rows.Err()
@@ -907,6 +938,9 @@ func (d *DB) GetHistory(id string) (*HttpRequestHistory, error) {
 	if h.Headers == "" {
 		h.Headers = "{}"
 	}
+	h.AuthToken = loadCred(h.AuthToken)
+	h.AuthUser = loadCred(h.AuthUser)
+	h.AuthPass = loadCred(h.AuthPass)
 	return &h, nil
 }
 

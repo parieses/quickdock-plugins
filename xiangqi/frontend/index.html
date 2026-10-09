@@ -111,11 +111,10 @@ function ai(){var ms=allMoves('b');if(!ms.length){over=true;document.getElementB
  if(!legal.length){over=true;document.getElementById('st').textContent='黑方被将死，红方胜';return}
  var best=null,bv=-1e9;legal.forEach(function(m){apply(m);var v=score()+(Math.random()*20-10);if(v>bv){bv=v;best=m}unapply()});
  if(best){apply(best);
-  if(inCheck('r')){over=true;draw();document.getElementById('st').textContent='将军！红方被将死，黑方胜';return}
   redTurn=true;draw();
   var canMove=false;allMoves('r').forEach(function(m){apply(m);if(!inCheck('r'))canMove=true;unapply()});
-  if(!canMove){over=true;document.getElementById('st').textContent='红方被将死，黑方胜';return}
-  document.getElementById('st').textContent='红方走（你执红）'}}
+  if(!canMove){over=true;draw();document.getElementById('st').textContent='红方被将死，黑方胜';return}
+  document.getElementById('st').textContent=inCheck('r')?'将军！红方走（你执红）':'红方走（你执红）'}}
 function draw(){ctx.clearRect(0,0,CW,CH);ctx.strokeStyle='#888';ctx.lineWidth=1;ctx.fillStyle='#caa46a';ctx.fillRect(0,0,CW,CH);
  ctx.strokeStyle='#3a2a14';
  for(var y=0;y<10;y++){ctx.beginPath();ctx.moveTo(cx,cy+y*cell);ctx.lineTo(cx+8*cell,cy+y*cell);ctx.stroke()}

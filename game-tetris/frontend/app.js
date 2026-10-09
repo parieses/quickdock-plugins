@@ -27,7 +27,7 @@
   }
   var TYPES = Object.keys(SHAPES)
 
-  var board, cur, nextType, score, lines, level, alive, paused, timer, tickMs
+  var board, cur, nextType, score, lines, level, alive, paused, timer, tickMs, visPaused = false
   var best = parseInt(LS.get('gameTetris.best') || '0', 10) || 0
 
   var elScore = document.getElementById('score')
@@ -251,6 +251,15 @@
   if (window.MutationObserver) {
     new MutationObserver(function () { draw(); drawNext() }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
   }
+
+  // 切到后台时冻结下落循环，回到前台再恢复
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) {
+      if (alive && !paused && timer) { clearInterval(timer); timer = null; visPaused = true }
+    } else if (visPaused && alive && !paused && !timer) {
+      resetTimer(); visPaused = false
+    }
+  })
 
   reset()
 })()

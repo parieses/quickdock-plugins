@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.breach-check",
   "name": "泄露查询",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "基于 Have I Been Pwned 检查密码是否出现在泄露库中（k-匿名，密码不出本机）；邮箱泄露需自备 API Key。",
   "author": "QuickDock",
   "category": "安全工具",
@@ -58,5 +58,5 @@
     "zh-CN": "基于 HIBP 检查密码/邮箱是否出现在泄露库中",
     "en-US": "Check passwords/emails against Have I Been Pwned."
   },
-  "changelog": "## v1.0.0\n\n- 密码 k-匿名泄露检查（无需 Key）；邮箱泄露查询（需 HIBP API Key）"
+  "changelog": "## v1.0.1\n\n- 标准输入读取由 bufio.Scanner（256KB 硬上限）改为 bufio.NewReader，避免大请求被截断\n\n## v1.0.0\n\n- 密码 k-匿名泄露检查（无需 Key）；邮箱泄露查询（需 HIBP API Key）"
 }

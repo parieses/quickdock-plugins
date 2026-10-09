@@ -29,9 +29,11 @@ import (
 	"os"
 	"path/filepath"
 	"runtime/debug"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/rwcarlsen/goexif/exif"
 	"github.com/rwcarlsen/goexif/tiff"
@@ -76,11 +78,7 @@ var (
 // 支持的图片扩展名（缩略图仅对 jpeg/png/gif 真正解码，其它格式前端显示占位）
 var imageExts = map[string]bool{
 	".jpg": true, ".jpeg": true, ".png": true, ".gif": true, ".bmp": true,
-	".webp": true, ".heic": true, ".heif": true, ".tif": true, ".tiff": true,
-	".svg": true, ".avif": true, ".cr2": true, ".cr3": true, ".nef": true,
-	".arw": true, ".dng": true, ".raw": true, ".raf": true, ".orf": true,
-	".rw2": true, ".sr2": true, ".pef": true, ".x3f": true, ".mrw": true,
-	".kdc": true, ".erf": true, ".srw": true, ".3fr": true, ".fff": true,
+	".webp": true, ".tif": true, ".tiff": true,
 }
 
 const (
@@ -560,7 +558,42 @@ func readCache(p string) ([]byte, bool) {
 	return b, true
 }
 
-func writeCache(p string, b []byte) { _ = os.WriteFile(p, b, 0o644) }
+func writeCache(p string, b []byte) {
+	pruneCache()
+	_ = os.WriteFile(p, b, 0o644)
+}
+
+// pruneCache 限制缩略图缓存目录体积：仅保留最近 maxCache 个文件，删除最旧的
+func pruneCache() {
+	const maxCache = 2000
+	dir := getCacheDir()
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return
+	}
+	if len(entries) <= maxCache {
+		return
+	}
+	type fe struct {
+		name string
+		mod  time.Time
+	}
+	files := make([]fe, 0, len(entries))
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		fi, err := e.Info()
+		if err != nil {
+			continue
+		}
+		files = append(files, fe{e.Name(), fi.ModTime()})
+	}
+	sort.Slice(files, func(i, j int) bool { return files[i].mod.After(files[j].mod) })
+	for i := maxCache; i < len(files); i++ {
+		_ = os.Remove(filepath.Join(dir, files[i].name))
+	}
+}
 
 func loadJSON(path string, v interface{}) error {
 	b, err := os.ReadFile(path)
@@ -607,30 +640,30 @@ func isLibMode(input map[string]interface{}) bool {
 
 func scanLibrary() map[string]interface{} {
 	roots := loadLib()
-	var files, folders []fileEntry
+	var files []fileEntry
 	truncated := false
-	for _, root := range roots {
-		info, err := os.Stat(root)
-		if err != nil || !info.IsDir() {
-			continue
-		}
-		entries, err := os.ReadDir(root)
+	var walk func(dir string)
+	walk = func(dir string) {
+		entries, err := os.ReadDir(dir)
 		if err != nil {
-			continue
+			return
 		}
 		for _, e := range entries {
-			if len(files)+len(folders) >= scanLimit {
-				truncated = true
-				break
+			if truncated {
+				return
 			}
-			fp := filepath.Join(root, e.Name())
+			fp := filepath.Join(dir, e.Name())
 			if e.IsDir() {
-				folders = append(folders, fileEntry{Name: e.Name(), Path: fp, IsDir: true})
+				walk(fp)
 				continue
 			}
 			ext := strings.ToLower(filepath.Ext(e.Name()))
 			if !imageExts[ext] {
 				continue
+			}
+			if len(files) >= scanLimit {
+				truncated = true
+				return
 			}
 			fi, err := e.Info()
 			if err != nil {
@@ -640,13 +673,17 @@ func scanLibrary() map[string]interface{} {
 				Name: e.Name(), Path: fp, Ext: ext, Size: fi.Size(), MTime: fi.ModTime().Unix(),
 			})
 		}
-		if truncated {
-			break
+	}
+	for _, root := range roots {
+		info, err := os.Stat(root)
+		if err != nil || !info.IsDir() {
+			continue
 		}
+		walk(root)
 	}
 	saveSession("library", "")
 	return map[string]interface{}{
-		"ok": true, "path": "(library)", "files": files, "folders": folders,
+		"ok": true, "path": "(library)", "files": files, "folders": []fileEntry{},
 		"total": len(files), "truncated": truncated, "library": true,
 	}
 }

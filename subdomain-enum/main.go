@@ -25,6 +25,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"regexp"
 	"runtime/debug"
@@ -78,7 +79,7 @@ type certspotterEntry struct {
 //
 // 另外它对突发请求返回 429/5xx，需要退避重试。
 func fetchCRT(domain string, timeout time.Duration) ([]string, error) {
-	url := "https://crt.sh/?q=%25." + domain + "&output=json"
+	url := "https://crt.sh/?q=%25." + url.QueryEscape(domain) + "&output=json"
 
 	var lastErr error
 	for attempt := 0; attempt < 2; attempt++ {
@@ -143,7 +144,7 @@ func fetchCRT(domain string, timeout time.Duration) ([]string, error) {
 
 // fetchCertSpotter 另一个证书透明源。实测比 crt.sh 稳定得多（crt.sh 频繁 429/502）。
 func fetchCertSpotter(domain string, timeout time.Duration) ([]string, error) {
-	url := "https://api.certspotter.com/v1/issuances?domain=" + domain +
+	url := "https://api.certspotter.com/v1/issuances?domain=" + url.QueryEscape(domain) +
 		"&include_subdomains=true&expand=dns_names"
 
 	req, err := http.NewRequestWithContext(context.Background(), "GET", url, nil)
@@ -185,7 +186,7 @@ func fetchCertSpotter(domain string, timeout time.Duration) ([]string, error) {
 
 // fetchHackerTarget hostsearch（纯文本 "sub,ip" 行）
 func fetchHackerTarget(domain string, timeout time.Duration) ([]string, error) {
-	url := "https://api.hackertarget.com/hostsearch/?q=" + domain
+	url := "https://api.hackertarget.com/hostsearch/?q=" + url.QueryEscape(domain)
 	client := &http.Client{Timeout: timeout}
 	resp, err := client.Get(url)
 	if err != nil {
@@ -218,7 +219,7 @@ func fetchHackerTarget(domain string, timeout time.Duration) ([]string, error) {
 // fetchURLScan 从 urlscan.io 的公开扫描结果中提取子域名（无需 API key）。
 // 注意：返回 results[].page.domain 才是被扫页面的真实子域；task.domain 多为 apex 域名。
 func fetchURLScan(domain string, timeout time.Duration) ([]string, error) {
-	url := "https://urlscan.io/api/v1/search/?q=domain:" + domain + "&size=10000"
+	url := "https://urlscan.io/api/v1/search/?q=domain:" + url.QueryEscape(domain) + "&size=10000"
 	req, err := http.NewRequestWithContext(context.Background(), "GET", url, nil)
 	if err != nil {
 		return nil, err
@@ -268,7 +269,7 @@ func fetchURLScan(domain string, timeout time.Duration) ([]string, error) {
 // fetchRapidDNS 被动 DNS 聚合（HTML 页面，best-effort）。
 // 用正则提取以目标域名结尾的主机名——add() 会再按归属做二次过滤。
 func fetchRapidDNS(domain string, timeout time.Duration) ([]string, error) {
-	url := "https://rapiddns.io/subdomain/" + domain + "?full=1"
+	url := "https://rapiddns.io/subdomain/" + url.PathEscape(domain) + "?full=1"
 	req, err := http.NewRequestWithContext(context.Background(), "GET", url, nil)
 	if err != nil {
 		return nil, err
@@ -305,7 +306,7 @@ func fetchRapidDNS(domain string, timeout time.Duration) ([]string, error) {
 
 // fetchOTX AlienVault OTX 被动 DNS（无需 key，偶发 429 限流，带退避重试）。
 func fetchOTX(domain string, timeout time.Duration) ([]string, error) {
-	url := "https://otx.alienvault.com/api/v1/indicators/domain/" + domain + "/passive_dns"
+	url := "https://otx.alienvault.com/api/v1/indicators/domain/" + url.PathEscape(domain) + "/passive_dns"
 
 	var lastErr error
 	for attempt := 0; attempt < 2; attempt++ {
@@ -386,6 +387,7 @@ type session struct {
 	sources   map[string]string // 数据源 → running / done / error:msg
 	truncated bool
 	running   bool
+	doneAt    time.Time
 	stopCh    chan struct{}
 }
 
@@ -440,6 +442,7 @@ func (s *session) run() {
 	defer func() {
 		s.mu.Lock()
 		s.running = false
+		s.doneAt = time.Now()
 		s.mu.Unlock()
 	}()
 
@@ -641,6 +644,23 @@ func (s *session) run() {
 	rwg.Wait()
 }
 
+// pruneSessions 清理已完成且超过 10 分钟的会话，避免 sessions 映射无限增长
+// （只有显式 stop 才会删除会话，未 stop 的已完成会话会一直留在内存里）。
+func pruneSessions() {
+	sessMu.Lock()
+	defer sessMu.Unlock()
+	now := time.Now()
+	for id, s := range sessions {
+		s.mu.Lock()
+		done := !s.running
+		at := s.doneAt
+		s.mu.Unlock()
+		if done && now.Sub(at) > 10*time.Minute {
+			delete(sessions, id)
+		}
+	}
+}
+
 func (s *session) snapshot() map[string]interface{} {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -745,6 +765,8 @@ func handleStart(id int64, input map[string]interface{}) {
 		respondError(id, -32602, "域名格式不正确")
 		return
 	}
+
+	pruneSessions()
 
 	sessMu.Lock()
 	seqID++

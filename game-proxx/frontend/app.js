@@ -35,8 +35,8 @@
   var order = [];           // 渲染顺序
   var total = 0;
   var started = false, over = false, won = false;
-  var flags = 0, revealed = 0;
-  var timer = null, secs = 0;
+  var flags = 0, revealed = 0, mineTotal = 0;
+  var timer = null, secs = 0, visPaused = false;
   var flagMode = false;
 
   function boot() {
@@ -114,6 +114,7 @@
       if (!inBoard(q, r) || safe[key(q, r)] || cells[key(q, r)].mine) continue;
       cells[key(q, r)].mine = true; placed++;
     }
+    mineTotal = placed;
     for (var k = 0; k < order.length; k++) {
       var c = order[k]; if (c.mine) continue;
       var n = neighbors(c.q, c.r), cnt = 0;
@@ -187,7 +188,7 @@
 
   function checkWin() {
     if (over) return;
-    if (revealed === total - cur.m) {
+    if (revealed === total - mineTotal) {
       over = true; won = true;
       if (timer) { clearInterval(timer); timer = null; }
       // 自动给剩余雷插旗
@@ -270,6 +271,15 @@
       c.poly.classList.add('flag'); c.txt.textContent = '🚩';
     }
   }
+
+  // 切到后台时冻结计时器，回到前台再恢复
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) {
+      if (!over && timer) { clearInterval(timer); timer = null; visPaused = true }
+    } else if (visPaused && !over && !timer) {
+      startTimer(); visPaused = false
+    }
+  });
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();

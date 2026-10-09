@@ -64,6 +64,17 @@ func strFrom(m map[string]interface{}, key string) string {
 	return ""
 }
 
+// maxWsMessages 单连接消息队列上限；超出后丢弃最旧，避免长连接消息无限增长撑爆内存。
+const maxWsMessages = 1000
+
+// pushMessage 追加消息并限制总量（环形丢弃最旧），调用方需持有 connsMu。
+func (wc *wsConn) pushMessage(m map[string]interface{}) {
+	wc.messages = append(wc.messages, m)
+	if len(wc.messages) > maxWsMessages {
+		wc.messages = wc.messages[len(wc.messages)-maxWsMessages:]
+	}
+}
+
 func respond(id int64, result interface{}) {
 	respondedMu.Lock()
 	responded[id] = true
@@ -93,7 +104,8 @@ func handleConnect(id int64, input map[string]interface{}) {
 		respondError(id, -32602, "请输入 ws/wss URL")
 		return
 	}
-	c, _, err := websocket.DefaultDialer.Dial(url, nil)
+	dialer := websocket.Dialer{HandshakeTimeout: 10 * time.Second}
+	c, _, err := dialer.Dial(url, nil)
 	if err != nil {
 		respondError(id, -1, "连接失败: "+err.Error())
 		return
@@ -119,7 +131,7 @@ func handleConnect(id int64, input map[string]interface{}) {
 				return
 			}
 			if err != nil {
-				wc.messages = append(wc.messages, map[string]interface{}{
+				wc.pushMessage(map[string]interface{}{
 					"dir":  "recv",
 					"type": "close",
 					"data": "连接已关闭: " + err.Error(),
@@ -135,7 +147,7 @@ func handleConnect(id int64, input map[string]interface{}) {
 			} else {
 				payload = string(data)
 			}
-			wc.messages = append(wc.messages, map[string]interface{}{
+			wc.pushMessage(map[string]interface{}{
 				"dir":  "recv",
 				"type": "text",
 				"data": payload,
@@ -163,6 +175,7 @@ func handleSend(id int64, input map[string]interface{}) {
 	// 网络写不持全局 connsMu（对端不收会阻塞），用 per-conn writeMu 序列化
 	// gorilla/websocket 的 WriteMessage（其本身也不允许多 goroutine 并发写）。
 	wc.writeMu.Lock()
+	_ = wc.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
 	err := wc.conn.WriteMessage(websocket.TextMessage, []byte(msg))
 	wc.writeMu.Unlock()
 
@@ -172,7 +185,7 @@ func handleSend(id int64, input map[string]interface{}) {
 	}
 	connsMu.Lock()
 	if !wc.closed {
-		wc.messages = append(wc.messages, map[string]interface{}{
+		wc.pushMessage(map[string]interface{}{
 			"dir":  "send",
 			"type": "text",
 			"data": msg,

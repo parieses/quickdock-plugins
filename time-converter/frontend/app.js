@@ -142,7 +142,7 @@ function renderResults(formats) {
 function doConvert(text) {
   if (!text) { $('#results').innerHTML = '<div class="result-row" style="cursor:default;color:var(--text3)">请输入时间</div>'; return }
   var d = parseTime(text)
-  if (!d) { $('#results').innerHTML = '<div class="result-row" style="cursor:default;color:var(--text3)">无法解析: ' + text + '</div>'; return }
+  if (!d) { $('#results').innerHTML = '<div class="result-row" style="cursor:default;color:var(--text3)">无法解析: ' + String(text).replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] }) + '</div>'; return }
   renderResults(formatAll(d))
 }
 

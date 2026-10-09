@@ -14,7 +14,7 @@
   var wrap = false, boost = null, boostTimer = null, tickCount = 0
   var best = parseInt(LS.get('gameSnake.best') || '0', 10) || 0
   var bestLen = parseInt(LS.get('gameSnake.bestLen') || '0', 10) || 0
-  var timer = null, tickMs = 130
+  var timer = null, tickMs = 130, visPaused = false
 
   var elScore = document.getElementById('score')
   var elBest = document.getElementById('best')
@@ -89,7 +89,7 @@
     // 撞自己（尾部这步会移走，除非正在吃长）
     var eating = (nx === food.x && ny === food.y)
     var eatingBoost = boost && nx === boost.x && ny === boost.y
-    var body = (eating || eatingBoost) ? snake : snake.slice(0, snake.length - 1)
+    var body = eating ? snake : snake.slice(0, snake.length - 1)
     for (var i = 0; i < body.length; i++) {
       if (body[i].x === nx && body[i].y === ny) return die()
     }
@@ -99,19 +99,20 @@
       score += 10
       if (score % 50 === 0 && tickMs > 70) { tickMs -= 8; loop() }
       placeFood()
-    } else if (eatingBoost) {
-      score += 20
-      boost = null
-      tickMs = Math.max(60, tickMs - 30)
-      loop()
-      if (boostTimer) clearTimeout(boostTimer)
-      boostTimer = setTimeout(function () {
-        tickMs = Math.min(130, tickMs + 30)
-        loop()
-        boostTimer = null
-      }, 4000)
     } else {
       snake.pop()
+      if (eatingBoost) {
+        score += 20
+        boost = null
+        tickMs = Math.max(60, tickMs - 30)
+        loop()
+        if (boostTimer) clearTimeout(boostTimer)
+        boostTimer = setTimeout(function () {
+          tickMs = Math.min(130, tickMs + 30)
+          loop()
+          boostTimer = null
+        }, 4000)
+      }
     }
     // 每 15 步尝试生成一个加速道具
     tickCount++
@@ -271,6 +272,15 @@
   if (window.MutationObserver) {
     new MutationObserver(function () { if (alive) draw() }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
   }
+
+  // 切到后台时冻结游戏循环（避免后台空转 / 继续推进），回到前台再恢复
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) {
+      if (alive && !paused && timer) { clearInterval(timer); timer = null; visPaused = true }
+    } else if (visPaused && alive && !paused && !timer) {
+      loop(); visPaused = false
+    }
+  })
 
   reset()
   loop()

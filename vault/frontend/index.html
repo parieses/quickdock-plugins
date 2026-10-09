@@ -56,7 +56,7 @@ function renderList(){var l=document.getElementById('list');if(!l)return;if(!ent
 function onListClick(ev){if(ev.target.classList.contains('act')){window.copyViaHost(entries[+ev.target.dataset.i].pass)}else if(ev.target.classList.contains('del')){entries.splice(+ev.target.dataset.i,1);save();renderList()}}
 async function add(){var s=document.getElementById('site').value.trim(),u=document.getElementById('user').value.trim(),p=document.getElementById('pass').value;if(!s||!p)return;entries.push({site:s,user:u,pass:p});await save();document.getElementById('site').value='';document.getElementById('user').value='';document.getElementById('pass').value='';renderList()}
 function exportFile(){var blob=new Blob([loadRaw()||''],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='vault-backup.json';a.click()}
-function importFile(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(){saveRaw(r.result);localStorage.setItem('vault_data',r.result);alert('已导入，重新解锁');location.reload()};r.readAsText(f)}
+function importFile(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(){saveRaw(r.result);alert('已导入，重新解锁');location.reload()};r.readAsText(f)}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 document.getElementById('unlock').onclick=unlock;
 </script>

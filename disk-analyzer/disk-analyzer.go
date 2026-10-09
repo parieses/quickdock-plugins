@@ -122,6 +122,12 @@ const (
 	perDirBudget = 20 * time.Second // 单个目录体积统计的预算（后台，宽松）
 	walkSemSize  = 64               // 并发 walk 的目录数上限
 	jobRetention = 10 * time.Minute // 完成任务的结果树在 jobs 里保留多久，之后可回收
+
+	// 单次轮询返回的整树序列化上限：超过宿主约 1MB 单行 stdout 上限会被截断、
+	// 破坏 JSON 协议（前端拿坏 JSON 白屏）。先按字节预算判断是否超框，
+	// 超框时再按节点预算裁剪（BFS 保上层、砍深层）。
+	maxStatusTreeBytes = 800 * 1024
+	maxStatusTreeNodes = 4000
 )
 
 var stdout = bufio.NewWriter(os.Stdout)
@@ -489,6 +495,46 @@ func handleScanFull(id int64, input map[string]interface{}) {
 	})
 }
 
+// trimTreeBFS 深拷贝 root，按广度优先最多保留 maxNodes 个节点（优先保上层、砍深层），
+// 被砍掉子树的父节点标记 Truncated/Partial，整树标记 Partial。返回 (副本, 是否发生截断)。
+// 调用方须已持有 j.mu（读取 j.root 及其 Children 期间）。
+func trimTreeBFS(root *dirNode, maxNodes int) (*dirNode, bool) {
+	if root == nil {
+		return nil, false
+	}
+	copyOf := func(n *dirNode) *dirNode {
+		c := *n
+		c.Children = nil
+		return &c
+	}
+	out := copyOf(root)
+	type pair struct{ c, s *dirNode }
+	queue := []pair{{out, root}}
+	count := 1
+	truncated := false
+	for len(queue) > 0 && count < maxNodes {
+		p := queue[0]
+		queue = queue[1:]
+		avail := maxNodes - count
+		for i, ch := range p.s.Children {
+			if i >= avail {
+				truncated = true
+				p.c.Truncated = true
+				p.c.Partial = true
+				break
+			}
+			cc := copyOf(ch)
+			p.c.Children = append(p.c.Children, cc)
+			queue = append(queue, pair{cc, ch})
+			count++
+		}
+	}
+	if truncated {
+		out.Partial = true
+	}
+	return out, truncated
+}
+
 // handleScanStatus 轮询接口：返回当前已扫出的部分树快照 + 进度，毫秒级。
 // 用 since(version) 做增量——未变化时不回传大树，省带宽。
 func handleScanStatus(id int64, input map[string]interface{}) {
@@ -537,6 +583,18 @@ func handleScanStatus(id int64, input map[string]interface{}) {
 		respondError(id, -32603, "序列化失败: "+err.Error())
 		return
 	}
+	// 整树序列化后可能超过宿主约 1MB 单行 stdout 上限，超框时按节点预算裁剪
+	// （BFS 保上层、砍深层），避免被宿主截断破坏 JSON 协议导致前端白屏。
+	treeTruncated := false
+	var rootPayload interface{} = json.RawMessage(raw)
+	if len(raw) > maxStatusTreeBytes {
+		if trimmed, tr := trimTreeBFS(j.root, maxStatusTreeNodes); tr {
+			if traw, e := json.Marshal(trimmed); e == nil {
+				rootPayload = json.RawMessage(traw)
+				treeTruncated = true
+			}
+		}
+	}
 	respond(id, map[string]interface{}{
 		"jobId":       path,
 		"done":        j.done,
@@ -546,7 +604,8 @@ func handleScanStatus(id int64, input map[string]interface{}) {
 		"version":     j.version,
 		"progress":    progress,
 		"unchanged":   false,
-		"root":        json.RawMessage(raw),
+		"root":        rootPayload,
+		"treeTruncated": treeTruncated,
 	})
 }
 

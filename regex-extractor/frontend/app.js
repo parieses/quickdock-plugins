@@ -5,6 +5,12 @@
 (function() {
   'use strict'
 
+  function escapeHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+  }
+
   var patternInput = document.getElementById('patternInput')
   var flagsInput = document.getElementById('flagsInput')
   var textInput = document.getElementById('textInput')
@@ -99,6 +105,7 @@
 
     // Reset lastIndex
     re.lastIndex = 0
+    var firstOnly = !re.global
 
     while ((m = re.exec(text)) !== null) {
       var captureGroups = []
@@ -114,6 +121,7 @@
         start: m.index,
         end: m.index + m[0].length
       })
+      if (firstOnly) break
       if (m.index === re.lastIndex) re.lastIndex++
     }
 

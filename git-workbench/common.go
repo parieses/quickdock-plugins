@@ -167,7 +167,21 @@ var (
 	taskSeq int64
 )
 
+func pruneTasks() {
+	tasksMu.Lock()
+	defer tasksMu.Unlock()
+	cutoff := time.Now().Add(-10 * time.Minute)
+	for id, t := range tasks {
+		if t.Status == "done" || t.Status == "error" || t.Status == "cancelled" {
+			if !t.finished.IsZero() && t.finished.Before(cutoff) {
+				delete(tasks, id)
+			}
+		}
+	}
+}
+
 func startTaskID(prefix string) *asyncTask {
+	pruneTasks()
 	tasksMu.Lock()
 	defer tasksMu.Unlock()
 	taskSeq++

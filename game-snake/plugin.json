@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.game-snake",
   "name": "贪吃蛇",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "经典贪吃蛇：方向键 / WASD 控制，吃食物变长，撞墙或咬到自己即结束。本地记录最高分与最长长度。",
   "author": "QuickDock",
   "icon": "icon.svg",
@@ -53,5 +53,5 @@
     "zh-CN": "经典贪吃蛇：方向键 / WASD 控制，吃食物变长，撞墙或咬到自己即结束。本地记录最高分与最长长度。",
     "en-US": "Classic Snake: steer with arrows / WASD, eat to grow, die on wall or self-bite. Tracks best score and longest length locally."
   },
-  "changelog": "## v1.1.0\n\n- 新增「穿墙模式」开关：开启后撞墙从对侧出现，不再直接结束\n- 新增「加速道具」：棋盘随机刷出金色五角星，吃掉临时提速 +20 分（4 秒后恢复）\n- 修复原加速不生效的 bug：速度变化现会即时重启计时器\n\n## v1.0.0\n\n- Canvas 经典贪吃蛇（20×20 网格）\n- 方向键 / WASD 转向，空格暂停\n- 吃食物得分并加速\n- 本地记录最高分与最长长度\n- 画面配色跟随宿主暗/亮主题"
+  "changelog": "## v1.1.1\n\n- 增加 visibilitychange：切到后台暂停循环、回前台恢复，避免后台空转\n\n## v1.1.0\n\n- 新增「穿墙模式」开关：开启后撞墙从对侧出现，不再直接结束\n- 新增「加速道具」：棋盘随机刷出金色五角星，吃掉临时提速 +20 分（4 秒后恢复）\n- 修复原加速不生效的 bug：速度变化现会即时重启计时器\n\n## v1.0.0\n\n- Canvas 经典贪吃蛇（20×20 网格）\n- 方向键 / WASD 转向，空格暂停\n- 吃食物得分并加速\n- 本地记录最高分与最长长度\n- 画面配色跟随宿主暗/亮主题"
 }

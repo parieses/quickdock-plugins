@@ -17,6 +17,8 @@ const (
 	httpClientTimeout   = 30 * time.Second
 	httpClientMaxRedirs = 10
 	httpTimeout         = 30 * time.Second
+	// 单行 stdout 上限约 1MB；响应体过大时再做一次线路截断，避免宿主截断破坏 JSON 协议帧。
+	httpClientWireBodyCap = 512 << 10
 )
 
 // ApiRequestInput 前端传入的请求（新建/更新/发送共用）。
@@ -229,6 +231,11 @@ func doUserHTTP(input ApiRequestInput) (*ApiResponse, error) {
 	truncated := false
 	if len(data) > httpClientMaxBody {
 		data = data[:httpClientMaxBody]
+		truncated = true
+	}
+	// 线路级截断：单帧 JSON 不得超过宿主约 1MB 单行上限，否则被截断破坏协议。
+	if len(data) > httpClientWireBodyCap {
+		data = data[:httpClientWireBodyCap]
 		truncated = true
 	}
 

@@ -429,6 +429,15 @@
     return card;
   }
 
+  function sanitizeHtml(html) {
+    return String(html)
+      .replace(/<\/?(script|style|iframe|object|embed|link|meta|base)[^>]*>/gi, '')
+      .replace(/\son\w+\s*=\s*"[^"]*"/gi, '')
+      .replace(/\son\w+\s*=\s*'[^']*'/gi, '')
+      .replace(/\son\w+\s*=\s*[^\s>]+/gi, '')
+      .replace(/(href|src)\s*=\s*"javascript:[^"]*"/gi, '')
+      .replace(/(href|src)\s*=\s*'javascript:[^']*'/gi, '')
+  }
   function render() {
     var theme = selTheme.value, width = +selWidth.value, font = +selFont.value;
     var footer = chkFooter.checked, doPaginate = chkPaginate.checked;
@@ -436,7 +445,7 @@
     var text = editor.value;
     var html = '';
     if (curMode === 'md') {
-      html = text.trim() ? (window.marked ? marked.parse(text) : escapeHtml(text)) : '';
+      html = text.trim() ? sanitizeHtml(window.marked ? marked.parse(text) : escapeHtml(text)) : '';
     } else {
       html = text.trim() ? renderText(text, tpl) : '';
     }

@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.game-proxx",
   "name": "扫清黑洞",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "真·六边形扫雷：每格最多 6 个邻居，数字提示周围黑洞数量，别踩中。",
   "author": "QuickDock",
   "icon": "icon.svg",
@@ -52,5 +52,5 @@
       "zh-CN": "真·六边形扫雷：每格最多 6 个邻居，数字提示周围黑洞数量，别踩中。",
       "en-US": "True hexagonal Minesweeper: each cell has up to 6 neighbors; numbers hint at adjacent black holes. Don't step on one."
   },
-  "changelog": "## v1.0.0\n- 自包含单文件游戏插件（纯前端，无后端依赖）\n- 沙箱安全：localStorage 降级、启动守护\n- 支持方向键 / 鼠标操作，本地记录最高分"
+  "changelog": "## v1.0.1\n\n- 增加 visibilitychange：切到后台暂停计时、回前台恢复\n\n## v1.0.0\n- 自包含单文件游戏插件（纯前端，无后端依赖）\n- 沙箱安全：localStorage 降级、启动守护\n- 支持方向键 / 鼠标操作，本地记录最高分"
 }

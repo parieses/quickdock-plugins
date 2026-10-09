@@ -45,13 +45,19 @@ func portList(id int64) {
 		}
 
 		fields := strings.Fields(line)
-		if len(fields) < 5 {
+		if len(fields) < 4 {
 			continue
 		}
-
-		state := fields[3]
-		if state != "LISTENING" && !strings.Contains(line, "LISTEN") {
+		proto := strings.ToUpper(fields[0])
+		if proto != "TCP" && proto != "UDP" {
 			continue
+		}
+		stateField := ""
+		if proto == "TCP" {
+			if len(fields) < 5 || fields[3] != "LISTENING" {
+				continue
+			}
+			stateField = "LISTENING"
 		}
 
 		// Parse port from local address (e.g., "0.0.0.0:8080" or "[::]:8080")
@@ -67,16 +73,13 @@ func portList(id int64) {
 		}
 
 		pid := 0
-		if len(fields) >= 5 {
-			pidStr := fields[len(fields)-1]
-			if p, err := strconv.Atoi(pidStr); err == nil {
-				pid = p
-			}
+		if pp, err := strconv.Atoi(fields[len(fields)-1]); err == nil {
+			pid = pp
 		}
 
-		proto := "tcp"
-		if strings.Contains(line, "UDP") || state == "" {
-			proto = "udp"
+		pr := "tcp"
+		if proto == "UDP" {
+			pr = "udp"
 		}
 
 		processName := ""
@@ -86,8 +89,8 @@ func portList(id int64) {
 
 		ports = append(ports, PortInfo{
 			Port:     port,
-			Protocol: proto,
-			State:    state,
+			Protocol: pr,
+			State:    stateField,
 			PID:      pid,
 			Process:  processName,
 		})
@@ -146,7 +149,14 @@ func portCheck(id int64, input map[string]interface{}) {
 			continue
 		}
 		fields := strings.Fields(line)
-		if len(fields) < 5 {
+		if len(fields) < 4 {
+			continue
+		}
+		proto := strings.ToUpper(fields[0])
+		if proto != "TCP" && proto != "UDP" {
+			continue
+		}
+		if proto == "TCP" && (len(fields) < 5 || fields[3] != "LISTENING") {
 			continue
 		}
 
@@ -159,20 +169,25 @@ func portCheck(id int64, input map[string]interface{}) {
 		if p, err := strconv.Atoi(portStr); err == nil && p == targetPort {
 			found = true
 			pid := 0
-			if len(fields) >= 5 {
-				pidStr := fields[len(fields)-1]
-				if p2, err2 := strconv.Atoi(pidStr); err2 == nil {
-					pid = p2
-				}
+			if pp, err2 := strconv.Atoi(fields[len(fields)-1]); err2 == nil {
+				pid = pp
 			}
 			processName := ""
 			if pid > 0 {
 				processName = getProcessName(pid)
 			}
+			pr := "tcp"
+			if proto == "UDP" {
+				pr = "udp"
+			}
+			stateF := ""
+			if proto == "TCP" {
+				stateF = "LISTENING"
+			}
 			matched = PortInfo{
 				Port:     targetPort,
-				Protocol: "tcp",
-				State:    fields[3],
+				Protocol: pr,
+				State:    stateF,
 				PID:      pid,
 				Process:  processName,
 			}
@@ -214,9 +229,8 @@ func getAllProcessNames() map[int]string {
 	}
 	out, err := hiddenCmd("tasklist", "/NH", "/FO", "CSV").Output()
 	if err != nil {
-		processNameCacheDone = true
-		processNameCache = make(map[int]string)
-		return processNameCache
+		// 调用失败不缓存 done，下次调用可重试，避免永久失效导致 port-kill 全部被拒
+		return make(map[int]string)
 	}
 	processNameCache = make(map[int]string)
 	lines := strings.Split(string(out), "\n")

@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.service-manager",
   "name": "服务管理",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "查看本机 Windows 服务列表，按名称筛选，并启动 / 停止 / 重启服务。",
   "author": "QuickDock",
   "category": "系统工具",
@@ -57,5 +57,5 @@
     "zh-CN": "查看 Windows 服务列表并启动/停止/重启",
     "en-US": "List Windows services and start/stop/restart them."
   },
-  "changelog": "## v1.0.0\n\n- 枚举 Windows 服务、按名筛选、启动/停止/重启"
+  "changelog": "## v1.0.1\n\n- 标准输入读取改为 bufio.NewReader，避免大请求被截断\n\n## v1.0.0\n\n- 枚举 Windows 服务、按名筛选、启动/停止/重启"
 }

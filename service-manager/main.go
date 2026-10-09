@@ -32,10 +32,14 @@ type RPCError struct {
 var nameRe = regexp.MustCompile(`^[A-Za-z0-9\-_.]+$`)
 
 func main() {
-	scanner := bufio.NewScanner(os.Stdin)
-	scanner.Buffer(make([]byte, 256*1024), 256*1024)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
+	reader := bufio.NewReader(os.Stdin)
+
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			break
+		}
+		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}

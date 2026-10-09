@@ -44,10 +44,14 @@ var runRoots = []struct {
 var regTypeRe = regexp.MustCompile(`REG_(SZ|EXPAND_SZ|MULTI_SZ|DWORD|BINARY|NONE)`)
 
 func main() {
-	scanner := bufio.NewScanner(os.Stdin)
-	scanner.Buffer(make([]byte, 256*1024), 256*1024)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
+	reader := bufio.NewReader(os.Stdin)
+
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			break
+		}
+		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
@@ -298,14 +302,24 @@ func toggleRegistry(root, name string, enable bool) error {
 	if found == nil {
 		return fmt.Errorf("未找到启动项: %s", name)
 	}
+	// 先删除源键，再写入目标键；若写入失败则回滚（重新写入源键），
+	// 保证条目始终只存在于一处，避免「已写入目标 + 删除源失败」导致两端同时存在的竞态。
+	if err := runReg([]string{"delete", srcKey, "/v", name, "/f"}); err != nil {
+		return err
+	}
 	args := []string{"add", dstKey, "/v", name, "/t", found.Type, "/f"}
 	if found.Data != "" {
 		args = append(args, "/d", found.Data)
 	}
 	if err := runReg(args); err != nil {
+		rb := []string{"add", srcKey, "/v", name, "/t", found.Type, "/f"}
+		if found.Data != "" {
+			rb = append(rb, "/d", found.Data)
+		}
+		_ = runReg(rb)
 		return err
 	}
-	return runReg([]string{"delete", srcKey, "/v", name, "/f"})
+	return nil
 }
 
 func toggleFolder(kind, name string, enable bool) error {

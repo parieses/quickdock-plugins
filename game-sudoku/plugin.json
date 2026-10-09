@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.game-sudoku",
   "name": "数独",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "数独：随机生成题目 + 唯一解校验，简单/中等/困难/专家四档难度。笔记、提示、冲突高亮，计时与最佳成绩。",
   "author": "QuickDock",
   "icon": "icon.svg",
@@ -54,5 +54,5 @@
     "zh-CN": "数独：随机生成题目 + 唯一解校验，简单/中等/困难/专家四档难度。笔记、提示、冲突高亮，计时与最佳成绩。",
     "en-US": "Sudoku: randomly generated puzzles with unique-solution checks, four difficulties. Notes, hints, conflict highlight, timer and best time."
   },
-  "changelog": "## v1.0.1\n\n- 修复加载期致命错误：数字盘循环 `b.textContent = n` 缺少分号，被 ASI 解析为 `n(...)` 函数调用导致 `n is not a function`，整插件白屏\n\n## v1.0.0\n\n- 随机生成数独 + 唯一解校验（回溯求解器计数）\n- 简单 / 中等 / 困难 / 专家 四档难度\n- 点击选格、数字盘 / 键盘输入、方向键移动\n- 笔记模式、提示、冲突高亮\n- 计时与每档最佳成绩（localStorage）"
+  "changelog": "## v1.0.2\n\n- 增加 visibilitychange：切到后台暂停计时、回前台恢复\n\n## v1.0.1\n\n- 修复加载期致命错误：数字盘循环 `b.textContent = n` 缺少分号，被 ASI 解析为 `n(...)` 函数调用导致 `n is not a function`，整插件白屏\n\n## v1.0.0\n\n- 随机生成数独 + 唯一解校验（回溯求解器计数）\n- 简单 / 中等 / 困难 / 专家 四档难度\n- 点击选格、数字盘 / 键盘输入、方向键移动\n- 笔记模式、提示、冲突高亮\n- 计时与每档最佳成绩（localStorage）"
 }

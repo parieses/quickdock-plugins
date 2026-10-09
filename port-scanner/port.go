@@ -62,13 +62,19 @@ func portList(id int64) {
 		}
 
 		fields := strings.Fields(line)
-		if len(fields) < 5 {
+		if len(fields) < 4 {
 			continue
 		}
-
-		state := fields[3]
-		if state != "LISTENING" && !strings.Contains(line, "LISTEN") {
+		proto := strings.ToUpper(fields[0])
+		if proto != "TCP" && proto != "UDP" {
 			continue
+		}
+		stateField := ""
+		if proto == "TCP" {
+			if len(fields) < 5 || fields[3] != "LISTENING" {
+				continue
+			}
+			stateField = "LISTENING"
 		}
 
 		// Parse port from local address (e.g., "0.0.0.0:8080" or "[::]:8080")
@@ -87,23 +93,20 @@ func portList(id int64) {
 		}
 
 		pid := 0
-		if len(fields) >= 5 {
-			pidStr := fields[len(fields)-1]
-			if p, err := strconv.Atoi(pidStr); err == nil {
-				pid = p
-			}
+		if pp, err := strconv.Atoi(fields[len(fields)-1]); err == nil {
+			pid = pp
 		}
 
-		proto := "tcp"
-		if state == "" || strings.Contains(line, "UDP") {
-			proto = "udp"
+		pr := "tcp"
+		if proto == "UDP" {
+			pr = "udp"
 		}
 
 		raws = append(raws, rawPort{
 			port:      port,
 			pid:       pid,
-			proto:     proto,
-			state:     state,
+			proto:     pr,
+			state:     stateField,
 			localAddr: localAddr,
 			isV6:      strings.Contains(localAddr, "::"),
 		})
@@ -216,30 +219,35 @@ func findByPort(port int) (PortInfo, bool) {
 			continue
 		}
 		fields := strings.Fields(line)
-		if len(fields) < 5 {
+		proto := strings.ToUpper(fields[0])
+		if proto != "TCP" && proto != "UDP" {
 			continue
 		}
-		// 仅匹配 LISTENING 状态；UDP 用 state==""
-		if state := fields[3]; state != "LISTENING" && state != "" {
+		if len(fields) < 4 {
 			continue
+		}
+		stateField := ""
+		if proto == "TCP" {
+			if len(fields) < 5 || fields[3] != "LISTENING" {
+				continue
+			}
+			stateField = "LISTENING"
 		}
 		localAddr := fields[1]
 		if idx := strings.LastIndex(localAddr, ":"); idx >= 0 {
 			if p, err := strconv.Atoi(localAddr[idx+1:]); err == nil && p == port {
 				pid := 0
-				if len(fields) >= 5 {
-					if p2, err2 := strconv.Atoi(fields[len(fields)-1]); err2 == nil {
-						pid = p2
-					}
+				if pp, err2 := strconv.Atoi(fields[len(fields)-1]); err2 == nil {
+					pid = pp
 				}
-				proto := "tcp"
-				if fields[3] == "" || strings.Contains(line, "UDP") {
-					proto = "udp"
+				pr := "tcp"
+				if proto == "UDP" {
+					pr = "udp"
 				}
 				info := PortInfo{
 					Port:     port,
-					Protocol: proto,
-					State:    fields[3],
+					Protocol: pr,
+					State:    stateField,
 					PID:      pid,
 					Process:  names[pid],
 					Path:     getProcessPath(pid),

@@ -130,7 +130,8 @@ class CalcSheetApp {
     pluginExec('list-sheets', {}).then(r => {
       if (r && r.sheets && r.sheets.length > 0) {
         // 合并后端数据与本地数据
-        const local = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{"sheets":[],"activeId":null}')
+        let raw = null; try { raw = localStorage.getItem(STORAGE_KEY) } catch (e) { raw = null }
+        const local = JSON.parse(raw || '{"sheets":[],"activeId":null}')
         const localIds = new Set(local.sheets.map(s => s.id))
         let merged = local.sheets.slice()
         for (let i = 0; i < r.sheets.length; i++) {

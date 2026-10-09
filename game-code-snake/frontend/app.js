@@ -66,7 +66,7 @@
   var snake, dir, nextDir, food, score, snips, alive, paused
   var best = parseInt(LS.get('codeSnake.best') || '0', 10) || 0
   var bestSnips = parseInt(LS.get('codeSnake.bestSnips') || '0', 10) || 0
-  var timer = null, tickMs = 130
+  var timer = null, tickMs = 130, visPaused = false
 
   var elScore = document.getElementById('score')
   var elBest = document.getElementById('best')
@@ -161,11 +161,13 @@
 
   function die() {
     alive = false
+    if (timer) { clearInterval(timer); timer = null }
     elOver.hidden = false
     elOverText.textContent = '💀 游戏结束 · 分数 ' + score + ' · 片段 ' + snips
   }
   function win() {
     alive = false
+    if (timer) { clearInterval(timer); timer = null }
     elOver.hidden = false
     elOverText.textContent = '🏆 通关！蛇填满了棋盘'
   }
@@ -267,6 +269,15 @@
   if (window.MutationObserver) {
     new MutationObserver(function () { if (alive) draw() }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
   }
+
+  // 切到后台时冻结游戏循环（避免后台空转 / 继续推进），回到前台再恢复
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) {
+      if (alive && !paused && timer) { clearInterval(timer); timer = null; visPaused = true }
+    } else if (visPaused && alive && !paused && !timer) {
+      loop(); visPaused = false
+    }
+  })
 
   reset()
   loop()

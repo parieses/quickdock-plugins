@@ -85,6 +85,7 @@ type session struct {
 	ID      string
 	mu      sync.Mutex
 	running bool
+	doneAt  time.Time
 	stopCh  chan struct{}
 
 	URL      string
@@ -136,6 +137,7 @@ func (s *session) run() {
 		}
 		s.mu.Lock()
 		s.running = false
+		s.doneAt = time.Now()
 		s.mu.Unlock()
 	}()
 
@@ -235,7 +237,25 @@ dlLoop:
 
 /* ==================== 命令处理 ==================== */
 
+// pruneSessions 清理已完成且超过 10 分钟的会话，避免 sessions 映射无限增长。
+func pruneSessions() {
+	sessMu.Lock()
+	defer sessMu.Unlock()
+	now := time.Now()
+	for id, s := range sessions {
+		s.mu.Lock()
+		done := !s.running
+		at := s.doneAt
+		s.mu.Unlock()
+		if done && now.Sub(at) > 10*time.Minute {
+			delete(sessions, id)
+		}
+	}
+}
+
 func handleStart(id int64, input map[string]interface{}) {
+	pruneSessions()
+
 	url := strFrom(input, "url")
 	if url == "" {
 		url = defaultNodeURL

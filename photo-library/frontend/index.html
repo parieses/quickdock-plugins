@@ -448,17 +448,23 @@ class PhotoLibrary{
     // 启动时恢复上次浏览位置
     this.recallSession();
     document.addEventListener('keydown',(e)=>{
-      if(document.getElementById('overlay').classList.contains('open')){
-        if(e.key==='Escape'){e.preventDefault();this.closeDetail();return;}
-        if(e.key==='ArrowLeft'){e.preventDefault();this.prev();return;}
-        if(e.key==='ArrowRight'){e.preventDefault();this.next();return;}
-        if(e.key==='r'||e.key==='R'){e.preventDefault();this.rotate(e.shiftKey?-90:90);return;}
-        if(e.key==='+'||e.key==='='){e.preventDefault();this.zoomBy(1.25);return;}
-        if(e.key==='-'||e.key==='_'){e.preventDefault();this.zoomBy(0.8);return;}
-        if(e.key==='0'){e.preventDefault();this.resetZoom();return;}
-        if(e.key===' '){e.preventDefault();this.toggleSlideshow();return;}
-        if(e.key==='f'||e.key==='F'){e.preventDefault();this.toggleFavCurrent();return;}
+      if(e.key==='Escape'){
+        e.preventDefault();
+        if(document.getElementById('edit-overlay').classList.contains('open')){this.closeEditor();return;}
+        if(document.getElementById('settings-overlay').classList.contains('open')){this.closeSettings();return;}
+        if(document.getElementById('dup-overlay').classList.contains('open')){this.closeDup();return;}
+        if(document.getElementById('overlay').classList.contains('open')){this.closeDetail();return;}
+        return;
       }
+      if(!document.getElementById('overlay').classList.contains('open'))return;
+      if(e.key==='ArrowLeft'){e.preventDefault();this.prev();return;}
+      if(e.key==='ArrowRight'){e.preventDefault();this.next();return;}
+      if(e.key==='r'||e.key==='R'){e.preventDefault();this.rotate(e.shiftKey?-90:90);return;}
+      if(e.key==='+'||e.key==='='){e.preventDefault();this.zoomBy(1.25);return;}
+      if(e.key==='-'||e.key==='_'){e.preventDefault();this.zoomBy(0.8);return;}
+      if(e.key==='0'){e.preventDefault();this.resetZoom();return;}
+      if(e.key===' '){e.preventDefault();this.toggleSlideshow();return;}
+      if(e.key==='f'||e.key==='F'){e.preventDefault();this.toggleFavCurrent();return;}
     });
     window.addEventListener('resize',()=>{if(document.getElementById('overlay').classList.contains('open'))this.applyView();});
     // 预览区滚轮缩放 + 拖拽平移
@@ -817,14 +823,15 @@ class PhotoLibrary{
     const ch=prev.clientHeight-parseFloat(cs.paddingTop)-parseFloat(cs.paddingBottom);
     if(cw<=0||ch<=0)return;
     const base=Math.min(cw/nw,ch/nh,1);
-    const w=nw*base*this.zoom,h=nh*base*this.zoom;
     const r=this.rot*Math.PI/180;
-    const bbW=Math.abs(w*Math.cos(r))+Math.abs(h*Math.sin(r));
-    const bbH=Math.abs(w*Math.sin(r))+Math.abs(h*Math.cos(r));
-    const fit=Math.min(cw/bbW,ch/bbH,1);
-    img.style.width=(w*fit)+'px';
-    img.style.height=(h*fit)+'px';
-    img.style.transform='translate('+this.panX+'px,'+this.panY+'px) rotate('+this.rot+'deg) scale('+fit+')';
+    const cos=Math.abs(Math.cos(r)),sin=Math.abs(Math.sin(r));
+    const w0=nw*base,h0=nh*base;
+    const bbW0=w0*cos+h0*sin,bbH0=w0*sin+h0*cos;
+    let s=base*this.zoom;
+    if(this.zoom<=1){const rotFit=Math.min(cw/bbW0,ch/bbH0);if(rotFit<s)s=rotFit;}
+    img.style.width=(nw*s)+'px';
+    img.style.height=(nh*s)+'px';
+    img.style.transform='translate('+this.panX+'px,'+this.panY+'px) rotate('+this.rot+'deg)';
   }
   toggleSlideshow(){
     if(this.slideshow){this.stopSlideshow();return;}

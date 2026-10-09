@@ -9,7 +9,7 @@
   var TARGET = { easy: 41, medium: 49, hard: 53, expert: 57 }
   var DIFF_LABEL = { easy: '简单', medium: '中等', hard: '困难', expert: '专家' }
 
-  var sol, given, val, notes, sel, notesMode, seconds, timerId, running, solved
+  var sol, given, val, notes, sel, notesMode, seconds, timerId, running, solved, visPaused = false
 
   var elBoard = document.getElementById('board')
   var elTimer = document.getElementById('timer')
@@ -261,6 +261,15 @@
   elDiff.addEventListener('change', newGame)
   elNotes.addEventListener('click', toggleNotes)
   document.getElementById('hint').addEventListener('click', hint)
+
+  // 切到后台时冻结计时器，回到前台再恢复
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) {
+      if (!solved && timerId) { clearInterval(timerId); timerId = null; visPaused = true }
+    } else if (visPaused && !solved && !timerId) {
+      startTimer(); visPaused = false
+    }
+  });
 
   newGame()
 })()

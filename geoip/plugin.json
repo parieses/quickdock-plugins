@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.geoip",
   "name": "IP 归属地",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "查询 IP 的地理位置、运营商、时区与坐标，支持指定 IP 或查询本机公网 IP。",
   "author": "QuickDock",
   "category": "网络工具",
@@ -58,5 +58,5 @@
     "zh-CN": "查询 IP 的地理位置、运营商、时区与坐标",
     "en-US": "Look up IP geolocation, ISP, timezone and coordinates."
   },
-  "changelog": "## v1.0.1\n\n- 查询状态增加旋转加载动画\n\n## v1.0.0\n\n- 查询 IP 归属地/运营商/时区/坐标，支持指定 IP 或查本机公网 IP"
+  "changelog": "## v1.0.2\n\n- 标准输入读取改为 bufio.NewReader，避免大请求被截断\n\n## v1.0.1\n\n- 查询状态增加旋转加载动画\n\n## v1.0.0\n\n- 查询 IP 归属地/运营商/时区/坐标，支持指定 IP 或查本机公网 IP"
 }

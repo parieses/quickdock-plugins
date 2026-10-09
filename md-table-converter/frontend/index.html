@@ -319,7 +319,6 @@ function convert(){
   updateLabels();
 }
 function updateLabels(){
-  $('outLabelText') ;
   var lbl = document.querySelector('.cc-pane:last-child .cc-label');
   if (lbl) lbl.textContent = (isEn() ? 'Output · ' : '输出 · ') + FMT_LABEL[cur.fmt];
   $('copyBtn').textContent = L('📋 复制');

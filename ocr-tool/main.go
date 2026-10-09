@@ -50,12 +50,14 @@ var answered bool
 
 func main() {
 	initLog()
-	scanner := bufio.NewScanner(os.Stdin)
-	// 图片经 base64 传入时可能很大（截图可达数 MB），放大缓冲到 64MB。
-	scanner.Buffer(make([]byte, 1024*1024), 64*1024*1024)
+	reader := bufio.NewReader(os.Stdin)
 
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			break
+		}
+		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}

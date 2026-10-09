@@ -94,8 +94,9 @@ func main() {
 }
 
 // hostCall 向宿主发起回调请求（如 host.clipboard.write / host.notify）。
-// 不等待响应：结果帧由主循环静默丢弃。
+// 不等待响应：结果帧由主循环静默丢弃。每次调用自增 cbSeq 以区分不同回调。
 func hostCall(method string, params map[string]interface{}) {
+	cbSeq++
 	payload, err := json.Marshal(map[string]interface{}{
 		"jsonrpc": "2.0",
 		"id":      cbSeq,

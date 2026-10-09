@@ -41,11 +41,14 @@ type ExecuteParams struct {
 }
 
 func main() {
-	scanner := bufio.NewScanner(os.Stdin)
-	scanner.Buffer(make([]byte, 256*1024), 256*1024)
+	reader := bufio.NewReader(os.Stdin)
 
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			break
+		}
+		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}

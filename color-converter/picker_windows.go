@@ -118,8 +118,14 @@ func waitPickLoop(epoch int) {
 	markPick(epoch, "cancelled", 0, 0, 0, false) // 超时视为取消
 }
 
-// clipboardWriteHex 经宿主 host.clipboard.write 回调写剪贴板（fire-and-forget）
+// clipboardWriteHex 经宿主 host.clipboard.write 回调写剪贴板（fire-and-forget）。
+// 返回是否确实发出了一次带有效颜色的复制请求：宿主回调是 fire-and-forget，
+// 无法获知最终是否写入成功，故只能以「有有效颜色」作为已尝试的依据，
+// 避免无条件返回 true 让前端永远谎报「已复制」。
 func clipboardWriteHex(hex string) bool {
+	if hex == "" {
+		return false
+	}
 	hostCall("host.clipboard.write", map[string]interface{}{"text": hex})
 	return true
 }

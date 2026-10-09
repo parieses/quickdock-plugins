@@ -529,7 +529,10 @@ func handlePropagation(id int64, input map[string]interface{}) {
 	consistent := true
 	var firstSet string
 	for _, res := range results {
-		if res["ok"].(bool) {
+		ok, _ := res["ok"].(bool)
+		if !ok {
+			continue
+		}
 			ans := toStringSlice(res["answers"])
 			sort.Strings(ans)
 			key := strings.Join(ans, "|")

@@ -33,17 +33,31 @@ type executeParams struct {
 
 func strFrom(m map[string]interface{}, key string) string {
 	if v, ok := m[key].(string); ok {
+		return strings.TrimSpace(v)
+	}
+	return ""
+}
+
+// rawStrFrom 不做 TrimSpace，用于文本哈希等需要逐字节精确的场景
+func rawStrFrom(m map[string]interface{}, key string) string {
+	if v, ok := m[key].(string); ok {
 		return v
 	}
 	return ""
 }
 
+var outMu sync.Mutex
+
 func respond(id int64, result interface{}) {
+	outMu.Lock()
+	defer outMu.Unlock()
 	out, _ := json.Marshal(map[string]interface{}{"jsonrpc": "2.0", "id": id, "result": result})
 	fmt.Println(string(out))
 }
 
 func respondError(id int64, code int, msg string) {
+	outMu.Lock()
+	defer outMu.Unlock()
 	out, _ := json.Marshal(map[string]interface{}{
 		"jsonrpc": "2.0", "id": id,
 		"error": map[string]interface{}{"code": code, "message": msg},
@@ -73,7 +87,7 @@ func handleCalc(id int64, input map[string]interface{}) {
 	h := pickHash(algo)
 	target := ""
 	if mode == "text" {
-		io.WriteString(h, strFrom(input, "text"))
+		io.WriteString(h, rawStrFrom(input, "text"))
 		target = "(文本输入)"
 	} else {
 		path := strFrom(input, "path")
