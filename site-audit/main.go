@@ -542,7 +542,6 @@ func handlePropagation(id int64, input map[string]interface{}) {
 				consistent = false
 			}
 			successful = append(successful, ans)
-		}
 	}
 	if len(successful) == 0 {
 		consistent = false

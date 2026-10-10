@@ -102,8 +102,10 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	status := 404
 	ct := "application/json"
-	b, _ := json.Marshal(map[string]interface{}{"error": "no matching route", "path": r.URL.Path})
-	body = string(b)
+	body := ""
+	if b, err := json.Marshal(map[string]interface{}{"error": "no matching route", "path": r.URL.Path}); err == nil {
+		body = string(b)
+	}
 	if matched != nil {
 		if matched.DelayMs > 0 {
 			time.Sleep(time.Duration(matched.DelayMs) * time.Millisecond)
