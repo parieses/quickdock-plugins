@@ -1,0 +1,242 @@
+{
+  "id": "io.github.parieses.control-receiver",
+  "name": "接收控制端",
+  "version": "1.0.5",
+  "description": "手机屏幕镜像接收端 + 控制端：连接 QuestPhoneMirror 发送端实时显示画面，鼠标点击/拖拽反向操控真机（配套手机端发送端见 https://github.com/parieses/QuestPhoneMirror）",
+  "author": "QuickDock",
+  "icon": "icon.svg",
+  "category": "网络工具",
+  "platforms": [
+    "windows"
+  ],
+  "backend": {
+    "runtime": "native",
+    "entry": "control-receiver",
+    "args": []
+  },
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 1240,
+    "height": 820
+  },
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "permissions": {
+    "filesystem": false,
+    "network": true
+  },
+  "ports": {
+    "control": 24556,
+    "stream": 24557,
+    "phone": 45556,
+    "discovery": 45555,
+    "localOnly": true
+  },
+  "commands": [
+    {
+      "id": "start",
+      "title": "启动接收（连接手机发送端）",
+      "keywords": [
+        "start",
+        "启动",
+        "接收",
+        "连接",
+        "投屏",
+        "mirror",
+        "receiver"
+      ],
+      "aliases": [
+        "开始接收",
+        "连接手机",
+        "启动投屏"
+      ],
+      "title_i18n": {
+        "zh-CN": "启动接收（连接手机发送端）",
+        "en-US": "Start Receiver (Connect to Phone)"
+      }
+    },
+    {
+      "id": "stop",
+      "title": "停止接收",
+      "keywords": [
+        "stop",
+        "停止",
+        "断开",
+        "disconnect"
+      ],
+      "aliases": [
+        "停止接收",
+        "断开连接"
+      ],
+      "title_i18n": {
+        "zh-CN": "停止接收",
+        "en-US": "Stop Receiver"
+      }
+    },
+    {
+      "id": "status",
+      "title": "接收状态",
+      "keywords": [
+        "status",
+        "状态",
+        "连接状态"
+      ],
+      "aliases": [
+        "查看状态",
+        "连接状态"
+      ],
+      "title_i18n": {
+        "zh-CN": "接收状态",
+        "en-US": "Receiver Status"
+      }
+    },
+    {
+      "id": "port.suggest",
+      "title": "端口建议",
+      "keywords": [
+        "port",
+        "端口",
+        "端口建议",
+        "suggest"
+      ],
+      "aliases": [
+        "推荐端口",
+        "端口检测"
+      ],
+      "title_i18n": {
+        "zh-CN": "端口建议",
+        "en-US": "Suggest Ports"
+      }
+    },
+    {
+      "id": "phone.reconnect",
+      "title": "重连手机（重新请求关键帧）",
+      "keywords": [
+        "reconnect",
+        "重连",
+        "重新连接",
+        "关键帧",
+        "黑屏",
+        "没画面"
+      ],
+      "aliases": [
+        "重连手机",
+        "重新请求画面"
+      ],
+      "title_i18n": {
+        "zh-CN": "重连手机（重新请求关键帧）",
+        "en-US": "Reconnect Phone (Request Keyframe)"
+      }
+    },
+    {
+      "id": "control.tap",
+      "title": "模拟点击",
+      "keywords": [
+        "tap",
+        "点击",
+        "control"
+      ],
+      "aliases": [
+        "模拟点击"
+      ],
+      "title_i18n": {
+        "zh-CN": "模拟点击",
+        "en-US": "Send Tap"
+      }
+    },
+    {
+      "id": "control.swipe",
+      "title": "模拟滑动",
+      "keywords": [
+        "swipe",
+        "滑动",
+        "拖拽"
+      ],
+      "aliases": [
+        "模拟滑动"
+      ],
+      "title_i18n": {
+        "zh-CN": "模拟滑动",
+        "en-US": "Send Swipe"
+      }
+    },
+    {
+      "id": "control.text",
+      "title": "发送文本",
+      "keywords": [
+        "text",
+        "文本",
+        "输入"
+      ],
+      "aliases": [
+        "发送文本"
+      ],
+      "title_i18n": {
+        "zh-CN": "发送文本",
+        "en-US": "Send Text"
+      }
+    },
+    {
+      "id": "control.key",
+      "title": "发送按键",
+      "keywords": [
+        "key",
+        "按键",
+        "返回",
+        "home"
+      ],
+      "aliases": [
+        "发送按键"
+      ],
+      "title_i18n": {
+        "zh-CN": "发送按键",
+        "en-US": "Send Key"
+      }
+    },
+    {
+      "id": "config.get",
+      "title": "读取端口配置",
+      "keywords": [
+        "config",
+        "配置",
+        "端口配置"
+      ],
+      "aliases": [
+        "读取配置"
+      ],
+      "title_i18n": {
+        "zh-CN": "读取端口配置",
+        "en-US": "Get Config"
+      }
+    },
+    {
+      "id": "config.set",
+      "title": "保存端口配置",
+      "keywords": [
+        "config",
+        "set",
+        "保存配置",
+        "端口设置"
+      ],
+      "aliases": [
+        "保存配置"
+      ],
+      "title_i18n": {
+        "zh-CN": "保存端口配置",
+        "en-US": "Set Config"
+      }
+    }
+  ],
+  "name_i18n": {
+    "zh-CN": "接收控制端",
+    "en-US": "Control Receiver"
+  },
+  "description_i18n": {
+    "zh-CN": "手机屏幕镜像接收端 + 控制端：连接 QuestPhoneMirror 发送端实时显示画面，鼠标点击/拖拽反向操控真机（配套手机端发送端见 https://github.com/parieses/QuestPhoneMirror）",
+    "en-US": "Screen-mirror receiver and remote controller: connect to a QuestPhoneMirror sender, watch the live screen and drive the phone with mouse tap/swipe. Companion Android sender: https://github.com/parieses/QuestPhoneMirror"
+  },
+  "changelog": "## v1.0.5\n\n- **画面可视区域明显变大**：顶部「端口 / 手机地址」设置条默认收起（点标题栏「设置」再展开，收起时标题栏用一行摘要显示当前端口与手机地址）；标题栏由 44px 压到 36px；底栏改为固定单行不再换行。默认状态下纵向 chrome 从约 132px 降到约 74px\n- 新增「**侧栏**」开关：右侧状态栏可随时收起，收起后画面拿到全部窗口宽度（沉浸模式下会自动收起、退出时还原）\n- 画面区去掉网格底纹，改为干净的径向渐变，视觉上更聚焦于手机画面\n- **沉浸模式不再丢掉导航键**：底栏不再被隐藏，而是变成屏幕底部居中的**浮动控制条**（返回 / Home / 多任务 / 文本 / 退出沉浸都在），鼠标一动就浮出、3 秒无操作自动淡出，正在输入文本时不隐藏\n- **底栏占位大幅减少**：文本输入框默认收起，点「⌨ 文本」才展开；原来常驻的长说明（点击/拖拽/右键/滚轮等）收进右下角「?」气泡，不再占一行\n- 「重置」按钮移入设置条并改名「重置通道」（避免在标题栏占位）\n\n## v1.0.4\n\n- **根治「启动接收后一直停在正在启动…」**：宿主会复用插件窗口、并在关窗时 treeKill 掉后端再重建，此时「前端 → 宿主 → 插件」的命令桥会失效（请求发出去既没响应也不报错）。现在后端在 initialize 时就把本地控制通道 WS 绑好，前端**直接连 127.0.0.1 下发命令**，完全绕开宿主桥；宿主桥接仅作为兜底，两条通道互为备份\n- 本地控制通道从「只接受 control.*」升级为**命令白名单**（start/stop/status/port.suggest/phone.reconnect/config.get/config.set/stream.pull/control.*），回复 `{\"t\":\"res\",\"id\":..,\"ok\":true,\"data\":..}`；只监听 127.0.0.1，不含文件/进程/shell 能力\n- **命令队列加固（不再可能卡死）**：超时从「入队时刻」起算（此前一旦前面有请求卡住，后面的请求连计时器都不会创建，Promise 永不落地）；响应由「当前在途请求」独占接收；新增队列看门狗，40 秒无响应强制释放；按钮在失败分支一律恢复可点\n- 新增「**重置**」按钮：清空排队请求、重建本地直连、重新同步状态 —— 宿主复用 WebView2 不会重新加载页面，这是纯前端的自救入口\n- 页面恢复可见 / 获得焦点时自动重新同步并重连本地直连（WebView2 被隐藏会节流甚至冻结页面）\n- **「启动接收」全过程留痕**：每一步都带「启动#序号 + 距开始毫秒」，并带 3/8/15/25 秒的无画面提示；后端同样记录每条命令（`RPC 命令:` / `WS 命令:`）与耗时，可据此判断请求到底有没有到达后端\n- 端口探测更稳：候选顺序 = 上次用过的端口（本地存储）→ 界面上的控制端口 → 固定候选表；读到配置后若直连仍未建立，会按配置端口再探一次\n- 端口建议 / 手动改端口后自动在新端口重建本地直连\n\n## v1.0.3\n\n- 「端口建议」面板可关闭：右上角新增「×」，选中候选项后自动收起，再点「端口建议」按钮也可收起，支持 Esc 与点击面板外区域关闭\n- 启动更快：`start` 一次 RPC 即可携带端口与地址（后端一并落盘配置），省掉 `config.set` 的整轮往返；WS 接入延迟 120ms → 80ms\n- 启动不再「卡住」：失败时立即更新提示层并恢复按钮，等待画面改为按秒刷新计时（「已连接，等待画面… N 秒」），超过 3 秒给出可执行建议与「重新请求画面」按钮\n- 新增首帧看门狗：连上手机但 2.5 秒内一帧都没收到时自动重连（最多 3 次）——手机端每次接连接都会 `requestKeyFrame()`，这是「等待画面」长时间不消失最有效的对策；同时新增 `phone.reconnect` 命令与「重连手机」按钮\n- 控制链路可视化：右侧栏新增「控制通道 / 最后指令」，可直接看到指令走的是本地 WebSocket 还是 RPC 兜底、以及最后一次点击/滑动的坐标\n- 新增「点击自检」：向屏幕中心发一次点击并观察画面是否刷新，用于区分「指令没送达」与「手机无障碍服务未开启」\n- `config.get` 重试不再刷日志（改为静默重试），超时 12s → 5s\n- 插件介绍中标注配套手机端仓库：https://github.com/parieses/QuestPhoneMirror\n\n## v1.0.2\n\n- 拖拽跟手：点击/滑动/按键/文本改为优先走本地控制通道 WebSocket（不再占用 RPC 串行队列，也无 30s 超时等待），WS 未就绪时自动退回 RPC\n- 画面更大：默认窗口 1000×680 → 1240×820，右侧栏 296px → 236px，并新增「沉浸模式」（按钮或 F 键切换，Esc 退出）只保留画面\n- 光标修正：画面内由十字准星改为默认箭头，悬停可抓取时为 `grab`、拖拽中为 `grabbing`\n- 稳定性：后端惰性复活与 iframe 就绪存在竞态，`config.get` 改为延迟 350ms 发起并允许 2 次超时重试；RPC 默认超时 30s → 15s\n\n## v1.0.1\n\n- 未连接手机时在前端本地拦截控制操作，避免拖拽的连续分片把「未连接手机发送端」错误刷满日志（改为 2.5 秒一次的界面提示）\n- `port.suggest` 默认候选的说明文案更准确：区分「当前配置端口（可用）」与「本机端口已被其他程序监听」\n\n## v1.0.0\n\n- 首个版本：作为 QuestPhoneMirror 的「接收端 + 控制端」\n- TCP 主动连接手机发送端（默认 45556），可选 UDP 45555 广播自动发现\n- 手写最小 WebSocket 服务端（标准库，仅 127.0.0.1 监听）：控制通道 + H.264 视频流通道，并提供 `stream.pull` 轮询兜底\n- 协议帧严格对齐 QuestPhoneMirror `Proto.kt`：`[type:u8][length:u32 LE][body]`，视频帧 `[pts:u64][flags:u8][h264(AVCC)]`\n- 从 SPS/PPS 构造 avcC description，配合前端 WebCodecs `VideoDecoder` 解码上屏\n- 鼠标点击/拖拽 → control.tap / control.swipe，并支持文本与按键回传\n- 端口设置主输入框（controlPort 默认 24556，streamPort = controlPort + 1）与智能「端口建议」（探测占用、附理由）\n"
+}

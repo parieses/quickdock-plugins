@@ -1,0 +1,1609 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>接收控制端</title>
+<link rel="stylesheet" href="qd-theme.css">
+<link rel="stylesheet" href="components.css">
+<style>
+  html,body{height:100%}
+  .app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+
+  /* —— 标题栏：压薄到 36px，把纵向空间尽量留给画面 —— */
+  .app>.p-head{height:36px;padding:0 var(--sp-3);gap:6px}
+  .app>.p-head .p-head-title{font-size:var(--fs-md)}
+  .app>.p-head .p-head-actions{gap:6px}
+  /* 配置摘要：设置条收起时用一行文字交代「端口 / 手机地址」，不占额外高度 */
+  .cfg-summary{font-size:var(--fs-xs);color:var(--text-muted);font-family:var(--font-mono);white-space:nowrap;
+    max-width:340px;overflow:hidden;text-overflow:ellipsis}
+  .app.cfgopen .cfg-summary{display:none}
+
+  /* —— 设置条：默认收起，点「设置」才展开 —— */
+  .bar{display:none;align-items:center;gap:var(--sp-2);padding:6px var(--sp-3);background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-wrap:wrap;flex-shrink:0}
+  .app.cfgopen .bar{display:flex}
+  .bar .sep{width:1px;height:22px;background:var(--border);margin:0 var(--sp-1)}
+  .num{width:82px;text-align:center;font-family:var(--font-mono)}
+  .addr{width:140px;font-family:var(--font-mono)}
+  .chk{display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-sm);color:var(--text-secondary);cursor:pointer;user-select:none}
+  .hint{font-size:var(--fs-xs);color:var(--text-muted)}
+  .stream-port{font-family:var(--font-mono);color:var(--accent)}
+
+  /* —— 端口建议 —— */
+  .suggest{display:none;flex-direction:column;gap:6px;padding:var(--sp-3) var(--sp-4);background:var(--bg-tertiary);border-bottom:1px solid var(--border);max-height:210px;overflow:auto;flex-shrink:0}
+  .suggest.open{display:flex}
+  .sug-head{display:flex;align-items:center;gap:var(--sp-2);font-size:var(--fs-xs);color:var(--text-muted);letter-spacing:.5px;text-transform:uppercase}
+  .sug-item{display:flex;align-items:center;gap:var(--sp-2);padding:7px 10px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;transition:background var(--transition),border-color var(--transition)}
+  .sug-item:hover{background:var(--bg-hover);border-color:var(--border-strong)}
+  .sug-item.bad{opacity:.55}
+  .sug-port{font-family:var(--font-mono);font-size:var(--fs-md);font-weight:var(--fw-semibold);color:var(--text-primary);min-width:52px}
+  .sug-pair{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--text-muted);white-space:nowrap}
+  .sug-reason{font-size:var(--fs-xs);color:var(--text-secondary);flex:1}
+  .sug-title{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .sug-close{margin-left:auto;flex-shrink:0;padding:1px 8px;line-height:1.5;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-secondary);cursor:pointer;font-size:var(--fs-sm);transition:background var(--transition),color var(--transition)}
+  .sug-close:hover{background:var(--bg-hover);color:var(--text-primary)}
+  .sug-note{font-size:var(--fs-xs);color:var(--text-muted);line-height:1.6}
+
+  /* —— 主体 —— */
+  .p-body{flex:1;display:flex;overflow:hidden;min-height:0}
+  .stage{flex:1;display:flex;align-items:center;justify-content:center;background:var(--bg-primary);
+    background-image:radial-gradient(120% 80% at 50% 0%,rgba(128,128,128,.10),transparent 72%);
+    position:relative;overflow:hidden;min-width:0}
+  #screen{max-width:100%;max-height:100%;display:block;image-rendering:auto;box-shadow:var(--shadow-2);cursor:default;background:#000}
+  #screen.can-grab{cursor:grab}
+  #screen.dragging{cursor:grabbing}
+  #screen.hidden{display:none}
+  .overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--sp-2);color:var(--text-muted);font-size:var(--fs-md);pointer-events:none;text-align:center;padding:var(--sp-4)}
+  .overlay .big{font-size:var(--fs-xl);color:var(--text-secondary)}
+  .overlay .ov-acts{display:flex;align-items:center;gap:var(--sp-2);margin-top:var(--sp-2);pointer-events:auto}
+  .overlay .ov-hint{font-size:var(--fs-xs);color:var(--text-muted);max-width:460px;line-height:1.7}
+  .overlay.hidden{display:none}
+
+  /* —— 右侧栏：控制状态 —— */
+  .ctlbar{display:flex;flex-direction:column;gap:5px;padding:8px 10px;border-bottom:1px solid var(--border);flex-shrink:0;font-size:var(--fs-xs)}
+  .ctlbar .row{display:flex;align-items:center;gap:6px;min-width:0}
+  .ctlbar .k{color:var(--text-muted);flex-shrink:0}
+  .ctlbar .v{font-family:var(--font-mono);color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+  .ctlbar .v.on{color:var(--success)}
+  .ctlbar .v.off{color:var(--warning)}
+
+  /* —— 右侧栏（可折叠：收起后画面拿到全部宽度）—— */
+  .side{width:236px;flex-shrink:0;border-left:1px solid var(--border);display:flex;flex-direction:column;background:var(--bg-primary)}
+  .app.noside .side{display:none}
+  .side-head{display:flex;align-items:center;gap:var(--sp-2);padding:5px var(--sp-3);border-bottom:1px solid var(--border);font-size:var(--fs-xs);color:var(--text-muted);flex-shrink:0}
+  .side-head .p-spacer{flex:1}
+  .metrics{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);border-bottom:1px solid var(--border);flex-shrink:0}
+  .metric{background:var(--bg-primary);padding:8px 10px}
+  .metric .k{font-size:var(--fs-xs);color:var(--text-muted)}
+  .metric .v{font-size:var(--fs-lg);font-family:var(--font-mono);color:var(--text-primary);margin-top:2px;word-break:break-all}
+  .log-head{display:flex;align-items:center;gap:var(--sp-2);padding:6px var(--sp-3);font-size:var(--fs-xs);color:var(--text-muted);border-bottom:1px solid var(--border);flex-shrink:0}
+  #log{flex:1;overflow:auto;padding:6px var(--sp-3);font-family:var(--font-mono);font-size:var(--fs-xs);line-height:1.55;min-height:0}
+  .ln{display:flex;gap:6px;padding:1px 0}
+  .ln .t{color:var(--text-muted);flex-shrink:0}
+  .ln.info .m{color:var(--text-secondary)}
+  .ln.ok .m{color:var(--success)}
+  .ln.warn .m{color:var(--warning)}
+  .ln.err .m{color:var(--danger)}
+
+  /* —— 底部控制条：固定单行，不换行；文本输入按需展开 —— */
+  .foot{display:flex;align-items:center;gap:6px;padding:5px var(--sp-3);background:var(--bg-secondary);border-top:1px solid var(--border);flex-shrink:0;flex-wrap:nowrap;overflow:hidden}
+  .nav-btn{min-width:52px;justify-content:center}
+  .text-wrap{display:none;flex:1;min-width:0;gap:6px;align-items:center}
+  .app.textopen .text-wrap{display:flex}
+  .app.textopen .btn-toggle-text{display:none}
+  .text-wrap #text{flex:1;min-width:0;height:26px;font-size:var(--fs-sm)}
+  .foot-sep{width:1px;height:18px;background:var(--border);flex-shrink:0}
+  .foot-spacer{flex:1;min-width:0}
+  .app.textopen .foot-spacer{display:none}
+
+  /* —— 帮助气泡：把「鼠标怎么用」的说明收起来，不再常驻底栏 —— */
+  .help-pop{position:fixed;right:12px;bottom:46px;z-index:70;width:min(340px,86vw);padding:var(--sp-3);
+    background:var(--bg-secondary);border:1px solid var(--border-strong);border-radius:var(--radius-lg);
+    box-shadow:var(--shadow-2);font-size:var(--fs-xs);color:var(--text-secondary);line-height:1.85}
+  .help-pop.hidden{display:none}
+  .help-pop b{color:var(--text-primary)}
+  .help-pop .kbd{display:inline-block;padding:0 5px;border:1px solid var(--border);border-radius:4px;
+    background:var(--bg-tertiary);font-family:var(--font-mono);color:var(--text-primary)}
+
+  /* —— 沉浸模式：画面占满窗口，控制条变成自动隐藏的浮动条（导航键不丢）—— */
+  .app.immersive .p-head,.app.immersive .bar,.app.immersive .suggest{display:none}
+  .app.immersive .p-body{position:fixed;inset:0;z-index:50;background:var(--bg-primary)}
+  .app.immersive .side{position:fixed;right:0;top:0;bottom:0;z-index:55;box-shadow:var(--shadow-2)}
+  .app.immersive .foot{position:fixed;bottom:14px;left:50%;z-index:60;
+    transform:translateX(-50%) translateY(8px);opacity:0;pointer-events:none;
+    border:1px solid var(--border-strong);border-radius:var(--radius-pill);
+    padding:6px 12px;box-shadow:var(--shadow-2);max-width:min(94vw,820px);
+    transition:opacity .22s ease,transform .22s ease}
+  .app.immersive .foot.imm-show{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(0)}
+  .btn-imm-only{display:none!important}
+  .app.immersive .btn-imm-only{display:inline-flex!important}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- 标题栏 -->
+  <div class="p-head">
+    <span class="p-head-title">接收控制端</span>
+    <span id="tagState" class="p-tag p-tag-neutral">未启动</span>
+    <span id="headInfo" class="p-muted"></span>
+    <div class="p-head-actions">
+      <span id="cfgSummary" class="cfg-summary" title="当前配置（点「设置」可修改）"></span>
+      <span id="modeTag" class="p-tag p-tag-neutral" title="前端取流通道">—</span>
+      <button id="btnToggleCfg" class="p-btn p-btn-sm" title="展开/收起端口与手机地址设置">设置</button>
+      <button id="btnToggleSide" class="p-btn p-btn-sm" title="显示/隐藏右侧状态栏（隐藏后画面更宽）">侧栏</button>
+      <button id="btnImmersive" class="p-btn p-btn-sm" title="沉浸模式：画面占满窗口（快捷键 F / Esc）">沉浸</button>
+      <button id="btnStart" class="p-btn p-btn-primary">启动接收</button>
+      <button id="btnStop" class="p-btn" disabled>停止</button>
+    </div>
+  </div>
+
+  <!-- 端口 / 地址设置（默认收起，点标题栏「设置」展开） -->
+  <div class="bar">
+    <span class="p-label">控制端口</span>
+    <input id="ctlPort" class="p-input num" type="number" min="1024" max="65534" step="1" value="24556">
+    <span class="hint">视频流 <span id="streamPort" class="stream-port">24557</span></span>
+    <button id="btnSuggest" class="p-btn p-btn-sm">端口建议</button>
+    <span class="sep"></span>
+    <span class="p-label">手机地址</span>
+    <input id="phoneHost" class="p-input addr" placeholder="自动发现 / 如 192.168.1.20" spellcheck="false">
+    <span class="p-label">端口</span>
+    <input id="phonePort" class="p-input num" type="number" min="1" max="65535" value="45556">
+    <label class="chk"><input id="autoDiscover" type="checkbox" checked>自动发现（UDP 45555）</label>
+    <span class="sep"></span>
+    <button id="btnReset" class="p-btn p-btn-sm" title="清空请求队列、重连本地直连并重新读取状态（界面卡住时点这里）">重置通道</button>
+  </div>
+
+  <!-- 端口建议面板 -->
+  <div id="suggest" class="suggest"></div>
+
+  <!-- 画面 + 侧栏 -->
+  <div class="p-body">
+    <div class="stage">
+      <canvas id="screen" class="hidden"></canvas>
+      <div id="overlay" class="overlay">
+        <div class="big" id="ovTitle">未连接</div>
+        <div id="ovDesc">点击「启动接收」，连接手机发送端后即可看到实时画面</div>
+        <div class="ov-hint" id="ovHint"></div>
+        <div class="ov-acts" id="ovActs">
+          <button id="btnOvRetry" class="p-btn p-btn-sm">重新请求画面</button>
+        </div>
+      </div>
+    </div>
+    <div class="side">
+      <div class="side-head">
+        <span>状态</span>
+        <span class="p-spacer"></span>
+        <button id="btnHideSide" class="p-btn p-btn-sm p-btn-ghost" title="收起右侧栏，把宽度让给画面（标题栏「侧栏」可再展开）">收起 ▸</button>
+      </div>
+      <div class="metrics">
+        <div class="metric"><div class="k">分辨率</div><div class="v" id="mScreen">—</div></div>
+        <div class="metric"><div class="k">远端</div><div class="v" id="mRemote">—</div></div>
+        <div class="metric"><div class="k">解码帧率</div><div class="v" id="mFps">0</div></div>
+        <div class="metric"><div class="k">码率</div><div class="v" id="mRate">0 kb/s</div></div>
+        <div class="metric"><div class="k">编码</div><div class="v" id="mCodec">—</div></div>
+        <div class="metric"><div class="k">已收帧</div><div class="v" id="mFrames">0</div></div>
+      </div>
+      <div class="ctlbar">
+        <div class="row"><span class="k">控制通道</span><span class="v" id="mCtl">—</span></div>
+        <div class="row"><span class="k">最后指令</span><span class="v" id="mLast">—</span></div>
+        <div class="row">
+          <button id="btnProbe" class="p-btn p-btn-sm" title="向手机屏幕中心发一次点击，观察画面是否变化，用于判断控制链路是否打通">点击自检</button>
+          <button id="btnReconnect" class="p-btn p-btn-sm" title="断开并重新连接手机，会重新请求关键帧（画面静止或手机息屏后的常用手段）">重连手机</button>
+        </div>
+      </div>
+      <div class="log-head"><span>运行日志</span><span class="p-spacer" style="flex:1"></span><button id="btnClearLog" class="p-btn p-btn-sm p-btn-ghost">清空</button></div>
+      <div id="log"></div>
+    </div>
+  </div>
+
+  <!-- 控制条：固定单行。导航键常驻，文本输入按需展开，说明收进「?」气泡 -->
+  <div class="foot">
+    <button class="p-btn p-btn-sm nav-btn" data-key="4" title="发送返回键（keycode 4）">返回</button>
+    <button class="p-btn p-btn-sm nav-btn" data-key="3" title="发送 Home 键（keycode 3）">Home</button>
+    <button class="p-btn p-btn-sm nav-btn" data-key="187" title="发送多任务键（keycode 187）">多任务</button>
+    <span class="foot-sep"></span>
+    <button id="btnToggleText" class="p-btn p-btn-sm btn-toggle-text" title="展开/收起文本输入框">⌨ 文本</button>
+    <div class="text-wrap" id="textWrap">
+      <input id="text" class="p-input" placeholder="输入文本后回车发送到手机（需手机开启无障碍 QPM 控制服务）" spellcheck="false">
+      <button id="btnText" class="p-btn p-btn-sm">发送</button>
+      <button id="btnCloseText" class="p-btn p-btn-sm p-btn-ghost" title="收起文本输入">收起</button>
+    </div>
+    <span class="foot-spacer"></span>
+    <button id="btnHelp" class="p-btn p-btn-sm p-btn-ghost" title="操作说明">?</button>
+    <button id="btnExitImmersive" class="p-btn p-btn-sm p-btn-primary btn-imm-only" title="退出沉浸模式（Esc）">退出沉浸</button>
+  </div>
+</div>
+
+<div id="helpPop" class="help-pop hidden">
+  <div><b>画面内操作</b></div>
+  <div>单击 = 点击 · 拖拽 = 滑动 · 长按 = 长按</div>
+  <div>右键 = 返回 · 滚轮 = 上下滑动</div>
+  <div style="margin-top:6px"><b>快捷键</b></div>
+  <div><span class="kbd">F</span> 进入/退出沉浸 · <span class="kbd">Esc</span> 退出沉浸</div>
+  <div style="margin-top:6px"><b>手机端要求</b></div>
+  <div>需在「设置 → 无障碍 → 已下载的服务」中开启 QPM 控制服务，否则点击/按键会静默丢弃。</div>
+</div>
+
+<script>
+/* =====================================================================
+ * 接收控制端 —— 前端
+ *   · 后端：native Go（control-receiver），命令经 pluginExec(cmd, data) 下发
+ *   · 取流：优先本机 WebSocket（视频流 streamPort / 控制通道 controlPort）；
+ *           若沙箱环境拦截 WebSocket，自动退化为 stream.pull 轮询
+ *   · 解码：WebCodecs VideoDecoder（codec=avc1.* + avcC description，输入 AVCC）
+ *   · 控制：画布坐标 → 手机屏幕像素 → control.tap / control.swipe / text / key
+ * ===================================================================== */
+(function () {
+  'use strict'
+
+  /* ---------- 轻量 i18n（宿主切换语言时热更新） ---------- */
+  var L10N = { 'en-US': {} }
+  function L(key) {
+    var loc = document.documentElement.getAttribute('lang') || 'zh-CN'
+    var map = L10N[loc] || L10N[loc.split('-')[0]] || {}
+    return map[key] !== undefined ? map[key] : key
+  }
+
+  var els = {
+    ctlPort: document.getElementById('ctlPort'),
+    streamPort: document.getElementById('streamPort'),
+    phoneHost: document.getElementById('phoneHost'),
+    phonePort: document.getElementById('phonePort'),
+    autoDiscover: document.getElementById('autoDiscover'),
+    btnStart: document.getElementById('btnStart'),
+    btnStop: document.getElementById('btnStop'),
+    btnSuggest: document.getElementById('btnSuggest'),
+    btnText: document.getElementById('btnText'),
+    btnClearLog: document.getElementById('btnClearLog'),
+    suggest: document.getElementById('suggest'),
+    canvas: document.getElementById('screen'),
+    overlay: document.getElementById('overlay'),
+    ovTitle: document.getElementById('ovTitle'),
+    ovDesc: document.getElementById('ovDesc'),
+    tagState: document.getElementById('tagState'),
+    modeTag: document.getElementById('modeTag'),
+    headInfo: document.getElementById('headInfo'),
+    mScreen: document.getElementById('mScreen'),
+    mRemote: document.getElementById('mRemote'),
+    mFps: document.getElementById('mFps'),
+    mRate: document.getElementById('mRate'),
+    mCodec: document.getElementById('mCodec'),
+    mFrames: document.getElementById('mFrames'),
+    log: document.getElementById('log'),
+    text: document.getElementById('text'),
+    btnToggleText: document.getElementById('btnToggleText'),
+    btnCloseText: document.getElementById('btnCloseText'),
+    textWrap: document.getElementById('textWrap'),
+    btnHelp: document.getElementById('btnHelp'),
+    helpPop: document.getElementById('helpPop'),
+    btnToggleCfg: document.getElementById('btnToggleCfg'),
+    btnToggleSide: document.getElementById('btnToggleSide'),
+    btnHideSide: document.getElementById('btnHideSide'),
+    cfgSummary: document.getElementById('cfgSummary'),
+    btnImmersive: document.getElementById('btnImmersive'),
+    btnExitImmersive: document.getElementById('btnExitImmersive'),
+    ovHint: document.getElementById('ovHint'),
+    ovActs: document.getElementById('ovActs'),
+    btnOvRetry: document.getElementById('btnOvRetry'),
+    mCtl: document.getElementById('mCtl'),
+    mLast: document.getElementById('mLast'),
+    btnProbe: document.getElementById('btnProbe'),
+    btnReconnect: document.getElementById('btnReconnect'),
+    btnReset: document.getElementById('btnReset')
+  }
+  var ctx = els.canvas.getContext('2d', { alpha: false })
+
+  var state = {
+    cfg: null,
+    running: false,        // 后端是否在接收
+    wsReady: false,        // 后端本地 WS 是否已监听
+    started: false,        // 用户是否点了启动
+    mode: 'idle',          // ws | pull | idle
+    wsVid: null,
+    wsDirect: null,        // 本地直连（控制通道 WS）：命令 + 状态/日志推送
+    wsDirectPort: 0,
+    directSeq: 0,
+    directPending: {},
+    decoder: null,
+    codec: '',
+    descB64: '',
+    screenW: 0,
+    screenH: 0,
+    waitKey: true,
+    cursor: -1,
+    pullTimer: null,
+    wsTimer: null,
+    reconnTimer: null,
+    frames: 0,
+    lastTickFrames: 0,
+    fps: 0,
+    gotFrame: false,
+    drag: null,
+    lastSwipeAt: 0,
+    swipeBusy: false,
+    lastLogKey: '',
+    connected: false,
+    everConnected: false,
+    offlineNoticeAt: 0,
+    immersive: false,
+    waitingSince: 0,
+    remote: '',
+    lastFrameAt: 0,
+    ctlMode: '',
+    lastCmd: '',
+    startTimer: null,
+    startSeq: 0,
+    startAt: 0,
+    statusPollBusy: false,
+    immTimer: null,        // 沉浸模式浮动控制条的自动隐藏计时器
+    textOpen: false,       // 底部文本输入是否展开
+    sideOpen: true,        // 右侧状态栏是否显示
+    cfgOpen: false         // 顶部设置条是否展开
+  }
+
+  /* ===================== 日志 ===================== */
+  function log(level, msg) {
+    var d = new Date()
+    var ts = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + ':' + String(d.getSeconds()).padStart(2, '0')
+    var div = document.createElement('div')
+    div.className = 'ln ' + (level || 'info')
+    div.innerHTML = '<span class="t">' + ts + '</span><span class="m"></span>'
+    div.querySelector('.m').textContent = msg
+    els.log.appendChild(div)
+    while (els.log.childNodes.length > 500) els.log.removeChild(els.log.firstChild)
+    els.log.scrollTop = els.log.scrollHeight
+  }
+  els.btnClearLog.onclick = function () { els.log.innerHTML = '' }
+
+  /* ===================== 与后端通信 ===================== */
+  // 后端是宿主拉起的独立进程，命令本来靠宿主转发：
+  //   iframe → postMessage(plugin:execute) → 宿主 → 后端子进程
+  // 但宿主「关窗即杀后端、下次按需复活」时，这条桥可能失效：请求发出去既没有响应、
+  // 也不报错，界面就永远停在「正在启动…」。所以这里做成双通道：
+  //   ① 本地直连：后端在 initialize 时就把控制通道 WS 绑在 127.0.0.1，前端直接连它下发命令；
+  //   ② 宿主通道：plugin:execute，作为兜底（也是本地端口没绑上时的唯一通道）。
+  // 两条通道互为兜底，任一条可用，界面就不会卡死。
+  var DEF_TIMEOUT = 15000
+
+  // —— 通道②：宿主 plugin:execute（串行队列 + 逐请求硬超时）——
+  // 两个关键点，都是「界面永远停在正在启动…」的根因修复：
+  //   a) 截止时间从「入队时刻」起算，而不是「派发时刻」。否则前面一旦有请求卡住，
+  //      后面的请求连计时器都不会创建，Promise 永不落地；
+  //   b) 响应由「当前在途请求」独占接收（inFlight），迟到的响应不会串到下一个请求头上。
+  var queue = [], inFlight = null, rpcSeq = 0, staleResults = 0
+
+  function pluginExec(cmd, data, opts) {
+    opts = opts || {}
+    var timeoutMs = opts.timeout || DEF_TIMEOUT
+    var retries = opts.retries == null ? 0 : opts.retries
+    return execOnce(cmd, data, timeoutMs).catch(function (e) {
+      if (retries > 0 && /超时|timeout/i.test(e && e.message)) {
+        if (!opts.quiet) log('warn', '[' + cmd + '] 宿主通道超时，重试（剩余 ' + retries + ' 次）')
+        return pluginExec(cmd, data, { timeout: timeoutMs, retries: retries - 1, quiet: opts.quiet })
+      }
+      throw e
+    })
+  }
+
+  function execOnce(cmd, data, timeoutMs) {
+    return new Promise(function (resolve, reject) {
+      var task = {
+        id: ++rpcSeq, cmd: cmd, data: data || {}, timeoutMs: timeoutMs,
+        resolve: resolve, reject: reject, settled: false, sentAt: 0
+      }
+      // ① 排队兜底：即使前面有请求一直不动，也不让本请求无限等下去
+      task.queueTimer = setTimeout(function () {
+        var pos = queue.indexOf(task)
+        if (pos < 0) return
+        queue.splice(pos, 1)
+        settleTask(task, new Error('排队等待超时（前面有请求未完成）'))
+        log('warn', '[' + task.cmd + '] 排队等待超时，已丢弃；队列剩余 ' + queue.length + ' 个请求')
+      }, timeoutMs * 3 + 3000)
+      queue.push(task)
+      pump()
+    })
+  }
+
+  function settleTask(task, err, val) {
+    if (task.settled) return false
+    task.settled = true
+    if (task.queueTimer) { clearTimeout(task.queueTimer); task.queueTimer = null }
+    if (task.dispatchTimer) { clearTimeout(task.dispatchTimer); task.dispatchTimer = null }
+    if (err) task.reject(err); else task.resolve(val)
+    return true
+  }
+
+  function pump() {
+    if (inFlight || !queue.length) return
+    var t = queue.shift()
+    inFlight = t
+    if (t.queueTimer) { clearTimeout(t.queueTimer); t.queueTimer = null }
+    t.sentAt = Date.now()
+    // ② 派发超时：从「真正发出去」起算，保证通道一定被释放
+    t.dispatchTimer = setTimeout(function () {
+      if (inFlight !== t) return
+      inFlight = null
+      settleTask(t, new Error('通道响应超时'))
+      log('err', '[' + t.cmd + '] 宿主通道 ' + t.timeoutMs + 'ms 无响应，已释放命令通道')
+      pump()
+    }, t.timeoutMs)
+    try {
+      window.parent.postMessage({
+        type: 'plugin:execute', id: t.id, command: t.cmd,
+        input: { text: JSON.stringify(t.data) }
+      }, '*')
+    } catch (e) {
+      inFlight = null
+      settleTask(t, new Error('发送到宿主失败: ' + e.message))
+      setTimeout(pump, 5)
+    }
+  }
+
+  // 只注册一次，靠 inFlight 判定归属：串行队列下同时只有一个请求在途，
+  // inFlight 为空时收到的响应一定是上一轮的迟到响应，直接丢弃。
+  window.addEventListener('message', function (e) {
+    var d = e.data
+    if (!d || d.type !== 'plugin:result') return
+    var t = inFlight
+    if (!t) { staleResults++; return }
+    inFlight = null
+    var err = d.error
+    if (err) settleTask(t, new Error(typeof err === 'string' ? err : (err.message || '执行失败')))
+    else settleTask(t, null, d.data)
+    setTimeout(pump, 5)
+  })
+
+  // —— 通道①：本地直连 WS（127.0.0.1，只监听本机）——
+  // 端口候选：上次用过的端口 → 界面上填的控制端口 → 固定候选表（与 port.suggest 一致）。
+  // 之所以要有这个顺序：探测本地直连时可能还没读到配置（读配置本身也要走一条通道），
+  // 所以把「上次用过的端口」记在本地存储里，避免自定义端口在重载后找不回来。
+  var DIRECT_PROBE_PORTS = [24556, 24566, 25556, 35556, 14556]
+  var LS_PORT_KEY = 'control-receiver.directPort'
+  var directSeq = 0, directPending = {}, reprobeTimer = null, directProbing = false
+
+  function saveDirectPort(port) {
+    try { window.localStorage.setItem(LS_PORT_KEY, String(port)) } catch (e) { /* 沙箱禁用本地存储时忽略 */ }
+  }
+  function loadDirectPort() {
+    try {
+      var v = window.localStorage.getItem(LS_PORT_KEY)
+      return v ? Number(v) : 0
+    } catch (e) { return 0 }
+  }
+
+  function directReady() {
+    return !!(state.wsDirect && state.wsDirect.readyState === 1)
+  }
+
+  function closeDirect() {
+    if (state.wsDirect) {
+      try { state.wsDirect.onclose = null; state.wsDirect.close() } catch (e) { }
+    }
+    state.wsDirect = null
+    state.wsDirectPort = 0
+  }
+
+  function onDirectMessage(ev) {
+    var d = ev.data
+    if (typeof d !== 'string') return
+    var m
+    try { m = JSON.parse(d) } catch (e) { return }
+    if (!m) return
+    if (m.t === 'res' || m.t === 'error') {
+      var p = directPending[String(m.id)]
+      if (p) {
+        delete directPending[String(m.id)]
+        clearTimeout(p.timer)
+        if (m.t === 'error') {
+          // 后端明确报错（参数不合法 / 命令不支持）→ 换通道也是同一个后端，
+          // 结果一样，所以标记 final：call() 不再换通道重试，避免无谓等待。
+          var err = new Error(m.msg || '执行失败')
+          err.final = true
+          p.reject(err)
+        } else {
+          p.resolve(m.data)
+        }
+        return
+      }
+    }
+    handleCtlMessage(d) // 其余是 status / log / screen / config / devices 推送
+  }
+
+  // connectDirect 连一个控制通道端口；成功返回 true
+  function connectDirect(port, quiet) {
+    return new Promise(function (resolve) {
+      var ws
+      try { ws = new WebSocket('ws://127.0.0.1:' + port + '/') } catch (e) { resolve(false); return }
+      var settled = false
+      var timer = setTimeout(function () { finish(false) }, 2000)
+      function finish(ok) {
+        if (settled) return
+        settled = true
+        clearTimeout(timer)
+        if (!ok) { try { ws.onclose = null; ws.close() } catch (e) { } }
+        resolve(ok)
+      }
+      ws.binaryType = 'arraybuffer'
+      ws.onopen = function () {
+        state.wsDirect = ws
+        state.wsDirectPort = port
+        saveDirectPort(port)
+        els.canvas.classList.add('can-grab')
+        if (!quiet) log('ok', '本地直连已建立：ws://127.0.0.1:' + port + '（命令不再依赖宿主桥接）')
+        finish(true)
+      }
+      ws.onmessage = onDirectMessage
+      ws.onclose = function () {
+        if (state.wsDirect === ws) {
+          state.wsDirect = null
+          state.wsDirectPort = 0
+          els.canvas.classList.remove('can-grab')
+          if (state.started) {
+            log('warn', '本地直连已断开，正在重连…')
+            scheduleDirectReprobe()
+          }
+        }
+        finish(false)
+      }
+      ws.onerror = function () { finish(false) }
+    })
+  }
+
+  function scheduleDirectReprobe() {
+    if (reprobeTimer) return
+    reprobeTimer = setTimeout(function () {
+      reprobeTimer = null
+      if (!directReady()) probeDirect(true)
+    }, 1500)
+  }
+
+  // 按候选顺序探测本地直连端口；全部失败则返回 false（由宿主通道兜底）
+  function probeDirect(quiet, extra) {
+    if (directReady()) return Promise.resolve(true)
+    if (directProbing) return Promise.resolve(false)
+    directProbing = true
+    var ports = [loadDirectPort(), Number(els.ctlPort.value)].concat(extra || []).concat(DIRECT_PROBE_PORTS)
+    if (state.cfg && state.cfg.controlPort) ports.unshift(state.cfg.controlPort)
+    var seen = {}
+    ports = ports.filter(function (p) {
+      if (!(p >= 1024 && p <= 65534) || seen[p]) return false
+      seen[p] = 1
+      return true
+    })
+    var i = 0
+    function next() {
+      if (directReady()) { directProbing = false; return Promise.resolve(true) }
+      if (i >= ports.length) {
+        directProbing = false
+        if (!quiet) log('warn', '本地直连不可用（已试 ' + ports.join(' / ') + '），改用宿主通道；可在端口建议里换个端口重试')
+        return Promise.resolve(false)
+      }
+      return connectDirect(ports[i++], quiet).then(function (ok) { return ok ? true : next() })
+    }
+    return next().then(function (ok) { directProbing = false; return ok })
+  }
+
+  function callDirect(cmd, data, timeoutMs) {
+    return new Promise(function (resolve, reject) {
+      var id = ++directSeq
+      var payload = { t: cmd, id: id }
+      for (var k in data) if (Object.prototype.hasOwnProperty.call(data, k)) payload[k] = data[k]
+      var timer = setTimeout(function () {
+        delete directPending[String(id)]
+        reject(new Error('本地直连响应超时'))
+      }, timeoutMs)
+      directPending[String(id)] = { resolve: resolve, reject: reject, timer: timer }
+      try {
+        state.wsDirect.send(JSON.stringify(payload))
+      } catch (e) {
+        clearTimeout(timer)
+        delete directPending[String(id)]
+        reject(new Error('本地直连发送失败: ' + e.message))
+      }
+    })
+  }
+
+  // call：所有命令的统一入口 —— 本地直连优先（1ms 级往返、不依赖宿主桥），
+  // 失败自动换另一条通道再试一次；两条都失败才报错。最多 2 次尝试，必定结束。
+  function call(cmd, data, opts) {
+    opts = opts || {}
+    var timeoutMs = opts.timeout || DEF_TIMEOUT
+    var routes = directReady() ? ['ws', 'rpc'] : ['rpc']
+    var i = 0
+    function step() {
+      var route = routes[i++]
+      var p = route === 'ws'
+        ? callDirect(cmd, data, timeoutMs)
+        : pluginExec(cmd, data, { timeout: timeoutMs })
+      return p.catch(function (e) {
+        if (i < routes.length && !e.final) {
+          log('warn', '[' + cmd + '] ' + (route === 'ws' ? '本地直连' : '宿主通道') + '失败（' + e.message + '），自动换另一条通道重试')
+          return step()
+        }
+        throw e
+      })
+    }
+    return step()
+  }
+
+  /* ===================== 状态渲染 ===================== */
+  function setState(text, kind) {
+    els.tagState.textContent = text
+    els.tagState.className = 'p-tag ' + (kind === 'ok' ? 'p-tag-ok' : kind === 'warn' ? 'p-tag-warn' : kind === 'info' ? 'p-tag-info' : 'p-tag-neutral')
+  }
+  function setMode(mode) {
+    state.mode = mode
+    var label = { ws: 'WebSocket 推流', pull: 'RPC 轮询（兜底）', idle: '—' }[mode] || '—'
+    els.modeTag.textContent = label
+    els.modeTag.className = 'p-tag ' + (mode === 'ws' ? 'p-tag-ok' : mode === 'pull' ? 'p-tag-info' : 'p-tag-neutral')
+  }
+  function showOverlay(title, desc) {
+    els.overlay.classList.remove('hidden')
+    els.ovTitle.textContent = title
+    els.ovDesc.textContent = desc || ''
+  }
+  function hideOverlay() {
+    els.overlay.classList.add('hidden')
+    els.ovHint.textContent = ''
+    els.ovActs.style.display = 'none'
+  }
+  // 等待首帧时的动态提示：每秒刷秒数，超过 3 秒给出可执行建议 + 「重新请求画面」
+  function tickWaiting() {
+    if (!state.started || state.gotFrame || !state.connected) return
+    if (!state.waitingSince) state.waitingSince = Date.now()
+    var sec = Math.round((Date.now() - state.waitingSince) / 1000)
+    showOverlay('已连接，等待手机画面… ' + sec + ' 秒',
+      (state.remote || '') + ' · 手机息屏或画面完全静止时不会产生新帧')
+    if (sec >= 3) {
+      els.ovHint.textContent = '可尝试：① 点亮手机屏幕、让画面有变化；② 点「重新请求画面」重连手机（会重新请求关键帧）；③ 确认手机端投屏未被中断。'
+      els.ovActs.style.display = 'flex'
+    }
+  }
+
+  function applyStatus(st) {
+    if (!st) return
+    state.connected = !!st.connected
+    state.running = !!st.connected
+    if (st.wsRunning !== undefined) state.wsReady = !!st.wsRunning
+    state.remote = st.remote || ''
+    els.mRemote.textContent = st.remote || '—'
+    els.mFrames.textContent = st.frames || 0
+    if (st.screenW) {
+      state.screenW = st.screenW; state.screenH = st.screenH
+      els.mScreen.textContent = st.screenW + '×' + st.screenH + (st.dpi ? ' @' + st.dpi : '')
+      els.headInfo.textContent = st.phoneHost ? (st.phoneHost + ':' + st.phonePort + '  ' + st.screenW + '×' + st.screenH) : ''
+    }
+    if (st.kbps !== undefined) els.mRate.textContent = (st.kbps || 0) + ' kb/s'
+    if (st.avcC && st.avcC.codec) els.mCodec.textContent = st.avcC.codec
+    if (st.lastErr) {
+      if (state.lastLogKey !== st.lastErr) {
+        state.lastLogKey = st.lastErr
+        log('err', st.lastErr)
+      }
+    } else if (state.lastLogKey) {
+      state.lastLogKey = ''
+    }
+
+    if (st.connected) {
+      state.everConnected = true
+      setState('接收中', 'ok')
+      if (state.gotFrame) hideOverlay()
+      else {
+        if (!state.waitingSince) state.waitingSince = Date.now()
+        tickWaiting()
+      }
+    } else if (state.started) {
+      var wsec = state.waitingSince ? Math.round((Date.now() - state.waitingSince) / 1000) : 0
+      if (st.discovering) {
+        setState('搜索发送端…', 'info')
+        showOverlay('正在自动发现手机… ' + wsec + ' 秒', '监听 UDP 45555 广播（最多 12 秒）；也可直接填写手机 IP')
+      } else if (state.everConnected) {
+        setState('已断开', 'warn')
+        showOverlay('与手机断开', '点下方「重新请求画面」重连；也可能是手机端停止了投屏')
+        els.btnOvRetry.textContent = '重新请求画面'
+        els.ovActs.style.display = 'flex'
+      } else {
+        setState('连接中…', 'info')
+        showOverlay('正在启动… ' + wsec + ' 秒', '监听本地端口并连接手机发送端')
+      }
+    } else {
+      setState('未启动', 'neutral')
+      showOverlay('未连接', '点击「启动接收」，连接手机发送端后即可看到实时画面')
+    }
+  }
+
+  /* ===================== WebCodecs 解码 ===================== */
+  function b64ToU8(b64) {
+    var bin = atob(b64), out = new Uint8Array(bin.length)
+    for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i)
+    return out
+  }
+
+  function onDecoded(frame) {
+    try {
+      if (els.canvas.width !== frame.displayWidth || els.canvas.height !== frame.displayHeight) {
+        els.canvas.width = frame.displayWidth
+        els.canvas.height = frame.displayHeight
+      }
+      ctx.drawImage(frame, 0, 0)
+      state.frames++
+      state.lastFrameAt = Date.now()
+      if (!state.gotFrame) {
+        state.gotFrame = true
+        els.canvas.classList.remove('hidden')
+        hideOverlay()
+        var dt = state.startAt ? '（点击启动后 ' + ((Date.now() - state.startAt) / 1000).toFixed(1) + ' 秒）' : ''
+        log('ok', '首帧已上屏 ' + frame.displayWidth + '×' + frame.displayHeight + dt)
+      }
+    } catch (e) {
+      log('err', '绘制失败: ' + e.message)
+    } finally {
+      frame.close()
+    }
+  }
+  function onDecodeError(e) {
+    log('err', '解码错误: ' + (e && e.message ? e.message : e))
+    state.waitKey = true // 出错后等下一个关键帧重建
+  }
+
+  function ensureDecoder(codec, descB64) {
+    if (!codec || !descB64) return false
+    if (state.decoder && state.codec === codec && state.descB64 === descB64) return true
+    if (state.decoder) { try { state.decoder.close() } catch (e) { } state.decoder = null }
+    var base = { codec: codec, description: b64ToU8(descB64), optimizeForLatency: true }
+    var d = new VideoDecoder({ output: onDecoded, error: onDecodeError })
+    try {
+      d.configure(Object.assign({ hardwareAcceleration: 'prefer-hardware' }, base))
+    } catch (e1) {
+      try { d.configure(base) } catch (e2) {
+        log('err', 'VideoDecoder 配置失败: ' + e2.message)
+        return false
+      }
+    }
+    state.decoder = d
+    state.codec = codec
+    state.descB64 = descB64
+    state.waitKey = true
+    els.mCodec.textContent = codec
+    log('info', '解码器已配置 codec=' + codec + '（avcC ' + (base.description.length) + ' 字节）')
+    return true
+  }
+
+  // 把一帧 H.264（AVCC）交给解码器；拥塞时丢 delta 帧，等关键帧复位
+  function feed(flags, ptsUs, data) {
+    if (!state.decoder || state.waitKey) {
+      if (flags & 1) state.waitKey = false
+      else return
+    }
+    if (state.decoder.decodeQueueSize > 8 && !(flags & 1)) return
+    var buf = data instanceof Uint8Array ? data : new Uint8Array(data)
+    try {
+      state.decoder.decode(new EncodedVideoChunk({
+        type: (flags & 1) ? 'key' : 'delta',
+        timestamp: ptsUs,
+        data: buf
+      }))
+    } catch (e) {
+      log('err', '解码入队失败: ' + e.message)
+      state.waitKey = true
+    }
+  }
+
+  function parseVideoMessage(ab) {
+    var u8 = new Uint8Array(ab)
+    if (u8.length < 10) return null
+    var flags = u8[0]
+    var view = new DataView(u8.buffer, u8.byteOffset, u8.byteLength)
+    var pts = Number(view.getBigUint64(1, true))
+    return { flags: flags, pts: pts, data: u8.subarray(9) }
+  }
+
+  /* ===================== 取流：WS 优先，失败退化为轮询 ===================== */
+  function handleCtlMessage(raw) {
+    var m
+    try { m = JSON.parse(raw) } catch (e) { return }
+    if (!m) return
+    if (m.t === 'status') { applyStatus(m); return }
+    if (m.t === 'screen') {
+      state.screenW = m.w; state.screenH = m.h
+      els.mScreen.textContent = m.w + '×' + m.h + (m.dpi ? ' @' + m.dpi : '')
+      return
+    }
+    if (m.t === 'config') { ensureDecoder(m.codec, m.description); return }
+    if (m.t === 'log') { log(m.level === 'error' ? 'err' : m.level === 'warn' ? 'warn' : 'info', m.msg); return }
+    if (m.t === 'devices' && m.devices && m.devices.length) {
+      var d = m.devices[0]
+      els.phoneHost.value = d.host
+      els.phonePort.value = d.port
+      log('ok', '发现发送端 ' + d.host + ':' + d.port + '（' + d.w + '×' + d.h + '）')
+    }
+  }
+
+  function connectWS(port, onText, onBinary, onDead) {
+    var ws
+    try { ws = new WebSocket('ws://127.0.0.1:' + port + '/') } catch (e) { onDead(e); return null }
+    ws.binaryType = 'arraybuffer'
+    ws.onmessage = function (ev) {
+      if (typeof ev.data === 'string') onText && onText(ev.data)
+      else onBinary && onBinary(ev.data)
+    }
+    ws.onerror = function () { try { ws.close() } catch (e) { } }
+    ws.onclose = function () { onDead && onDead(new Error('closed')) }
+    return ws
+  }
+
+  // 确保本地直连可用（按「配置端口 → 视频端口-1 → 候选表」顺序探测）
+  function ensureDirectChannel(streamPort) {
+    if (directReady()) { setCtlChannel('ws'); return Promise.resolve(true) }
+    var extra = []
+    if (streamPort && streamPort > 1024) extra.push(streamPort - 1)
+    return probeDirect(true, extra).then(function (ok) {
+      setCtlChannel(ok ? 'ws' : '')
+      return ok
+    })
+  }
+
+  function startStream() {
+    stopStream(false)
+    if (!window.VideoDecoder) {
+      log('err', '当前环境不支持 WebCodecs（VideoDecoder 不可用），无法解码 H.264')
+      showOverlay('环境不支持 WebCodecs', '请升级到较新的 WebView2 / Chromium 内核')
+      return
+    }
+    var sp = (state.cfg && state.cfg.streamPort) || (Number(els.ctlPort.value) + 1)
+    var settled = false
+    var t0 = Date.now()
+
+    ensureDirectChannel(sp).then(function (ok) {
+      log(ok ? 'ok' : 'warn', (ok ? '控制通道：本地直连 ws://127.0.0.1:' + state.wsDirectPort + '（不依赖宿主桥接）'
+        : '控制通道：本地直连不可用，控制指令改走宿主通道（延迟略高）'))
+    })
+
+    state.wsVid = connectWS(sp, function (raw) {
+      // 视频通道也带 screen/config 文本消息（新连入时补发）
+      handleCtlMessage(raw)
+    }, function (ab) {
+      if (!settled) {
+        settled = true
+        setMode('ws')
+        log('ok', '视频流已接入 ws://127.0.0.1:' + sp + '/（耗时 ' + (Date.now() - t0) + 'ms）')
+        els.canvas.classList.add('can-grab')
+      }
+      var f = parseVideoMessage(ab)
+      if (f) feed(f.flags, f.pts, f.data)
+    }, function () {
+      if (!settled && state.started) {
+        settled = true
+        log('warn', '视频流 WS 未建立（ws://127.0.0.1:' + sp + '/）')
+        fallbackToPull()
+      } else if (state.started) {
+        log('warn', '视频流 WS 已断开，1.5 秒后重连')
+        scheduleReconnect()
+      }
+    })
+
+    // WS 建不起来（沙箱/端口被占）→ 退化到 RPC 拉流
+    setTimeout(function () {
+      if (!settled && state.started) {
+        settled = true
+        var ok = state.wsVid && state.wsVid.readyState === 1
+        if (!ok) fallbackToPull()
+      }
+    }, 1200)
+  }
+
+  function stopStream(full) {
+    if (state.wsTimer) { clearTimeout(state.wsTimer); state.wsTimer = null }
+    if (state.reconnTimer) { clearTimeout(state.reconnTimer); state.reconnTimer = null }
+    if (state.pullTimer) { clearTimeout(state.pullTimer); state.pullTimer = null }
+    if (state.wsVid) { try { state.wsVid.close() } catch (e) { } state.wsVid = null }
+    els.canvas.classList.remove('can-grab')
+    els.canvas.classList.remove('dragging')
+    if (state.decoder) { try { state.decoder.close() } catch (e) { } state.decoder = null }
+    state.codec = ''; state.descB64 = ''; state.waitKey = true; state.cursor = -1
+    // 注意：本地直连通道不在这里关 —— 它是命令通道，停止接收后仍要用它重新启动
+    if (full) setMode('idle')
+  }
+
+  function scheduleReconnect() {
+    if (state.reconnTimer) return
+    state.reconnTimer = setTimeout(function () {
+      state.reconnTimer = null
+      if (state.started && !state.wsVid) startStream()
+    }, 1500)
+  }
+
+  function fallbackToPull() {
+    log('warn', 'WebSocket 不可用，改用 stream.pull 轮询取流（延迟略高）')
+    setMode('pull')
+    state.cursor = -1
+    state.waitKey = true
+    pumpPull()
+  }
+
+  function pumpPull() {
+    if (!state.started) return
+    call('stream.pull', { since: state.cursor, maxChunks: 24, maxBytes: 512 * 1024 }).then(function (res) {
+      if (!res || res.error) throw new Error((res && res.error && res.error.message) || '拉流失败')
+      if (res.screenW) {
+        state.screenW = res.screenW; state.screenH = res.screenH
+        els.mScreen.textContent = res.screenW + '×' + res.screenH
+      }
+      if (res.config) ensureDecoder(res.config.codec, res.config.description)
+      if (res.gap) state.waitKey = true
+      if (typeof res.head === 'number' && state.cursor >= 0 && res.head > state.cursor + 1) state.waitKey = true
+      var list = res.chunks || []
+      for (var i = 0; i < list.length; i++) {
+        var c = list[i]
+        feed(c.flags, c.pts, b64ToU8(c.data))
+      }
+      state.cursor = res.next
+      if (state.gotFrame) hideOverlay()
+      state.pullTimer = setTimeout(pumpPull, list.length ? 0 : 120)
+    }).catch(function (e) {
+      log('err', '轮询取流失败: ' + e.message)
+      state.pullTimer = setTimeout(pumpPull, 1000)
+    })
+  }
+
+  /* ===================== 控制指令 ===================== */
+  // 未连接时本地拦截：拖拽会按 40ms 连续切片，若不拦截会把后端「未连接」错误刷满日志
+  function requireOnline() {
+    if (state.connected) return true
+    var now = Date.now()
+    if (now - state.offlineNoticeAt > 2500) {
+      state.offlineNoticeAt = now
+      log('warn', '尚未连接手机，请先点击「启动接收」')
+    }
+    return false
+  }
+
+  // 控制指令优先走本地直连 WebSocket：不经宿主队列、无超时定时器，
+  // 往返在 1ms 量级——这是拖拽跟手的关键。直连不可用时自动退回宿主通道。
+  function ctlReady() {
+    return directReady()
+  }
+  // —— 右侧栏「控制」状态：让用户看得到指令是否真的发出去了（这是排查「点了没反应」的关键） ——
+  function setCtlChannel(mode) {
+    if (state.ctlMode === mode) return
+    state.ctlMode = mode
+    els.mCtl.textContent = mode === 'ws' ? '本地 WebSocket' : mode === 'rpc' ? '宿主 RPC（兜底）' : '—'
+    els.mCtl.className = 'v ' + (mode ? 'on' : 'off')
+  }
+  function fmtCmd(cmd, d) {
+    d = d || {}
+    if (cmd === 'control.tap') return '点击 ' + Math.round(d.x || 0) + ',' + Math.round(d.y || 0)
+    if (cmd === 'control.swipe') return '滑动 ' + Math.round(d.x1 || 0) + ',' + Math.round(d.y1 || 0) + ' → ' + Math.round(d.x2 || 0) + ',' + Math.round(d.y2 || 0)
+    if (cmd === 'control.key') return '按键 ' + d.keycode
+    if (cmd === 'control.text') return '文本 ' + String(d.text || '').length + ' 字'
+    return cmd
+  }
+  function noteCmd(text, bad) {
+    state.lastCmd = text
+    els.mLast.textContent = text
+    els.mLast.className = 'v ' + (bad ? 'off' : 'on')
+  }
+  function sendControl(cmd, data) {
+    if (ctlReady()) {
+      try {
+        var payload = { t: cmd }
+        for (var k in data) if (Object.prototype.hasOwnProperty.call(data, k)) payload[k] = data[k]
+        state.wsDirect.send(JSON.stringify(payload))
+        setCtlChannel('ws')
+        noteCmd(fmtCmd(cmd, data) + ' ✓')
+        return Promise.resolve(true)
+      } catch (e) { /* 发送异常时落到宿主通道兜底 */ }
+    }
+    return pluginExec(cmd, data).then(function () {
+      setCtlChannel('rpc')
+      noteCmd(fmtCmd(cmd, data) + ' ✓')
+      return true
+    })
+  }
+
+  function sendTap(x, y) {
+    if (!requireOnline()) return
+    sendControl('control.tap', { x: x, y: y }).catch(function (e) { log('err', '点击失败: ' + e.message) })
+  }
+  function sendSwipe(x1, y1, x2, y2, dur) {
+    if (!requireOnline()) return
+    if (state.swipeBusy) return
+    state.swipeBusy = true
+    sendControl('control.swipe', { x1: x1, y1: y1, x2: x2, y2: y2, durationMs: dur })
+      .catch(function (e) { log('err', '滑动失败: ' + e.message) })
+      .then(function () { state.swipeBusy = false })
+  }
+  function sendKey(code) {
+    if (!requireOnline()) return
+    sendControl('control.key', { keycode: code }).catch(function (e) { log('err', '按键失败: ' + e.message) })
+  }
+  function sendText() {
+    var s = els.text.value
+    if (!s) return
+    if (!requireOnline()) return
+    sendControl('control.text', { text: s }).then(function () {
+      log('ok', '已发送文本 ' + s.length + ' 字')
+      els.text.value = ''
+    }).catch(function (e) { log('err', '发送文本失败: ' + e.message) })
+  }
+
+  // 画布坐标（CSS 像素）→ 手机屏幕绝对像素
+  function toPhone(ev) {
+    var r = els.canvas.getBoundingClientRect()
+    if (!r.width || !state.screenW) return null
+    var nx = Math.min(1, Math.max(0, (ev.clientX - r.left) / r.width))
+    var ny = Math.min(1, Math.max(0, (ev.clientY - r.top) / r.height))
+    return { x: Math.round(nx * state.screenW), y: Math.round(ny * state.screenH) }
+  }
+
+  var DRAG_THRESHOLD = 6
+  els.canvas.addEventListener('mousedown', function (ev) {
+    if (ev.button !== 0) return
+    var p = toPhone(ev)
+    if (!p) return
+    ev.preventDefault()
+    els.canvas.classList.add('dragging')
+    state.drag = { x: p.x, y: p.y, sx: p.x, sy: p.y, moved: false, t: Date.now() }
+  })
+  els.canvas.addEventListener('mousemove', function (ev) {
+    var d = state.drag
+    if (!d) return
+    var p = toPhone(ev)
+    if (!p) return
+    var dist = Math.abs(p.x - d.sx) + Math.abs(p.y - d.sy)
+    if (!d.moved && dist < DRAG_THRESHOLD) return
+    d.moved = true
+    var now = Date.now()
+    if (now - state.lastSwipeAt < 40) return
+    state.lastSwipeAt = now
+    sendSwipe(d.x, d.y, p.x, p.y, 40)
+    d.x = p.x; d.y = p.y
+  })
+  function endDrag(ev) {
+    var d = state.drag
+    state.drag = null
+    els.canvas.classList.remove('dragging')
+    if (!d) return
+    var held = Date.now() - d.t
+    if (d.moved) return
+    if (held > 650) {
+      sendSwipe(d.sx, d.sy, d.sx, d.sy, Math.min(1200, held)) // 原地长按
+      log('info', '长按 ' + d.sx + ',' + d.sy + '（' + held + 'ms）')
+      return
+    }
+    sendTap(d.sx, d.sy)
+  }
+  els.canvas.addEventListener('mouseup', endDrag)
+  els.canvas.addEventListener('mouseleave', function () { state.drag = null; els.canvas.classList.remove('dragging') })
+  els.canvas.addEventListener('contextmenu', function (ev) { ev.preventDefault(); sendKey(4) })
+  els.canvas.addEventListener('wheel', function (ev) {
+    if (!state.screenW) return
+    ev.preventDefault()
+    var cx = Math.round(state.screenW / 2), cy = Math.round(state.screenH / 2)
+    var dy = Math.round(state.screenH * 0.22) * (ev.deltaY > 0 ? 1 : -1)
+    sendSwipe(cx, cy - dy, cx, cy + dy, 240)
+  }, { passive: false })
+
+  els.btnText.onclick = sendText
+  els.text.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') sendText() })
+  Array.prototype.forEach.call(document.querySelectorAll('[data-key]'), function (b) {
+    b.onclick = function () { sendKey(Number(b.getAttribute('data-key'))) }
+  })
+
+  /* ===================== 重连 / 点击自检 ===================== */
+  // 手机息屏或画面完全静止时不会产生新帧；重新建立连接会让手机再次 requestKeyFrame()，
+  // 因此「重连手机」是等待画面/画面冻结时最有效的手段。
+  function doReconnect(reason) {
+    if (!state.started) { log('warn', '请先点击「启动接收」'); return }
+    log('info', '重新连接手机（' + reason + '）…')
+    state.waitingSince = Date.now()
+    state.gotFrame = false
+    state.waitKey = true
+    call('phone.reconnect', {}, { timeout: 8000 }).then(function (r) {
+      if (r && r.error) { log('err', r.error); return }
+      if (r && r.status) applyStatus(r.status)
+      if (r && r.mode === 'discover') log('info', '已切回自动发现，等待手机广播…')
+      else log('ok', '已重新连接手机，等待关键帧…')
+    }).catch(function (e) { log('err', '重连失败: ' + e.message) })
+  }
+  els.btnReconnect.onclick = function () { doReconnect('手动重连') }
+  els.btnOvRetry.onclick = function () {
+    if (!state.started) { els.btnOvRetry.textContent = '重新请求画面'; els.btnStart.onclick(); return }
+    doReconnect('重新请求关键帧')
+  }
+
+  // 点击自检：向屏幕中心发一次点击，看画面是否随即刷新。
+  // 有刷新 → 指令已到达手机且手机有响应；无刷新 → 多半是手机无障碍服务未开或该点无可响应元素。
+  els.btnProbe.onclick = function () {
+    if (!requireOnline()) return
+    if (!state.screenW || !state.screenH) { log('warn', '尚未收到手机屏幕尺寸，稍后再试'); return }
+    var x = Math.round(state.screenW / 2), y = Math.round(state.screenH / 2)
+    var f0 = state.frames, t0 = Date.now()
+    els.btnProbe.disabled = true
+    log('info', '自检：向手机屏幕中心发送一次点击（' + x + ',' + y + '）…')
+    sendControl('control.tap', { x: x, y: y }).catch(function (e) { log('err', '自检点击发送失败: ' + e.message) })
+    setTimeout(function () {
+      els.btnProbe.disabled = false
+      var dt = ((Date.now() - t0) / 1000).toFixed(1)
+      var inc = state.frames - f0
+      if (inc > 0) {
+        log('ok', '自检通过：点击后 ' + dt + ' 秒内画面刷新 ' + inc + ' 帧 → 指令已到达手机且手机有响应')
+      } else {
+        log('warn', '自检未观察到画面变化（' + dt + ' 秒内 0 帧刷新）。指令已发出；请依次检查：' +
+          '① 手机「设置 → 无障碍 → 已下载的服务」中 QPM 控制服务是否已开启；' +
+          '② 该位置没有可点击元素；③ 手机是否息屏/锁屏。')
+      }
+    }, 1600)
+  }
+
+  /* ===================== 端口设置与建议 ===================== */
+  // 设置条收起时，标题栏用一行文字交代当前配置（端口 / 手机地址），避免看不到配置心慌
+  function updateCfgSummary() {
+    var p = Number(els.ctlPort.value) || 24556
+    var host = els.phoneHost.value.trim()
+    var auto = els.autoDiscover.checked
+    els.cfgSummary.textContent = '控制 ' + p + ' · 视频 ' + (p + 1) + ' · 手机 ' +
+      (host ? host + ':' + (Number(els.phonePort.value) || 45556) : (auto ? '自动发现' : '未指定'))
+  }
+  function syncStreamPortLabel() {
+    var p = Number(els.ctlPort.value) || 24556
+    els.streamPort.textContent = p + 1
+    updateCfgSummary()
+  }
+  els.ctlPort.addEventListener('input', syncStreamPortLabel)
+  els.phoneHost.addEventListener('input', updateCfgSummary)
+  els.phonePort.addEventListener('input', updateCfgSummary)
+  els.autoDiscover.addEventListener('change', updateCfgSummary)
+
+  function applyConfig(cfg) {
+    if (!cfg) return
+    state.cfg = cfg
+    els.ctlPort.value = cfg.controlPort
+    els.phonePort.value = cfg.phonePort
+    els.phoneHost.value = cfg.phoneHost || ''
+    els.autoDiscover.checked = !!cfg.autoDiscover
+    syncStreamPortLabel()
+  }
+
+  // 端口建议面板：顶部固定一个「×」，点候选项后自动收起，再点按钮也会收起
+  function closeSuggest() {
+    els.suggest.classList.remove('open')
+    els.suggest.innerHTML = ''
+    els.btnSuggest.disabled = false
+  }
+  function bindSuggestClose() {
+    var b = els.suggest.querySelector('.sug-close')
+    if (b) b.onclick = function (ev) { ev.stopPropagation(); closeSuggest() }
+  }
+  function sugHead(text) {
+    return '<div class="sug-head"><span class="sug-title">' + text + '</span>' +
+      '<button class="sug-close" type="button" title="关闭（Esc）">×</button></div>'
+  }
+
+  els.btnSuggest.onclick = function () {
+    if (els.suggest.classList.contains('open')) { closeSuggest(); return }
+    els.btnSuggest.disabled = true
+    els.suggest.classList.add('open')
+    els.suggest.innerHTML = sugHead('正在探测本机端口…')
+    bindSuggestClose()
+    call('port.suggest', {}, { timeout: 20000 }).then(function (res) {
+      if (!els.suggest.classList.contains('open')) return // 期间被关掉了就别再渲染
+      renderSuggest(res)
+    }).catch(function (e) {
+      els.suggest.innerHTML = sugHead('端口建议失败：' + esc(e.message))
+      bindSuggestClose()
+    }).then(function () { els.btnSuggest.disabled = false })
+  }
+
+  function renderSuggest(res) {
+    if (!res) return
+    var html = sugHead('端口建议' +
+      (res.note ? ' · ' + esc(res.note) : '') +
+      ' · 视频流固定为「控制端口 + 1」')
+    ;(res.candidates || []).forEach(function (c) {
+      var cls = 'sug-item' + (c.available ? '' : ' bad')
+      var tag = c.tag === 'default' ? '<span class="p-tag p-tag-ok">默认</span>'
+        : c.tag === 'recommended' ? '<span class="p-tag p-tag-info">推荐</span>'
+          : c.available ? '<span class="p-tag p-tag-neutral">备用</span>' : '<span class="p-tag p-tag-warn">不可用</span>'
+      html += '<div class="' + cls + '" data-port="' + c.port + '">' +
+        '<span class="sug-port">' + c.port + '</span>' +
+        '<span class="sug-pair">视频 ' + c.streamPort + '</span>' + tag +
+        '<span class="sug-reason">' + esc(c.reason || '') + '</span></div>'
+    })
+    if (res.excluded && res.excluded.length) {
+      html += '<div class="sug-note">已静态排除：' + esc(res.excluded.join('；')) + '</div>'
+    }
+    els.suggest.innerHTML = html
+    bindSuggestClose()
+    Array.prototype.forEach.call(els.suggest.querySelectorAll('.sug-item'), function (item) {
+      item.onclick = function () {
+        var port = Number(item.getAttribute('data-port'))
+        els.ctlPort.value = port
+        syncStreamPortLabel()
+        closeSuggest() // 选完即收起，避免面板一直挂着挡住画面
+        call('config.set', { controlPort: port }, { timeout: 20000 }).then(function (r) {
+          applyConfig(r && r.config)
+          if (r && r.status) applyStatus(r.status)
+          log('ok', '控制端口已设为 ' + port + '（视频流 ' + (port + 1) + '），已写入配置')
+          if (r && r.warning) log('warn', '重启本地服务失败：' + r.warning)
+          if (r && r.config) onPortsChanged(r.config.controlPort)
+          if (state.started) restartStream()
+        }).catch(function (e) { log('err', '保存端口失败: ' + e.message) })
+      }
+    })
+  }
+  // 点击面板以外的区域也收起（点击输入框、按钮等不受影响）
+  document.addEventListener('click', function (ev) {
+    if (!els.suggest.classList.contains('open')) return
+    var t = ev.target
+    if (!t) return
+    if (t === els.btnSuggest || els.btnSuggest.contains(t)) return
+    if (els.suggest.contains(t)) return
+    closeSuggest()
+  })
+  function esc(s) {
+    return String(s === undefined || s === null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+  }
+
+  /* ===================== 启动 / 停止 ===================== */
+  function restartStream() {
+    stopStream(false)
+    state.gotFrame = false
+    els.canvas.classList.add('hidden')
+    state.frames = 0
+    startStream()
+  }
+
+  els.btnStart.onclick = function () {
+    var port = Number(els.ctlPort.value)
+    if (!(port >= 1024 && port <= 65534)) {
+      log('err', '控制端口需在 1024–65534 之间')
+      return
+    }
+    var host = els.phoneHost.value.trim()
+    var auto = els.autoDiscover.checked
+    var phonePort = Number(els.phonePort.value) || 45556
+    if (!host && !auto) {
+      log('err', '请填写手机发送端地址，或勾选「自动发现」')
+      return
+    }
+
+    // —— 「启动接收」全过程留痕：每一步都带「启动#序号 + 距开始毫秒」，卡在哪一段一眼可见 ——
+    var t0 = Date.now()
+    var stepNum = ++state.startSeq
+    state.startAt = t0
+    function sLog(level, msg) {
+      log(level, '[启动#' + stepNum + ' +' + (Date.now() - t0) + 'ms] ' + msg)
+    }
+    sLog('info', '开始：控制端口 ' + port + ' / 视频流 ' + (port + 1) + '，手机地址 ' +
+      (host ? host + ':' + phonePort : '未填（自动发现 UDP 45555）'))
+    sLog('info', '命令通道：' + (directReady()
+      ? '本地直连 ws://127.0.0.1:' + state.wsDirectPort
+      : '宿主桥接（本地直连未就绪）'))
+
+    els.btnStart.disabled = true
+    els.btnStop.disabled = true
+    state.started = true
+    state.gotFrame = false
+    state.everConnected = false
+    state.frames = 0
+    state.waitingSince = Date.now()
+    state.lastFrameAt = 0
+    els.canvas.classList.add('hidden')
+    hideOverlay()
+    setState('启动中…', 'info')
+    showOverlay('正在启动…', '监听本地端口并连接手机发送端')
+
+    // 兜底看门狗：无论命令有没有回来，界面都不会一直停在「正在启动…」
+    var watchdog = setInterval(function () {
+      if (state.gotFrame || !state.started) { clearInterval(watchdog); return }
+      var sec = Math.round((Date.now() - t0) / 1000)
+      if (sec === 3 || sec === 8 || sec === 15 || sec === 25) {
+        sLog('warn', sec + ' 秒仍无画面：本地服务=' + (state.wsReady ? '已监听' : '未监听') +
+          '，手机连接=' + (state.connected ? state.remote : '未建立') +
+          (state.connected ? '' : '（手机端没开投屏、手机换 IP、手机息屏都会这样）'))
+      }
+    }, 1000)
+
+    // 一次命令完成「保存端口 + 启动」：后端 handleStart 会一并落盘配置
+    sLog('info', '发送 start 命令…')
+    call('start', {
+      controlPort: port,
+      phoneHost: host,
+      phonePort: phonePort,
+      autoDiscover: auto,
+      discover: auto
+    }, { timeout: 12000 }).then(function (res) {
+      clearInterval(watchdog)
+      if (res && res.config) applyConfig(res.config)
+      if (res && res.status) applyStatus(res.status)
+      if (res && res.error) {
+        sLog('err', '后端返回失败（耗时 ' + (Date.now() - t0) + 'ms）：' + res.error)
+        setState('启动失败', 'warn')
+        showOverlay('启动失败', res.error)
+        els.ovHint.textContent = '改端口后重试，或点下方按钮重新启动。'
+        els.btnOvRetry.textContent = '重试启动'
+        els.ovActs.style.display = 'flex'
+        els.btnStart.disabled = false
+        els.btnStop.disabled = true
+        state.started = false
+        if (res.portSuggest) { els.suggest.classList.add('open'); renderSuggest(res.portSuggest) }
+        return
+      }
+      els.btnStop.disabled = false
+      els.btnStart.disabled = false
+      var c = (res && res.config) || state.cfg || {}
+      var st = (res && res.status) || {}
+      sLog('ok', '后端已启动（耗时 ' + (Date.now() - t0) + 'ms）：控制通道 ' + c.controlPort +
+        ' / 视频流 ' + c.streamPort + '，本地监听=' + (st.wsRunning === false ? '否' : '是') +
+        (st.error ? '，错误 ' + st.error : ''))
+      if (res && res.mode === 'discover') sLog('info', '正在监听 UDP 45555 广播，发现发送端后自动连接…')
+      els.btnOvRetry.textContent = '重新请求画面'
+      if (c.controlPort) onPortsChanged(c.controlPort)
+      sLog('info', '开始连接视频流 ws://127.0.0.1:' + c.streamPort)
+      setTimeout(startStream, 80)
+    }).catch(function (e) {
+      clearInterval(watchdog)
+      sLog('err', 'start 命令失败（耗时 ' + (Date.now() - t0) + 'ms）：' + e.message)
+      log('warn', '排查提示：① 点标题栏「设置」展开后按「重置通道」清空卡住的请求队列再试；' +
+        '② 确认 24556/24557 没被别的程序（或本插件的旧实例）占用；' +
+        '③ 若后端一直无响应，把 QuickDock 从托盘完全退出后重开。')
+      setState('启动失败', 'warn')
+      showOverlay('启动失败', '后端未响应：' + e.message)
+      els.ovHint.textContent = '点下方「重试启动」，或先展开「设置」按「重置通道」。'
+      els.btnOvRetry.textContent = '重试启动'
+      els.ovActs.style.display = 'flex'
+      els.btnStart.disabled = false
+      els.btnStop.disabled = true
+      state.started = false
+    })
+  }
+
+  els.btnStop.onclick = function () {
+    state.started = false
+    stopStream(true)
+    els.btnStart.disabled = false
+    els.btnStop.disabled = true
+    state.gotFrame = false
+    state.waitingSince = 0
+    state.lastFrameAt = 0
+    state.everConnected = false
+    setCtlChannel(directReady() ? 'ws' : '')
+    noteCmd('—')
+    els.canvas.classList.add('hidden')
+    call('stop', {}).then(function () {
+      log('info', '已停止接收')
+      setState('未启动', 'neutral')
+      showOverlay('未连接', '点击「启动接收」，连接手机发送端后即可看到实时画面')
+    }).catch(function (e) { log('err', '停止失败: ' + e.message) })
+  }
+
+  /* ===================== 面板开关（省纵向/横向空间） ===================== */
+  function setCfgOpen(on) {
+    state.cfgOpen = !!on
+    document.querySelector('.app').classList.toggle('cfgopen', state.cfgOpen)
+    els.btnToggleCfg.classList.toggle('p-btn-primary', state.cfgOpen)
+  }
+  function setSide(on) {
+    state.sideOpen = !!on
+    document.querySelector('.app').classList.toggle('noside', !state.sideOpen)
+    els.btnToggleSide.classList.toggle('p-btn-primary', state.sideOpen)
+  }
+  function setTextOpen(on) {
+    state.textOpen = !!on
+    document.querySelector('.app').classList.toggle('textopen', state.textOpen)
+    if (state.textOpen) els.text.focus()
+    else els.text.blur()
+    immWake()
+  }
+  els.btnToggleCfg.onclick = function () { setCfgOpen(!state.cfgOpen) }
+  els.btnToggleSide.onclick = function () { setSide(!state.sideOpen) }
+  els.btnHideSide.onclick = function () { setSide(false) }
+  els.btnToggleText.onclick = function () { setTextOpen(!state.textOpen) }
+  els.btnCloseText.onclick = function () { setTextOpen(false) }
+  els.btnHelp.onclick = function (ev) {
+    ev.stopPropagation()
+    els.helpPop.classList.toggle('hidden')
+  }
+  document.addEventListener('click', function (ev) {
+    if (els.helpPop.classList.contains('hidden')) return
+    if (els.helpPop.contains(ev.target) || els.btnHelp.contains(ev.target)) return
+    els.helpPop.classList.add('hidden')
+  })
+
+  /* ===================== 沉浸模式 ===================== */
+  // 沉浸时只留画面，但导航键（返回 / Home / 多任务）必须还在：
+  // 底部控制条不隐藏，而是变成「浮动条 + 自动隐藏」——鼠标一动浮出来，3 秒无操作淡出。
+  var sideBeforeImm = true
+  function immWake() {
+    if (!state.immersive) return
+    var foot = document.querySelector('.foot')
+    foot.classList.add('imm-show')
+    clearTimeout(state.immTimer)
+    state.immTimer = setTimeout(function () {
+      if (!state.immersive) return
+      // 正在输入文本时别隐藏，否则焦点会丢
+      if (foot.contains(document.activeElement)) return
+      foot.classList.remove('imm-show')
+    }, 3000)
+  }
+  function setImmersive(on) {
+    on = !!on
+    if (state.immersive === on) return
+    state.immersive = on
+    document.querySelector('.app').classList.toggle('immersive', on)
+    if (on) {
+      sideBeforeImm = state.sideOpen
+      setSide(false)               // 沉浸就要画面占满，侧栏先收掉
+      immWake()
+    } else {
+      clearTimeout(state.immTimer)
+      document.querySelector('.foot').classList.remove('imm-show')
+      els.helpPop.classList.add('hidden')
+      setSide(sideBeforeImm !== false)
+    }
+    log('info', on
+      ? '已进入沉浸模式（鼠标移到窗口底部唤出控制条；Esc / F 退出）'
+      : '已退出沉浸模式')
+  }
+  els.btnImmersive.onclick = function () { setImmersive(true) }
+  els.btnExitImmersive.onclick = function () { setImmersive(false) }
+  document.addEventListener('mousemove', immWake)
+  document.addEventListener('keydown', function (ev) {
+    var tag = (ev.target && ev.target.tagName || '').toLowerCase()
+    if (tag === 'input' || tag === 'textarea') return
+    if (ev.key === 'Escape') {
+      if (els.suggest.classList.contains('open')) { ev.preventDefault(); closeSuggest(); return }
+      if (!els.helpPop.classList.contains('hidden')) { ev.preventDefault(); els.helpPop.classList.add('hidden'); return }
+      if (state.textOpen) { ev.preventDefault(); setTextOpen(false); return }
+      if (state.immersive) { ev.preventDefault(); setImmersive(false) }
+      return
+    }
+    if (ev.key === 'f' || ev.key === 'F') { ev.preventDefault(); setImmersive(!state.immersive) }
+  })
+
+  /* ===================== 初始化 ===================== */
+  // 插件后端是惰性复活的：iframe 就绪时后端可能还在 initialize。
+  // 顺序：先探测本地直连（后端在 initialize 时已绑好控制通道 WS），
+  // 连上就一切走本地直连；连不上再退回宿主桥接。两条都失败也不会卡死界面。
+  function syncFromBackend(tag) {
+    return call('config.get', {}, { timeout: 6000 }).then(function (r) {
+      if (r && r.config) applyConfig(r.config)
+      if (r && r.status) applyStatus(r.status)
+      log('info', (tag || '') + '配置已同步：控制端口 ' + (r && r.config ? r.config.controlPort : '-') +
+        ' / 视频流 ' + (r && r.config ? r.config.streamPort : '-') +
+        '（通道：' + (directReady() ? '本地直连 ' + state.wsDirectPort : '宿主桥接') + '）')
+      if (!window.VideoDecoder) log('err', '当前环境不支持 WebCodecs，无法解码 H.264 画面')
+      if (r && r.config && (r.config.phoneHost || r.config.autoDiscover)) {
+        log('info', '上次的手机地址：' + (r.config.phoneHost || '（自动发现）'))
+      }
+      // 拿到配置才知道控制端口：如果这时本地直连还没建立，按配置端口再探一次。
+      // 这一步是「自定义端口 + 宿主桥接失效」场景下唯一能自愈的路径。
+      if (!directReady() && r && r.config && r.config.controlPort) {
+        probeDirect(true, [r.config.controlPort]).then(function (ok) {
+          if (ok) log('ok', '已按配置端口建立本地直连：ws://127.0.0.1:' + state.wsDirectPort)
+        })
+      }
+      return r
+    })
+  }
+
+  setTimeout(function () {
+    log('info', '正在连接插件后端…')
+    probeDirect(false).then(function (ok) {
+      if (!ok) log('warn', '本地直连不可用，改用宿主桥接（命令会经宿主转发）')
+      return syncFromBackend('')
+    }).catch(function (e) {
+      log('err', '读取配置失败: ' + e.message + '（界面使用默认端口，可直接点「启动接收」）')
+    })
+  }, 350)
+
+  // 界面「卡住」时的自救：清空队列 + 重建本地直连 + 重新同步状态。
+  // 宿主复用 WebView2 时不会重新加载页面，所以必须留一个纯前端的重置入口。
+  els.btnReset.onclick = function () {
+    var n = queue.length
+    // 丢弃队列里的等待请求
+    queue.forEach(function (t) { settleTask(t, new Error('已重置')) })
+    queue.length = 0
+    if (inFlight) { settleTask(inFlight, new Error('已重置')); inFlight = null }
+    Object.keys(directPending).forEach(function (k) {
+      clearTimeout(directPending[k].timer)
+      directPending[k].reject(new Error('已重置'))
+      delete directPending[k]
+    })
+    closeDirect()
+    stopStream(false)
+    state.started = false
+    state.connected = false
+    state.running = false
+    state.gotFrame = false
+    state.everConnected = false
+    els.btnStart.disabled = false
+    els.btnStop.disabled = true
+    els.canvas.classList.add('hidden')
+    setState('未启动', 'neutral')
+    showOverlay('未连接', '点击「启动接收」，连接手机发送端后即可看到实时画面')
+    log('warn', '已重置：丢弃 ' + n + ' 个排队请求，重新探测本地直连…')
+    probeDirect(false).then(function (ok) {
+      return syncFromBackend('重置后 ')
+    }).catch(function (e) {
+      log('err', '重置后同步失败：' + e.message + '（若持续失败，请把 QuickDock 从托盘完全退出后重开）')
+    })
+  }
+
+  // WebView2 被宿主隐藏后会节流甚至冻结页面，恢复可见/获得焦点时必须重新同步一次：
+  // 否则本地 WS 已断、状态已陈旧，界面看着正常其实已经不动了。
+  function resync() {
+    if (document.hidden) return
+    if (!directReady()) probeDirect(true)
+    if (state.started) syncFromBackend('').catch(function () { })
+  }
+  document.addEventListener('visibilitychange', resync)
+  window.addEventListener('focus', resync)
+
+  // 端口被改（端口建议 / 手动改）后，本地直连需要换到新端口重连
+  function onPortsChanged(newControlPort) {
+    if (newControlPort && newControlPort !== state.wsDirectPort) {
+      log('info', '控制端口已变为 ' + newControlPort + '，重新建立本地直连…')
+      closeDirect()
+      setTimeout(function () { probeDirect(true, [newControlPort]).then(function (ok) {
+        if (!ok) log('warn', '新端口 ' + newControlPort + ' 本地直连失败，命令将走宿主桥接')
+      }) }, 400)
+    }
+  }
+
+  setInterval(function () {
+    var n = state.frames
+    state.fps = n - state.lastTickFrames
+    state.lastTickFrames = n
+    els.mFps.textContent = String(state.fps)
+    tickWaiting()
+    // 队列自检：在途请求超过预期还没结束 → 强制释放（保证界面永远能再操作）
+    if (inFlight && inFlight.sentAt && Date.now() - inFlight.sentAt > 40000) {
+      var t = inFlight
+      inFlight = null
+      settleTask(t, new Error('通道长时间无响应，已强制释放'))
+      log('warn', '[' + t.cmd + '] 40 秒无响应，已强制释放命令通道')
+    }
+    // 本地直连不可用时没有状态推送，这里主动轮询一次，保证界面数据不静止
+    if (state.started && !directReady() && !state.statusPollBusy) {
+      state.statusPollBusy = true
+      call('status', {}, { timeout: 4000 }).then(function (st) { applyStatus(st) })
+        .catch(function () { })
+        .then(function () { state.statusPollBusy = false })
+    }
+  }, 1000)
+
+  window.addEventListener('message', function (e) {
+    var d = e.data
+    if (!d) return
+    if (d.type === 'plugin:init') {
+      var t = (d.data && d.data.text) || ''
+      if (t) {
+        // 命令面板传参：可以是 IP、IP:PORT，或纯端口
+        var m = t.match(/^(\d{1,3}(?:\.\d{1,3}){3})(?::(\d+))?$/)
+        if (m) {
+          els.phoneHost.value = m[1]
+          els.phonePort.value = m[2] || 45556
+          els.autoDiscover.checked = false
+          log('info', '已从命令面板带入地址 ' + t)
+        } else if (/^\d{2,5}$/.test(t)) {
+          els.ctlPort.value = Number(t)
+          syncStreamPortLabel()
+          log('info', '已从命令面板带入控制端口 ' + t)
+        }
+      }
+    } else if (d.type === 'plugin:theme' && d.data) {
+      if (d.data.theme) document.documentElement.setAttribute('data-theme', d.data.theme)
+      if (d.data.locale) document.documentElement.setAttribute('lang', d.data.locale)
+    }
+  })
+
+  setMode('idle')
+  showOverlay('未连接', '点击「启动接收」，连接手机发送端后即可看到实时画面')
+})()
+</script>
+</body>
+</html>

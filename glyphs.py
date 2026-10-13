@@ -604,6 +604,14 @@ GLYPH["breach-check"] = """
   <circle cx="12" cy="16" r="1.2" fill="#ff0000" stroke="none"/>
 """
 
+GLYPH["control-receiver"] = """
+  <rect x="5" y="2.5" width="12.5" height="19" rx="2.5"/>
+  <path d="M8.6 5.2h5.2" opacity="0.3"/>
+  <path d="M8 8.6h7M8 11.4h5" opacity="0.55"/>
+  <circle cx="11.3" cy="19.1" r="0.9" fill="#e6e6e6" stroke="none"/>
+  <path d="M14.4 12.6l6 2.6-2.5 1.1 1.8 2.9-1.8.9-1.8-2.9-1.7 1.7z" fill="#008000" stroke="none"/>
+"""
+
 def main():
     made = []
     for name, body in sorted(GLYPH.items()):

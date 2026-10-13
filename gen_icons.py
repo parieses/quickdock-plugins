@@ -91,6 +91,7 @@ COLOR_SPEC = {
     "site-audit":      {"#008000": "accent:green"},                          # 审计通过
     "compare":         {"#008000": "accent:green", "#ff0000": "accent:red"},  # diff 增 / 删
     "disk-analyzer":   {"#cc8800": "accent:amber"},                          # 空间告警区
+    "control-receiver": {"#008000": "accent:green"},                        # 远端可用 / 可操控
     "color-converter": {"#ff00ff": "#ff5f6d", "#00ffff": "#4f8bff",
                         "#ffff00": "#3ddc63"},                               # 调色盘的三个色点
 }
@@ -156,7 +157,7 @@ for _g, _names in {
                  ascii-art code-runner""".split(),
     "teal": """api-mock api-loadtest http-client ws-tester port-scanner speed-test netdiag
                mail-check wifi-manager hosts-manager curl-converter game-sudoku game-adarkroom
-               geoip""".split(),
+               geoip control-receiver""".split(),
     "amber": """crypto-toolbox hash-calc jwt-decoder login-tester dir-buster
                 subdomain-enum site-audit game-roguelike otp vault breach-check""".split(),
     "green": "database data-generator disk-analyzer junk-cleaner game-snake game-gomoku game-proxx xiangqi".split(),

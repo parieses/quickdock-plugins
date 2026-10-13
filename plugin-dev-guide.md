@@ -1084,35 +1084,59 @@ window.addEventListener('message', (e) => {
 | text-encoder | Base64 / URL / HTML 编解码，MD5 / SHA1 / SHA256 / SHA512 哈希与 HMAC 签名，Base64 图片识别预览，2/8/10/16 进制互转与字节单位换算 |
 | time-converter | Unix 时间戳 / ISO 8601 / 中文日期 / 相对时间互转，支持任意时区偏移输出 |
 
-**Pure Frontend 插件（`runtime: none`，纯前端经宿主桥接调 Host API）** — 共 15 个
+**Pure Frontend 插件（`runtime: none`，纯前端经宿主桥接调 Host API）** — 共 36 个
 | 插件 ID | 功能 | 演示的宿主能力 |
 |---|---|---|
+| ascii-art | 图片转字符画（亮度映射到字符集），或输入文字生成 ASCII 艺术字（figlet 风格）。 | 纯前端 |
 | batch-rename | 选择一个文件夹，按前缀/后缀/查找替换/正则/序号/扩展名/大小写规则预览并重命名文件，全部通过宿主文件系统能力执行，不离开本机 | qdPickFolder → host.fs.list → host.fs.move |
 | code-card | 把代码渲染成高颜值分享卡片：语法高亮、主题背景、窗口装饰，一键导出 PNG | 纯前端 |
+| code-runner | 在浏览器内运行 JS / HTML 片段并实时预览，可选加载 Pyodide 运行 Python。无需安装任何环境。 | 纯前端 |
 | crypto-toolbox | 随机密码 / 口令生成（字符集可配、熵值与强度评估）＋ AES-GCM / AES-CBC 加解密 ＋ RSA-OAEP 密钥对与加解密 ＋ PBKDF2 密钥派生，全部在本机完成，不联网、不上传 | 纯前端 |
 | curl-converter | 把 curl 命令解析成 Python / Go / JavaScript / PHP 请求代码，也支持把 fetch、requests 代码反向转回 curl | 纯前端 |
 | data-generator | UUID v4 / v7 生成（批量、可大写）＋ 随机字符串 / 整数 / 字节 ＋ 测试假数据（姓名 / 手机 / 邮箱 / 公司 / 地址 / 身份证(测试) / 日期 / 网址 / 用户名 / 人员），全部在本机生成，不联网、不上传 | 纯前端 |
 | emoji-search | 搜索 Emoji 并一键复制到剪贴板 | 纯前端 |
+| flashcards | 本地单词闪卡与间隔重复记忆（SM-2 算法），内置常用词库，支持自定义词单导入。 | 纯前端 |
+| game-2048 | 经典数字合并：方向键 / WASD 滑动，相同数字相撞合成翻倍，冲击 2048。本地记录最佳分数。 | 纯前端 |
+| game-adarkroom | 极简文字冒险：添柴升温、建造设施、外出探索，还会偶遇流浪商人做交易，在黑暗中一步步壮大村落。点击即可推进。 | 纯前端 |
+| game-code-snake | 代码主题贪吃蛇：在「编辑器」里操控蛇吞掉散落的代码片段，每吃一个解锁一条开发小贴士（JS / PHP / Go / SQL 等）。本地记录分数与收集数。 | 纯前端 |
+| game-gomoku | 经典五子棋（Gomoku）：15×15 棋盘，五子连珠即胜。内置模式评分人机（攻防合一 + 威胁优先），先手为先。 | 纯前端 |
+| game-liferestart | 选定天赋、分配初始属性，重开一段随机人生，看遍悲欢离合。不满意就再来一次。 | 纯前端 |
+| game-proxx | 真·六边形扫雷：每格最多 6 个邻居，数字提示周围黑洞数量，别踩中。 | 纯前端 |
+| game-reversi | 经典黑白棋（Othello / Reversi）：8×8 棋盘，夹住对方棋子即翻转。内置 minimax + α-β 剪枝人机，难度可调。 | 纯前端 |
+| game-roguelike | 纯键盘 ASCII 地牢探险：撞向怪物即攻击，拾取药水武器护甲，逐层下探，斩杀第 6 层的巨龙。永久死亡，比拼最深层数。 | 纯前端 |
+| game-snake | 经典贪吃蛇：方向键 / WASD 控制，吃食物变长，撞墙或咬到自己即结束。本地记录最高分与最长长度。 | 纯前端 |
+| game-sudoku | 数独：随机生成题目 + 唯一解校验，简单/中等/困难/专家四档难度。笔记、提示、冲突高亮，计时与最佳成绩。 | 纯前端 |
+| game-tetris | 经典俄罗斯方块：7 种方块、旋转、消行、等级加速。方向键 / X 旋转，空格硬降。本地记录最高分。 | 纯前端 |
 | hanzi-copybook | 汉字描红字帖生成器：支持任意汉字定制、拼音与笔顺显示、田字格/米字格排版，面向小学生规范书写与笔顺习惯养成，一键导出/打印 | 纯前端 |
 | image-uploader | 选择本地图片，读取后通过宿主网络能力上传到图床（freeimage.host / imgbb），返回可访问的图片链接，链接可一键复制。不上传任何其它文件。 | qdPickFile → host.fs.read → http.post |
 | markdown-preview | 实时渲染 Markdown（GFM：标题/列表/表格/任务列表/引用）+ 代码高亮，一键复制为 HTML | 纯前端 |
 | md-table-converter | Markdown 表格与 CSV / JSON / HTML 四种格式互转，自动识别输入格式，写文档、导数据的顺手小工具 | 纯前端 |
+| md2card | Markdown 与纯文字一键变身高颜值图文卡片：双模式、9 种文字模板、28 套主题、自定义背景图、尺寸预设、字体/圆角/阴影/留白可调、水印、二维码、自定义主题，自动分页、实时预览，导出长图 / PNG / HTML，复制图片，支持宿主打印通道。 | 纯前端 |
 | mindmap | 把 Markdown 大纲 / 缩进列表实时渲染成思维导图，自动分层配色、可点击折叠分支、支持缩放与导出 PNG / SVG | 纯前端 |
+| minesweeper | 复刻 Windows 原生扫雷：经典灰色立体棋盘、笑脸重置、LED 雷数/计时器，支持初级/中级/高级与自定义 | 纯前端 |
+| otp | 本地 TOTP 两步验证码生成器（兼容 Google Authenticator），密钥仅存本机，离线可用。 | 纯前端 |
 | qrcode | 文本/URL 生成二维码，支持保存 PNG；从图片识别二维码内容 | 纯前端 |
 | rmb-upper | 数字金额转中文大写（壹贰叁…），财务报销、开票、合同的刚需小工具 | 纯前端 |
 | type-trainer | 开发者向打字训练器：英文 / 中文 / 代码 / 导入四种模式，支持导入 TXT 字库，实时统计 WPM 与准确率，本地记录历史与最佳成绩 | 纯前端 |
 | unit-converter | 长度 / 面积 / 体积 / 重量 / 温度 / 速度 / 数据存储 / 时间 / 压力 / 能量 / 功率 / 角度 共 12 类单位实时互转，输入一个值即列出该类别全部换算结果 | 纯前端 |
+| vault | 本地加密密码库：主密码解锁，AES-GCM 加密存储，支持导出/导入加密备份文件。数据不出本机。 | 纯前端 |
+| video-to-gif | 浏览器内把视频片段转换为 GIF 动图，基于 ffmpeg.wasm，可调起止时间、尺寸与帧率，数据不出本机。 | 纯前端 |
+| word-count | 实时统计文本的字数、词数、行数、段落数、字节数与阅读时长，支持中英文混合。 | 纯前端 |
+| xiangqi | 单机中国象棋，完整走子与吃子规则，含基于局面评估的简易 AI 对手。 | 纯前端 |
 
-**Native 插件（`runtime: native`，自带 Go 源码 + 编译产物）** — 共 25 个
+**Native 插件（`runtime: native`，自带 Go 源码 + 编译产物）** — 共 32 个
 | 插件 ID | 功能 |
 |---|---|
 | api-loadtest | 功能丰富的 HTTP 接口压测工具：支持并发/时长双模式、自定义 Header 与 Body、实时 QPS 与延迟分布(p50/p90/p95/p99)、状态码分布、错误率统计与结果一键导出 |
 | api-mock | 本地 HTTP 接口 Mock 服务：可视化配置路由规则（方法/路径/状态码/响应体/延迟），一键启动本地服务，实时查看请求日志，联调前端与第三方对接无需真实后端 |
+| breach-check | 基于 Have I Been Pwned 检查密码是否出现在泄露库中（k-匿名，密码不出本机）；邮箱泄露需自备 API Key。 |
 | color-converter | 颜色格式互转（HEX / RGB / HSL）+ 屏幕取色，支持常见英文色名识别 |
+| control-receiver | 手机屏幕镜像接收端 + 控制端：连接 QuestPhoneMirror 发送端实时显示画面，鼠标点击/拖拽反向操控真机 |
 | database | 轻量数据库连接与查询工具：MySQL / SQLite / Redis 连接管理、SQL 与 Redis 命令执行、库表浏览器（库→表/视图→字段、Redis 键树）、Redis 键类型感知详情与增删改（string/hash/list/set/zset）、TTL 与 DB 管理、结果网格内联行编辑。数据独立存储。 |
 | dir-buster | 对指定目标 URL 用内置常见路径字典进行轻量探测（自用）：并发受限、可配扩展名，采用异步会话模型实时返回命中的非 404 路径。仅探测你授权的目标，内置字典、不递归 |
 | disk-analyzer | 可视化磁盘空间占用分析工具，类似 SpaceSniffer，支持树图展示目录结构 |
 | exif-viewer | 选择图片（JPEG/PNG）查看拍摄时间、相机/镜头、参数与 GPS 经纬度等 EXIF 信息 |
+| geoip | 查询 IP 的地理位置、运营商、时区与坐标，支持指定 IP 或查询本机公网 IP。 |
 | git-workbench | Git 仓库一体化工作台：仓库浏览、二分定位 bug 引入提交、三方合并冲突可视化解决、代码演化时间轴、历史改写（改作者/删敏感文件）、仓库体检与知识孤岛识别。 |
 | hash-calc | 计算文件的 MD5/SHA1/SHA256/SHA512 摘要，结果一键复制 |
 | hosts-manager | 管理系统 hosts 文件条目，一键启用/禁用/新增 |
@@ -1125,14 +1149,18 @@ window.addEventListener('message', (e) => {
 | ocr-tool | 基于 PaddleOCR (ONNX) 的离线文字识别，支持中英文，首次使用自动下载约 178MB 模型（ModelScope 镜像），之后完全离线运行，跨 Windows / macOS / Linux。 |
 | package-check | 输入包名，并发查询 npm / PyPI / Composer / Go 四个仓库的版本信息；并基于 OSV.dev 查询包版本的已知漏洞（CVE / 安全公告） |
 | pdf-toolkit | PDF 处理工具箱：合并/拆分/压缩/加水印/提取图片，无需安装 Adobe Acrobat |
+| photo-library | 选择本地文件夹，网格缩略图浏览照片，按日期/文件夹筛选，点击查看 EXIF 拍摄信息与参数 |
 | port-scanner | 检查端口占用，显示进程名和 PID |
+| service-manager | 查看本机 Windows 服务列表，按名称筛选，并启动 / 停止 / 重启服务。 |
 | site-audit | 将 WHOIS 查询、SSL 证书检查、DNS 查询、DNS 传播检查、HTTP 状态码速查、HTTP 安全头审计六个站点工具合并为单一插件，按需切换标签页，共享一个原生子进程 |
 | speed-test | 测量网络下载速率与延迟：流式下载测速（支持自定义测速节点 URL），实时显示速率与进度，采用异步会话模型规避宿主执行超时 |
+| startup-manager | 查看并启停本机开机启动项，覆盖注册表 Run 键与「启动」文件夹中的快捷方式。 |
 | subdomain-enum | 被动收集域名子域名（证书透明日志 CertSpotter / crt.sh + HackerTarget + urlscan + rapiddns + AlienVault OTX），可选并发解析 A 记录筛选存活 |
+| system-info | neofetch 式一键采集本机操作系统、CPU、内存、显卡、磁盘与运行时长等信息。 |
 | wifi-manager | 查看网络列表、WiFi 密码、连接状态 |
 | ws-tester | 连接 ws/wss 服务，发送消息并实时查看返回的帧，支持多连接与历史 |
 
-> 以上 49 个插件均已迁至 `plugins/external/`（ID 改为 `io.github.parieses.*`），代码可直接复用。goja/none 插件演示「零宿主依赖、纯 JS 自包含」的外部化样板；native 插件演示「Go 源码 vendor + 自编译 entry exe」模式（`build.py` 直接在插件目录 `go build`）。完整 goja 模板见上文「完整示例」。
+> 以上 77 个插件均已迁至 `plugins/external/`（ID 改为 `io.github.parieses.*`），代码可直接复用。goja/none 插件演示「零宿主依赖、纯 JS 自包含」的外部化样板；native 插件演示「Go 源码 vendor + 自编译 entry exe」模式（`build.py` 直接在插件目录 `go build`）。完整 goja 模板见上文「完整示例」。
 
 <!--DEVGUIDE_PLUGINS_END-->
 
