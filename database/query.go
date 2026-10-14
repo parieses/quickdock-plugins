@@ -49,6 +49,12 @@ type DbQueryResult struct {
 	TableName  string `json:"tableName"`
 	PrimaryKey string `json:"primaryKey"`
 	EditReason string `json:"editReason"` // 不可编辑时的原因（复合主键 / 无主键 / 非单表查询）
+	// 分页元数据：table.rows 使用；Total = -1 表示未统计到总行数
+	Total    int64  `json:"total"`
+	Page     int    `json:"page"`
+	PageSize int    `json:"pageSize"`
+	OrderBy  string `json:"orderBy"`
+	OrderDir string `json:"orderDir"`
 }
 
 // enrichEditable 探测结果是否来自「单表 SELECT 且含主键列」，若是则填充可编辑元数据。

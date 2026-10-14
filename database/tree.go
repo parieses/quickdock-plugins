@@ -168,6 +168,79 @@ func columnsOf(d *sql.DB, kind, dbName, table string) []DbTreeNode {
 	return cols
 }
 
+// RedisKeyItem 扁平键列表里的一项。
+type RedisKeyItem struct {
+	Key  string `json:"key"`
+	Type string `json:"type"`
+}
+
+// handleRedisKeyList 扁平列出某个 Redis 库的键（供右侧「键」列表使用）。
+func handleRedisKeyList(id int64, input map[string]interface{}) {
+	cid := strFrom(input, "id")
+	if cid == "" {
+		respondError(id, -32602, "缺少连接 id")
+		return
+	}
+	_, conn, err := openSavedWithDB(cid, "")
+	if err != nil {
+		respondError(id, -32000, err.Error())
+		return
+	}
+	defer conn.close()
+	if conn.kind != "redis" {
+		respondError(id, -32602, "该连接不是 Redis")
+		return
+	}
+	dbIndex := parseRedisDB("")
+	if saved, e := getConnection(cid); e == nil {
+		dbIndex = parseRedisDB(saved.Database)
+	}
+	if v, ok := input["dbIndex"]; ok {
+		if n, ok := v.(float64); ok && int(n) >= 0 {
+			dbIndex = int(n)
+		}
+	}
+	list, truncated, err := listRedisKeysFlat(conn.redis, dbIndex,
+		strFrom(input, "pattern"), intFrom(input, "limit", 500))
+	if err != nil {
+		respondError(id, -32000, "读取键失败: "+err.Error())
+		return
+	}
+	respond(id, map[string]interface{}{"keys": list, "truncated": truncated, "dbIndex": dbIndex})
+}
+
+// listRedisKeysFlat 用 SCAN 扁平列出键与类型（大库上限保护）。
+func listRedisKeysFlat(client *redis.Client, dbIndex int, pattern string, limit int) ([]RedisKeyItem, bool, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), dbQueryTimeout)
+	defer cancel()
+	if strings.TrimSpace(pattern) == "" {
+		pattern = "*"
+	}
+	if limit <= 0 || limit > 5000 {
+		limit = 500
+	}
+	out := []RedisKeyItem{}
+	iter := client.Scan(ctx, 0, pattern, 300).Iterator()
+	truncated := false
+	for iter.Next(ctx) {
+		if len(out) >= limit {
+			truncated = true
+			break
+		}
+		k := iter.Val()
+		kt, err := client.Type(ctx, k).Result()
+		if err != nil {
+			kt = "?"
+		}
+		out = append(out, RedisKeyItem{Key: k, Type: kt})
+	}
+	if err := iter.Err(); err != nil && len(out) == 0 {
+		return nil, false, err
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Key < out[j].Key })
+	return out, truncated, nil
+}
+
 // listRedisKeys 用 SCAN 列出键并按 ':' 分隔的前缀组成目录层级（大库上限保护）。
 // pattern 为 SCAN 匹配模式（默认 *，前端可传 "user:*" 之类做前缀过滤）。
 func listRedisKeys(client *redis.Client, dbIndex int, pattern string, limit int) ([]DbTreeNode, error) {

@@ -47,5 +47,48 @@ async function ensure(){if(loaded)return;document.getElementById('msg').textCont
 document.getElementById('conv').onclick=async function(){try{await ensure()}catch(e){document.getElementById('msg').textContent='加载失败：'+e.message;return}var f=document.getElementById('file').files[0];if(!f)return;var name=f.name.split('.').slice(0,-1).join('.')||'video';document.getElementById('msg').textContent='转换中…';var buf=new Uint8Array(await f.arrayBuffer());await ffmpeg.writeFile('in.mp4',buf);await ffmpeg.exec(['-i','in.mp4','-ss',document.getElementById('ss').value,'-t',document.getElementById('dur').value,'-vf','fps='+document.getElementById('fps').value+',scale='+document.getElementById('w').value+':-1','out.gif']);var d=await ffmpeg.readFile('out.gif');lastBlob=new Blob([d.buffer],{type:'image/gif'});document.getElementById('out').innerHTML='<img src="'+URL.createObjectURL(lastBlob)+'">';document.getElementById('dl').disabled=false;document.getElementById('msg').textContent='完成'};
 document.getElementById('dl').onclick=function(){if(!lastBlob)return;var a=document.createElement('a');a.href=URL.createObjectURL(lastBlob);a.download='output.gif';a.click()};
 </script>
+
+<!-- 跟随宿主浅色/深色主题 -->
+  <script>
+  /* qd-theme-follow：把宿主的浅色/深色同步到 <html data-theme>
+     （qd-theme.css 里浅色是 html[data-theme="light"] 的变量覆盖）。
+     三级取值，任意一级拿到就生效，互为兜底：
+       1) 宿主消息 plugin:theme / plugin:init（宿主若补上独立窗口的广播即走这条）
+       2) 同源 opener / parent 窗口的 <html data-theme>，并监听其变化、窗口 focus 时重读
+       3) 系统偏好 prefers-color-scheme（宿主主题=「跟随系统」时有效）
+     独立注册，不改动页面原有逻辑。 */
+  (function () {
+    var el = document.documentElement;
+    function set(t) { if (t === 'light' || t === 'dark') el.setAttribute('data-theme', t); }
+    window.addEventListener('message', function (e) {
+      var d = e && e.data;
+      if (!d || !d.type) return;
+      if (d.type === 'plugin:theme' || d.type === 'plugin:init') { if (d.data && d.data.theme) set(d.data.theme); }
+    });
+    /* 2) 同源窗口 */
+    var w = null;
+    try {
+      if (window.opener && window.opener !== window) w = window.opener;
+      else if (window.parent && window.parent !== window) w = window.parent;
+    } catch (err) { w = null; }
+    function fromWin() {
+      try { var t = w.document.documentElement.getAttribute('data-theme'); if (t) { set(t); return true; } return false; }
+      catch (err) { return false; }
+    }
+    if (w && fromWin()) {
+      try {
+        new MutationObserver(fromWin).observe(w.document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+      } catch (err) {}
+      window.addEventListener('focus', fromWin);
+    }
+    /* 3) 系统偏好兜底：仅在还没拿到明确主题时生效 */
+    if (window.matchMedia) {
+      var mq = window.matchMedia('(prefers-color-scheme: light)');
+      var sys = function () { if (!el.getAttribute('data-theme')) set(mq.matches ? 'light' : 'dark'); };
+      sys();
+      if (mq.addEventListener) mq.addEventListener('change', sys);
+    }
+  })();
+  </script>
 </body>
 </html>

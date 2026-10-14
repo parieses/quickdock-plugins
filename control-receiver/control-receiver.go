@@ -1,4 +1,4 @@
-// control-receiver —— QuickDock 插件：手机屏幕镜像「接收控制端」
+// control-receiver —— QuickDock 插件：手机屏幕镜像「qpm接收端」
 //
 // 角色：QuestPhoneMirror 协议里的「接收端 + 控制端」。
 //   · 作为 TCP 客户端主动连接手机发送端（默认 45556），按协议收 SCREEN_INFO 与 H.264 视频帧；

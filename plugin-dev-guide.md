@@ -1131,7 +1131,7 @@ window.addEventListener('message', (e) => {
 | api-mock | 本地 HTTP 接口 Mock 服务：可视化配置路由规则（方法/路径/状态码/响应体/延迟），一键启动本地服务，实时查看请求日志，联调前端与第三方对接无需真实后端 |
 | breach-check | 基于 Have I Been Pwned 检查密码是否出现在泄露库中（k-匿名，密码不出本机）；邮箱泄露需自备 API Key。 |
 | color-converter | 颜色格式互转（HEX / RGB / HSL）+ 屏幕取色，支持常见英文色名识别 |
-| control-receiver | 手机屏幕镜像接收端 + 控制端：连接 QuestPhoneMirror 发送端实时显示画面，鼠标点击/拖拽反向操控真机 |
+| control-receiver | 手机屏幕镜像接收端 + 控制端：连接 QuestPhoneMirror 发送端实时显示画面，鼠标点击/拖拽反向操控真机（配套手机端发送端见 https://github.com/parieses/QuestPhoneMirror） |
 | database | 轻量数据库连接与查询工具：MySQL / SQLite / Redis 连接管理、SQL 与 Redis 命令执行、库表浏览器（库→表/视图→字段、Redis 键树）、Redis 键类型感知详情与增删改（string/hash/list/set/zset）、TTL 与 DB 管理、结果网格内联行编辑。数据独立存储。 |
 | dir-buster | 对指定目标 URL 用内置常见路径字典进行轻量探测（自用）：并发受限、可配扩展名，采用异步会话模型实时返回命中的非 404 路径。仅探测你授权的目标，内置字典、不递归 |
 | disk-analyzer | 可视化磁盘空间占用分析工具，类似 SpaceSniffer，支持树图展示目录结构 |

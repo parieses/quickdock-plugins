@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>接收控制端</title>
+<title>qpm接收端</title>
 <link rel="stylesheet" href="qd-theme.css">
 <link rel="stylesheet" href="components.css">
 <style>
@@ -46,10 +46,10 @@
 
   /* —— 主体 —— */
   .p-body{flex:1;display:flex;overflow:hidden;min-height:0}
-  .stage{flex:1;display:flex;align-items:center;justify-content:center;background:var(--bg-primary);
+  .stage{flex:1;display:flex;align-items:center;justify-content:center;background:var(--bg-primary);position:relative;overflow:hidden;
     background-image:radial-gradient(120% 80% at 50% 0%,rgba(128,128,128,.10),transparent 72%);
     position:relative;overflow:hidden;min-width:0}
-  #screen{max-width:100%;max-height:100%;display:block;image-rendering:auto;box-shadow:var(--shadow-2);cursor:default;background:#000}
+  #screen{position:absolute;left:50%;top:50%;display:block;image-rendering:auto;box-shadow:var(--shadow-2);cursor:default;background:#000;transform:translate(-50%,-50%)}
   #screen.can-grab{cursor:grab}
   #screen.dragging{cursor:grabbing}
   #screen.hidden{display:none}
@@ -76,6 +76,9 @@
   .metric{background:var(--bg-primary);padding:8px 10px}
   .metric .k{font-size:var(--fs-xs);color:var(--text-muted)}
   .metric .v{font-size:var(--fs-lg);font-family:var(--font-mono);color:var(--text-primary);margin-top:2px;word-break:break-all}
+  /* 手机真降了编码分辨率时高亮 —— 这是「画面糊」最需要一眼看见的信号 */
+  .metric .v.warn{color:var(--warning)}
+  .metric .v.dim{color:var(--text-muted)}
   .log-head{display:flex;align-items:center;gap:var(--sp-2);padding:6px var(--sp-3);font-size:var(--fs-xs);color:var(--text-muted);border-bottom:1px solid var(--border);flex-shrink:0}
   #log{flex:1;overflow:auto;padding:6px var(--sp-3);font-family:var(--font-mono);font-size:var(--fs-xs);line-height:1.55;min-height:0}
   .ln{display:flex;gap:6px;padding:1px 0}
@@ -124,7 +127,7 @@
 
   <!-- 标题栏 -->
   <div class="p-head">
-    <span class="p-head-title">接收控制端</span>
+    <span class="p-head-title">qpm接收端</span>
     <span id="tagState" class="p-tag p-tag-neutral">未启动</span>
     <span id="headInfo" class="p-muted"></span>
     <div class="p-head-actions">
@@ -159,7 +162,7 @@
 
   <!-- 画面 + 侧栏 -->
   <div class="p-body">
-    <div class="stage">
+    <div class="stage" id="stage">
       <canvas id="screen" class="hidden"></canvas>
       <div id="overlay" class="overlay">
         <div class="big" id="ovTitle">未连接</div>
@@ -177,10 +180,12 @@
         <button id="btnHideSide" class="p-btn p-btn-sm p-btn-ghost" title="收起右侧栏，把宽度让给画面（标题栏「侧栏」可再展开）">收起 ▸</button>
       </div>
       <div class="metrics">
-        <div class="metric"><div class="k">分辨率</div><div class="v" id="mScreen">—</div></div>
+        <div class="metric"><div class="k" id="kScreen">手机屏幕</div><div class="v" id="mScreen">—</div></div>
+        <div class="metric"><div class="k">实际编码帧</div><div class="v" id="mFrame">—</div></div>
         <div class="metric"><div class="k">远端</div><div class="v" id="mRemote">—</div></div>
         <div class="metric"><div class="k">解码帧率</div><div class="v" id="mFps">0</div></div>
         <div class="metric"><div class="k">码率</div><div class="v" id="mRate">0 kb/s</div></div>
+        <div class="metric"><div class="k">显示缩放</div><div class="v" id="mScale">—</div></div>
         <div class="metric"><div class="k">编码</div><div class="v" id="mCodec">—</div></div>
         <div class="metric"><div class="k">已收帧</div><div class="v" id="mFrames">0</div></div>
       </div>
@@ -210,6 +215,7 @@
       <button id="btnCloseText" class="p-btn p-btn-sm p-btn-ghost" title="收起文本输入">收起</button>
     </div>
     <span class="foot-spacer"></span>
+    <button id="btnFill" class="p-btn p-btn-sm btn-toggle-rot" title="画面铺满方式，点击循环切换：智能（默认，方向一致自动铺满/不一致留黑边完整）→ 填满（强制等比放大铺满窗口、超出裁掉——手机竖持看横屏视频时画面最大）→ 完整（等比缩小完整显示、留黑边看全貌）。方向永远跟随手机真实方向，点击坐标始终精准">⬔ 智能</button>
     <button id="btnHelp" class="p-btn p-btn-sm p-btn-ghost" title="操作说明">?</button>
     <button id="btnExitImmersive" class="p-btn p-btn-sm p-btn-primary btn-imm-only" title="退出沉浸模式（Esc）">退出沉浸</button>
   </div>
@@ -221,13 +227,24 @@
   <div>右键 = 返回 · 滚轮 = 上下滑动</div>
   <div style="margin-top:6px"><b>快捷键</b></div>
   <div><span class="kbd">F</span> 进入/退出沉浸 · <span class="kbd">Esc</span> 退出沉浸</div>
+  <div style="margin-top:6px"><b>画面发虚时看右侧栏</b></div>
+  <div>· 「实际编码帧」比「手机屏幕」小 → 手机在降分辨率编码</div>
+  <div>· 两者一致 → 手机没降分辨率，糊来自上游或系统层面</div>
+  <div>· 「显示缩放」很低（如 25%）→ 界面本身缩得太小，小字号必然发虚</div>
+  <div style="margin-top:6px"><b>QQ / 微信 / 相册页面发糊</b></div>
+  <div>这是手机的「<b>屏幕共享防护</b>」（厂商防诈骗功能）：检测到投屏就把社交 / 支付类应用的画面模糊化。插件收到的已经是被模糊过的画面，无法还原。</div>
+  <div>关掉方法：手机设置里搜「电诈防护」→「屏幕共享防护」关闭；部分机型在「开发者选项 → 停用屏幕防护共享」。投屏时若手机弹出红色提示，点「继续共享」可单次放行。</div>
+  <div style="margin-top:6px"><b>手机转了横屏，画面没跟着横</b></div>
+  <div>看右侧栏「实际编码帧」：变成 2964×1440 说明编码已跟着横（画面会自动横过来）；仍是 1440×2964 说明手机端没重建编码器，点「重连手机」强制刷新一次。</div>
+  <div style="margin-top:6px"><b>全屏 / 窗口方向跟手机不一致，怕画面偏小或留黑边</b></div>
+  <div>方向始终跟随手机真实方向，绝不会转反：竖屏手机永远显示竖屏、横屏永远显示横屏。底部按钮三态循环：<b>⬔ 智能</b>（默认：方向一致自动铺满、不一致自动留黑边完整显示）→ <b>⤢ 填满</b>（强制等比放大铺满窗口、超出裁掉——<b>手机竖持看横屏视频时点它，画面最大</b>）→ <b>⤡ 完整</b>（等比缩小看全貌、留黑边）。三种方式的点击坐标都精准。</div>
   <div style="margin-top:6px"><b>手机端要求</b></div>
   <div>需在「设置 → 无障碍 → 已下载的服务」中开启 QPM 控制服务，否则点击/按键会静默丢弃。</div>
 </div>
 
 <script>
 /* =====================================================================
- * 接收控制端 —— 前端
+ * qpm接收端 —— 前端
  *   · 后端：native Go（control-receiver），命令经 pluginExec(cmd, data) 下发
  *   · 取流：优先本机 WebSocket（视频流 streamPort / 控制通道 controlPort）；
  *           若沙箱环境拦截 WebSocket，自动退化为 stream.pull 轮询
@@ -265,6 +282,9 @@
     modeTag: document.getElementById('modeTag'),
     headInfo: document.getElementById('headInfo'),
     mScreen: document.getElementById('mScreen'),
+    kScreen: document.getElementById('kScreen'),
+    mFrame: document.getElementById('mFrame'),
+    mScale: document.getElementById('mScale'),
     mRemote: document.getElementById('mRemote'),
     mFps: document.getElementById('mFps'),
     mRate: document.getElementById('mRate'),
@@ -290,7 +310,9 @@
     mLast: document.getElementById('mLast'),
     btnProbe: document.getElementById('btnProbe'),
     btnReconnect: document.getElementById('btnReconnect'),
-    btnReset: document.getElementById('btnReset')
+    btnReset: document.getElementById('btnReset'),
+    btnFill: document.getElementById('btnFill'),
+    stage: document.getElementById('stage')
   }
   var ctx = els.canvas.getContext('2d', { alpha: false })
 
@@ -310,6 +332,14 @@
     descB64: '',
     screenW: 0,
     screenH: 0,
+    rawScreenW: 0,      // 后端 SCREEN_INFO 原样值（手机可能只在建连时发一次，旋转后是旧方向）
+    rawScreenH: 0,
+    screenDPI: 0,
+    oriented: false,    // 是否按画面方向把屏幕尺寸横竖对齐过
+    orientation: '',    // 'portrait' | 'landscape'
+    frameW: 0,          // 实际解码出来的帧尺寸（= 手机真实编码分辨率）
+    frameH: 0,
+    sizeNote: '',       // 上一次记录的「实际帧 vs 屏幕」结论，避免重复刷日志
     waitKey: true,
     cursor: -1,
     pullTimer: null,
@@ -339,7 +369,11 @@
     immTimer: null,        // 沉浸模式浮动控制条的自动隐藏计时器
     textOpen: false,       // 底部文本输入是否展开
     sideOpen: true,        // 右侧状态栏是否显示
-    cfgOpen: false         // 顶部设置条是否展开
+    cfgOpen: false,        // 顶部设置条是否展开
+    fit: 'auto',           // 画面铺满方式三态：'auto'=智能(方向一致cover铺满/不一致contain留黑边); 'fill'=强制铺满(裁边); 'fit'=强制完整(contain)
+    cssW: 0, cssH: 0,      // 画布当前 CSS 显示尺寸（由 layoutCanvas 计算）
+    _stageW: 0, _stageH: 0,// 上次布局时的 stage 尺寸（自愈比对用）
+    fitLogged: ''          // 上一次记录的铺满方式，避免重复刷日志
   }
 
   /* ===================== 日志 ===================== */
@@ -670,9 +704,9 @@
     els.mRemote.textContent = st.remote || '—'
     els.mFrames.textContent = st.frames || 0
     if (st.screenW) {
-      state.screenW = st.screenW; state.screenH = st.screenH
-      els.mScreen.textContent = st.screenW + '×' + st.screenH + (st.dpi ? ' @' + st.dpi : '')
+      applyScreenInfo(st.screenW, st.screenH, st.dpi)
       els.headInfo.textContent = st.phoneHost ? (st.phoneHost + ':' + st.phonePort + '  ' + st.screenW + '×' + st.screenH) : ''
+      evalFrameSizeNote()
     }
     if (st.kbps !== undefined) els.mRate.textContent = (st.kbps || 0) + ' kb/s'
     if (st.avcC && st.avcC.codec) els.mCodec.textContent = st.avcC.codec
@@ -720,12 +754,124 @@
     return out
   }
 
+  // —— 屏幕方向：横竖屏自适应 ——
+  // SCREEN_INFO（0x20）是「建立连接时发一次」的，手机旋转后多数机型不会重发，
+  // 前端如果照旧用它映射坐标，横屏时点击/滑动会整体错位。
+  // 但屏幕物理像素总数不变、只是横竖互换，而解码帧的方向必然是当前真实方向，
+  // 所以：以画面方向为准，把后端给的屏幕尺寸横竖对齐后再用于坐标映射。
+  function refreshScreenLabel() {
+    if (!state.screenW) return
+    var land = state.screenW > state.screenH
+    els.mScreen.textContent = state.screenW + '×' + state.screenH
+    els.kScreen.textContent = '手机屏幕 · ' + (land ? '横' : '竖')
+    els.mScreen.title = (land ? '横屏' : '竖屏') +
+      (state.screenDPI ? '，' + state.screenDPI + 'dpi' : '') +
+      (state.oriented ? '（手机未重发屏幕信息，方向由画面推断）' : '')
+  }
+  function maybeLogOrientation() {
+    if (!state.screenW) return
+    var dir = state.screenW > state.screenH ? 'landscape' : 'portrait'
+    if (state.orientation === dir) return
+    var first = !state.orientation
+    state.orientation = dir
+    if (first) return
+    log('ok', '检测到手机已切换为' + (dir === 'landscape' ? '横屏' : '竖屏') +
+      '，控制坐标按 ' + state.screenW + '×' + state.screenH + ' 映射' +
+      (state.oriented ? '（手机没重发屏幕信息，方向由画面推断）' : ''))
+  }
+  function resolveScreenSize() {
+    var w = state.rawScreenW, h = state.rawScreenH
+    if (!w || !h) return
+    state.oriented = false
+    if (state.frameW && state.frameH && ((state.frameW > state.frameH) !== (w > h))) {
+      var t = w; w = h; h = t
+      state.oriented = true
+    }
+    state.screenW = w; state.screenH = h
+    refreshScreenLabel()
+    maybeLogOrientation()
+  }
+  function applyScreenInfo(w, h, dpi) {
+    if (!w || !h) return
+    state.rawScreenW = w; state.rawScreenH = h
+    if (dpi) state.screenDPI = dpi
+    resolveScreenSize()
+  }
+
+  // 「画面糊」只有三种来源：① 手机把编码分辨率降了；② 码率不够（图文密集型界面）；
+  // ③ 系统 / App 层面本身就把画面糊掉了（安全窗口、毛玻璃等）。
+  // 这里把 ① 变成一眼可见：把解码出来的真实帧尺寸和 SCREEN_INFO 的屏幕尺寸并排显示。
+  function evalFrameSizeNote() {
+    var w = state.frameW, h = state.frameH
+    if (!w || !h || !state.screenW) return
+    var sw = state.screenW, sh = state.screenH
+    var same = (w === sw && h === sh)
+    var note
+    if (same) {
+      note = 'same'
+      els.mFrame.className = 'v dim'
+    } else {
+      var k = Math.max(sw / w, sh / h)
+      note = 'small:' + k.toFixed(2)
+      els.mFrame.className = 'v warn'
+    }
+    if (state.sizeNote === note) return
+    state.sizeNote = note
+    if (same) {
+      log('info', '实际编码分辨率 ' + w + '×' + h + '，与手机屏幕一致 —— 手机没有降分辨率，画面若仍发虚就是上游/系统层面')
+    } else {
+      log('warn', '实际编码分辨率只有 ' + w + '×' + h + '（屏幕 ' + sw + '×' + sh +
+        '），被放大 ' + Math.max(sw / w, sh / h).toFixed(2) + '× 显示 —— 这是画面发糊的直接原因')
+    }
+  }
+  function setFrameSize(w, h) {
+    if (!w || !h) return
+    if (state.frameW === w && state.frameH === h) return
+    state.frameW = w; state.frameH = h
+    els.mFrame.textContent = w + '×' + h
+    resolveScreenSize()   // 先按画面方向校正屏幕尺寸，再做分辨率对比
+    evalFrameSizeNote()
+    layoutCanvas()         // 帧尺寸（方向）变了，按当前铺满方式重排
+  }
+
+  // 画面显示布局：永远保持手机真实方向（绝不旋转内容）。铺满方式 state.fit 三态（底部按钮循环切换）：
+  //   'auto'（默认·智能）：手机与窗口同方向 → cover 等比放大铺满；方向不一致 → contain 完整留黑边（不丢内容）。
+  //   'fill'（填满）：始终 cover 等比放大铺满窗口、超出裁掉 —— 手机竖持看横屏视频（画面居中上下带黑边）时，
+  //                 用它可把视频放大到铺满窗口，黑边被裁掉、画面最大；点按坐标按画布实际矩形映射、依然精准。
+  //   'fit' （完整）：始终 contain，等比缩小完整显示、必要时留黑边看全貌。
+  function layoutCanvas() {
+    if (!state.frameW || !state.frameH) return
+    var box = els.stage.getBoundingClientRect()
+    var W = box.width, H = box.height
+    if (!W || !H) return
+    var fw = state.frameW, fh = state.frameH
+    var cv = els.canvas
+    var sameOri = (fw > fh) === (W > H)   // 手机与窗口是否同方向
+    var useCover = state.fit === 'fill' || (state.fit === 'auto' && sameOri)
+    var s = useCover ? Math.max(W / fw, H / fh) : Math.min(W / fw, H / fh)
+    cv.style.width = (fw * s) + 'px'
+    cv.style.height = (fh * s) + 'px'
+    cv.style.transform = 'translate(-50%,-50%)'
+    state.cssW = parseFloat(cv.style.width)
+    state.cssH = parseFloat(cv.style.height)
+    state._stageW = W; state._stageH = H
+    state._fit = useCover ? 'cover' : 'contain'
+    if (state.fitLogged !== state.fit + '|' + state._fit) {
+      state.fitLogged = state.fit + '|' + state._fit
+      var modeName = state.fit === 'fill' ? '填满' : state.fit === 'fit' ? '完整' : '智能'
+      log('info', '画面适配（' + modeName + '）：' + (useCover
+        ? '等比放大铺满窗口，方向保持手机真实方向，超出部分裁掉'
+        : '等比缩小完整显示，方向保持手机真实方向' + (sameOri ? '' : '（与窗口方向不一致，留黑边）')))
+    }
+  }
+
   function onDecoded(frame) {
     try {
       if (els.canvas.width !== frame.displayWidth || els.canvas.height !== frame.displayHeight) {
         els.canvas.width = frame.displayWidth
         els.canvas.height = frame.displayHeight
       }
+      setFrameSize(frame.displayWidth, frame.displayHeight)
       ctx.drawImage(frame, 0, 0)
       state.frames++
       state.lastFrameAt = Date.now()
@@ -806,8 +952,7 @@
     if (!m) return
     if (m.t === 'status') { applyStatus(m); return }
     if (m.t === 'screen') {
-      state.screenW = m.w; state.screenH = m.h
-      els.mScreen.textContent = m.w + '×' + m.h + (m.dpi ? ' @' + m.dpi : '')
+      applyScreenInfo(m.w, m.h, m.dpi)
       return
     }
     if (m.t === 'config') { ensureDecoder(m.codec, m.description); return }
@@ -903,7 +1048,15 @@
     if (state.decoder) { try { state.decoder.close() } catch (e) { } state.decoder = null }
     state.codec = ''; state.descB64 = ''; state.waitKey = true; state.cursor = -1
     // 注意：本地直连通道不在这里关 —— 它是命令通道，停止接收后仍要用它重新启动
-    if (full) setMode('idle')
+    if (full) {
+      setMode('idle')
+      state.frameW = 0; state.frameH = 0; state.sizeNote = ''
+      state.orientation = ''; state.oriented = false
+      els.mFrame.textContent = '—'
+      els.mFrame.className = 'v'
+      els.mScale.textContent = '—'
+      resolveScreenSize()
+    }
   }
 
   function scheduleReconnect() {
@@ -1028,12 +1181,17 @@
     }).catch(function (e) { log('err', '发送文本失败: ' + e.message) })
   }
 
-  // 画布坐标（CSS 像素）→ 手机屏幕绝对像素
+  // 画布坐标（CSS 像素）→ 手机屏幕绝对像素。
+  // 画布始终以「手机真实方向」绘制，不做旋转；无论 cover（溢出裁剪）还是 contain（留黑边），
+  // 点击位置都按画布「实际显示矩形」(getBoundingClientRect) 归一化即可，溢出部分被 stage 裁掉、不可点，
+  // 所以映射天然精准，横屏/竖屏、填满/完整都无需特殊处理。
   function toPhone(ev) {
     var r = els.canvas.getBoundingClientRect()
     if (!r.width || !state.screenW) return null
-    var nx = Math.min(1, Math.max(0, (ev.clientX - r.left) / r.width))
-    var ny = Math.min(1, Math.max(0, (ev.clientY - r.top) / r.height))
+    var u = (ev.clientX - r.left) / r.width
+    var v = (ev.clientY - r.top) / r.height
+    var nx = Math.min(1, Math.max(0, u))
+    var ny = Math.min(1, Math.max(0, v))
     return { x: Math.round(nx * state.screenW), y: Math.round(ny * state.screenH) }
   }
 
@@ -1390,6 +1548,7 @@
     state.sideOpen = !!on
     document.querySelector('.app').classList.toggle('noside', !state.sideOpen)
     els.btnToggleSide.classList.toggle('p-btn-primary', state.sideOpen)
+    layoutCanvas()   // 侧栏收起/展开会改变画面区尺寸，立即重排
   }
   function setTextOpen(on) {
     state.textOpen = !!on
@@ -1403,6 +1562,26 @@
   els.btnHideSide.onclick = function () { setSide(false) }
   els.btnToggleText.onclick = function () { setTextOpen(!state.textOpen) }
   els.btnCloseText.onclick = function () { setTextOpen(false) }
+
+  // 「智能 / 填满 / 完整」三态循环：只改铺满方式，绝不旋转内容，方向始终 = 手机真实方向。
+  //   智能（默认）：方向一致自动铺满、方向不一致自动留黑边完整显示；
+  //   填满：强制等比放大铺满（方向不一致也裁边铺满）—— 手机竖持看横屏视频时用它画面最大；
+  //   完整：强制等比缩小完整显示（留黑边看全貌）。
+  var FIT_SEQ = ['auto', 'fill', 'fit']
+  var FIT_LABEL = { auto: '⬔ 智能', fill: '⤢ 填满', fit: '⤡ 完整' }
+  function setFit(mode) {
+    if (FIT_SEQ.indexOf(mode) < 0) mode = 'auto'
+    state.fit = mode
+    els.btnFill.textContent = FIT_LABEL[mode]
+    els.btnFill.classList.toggle('p-btn-primary', mode !== 'auto')
+    layoutCanvas()
+    log('info', mode === 'fill'
+      ? '已切换为「填满」：强制等比放大铺满窗口（超出部分裁掉；手机竖持看横屏视频时画面最大）'
+      : mode === 'fit'
+      ? '已切换为「完整」：等比缩小完整显示手机全屏（必要时留黑边）'
+      : '已切换为「智能」：方向一致自动铺满，方向不一致自动完整显示（留黑边）')
+  }
+  els.btnFill.onclick = function () { setFit(FIT_SEQ[(FIT_SEQ.indexOf(state.fit) + 1) % FIT_SEQ.length]) }
   els.btnHelp.onclick = function (ev) {
     ev.stopPropagation()
     els.helpPop.classList.toggle('hidden')
@@ -1438,6 +1617,7 @@
       sideBeforeImm = state.sideOpen
       setSide(false)               // 沉浸就要画面占满，侧栏先收掉
       immWake()
+      layoutCanvas()               // 沉浸时画面区变成整窗，立即按新尺寸重排（填满/完整同样适用）
     } else {
       clearTimeout(state.immTimer)
       document.querySelector('.foot').classList.remove('imm-show')
@@ -1542,6 +1722,13 @@
   }
   document.addEventListener('visibilitychange', resync)
   window.addEventListener('focus', resync)
+  // 画面区尺寸变化（窗口缩放、DPI 变动、沉浸切换、侧栏收起）都会触发重排；
+  // 窗口尺寸变化时按当前铺满方式（填满/完整）立即重排，方向始终跟随手机真实方向。
+  if (window.ResizeObserver) {
+    new ResizeObserver(function () { layoutCanvas() }).observe(els.stage)
+  } else {
+    window.addEventListener('resize', layoutCanvas)
+  }
 
   // 端口被改（端口建议 / 手动改）后，本地直连需要换到新端口重连
   function onPortsChanged(newControlPort) {
@@ -1559,6 +1746,23 @@
     state.fps = n - state.lastTickFrames
     state.lastTickFrames = n
     els.mFps.textContent = String(state.fps)
+    // 自愈兜底：若 stage 实际尺寸与上次布局时不一致，或画布实际渲染尺寸与计算值不一致
+    // （ResizeObserver 偶发不触发/时序竞态），立即重排 —— 保证全屏/最大化/侧栏切换后画面永远铺到位。
+    try {
+      var sb = els.stage.getBoundingClientRect()
+      if (sb.width && sb.height && (Math.abs(sb.width - (state._stageW || 0)) > 1 || Math.abs(sb.height - (state._stageH || 0)) > 1)) {
+        layoutCanvas()
+      } else if (state.cssW) {
+        var cb = els.canvas.getBoundingClientRect()
+        if (Math.abs(cb.width - state.cssW) > 2 || Math.abs(cb.height - state.cssH) > 2) layoutCanvas()
+      }
+    } catch (e) {}
+    // 显示缩放：解码帧被缩到多少显示（几何缩放，与铺满方式无关）。
+    // 1440 宽的手机屏在约 360px 宽的画布里就是 25%，小字号界面（微信/QQ 这类）缩到这个比例必然发虚。
+    if (state.cssW && els.canvas.width) {
+      var sc = Math.round(state.cssW / els.canvas.width * 100)
+      if (sc) els.mScale.textContent = sc + '%'
+    }
     tickWaiting()
     // 队列自检：在途请求超过预期还没结束 → 强制释放（保证界面永远能再操作）
     if (inFlight && inFlight.sentAt && Date.now() - inFlight.sentAt > 40000) {

@@ -2,9 +2,12 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/go-sql-driver/mysql"
 )
 
 // handleConnList 列出全部连接，password 脱敏（返回空串，避免泄露密文）。
@@ -143,7 +146,10 @@ func handleQueryRun(id int64, input map[string]interface{}) {
 		respondError(id, -32602, "缺少连接 id")
 		return
 	}
-	saved, conn, err := openSaved(cid)
+	// 库上下文：前端选中的库优先，未选则回落到连接自身保存的默认库。
+	// 会话被限定在该库内后，查询只写表名即可，无需「库名.表名」。
+	dbCtx := strFrom(input, "database")
+	saved, conn, err := openSavedWithDB(cid, dbCtx)
 	if err != nil {
 		if conn == nil && saved != nil {
 			respond(id, &DbQueryResult{Success: false, Error: err.Error()})
@@ -153,6 +159,9 @@ func handleQueryRun(id int64, input map[string]interface{}) {
 		return
 	}
 	defer conn.close()
+	if dbCtx == "" {
+		dbCtx = saved.Database
+	}
 
 	start := time.Now()
 	res, err := conn.exec(query)
@@ -160,15 +169,33 @@ func handleQueryRun(id int64, input map[string]interface{}) {
 	if err != nil {
 		res.Success = false
 		res.Error = err.Error()
+		// MySQL 未选定库时的原始报错很晦涩（Error 1046），补一句可操作的提示。
+		if conn.kind == "mysql" && strings.TrimSpace(dbCtx) == "" && isNoDatabaseErr(err) {
+			res.Error += "\n\n提示：当前连接没有默认库，也没有选中「库上下文」。" +
+				"请在左侧展开一个数据库并点击它（或在连接配置里填写「默认数据库」），" +
+				"之后直接写 SELECT * FROM 表名 即可，无需带库名前缀。"
+		}
 		respond(id, res)
 		return
 	}
 	res.Success = true
 	// 单表 SELECT 且含主键列时，标记结果可编辑（供前端网格内联修改）。
 	if conn.kind != "redis" {
-		enrichEditable(conn, saved.Database, query, res)
+		enrichEditable(conn, dbCtx, query, res)
 	}
 	respond(id, res)
+}
+
+// isNoDatabaseErr 判断是否为 MySQL「未选择数据库」错误（Error 1046）。
+func isNoDatabaseErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	if strings.Contains(strings.ToLower(err.Error()), "no database selected") {
+		return true
+	}
+	var me *mysql.MySQLError
+	return errors.As(err, &me) && me.Number == 1046
 }
 
 // handleTreeList 返回连接下的库列表（SQL）或键树（Redis）。
@@ -255,7 +282,8 @@ func handleRowUpdate(id int64, input map[string]interface{}) {
 		respondError(id, -32602, "缺少表名或主键列")
 		return
 	}
-	_, conn, err := openSaved(cid)
+	// 与 query.run 用同一「库上下文」，保证未带库名前缀的表名能落到正确的库里。
+	_, conn, err := openSavedWithDB(cid, strFrom(input, "database"))
 	if err != nil {
 		respondError(id, -32000, err.Error())
 		return
@@ -295,5 +323,89 @@ func handleRowUpdate(id int64, input map[string]interface{}) {
 	respond(id, map[string]interface{}{
 		"affected": n,
 		"message":  fmt.Sprintf("OK, %d row(s) affected", n),
+	})
+}
+
+// handleRowInsert 整行插入：仅写入非空的字段（其余交给数据库默认值 / 自增）。
+func handleRowInsert(id int64, input map[string]interface{}) {
+	cid := strFrom(input, "id")
+	table := strFrom(input, "tableName")
+	values := strMapFrom(input, "values")
+	if cid == "" || table == "" {
+		respondError(id, -32602, "缺少连接 id 或表名")
+		return
+	}
+	_, conn, err := openSavedWithDB(cid, strFrom(input, "database"))
+	if err != nil {
+		respondError(id, -32000, err.Error())
+		return
+	}
+	defer conn.close()
+	if conn.kind == "redis" {
+		respondError(id, -32000, "Redis 不支持行编辑")
+		return
+	}
+	var cols []string
+	var args []interface{}
+	for col, val := range values {
+		cols = append(cols, quoteIdent(conn.kind, col))
+		args = append(args, val)
+	}
+	if len(cols) == 0 {
+		respondError(id, -32602, "没有可插入的字段（所有字段都留空了）")
+		return
+	}
+	ph := strings.TrimSuffix(strings.Repeat("?, ", len(cols)), ", ")
+	q := "INSERT INTO " + quoteIdent(conn.kind, table) +
+		" (" + strings.Join(cols, ", ") + ") VALUES (" + ph + ")"
+
+	ctx, cancel := context.WithTimeout(context.Background(), dbQueryTimeout)
+	defer cancel()
+	r, err := conn.sqlDB.ExecContext(ctx, q, args...)
+	if err != nil {
+		respondError(id, -32000, "插入失败: "+err.Error())
+		return
+	}
+	n, _ := r.RowsAffected()
+	respond(id, map[string]interface{}{
+		"affected": n,
+		"message":  fmt.Sprintf("OK, %d row(s) inserted", n),
+	})
+}
+
+// handleRowDelete 以主键定位单行并删除。
+func handleRowDelete(id int64, input map[string]interface{}) {
+	cid := strFrom(input, "id")
+	table := strFrom(input, "tableName")
+	pkCol := strFrom(input, "pkColumn")
+	pkVal := rawStrFrom(input, "pkValue")
+	if cid == "" || table == "" || pkCol == "" {
+		respondError(id, -32602, "缺少连接 id / 表名 / 主键列")
+		return
+	}
+	_, conn, err := openSavedWithDB(cid, strFrom(input, "database"))
+	if err != nil {
+		respondError(id, -32000, err.Error())
+		return
+	}
+	defer conn.close()
+	if conn.kind == "redis" {
+		respondError(id, -32000, "Redis 不支持行编辑")
+		return
+	}
+	q := "DELETE FROM " + quoteIdent(conn.kind, table) +
+		" WHERE " + quoteIdent(conn.kind, pkCol) + " = ?"
+
+	ctx, cancel := context.WithTimeout(context.Background(), dbQueryTimeout)
+	defer cancel()
+	r, err := conn.sqlDB.ExecContext(ctx, q, pkVal)
+	if err != nil {
+		respondError(id, -32000, "删除失败: "+err.Error())
+		return
+	}
+	n, _ := r.RowsAffected()
+	respond(id, map[string]interface{}{
+		"affected": n,
+		"message":  fmt.Sprintf("OK, %d row(s) deleted", n),
 	})
 }

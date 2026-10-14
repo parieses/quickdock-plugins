@@ -160,17 +160,27 @@ func toDbConn(input DbConnectionInput) (*dbConnAdapter, error) {
 	return nil, fmt.Errorf("不支持的数据库类型: %s", input.DbType)
 }
 
-// openSaved 取出已保存连接并建连
-func openSaved(id string) (*DbConnection, *dbConnAdapter, error) {
+// openSavedWithDB 取出已保存连接并建连；dbOverride（库上下文）非空时覆盖连接的默认库。
+// 这样查询里只写表名即可，无需写「库名.表名」——会话已被限定在该库内。
+func openSavedWithDB(id, dbOverride string) (*DbConnection, *dbConnAdapter, error) {
 	saved, err := getConnection(id)
 	if err != nil {
 		return nil, nil, err
 	}
-	conn, err := toDbConn(inputFromSaved(saved))
+	in := inputFromSaved(saved)
+	if db := strings.TrimSpace(dbOverride); db != "" {
+		in.Database = db
+	}
+	conn, err := toDbConn(in)
 	if err != nil {
 		return saved, nil, err
 	}
 	return saved, conn, nil
+}
+
+// openSaved 取出已保存连接并建连（使用连接自身保存的默认库）
+func openSaved(id string) (*DbConnection, *dbConnAdapter, error) {
+	return openSavedWithDB(id, "")
 }
 
 func defaultPort(t string) int {

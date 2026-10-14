@@ -90,7 +90,7 @@ func redisKeyGet(id int64, input map[string]interface{}) {
 		respondError(id, -32602, "缺少 id 或 key")
 		return
 	}
-	_, conn, err := openSaved(cid)
+	_, conn, err := openSavedWithDB(cid, strFrom(input, "dbIndex"))
 	if err != nil {
 		respondError(id, -32000, err.Error())
 		return
@@ -159,7 +159,7 @@ func redisKeySet(id int64, input map[string]interface{}) {
 		respondError(id, -32602, "缺少 id / key / rtype")
 		return
 	}
-	_, conn, err := openSaved(cid)
+	_, conn, err := openSavedWithDB(cid, strFrom(input, "dbIndex"))
 	if err != nil {
 		respondError(id, -32000, err.Error())
 		return
@@ -246,7 +246,7 @@ func redisKeyDelete(id int64, input map[string]interface{}) {
 		respondError(id, -32602, "缺少 id 或 keys")
 		return
 	}
-	_, conn, err := openSaved(cid)
+	_, conn, err := openSavedWithDB(cid, strFrom(input, "dbIndex"))
 	if err != nil {
 		respondError(id, -32000, err.Error())
 		return
@@ -273,7 +273,7 @@ func redisKeyRename(id int64, input map[string]interface{}) {
 		respondError(id, -32602, "缺少 id / key / newKey")
 		return
 	}
-	_, conn, err := openSaved(cid)
+	_, conn, err := openSavedWithDB(cid, strFrom(input, "dbIndex"))
 	if err != nil {
 		respondError(id, -32000, err.Error())
 		return
@@ -295,7 +295,7 @@ func redisKeyExpire(id int64, input map[string]interface{}) {
 	cid := strFrom(input, "id")
 	key := rawStrFrom(input, "key")
 	seconds := intFrom(input, "seconds", -1)
-	_, conn, err := openSaved(cid)
+	_, conn, err := openSavedWithDB(cid, strFrom(input, "dbIndex"))
 	if err != nil {
 		respondError(id, -32000, err.Error())
 		return
@@ -329,7 +329,7 @@ func redisHashFieldSet(id int64, input map[string]interface{}) {
 		respondError(id, -32602, "缺少 id / key / field")
 		return
 	}
-	_, conn, err := openSaved(cid)
+	_, conn, err := openSavedWithDB(cid, strFrom(input, "dbIndex"))
 	if err != nil {
 		respondError(id, -32000, err.Error())
 		return
@@ -355,7 +355,7 @@ func redisHashFieldDel(id int64, input map[string]interface{}) {
 		respondError(id, -32602, "缺少 id / key / field")
 		return
 	}
-	_, conn, err := openSaved(cid)
+	_, conn, err := openSavedWithDB(cid, strFrom(input, "dbIndex"))
 	if err != nil {
 		respondError(id, -32000, err.Error())
 		return
@@ -383,7 +383,7 @@ func redisListPush(id int64, input map[string]interface{}) {
 		respondError(id, -32602, "缺少 id / key / value")
 		return
 	}
-	_, conn, err := openSaved(cid)
+	_, conn, err := openSavedWithDB(cid, strFrom(input, "dbIndex"))
 	if err != nil {
 		respondError(id, -32000, err.Error())
 		return
@@ -416,7 +416,7 @@ func redisListElemDel(id int64, input map[string]interface{}) {
 		respondError(id, -32602, "缺少 id / key / value")
 		return
 	}
-	_, conn, err := openSaved(cid)
+	_, conn, err := openSavedWithDB(cid, strFrom(input, "dbIndex"))
 	if err != nil {
 		respondError(id, -32000, err.Error())
 		return
@@ -443,7 +443,7 @@ func redisSetMemberAdd(id int64, input map[string]interface{}) {
 		respondError(id, -32602, "缺少 id / key / member")
 		return
 	}
-	_, conn, err := openSaved(cid)
+	_, conn, err := openSavedWithDB(cid, strFrom(input, "dbIndex"))
 	if err != nil {
 		respondError(id, -32000, err.Error())
 		return
@@ -470,7 +470,7 @@ func redisSetMemberDel(id int64, input map[string]interface{}) {
 		respondError(id, -32602, "缺少 id / key / member")
 		return
 	}
-	_, conn, err := openSaved(cid)
+	_, conn, err := openSavedWithDB(cid, strFrom(input, "dbIndex"))
 	if err != nil {
 		respondError(id, -32000, err.Error())
 		return
@@ -498,7 +498,7 @@ func redisZSetMemberSet(id int64, input map[string]interface{}) {
 		return
 	}
 	score, _ := strconv.ParseFloat(strFrom(input, "score"), 64)
-	_, conn, err := openSaved(cid)
+	_, conn, err := openSavedWithDB(cid, strFrom(input, "dbIndex"))
 	if err != nil {
 		respondError(id, -32000, err.Error())
 		return
@@ -524,7 +524,7 @@ func redisZSetMemberDel(id int64, input map[string]interface{}) {
 		respondError(id, -32602, "缺少 id / key / member")
 		return
 	}
-	_, conn, err := openSaved(cid)
+	_, conn, err := openSavedWithDB(cid, strFrom(input, "dbIndex"))
 	if err != nil {
 		respondError(id, -32000, err.Error())
 		return

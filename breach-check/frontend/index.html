@@ -59,5 +59,48 @@ function breachesHtml(arr){var l=document.getElementById('list');l.innerHTML='';
 document.getElementById('pwgo').onclick=function(){var pw=document.getElementById('pw').value;if(!pw){document.getElementById('msg').textContent='请输入密码';return}document.getElementById('msg').textContent='查询中…';pluginExec('breach-password',{password:pw}).then(function(data){var d=typeof data==='string'?JSON.parse(data):data;if(d.error){document.getElementById('msg').textContent=d.error.message;return}document.getElementById('msg').textContent='';if(d.breached)show('⚠️ 该密码已在泄露库中出现 '+d.count+' 次，请立即更换！','danger');else show('✅ 未发现该密码的泄露记录（基于 HIBP 已知库）','safe')}).catch(function(e){document.getElementById('msg').textContent='查询失败: '+(e.message||e)})};
 document.getElementById('emgo').onclick=function(){var em=document.getElementById('em').value,key=document.getElementById('key').value;if(!em){document.getElementById('msg').textContent='请输入邮箱';return}document.getElementById('msg').textContent='查询中…';pluginExec('breach-email',{email:em,apiKey:key}).then(function(data){var d=typeof data==='string'?JSON.parse(data):data;if(d.error){document.getElementById('msg').textContent=d.error.message;return}document.getElementById('msg').textContent='';breachesHtml(d.breaches||[])}).catch(function(e){document.getElementById('msg').textContent='查询失败: '+(e.message||e)})};
 </script>
+
+<!-- 跟随宿主浅色/深色主题 -->
+  <script>
+  /* qd-theme-follow：把宿主的浅色/深色同步到 <html data-theme>
+     （qd-theme.css 里浅色是 html[data-theme="light"] 的变量覆盖）。
+     三级取值，任意一级拿到就生效，互为兜底：
+       1) 宿主消息 plugin:theme / plugin:init（宿主若补上独立窗口的广播即走这条）
+       2) 同源 opener / parent 窗口的 <html data-theme>，并监听其变化、窗口 focus 时重读
+       3) 系统偏好 prefers-color-scheme（宿主主题=「跟随系统」时有效）
+     独立注册，不改动页面原有逻辑。 */
+  (function () {
+    var el = document.documentElement;
+    function set(t) { if (t === 'light' || t === 'dark') el.setAttribute('data-theme', t); }
+    window.addEventListener('message', function (e) {
+      var d = e && e.data;
+      if (!d || !d.type) return;
+      if (d.type === 'plugin:theme' || d.type === 'plugin:init') { if (d.data && d.data.theme) set(d.data.theme); }
+    });
+    /* 2) 同源窗口 */
+    var w = null;
+    try {
+      if (window.opener && window.opener !== window) w = window.opener;
+      else if (window.parent && window.parent !== window) w = window.parent;
+    } catch (err) { w = null; }
+    function fromWin() {
+      try { var t = w.document.documentElement.getAttribute('data-theme'); if (t) { set(t); return true; } return false; }
+      catch (err) { return false; }
+    }
+    if (w && fromWin()) {
+      try {
+        new MutationObserver(fromWin).observe(w.document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+      } catch (err) {}
+      window.addEventListener('focus', fromWin);
+    }
+    /* 3) 系统偏好兜底：仅在还没拿到明确主题时生效 */
+    if (window.matchMedia) {
+      var mq = window.matchMedia('(prefers-color-scheme: light)');
+      var sys = function () { if (!el.getAttribute('data-theme')) set(mq.matches ? 'light' : 'dark'); };
+      sys();
+      if (mq.addEventListener) mq.addEventListener('change', sys);
+    }
+  })();
+  </script>
 </body>
 </html>

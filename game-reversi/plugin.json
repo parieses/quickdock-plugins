@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.game-reversi",
   "name": "黑白棋",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "经典黑白棋（Othello / Reversi）：8×8 棋盘，夹住对方棋子即翻转。内置 minimax + α-β 剪枝人机，难度可调。",
   "author": "QuickDock",
   "icon": "icon.svg",
@@ -53,5 +53,5 @@
     "zh-CN": "经典黑白棋：8×8 棋盘，夹住对方棋子即翻转。内置 minimax + α-β 剪枝人机，难度可调。",
     "en-US": "Classic Reversi/Othello on 8x8. Flank and flip opponent discs. Built-in minimax + alpha-beta AI with difficulty levels."
   },
-  "changelog": "## v1.0.0\n\n- 8×8 经典黑白棋，你执黑先手\n- 合法落子点提示（小圆点）\n- 内置人机：minimax + α-β 剪枝 + 位置权重评估（角最高、角旁为负）\n- 三档难度（简单 / 普通 / 困难 对应搜索深度 2 / 4 / 6）\n- 翻子动画、子数统计、胜负判定（按子数多者胜）\n- 本地记录最佳战绩（胜场 / 最高净胜子）"
+  "changelog": "## v1.0.1\n\n- 跟随宿主浅色 / 深色主题：监听宿主的 plugin:theme 消息并同步 <html data-theme>（qd-theme.css 的浅色是 html[data-theme=\"light\"] 的变量覆盖）；plugin:init 自带的 theme 也会应用，首屏即对齐。此前主程序切换主题后插件不跟随（本次为全仓库统一修复）\n\n## v1.0.0\n\n- 8×8 经典黑白棋，你执黑先手\n- 合法落子点提示（小圆点）\n- 内置人机：minimax + α-β 剪枝 + 位置权重评估（角最高、角旁为负）\n- 三档难度（简单 / 普通 / 困难 对应搜索深度 2 / 4 / 6）\n- 翻子动画、子数统计、胜负判定（按子数多者胜）\n- 本地记录最佳战绩（胜场 / 最高净胜子）"
 }

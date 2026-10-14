@@ -1,317 +1,662 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <link rel="stylesheet" href="qd-theme.css">
   <link rel="stylesheet" href="components.css">
   <style>
-    body { overflow: hidden; }
-    .db { display:flex; flex-direction:column; height:100vh; }
-    .db-head { display:flex; align-items:center; gap:var(--sp-2); padding:0 var(--sp-3); height:44px; background:var(--bg-secondary); border-bottom:1px solid var(--border); flex-shrink:0; }
-    .db-title { font-size:var(--fs-lg); font-weight:var(--fw-semibold); }
-    .db-head .spacer { flex:1; }
+    body { overflow:hidden; }
 
-    .db-body { flex:1; display:flex; overflow:hidden; }
-    .db-side { width:282px; flex-shrink:0; display:flex; flex-direction:column; background:var(--bg-secondary); border-right:1px solid var(--border); overflow:hidden; }
-    .db-side-head { display:flex; align-items:center; justify-content:space-between; padding:8px 10px; font-size:var(--fs-xs); font-weight:var(--fw-semibold); color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px; border-bottom:1px solid var(--border); }
-    .db-side-body { flex:1; overflow:auto; padding:6px; }
-    .db-empty { padding:14px 8px; text-align:center; color:var(--text-disabled); font-size:var(--fs-xs); }
-    .db-conn { border:1px solid var(--border); border-radius:var(--radius); margin-bottom:6px; background:var(--bg-primary); overflow:hidden; }
-    .db-conn.active { border-color:var(--accent); }
-    .db-conn-row { display:flex; align-items:center; gap:6px; padding:7px 8px; cursor:pointer; }
-    .db-conn-row:hover { background:var(--bg-hover); }
-    .db-conn-name { flex:1; min-width:0; font-size:var(--fs-sm); font-weight:var(--fw-medium); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .db-conn-meta { font-size:9px; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .db-actions { display:none; align-items:center; gap:2px; flex-shrink:0; }
-    .db-conn-row:hover .db-actions { display:flex; }
-    .db-act { border:none; background:none; color:var(--text-muted); cursor:pointer; font-size:11px; padding:2px 5px; border-radius:4px; }
-    .db-act:hover { background:var(--bg-hover); color:var(--accent); }
-    .db-act.db-del:hover { color:var(--danger); }
-    .db-tree { padding:2px 4px 8px; max-height:46%; overflow:auto; border-top:1px solid var(--border); }
-    .db-tnode { display:flex; align-items:center; gap:4px; padding:3px 4px; border-radius:var(--radius-sm); cursor:pointer; font-size:var(--fs-sm); color:var(--text-secondary); white-space:nowrap; }
-    .db-tnode:hover { background:var(--bg-hover); }
-    .db-caret { width:12px; flex-shrink:0; color:var(--text-muted); font-size:10px; }
-    .db-tname { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; }
-    .db-tdetail { color:var(--text-disabled); font-size:10px; font-family:var(--font-mono); flex-shrink:0; }
-    .db-loading { padding:6px 16px; color:var(--text-muted); font-size:var(--fs-xs); }
+    /* ===== 骨架 ===== */
+    .db { display:flex; flex-direction:column; height:100vh; background:var(--bg-primary); }
 
-    .db-main { flex:1; min-width:0; display:flex; flex-direction:column; overflow:hidden; }
-    .db-editor { border-bottom:1px solid var(--border); flex-shrink:0; }
-    .db-editor-bar { display:flex; align-items:center; gap:var(--sp-2); padding:var(--sp-2) var(--sp-3); }
-    .db-ctx { font-size:var(--fs-xs); color:var(--text-muted); }
-    .db-ctx b { color:var(--text-secondary); font-weight:var(--fw-semibold); }
-    .db-ta { width:100%; min-height:120px; max-height:230px; padding:10px 12px; border:none; resize:vertical; background:var(--bg-primary); color:var(--text-primary); font-family:var(--font-mono); font-size:var(--fs-sm); line-height:1.5; outline:none; }
-    .db-resp { flex:1; display:flex; flex-direction:column; overflow:hidden; min-height:0; }
-    .db-resp-head { display:flex; align-items:center; gap:var(--sp-2); padding:var(--sp-2) var(--sp-3); border-bottom:1px solid var(--border); font-size:var(--fs-sm); flex-wrap:wrap; }
-    .db-status { font-weight:var(--fw-semibold); padding:2px 8px; border-radius:var(--radius-pill); font-size:var(--fs-xs); }
-    .db-status.ok { background:var(--success-soft); color:var(--success); }
-    .db-status.err { background:var(--danger-soft); color:var(--danger); }
-    .db-status.warn { background:var(--warning-soft); color:var(--warning); }
-    .db-resp-body { flex:1; overflow:auto; }
-    table.db-grid { width:100%; border-collapse:collapse; font-size:var(--fs-xs); font-family:var(--font-mono); }
-    table.db-grid th { position:sticky; top:0; background:var(--bg-secondary); color:var(--text-muted); text-align:left; padding:6px 9px; border-bottom:1px solid var(--border); font-weight:var(--fw-semibold); white-space:nowrap; }
-    table.db-grid td { padding:5px 9px; border-bottom:1px solid var(--border); color:var(--text-secondary); vertical-align:top; max-width:360px; word-break:break-all; white-space:pre-wrap; }
-    table.db-grid tr:hover td { background:var(--bg-hover); }
-    td.db-editable { cursor:text; }
-    td.db-editable:hover { box-shadow:inset 0 0 0 1px var(--accent); }
-    td.db-editing { padding:0; }
-    td.db-editing input { width:100%; box-sizing:border-box; border:none; outline:2px solid var(--accent); padding:5px 9px; background:var(--bg-primary); color:var(--text-primary); font-family:var(--font-mono); font-size:var(--fs-xs); }
-    td.db-null { color:var(--text-disabled); font-style:italic; }
-    td.db-pk { background:rgba(74,158,255,.08); }
-    .db-pre { padding:var(--sp-3); white-space:pre-wrap; word-break:break-all; font-family:var(--font-mono); font-size:var(--fs-xs); color:var(--text-secondary); }
-    .db-nores { padding:var(--sp-4); text-align:center; color:var(--text-disabled); font-size:var(--fs-sm); }
+    /* 顶部工具条 */
+    .tb { display:flex; align-items:center; gap:6px; height:40px; padding:0 10px; background:var(--bg-secondary); border-bottom:1px solid var(--border); flex-shrink:0; }
+    .tb-brand { display:flex; align-items:center; gap:6px; font-size:var(--fs-md); font-weight:var(--fw-semibold); color:var(--text-primary); margin-right:4px; }
+    .tb-sep { width:1px; height:18px; background:var(--border); margin:0 2px; }
+    .tb .spacer { flex:1; }
+    .tb-meta { font-size:var(--fs-xs); color:var(--text-muted); }
 
-    .db-mask { position:fixed; inset:0; background:rgba(0,0,0,.45); display:flex; align-items:center; justify-content:center; z-index:300; }
-    .db-modal { width:480px; max-width:92vw; max-height:88vh; overflow:auto; background:var(--bg-secondary); border:1px solid var(--border); border-radius:var(--radius-lg); padding:var(--sp-4); display:flex; flex-direction:column; box-shadow:var(--shadow-2); }
-    .db-modal-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:var(--sp-3); font-size:var(--fs-lg); font-weight:var(--fw-semibold); }
-    .db-field { display:flex; flex-direction:column; gap:5px; margin-bottom:var(--sp-2); }
-    .db-field label { font-size:var(--fs-sm); color:var(--text-muted); }
-    .db-field .p-input, .db-field select { width:100%; }
-    .db-row2 { display:flex; gap:var(--sp-2); }
-    .db-row2 > * { flex:1; min-width:0; }
-    .db-actions-bar { display:flex; align-items:center; gap:var(--sp-2); margin-top:var(--sp-3); }
-    .db-actions-bar .spacer { flex:1; }
-    /* Redis 可视化管理 */
-    .db-redis-bar { display:flex; gap:6px; align-items:center; padding:6px 10px; border-bottom:1px solid var(--border); flex-wrap:wrap; }
-    .db-redis-bar .p-input-sm { height:26px; }
-    .db-keydetail { display:flex; flex-direction:column; gap:10px; padding:10px 12px; }
-    .kd-actions { display:flex; align-items:center; gap:8px; }
-    .kd-type { font-size:var(--fs-xs); font-weight:var(--fw-semibold); padding:2px 8px; border-radius:6px; color:#fff; background:var(--accent); }
+    .btn2 { display:inline-flex; align-items:center; gap:4px; height:26px; padding:0 9px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg-tertiary); color:var(--text-secondary); font-size:var(--fs-xs); cursor:pointer; white-space:nowrap; transition:background var(--transition), color var(--transition), border-color var(--transition); }
+    .btn2:hover { background:var(--bg-hover); color:var(--text-primary); border-color:var(--border-strong); }
+    .btn2:active { background:var(--bg-active); }
+    .btn2.on { background:var(--accent-soft); border-color:var(--accent); color:var(--accent); }
+    .btn2:disabled { opacity:.45; cursor:not-allowed; }
+    .btn2.solid { background:var(--accent); border-color:var(--accent); color:#fff; }
+    .btn2.solid:hover { background:var(--accent-hover); color:#fff; }
+    .btn2.ico { padding:0 6px; }
+    .btn2.xs { height:22px; padding:0 7px; font-size:10.5px; }
+
+    .inp2 { height:26px; padding:0 8px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg-primary); color:var(--text-primary); font-size:var(--fs-xs); outline:none; }
+    .inp2:focus { border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-soft); }
+    .inp2::placeholder { color:var(--text-placeholder); }
+    select.inp2 { padding-right:4px; }
+
+    /* 主体两栏 */
+    .body { flex:1; display:flex; overflow:hidden; }
+
+    /* ===== 左：连接 / 库 ===== */
+    .side { width:264px; flex-shrink:0; display:flex; flex-direction:column; background:var(--bg-secondary); border-right:1px solid var(--border); overflow:hidden; }
+    .side-head { display:flex; align-items:center; height:30px; padding:0 8px 0 10px; font-size:var(--fs-xs); font-weight:var(--fw-semibold); color:var(--text-muted); letter-spacing:.6px; border-bottom:1px solid var(--border); }
+    .side-head .spacer { flex:1; }
+    .side-body { flex:1; overflow:auto; padding:4px 0 10px; }
+
+    .conn { display:flex; align-items:center; gap:4px; height:25px; padding:0 6px 0 4px; cursor:pointer; color:var(--text-secondary); font-size:var(--fs-sm); }
+    .conn:hover { background:var(--bg-hover); }
+    .conn.active { background:var(--accent-soft); color:var(--text-primary); }
+    .conn .nm { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:var(--fw-medium); }
+    .conn .tp { font-size:9.5px; color:var(--text-disabled); flex-shrink:0; }
+    .conn .acts { display:none; gap:1px; flex-shrink:0; }
+    .conn:hover .acts { display:flex; }
+    .cdot { width:8px; height:8px; border-radius:50%; flex-shrink:0; box-shadow:0 0 0 1px var(--border); }
+    .side-filter { padding:5px 8px; border-bottom:1px solid var(--border); }
+    .side-filter .inp2 { width:100%; height:24px; }
+
+    .dbnode { display:flex; align-items:center; gap:5px; height:24px; padding:0 6px 0 22px; cursor:pointer; color:var(--text-secondary); font-size:var(--fs-sm); }
+    .dbnode:hover { background:var(--bg-hover); }
+    .dbnode.active { background:var(--accent-soft); color:var(--text-primary); }
+    .dbnode .nm { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .dbnode .dt { font-size:9.5px; color:var(--text-disabled); font-family:var(--font-mono); flex-shrink:0; }
+
+    .caret { width:14px; flex-shrink:0; text-align:center; font-size:9px; color:var(--text-muted); }
+    .caret.blank { visibility:hidden; }
+    .oico { flex-shrink:0; font-size:11px; opacity:.85; }
+    .side-empty { padding:18px 14px; text-align:center; color:var(--text-disabled); font-size:var(--fs-xs); line-height:1.9; }
+    .side-load { padding:5px 8px 5px 22px; color:var(--text-muted); font-size:var(--fs-xs); }
+    .act { border:none; background:none; color:var(--text-muted); cursor:pointer; font-size:11px; line-height:1; padding:3px 4px; border-radius:4px; }
+    .act:hover { background:var(--bg-active); color:var(--accent); }
+    .act.del:hover { color:var(--danger); }
+
+    /* ===== 右：标签页 ===== */
+    .main { flex:1; min-width:0; display:flex; flex-direction:column; overflow:hidden; }
+    .tabs { display:flex; align-items:stretch; height:33px; background:var(--bg-secondary); border-bottom:1px solid var(--border); overflow-x:auto; overflow-y:hidden; flex-shrink:0; }
+    .tabs::-webkit-scrollbar { height:4px; }
+    .tab { display:flex; align-items:center; gap:5px; padding:0 8px 0 10px; border-right:1px solid var(--border); border-top:2px solid transparent; font-size:var(--fs-sm); color:var(--text-muted); cursor:pointer; max-width:210px; flex-shrink:0; }
+    .tab:hover { background:var(--bg-hover); color:var(--text-secondary); }
+    .tab.active { background:var(--bg-primary); color:var(--text-primary); border-top-color:var(--accent); }
+    .tab .tt { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .tab .tx { font-size:13px; line-height:1; padding:1px 3px; border-radius:3px; color:var(--text-disabled); opacity:0; }
+    .tab:hover .tx, .tab.active .tx { opacity:1; }
+    .tab .tx:hover { background:var(--bg-active); color:var(--danger); }
+    .tab-fill { flex:1; border-right:none; }
+    .pane { flex:1; min-height:0; display:flex; flex-direction:column; overflow:hidden; }
+
+    /* 子工具条 */
+    .subbar { display:flex; align-items:center; gap:6px; min-height:34px; padding:0 8px; background:var(--bg-secondary); border-bottom:1px solid var(--border); flex-shrink:0; flex-wrap:wrap; }
+    .subbar .spacer { flex:1; }
+    .crumb { font-size:var(--fs-sm); color:var(--text-primary); display:flex; align-items:center; gap:6px; min-width:0; }
+    .crumb .sep { color:var(--text-disabled); }
+    .crumb .strong { font-weight:var(--fw-semibold); }
+    .muted { color:var(--text-muted); font-size:var(--fs-xs); }
+    .mono { font-family:var(--font-mono); }
+    .num { text-align:right; font-family:var(--font-mono); }
+
+    .seg { display:inline-flex; border:1px solid var(--border); border-radius:var(--radius-sm); overflow:hidden; }
+    .seg button { height:24px; padding:0 11px; border:none; background:var(--bg-tertiary); color:var(--text-muted); font-size:var(--fs-xs); cursor:pointer; }
+    .seg button + button { border-left:1px solid var(--border); }
+    .seg button:hover { color:var(--text-primary); background:var(--bg-hover); }
+    .seg button.on { background:var(--accent-soft); color:var(--accent); font-weight:var(--fw-semibold); }
+
+    /* ===== 网格 ===== */
+    .gridwrap { flex:1; overflow:auto; min-height:0; position:relative; }
+    table.grid { width:100%; border-collapse:separate; border-spacing:0; font-size:var(--fs-sm); }
+    table.grid th { position:sticky; top:0; z-index:2; background:var(--bg-tertiary); color:var(--text-muted); font-size:var(--fs-xs); font-weight:var(--fw-medium); text-align:left; padding:0 9px; height:27px; white-space:nowrap; border-bottom:1px solid var(--border); border-right:1px solid var(--border); }
+    table.grid th.sortable { cursor:pointer; }
+    table.grid th.sortable:hover { color:var(--text-primary); background:var(--bg-hover); }
+    table.grid th .arrow { color:var(--accent); margin-left:4px; }
+    table.grid td { padding:4px 9px; height:24px; color:var(--text-secondary); border-bottom:1px solid var(--border); border-right:1px solid var(--border); vertical-align:top; max-width:420px; word-break:break-all; white-space:pre-wrap; font-family:var(--font-mono); font-size:var(--fs-xs); }
+    table.grid tbody tr:hover td { background:var(--bg-hover); }
+    table.grid tbody tr.sel td { background:var(--accent-soft); }
+    table.grid tr:last-child td { border-bottom:none; }
+    table.grid td.pk { color:var(--accent); }
+    table.grid td.dim { color:var(--text-disabled); font-style:italic; }
+    table.grid td.editable { cursor:text; }
+    table.grid td.editing { padding:0; }
+    table.grid td.editing input { width:100%; height:23px; border:none; outline:2px solid var(--accent); outline-offset:-2px; padding:0 8px; background:var(--bg-primary); color:var(--text-primary); font-family:var(--font-mono); font-size:var(--fs-xs); }
+    /* 大字段单元格：限制高度，超出滚动，避免单行被撑得很高 */
+    table.grid td .cell { max-height:140px; overflow:auto; white-space:pre-wrap; word-break:break-all; font-family:var(--font-mono); font-size:var(--fs-xs); line-height:1.5; }
+    tr.no-hover:hover td { background:transparent !important; }
+    .tname { color:var(--text-primary); display:flex; align-items:center; gap:7px; }
+    .tag2 { display:inline-flex; align-items:center; padding:1px 6px; border-radius:3px; font-size:10px; line-height:15px; flex-shrink:0; }
+    .tag2.t-view { background:var(--warning-soft); color:var(--warning); }
+    .tag2.t-table { background:var(--bg-active); color:var(--text-muted); }
+    .tag2.t-pri { background:var(--accent-soft); color:var(--accent); font-family:var(--font-mono); }
+    .tag2.t-uni { background:var(--success-soft); color:var(--success); font-family:var(--font-mono); }
+    .tag2.t-mul { background:var(--bg-active); color:var(--text-muted); font-family:var(--font-mono); }
+
+    /* 分页条 */
+    .pager { display:flex; align-items:center; gap:5px; height:31px; padding:0 9px; border-top:1px solid var(--border); background:var(--bg-secondary); flex-shrink:0; font-size:var(--fs-xs); }
+    .pager .spacer { flex:1; }
+
+    /* 结构视图的分区 */
+    .sect { border-bottom:1px solid var(--border); }
+    .sect-head { display:flex; align-items:center; gap:8px; height:28px; padding:0 10px; background:var(--bg-secondary); border-bottom:1px solid var(--border); font-size:var(--fs-xs); font-weight:var(--fw-semibold); color:var(--text-muted); position:sticky; top:0; z-index:3; }
+    .sect-head .spacer { flex:1; }
+    pre.ddl { margin:0; padding:12px 14px; font-family:var(--font-mono); font-size:var(--fs-xs); line-height:1.65; color:var(--text-secondary); white-space:pre-wrap; word-break:break-all; }
+    .struct-scroll { flex:1; overflow:auto; min-height:0; }
+
+    /* ===== 查询编辑器 ===== */
+    textarea.sql { width:100%; height:158px; min-height:80px; resize:vertical; padding:10px 12px; border:none; border-bottom:1px solid var(--border); background:var(--bg-primary); color:var(--text-primary); font-family:var(--font-mono); font-size:var(--fs-sm); line-height:1.6; outline:none; flex-shrink:0; }
+    .sqlwrap { display:flex; flex-direction:column; flex:1; min-height:0; position:relative; }
+    /* SQL 自动提示下拉 */
+    .suggest { position:absolute; top:158px; left:0; right:0; z-index:50; background:var(--bg-secondary); border:1px solid var(--border-strong); border-radius:var(--radius-sm); box-shadow:var(--shadow-2); max-height:224px; overflow:auto; }
+    .suggest .sg-item { display:flex; align-items:center; gap:8px; padding:5px 10px; cursor:pointer; font-size:var(--fs-sm); }
+    .suggest .sg-item.active, .suggest .sg-item:hover { background:var(--accent-soft); }
+    .suggest .sg-kind { font-size:9.5px; padding:1px 6px; border-radius:3px; color:#fff; flex-shrink:0; }
+    .suggest .sg-kind.kw { background:var(--accent); }
+    .suggest .sg-kind.tbl { background:var(--success); }
+    .suggest .sg-name { font-family:var(--font-mono); color:var(--text-primary); }
+    .suggest .sg-tail { margin-left:auto; font-size:10px; color:var(--text-muted); }
+    /* 表名紧凑视图（简名）：干净表格，只列名称，多列紧凑排布 */
+    .namelist-wrap { flex:1; overflow:auto; min-height:0; padding:6px 8px; }
+    table.namelist { width:100%; border-collapse:collapse; table-layout:fixed; }
+    table.namelist td.ncell { height:30px; padding:0 10px; border:1px solid var(--border); cursor:pointer; vertical-align:middle; color:var(--text-secondary); font-size:var(--fs-sm); }
+    table.namelist td.ncell:hover { background:var(--bg-hover); color:var(--text-primary); }
+    table.namelist td.ncell.sel { background:var(--accent-soft); color:var(--accent); }
+    table.namelist td.ncell .oico { font-size:11px; opacity:.8; margin-right:6px; }
+    table.namelist td.ncell .nnm { display:inline-block; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; vertical-align:middle; }
+    .statusbar { display:flex; align-items:center; gap:8px; min-height:30px; padding:0 10px; border-bottom:1px solid var(--border); background:var(--bg-secondary); font-size:var(--fs-xs); flex-shrink:0; flex-wrap:wrap; }
+    .pill { padding:1px 8px; border-radius:var(--radius-pill); font-weight:var(--fw-semibold); font-size:10.5px; }
+    .pill.ok { background:var(--success-soft); color:var(--success); }
+    .pill.err { background:var(--danger-soft); color:var(--danger); }
+    .pill.info { background:var(--accent-soft); color:var(--accent); }
+    .pill.warn { background:var(--warning-soft); color:var(--warning); }
+
+    .empty { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; flex:1; color:var(--text-disabled); font-size:var(--fs-sm); padding:28px; text-align:center; line-height:1.9; }
+    .empty .big { font-size:30px; opacity:.5; }
+    .err-box { margin:10px 12px; padding:10px 12px; border:1px solid var(--danger); border-radius:var(--radius-sm); background:var(--danger-soft); color:var(--danger); font-family:var(--font-mono); font-size:var(--fs-xs); line-height:1.6; white-space:pre-wrap; word-break:break-all; }
+    .msg-box { padding:14px; color:var(--text-secondary); font-size:var(--fs-sm); }
+
+    /* ===== Redis key 详情 ===== */
+    .kd { padding:10px 12px; display:flex; flex-direction:column; gap:9px; overflow:auto; flex:1; min-height:0; }
+    .kd-actions { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+    .kd-type { font-size:var(--fs-xs); font-weight:var(--fw-semibold); padding:2px 9px; border-radius:var(--radius-sm); color:#fff; background:var(--accent); }
     .kd-type.kd-string { background:#2f9e44; }
     .kd-type.kd-hash { background:#1971c2; }
     .kd-type.kd-list { background:#e8590c; }
     .kd-type.kd-set { background:#9c36b5; }
     .kd-type.kd-zset { background:#c2255c; }
-    .kd-meta { font-size:var(--fs-sm); color:var(--text-muted); display:flex; align-items:center; gap:8px; }
-    .kd-body { display:flex; flex-direction:column; gap:8px; }
-    .kd-item { display:flex; align-items:center; gap:8px; padding:4px 6px; border:1px solid var(--border); border-radius:6px; font-family:var(--font-mono); font-size:var(--fs-xs); }
-    .kd-idx { color:var(--text-muted); min-width:30px; text-align:right; }
+    .kd-meta { display:flex; align-items:center; gap:7px; font-size:var(--fs-sm); color:var(--text-secondary); }
+    .kd-item { display:flex; align-items:center; gap:8px; padding:4px 8px; border:1px solid var(--border); border-radius:var(--radius-sm); font-family:var(--font-mono); font-size:var(--fs-xs); background:var(--bg-secondary); }
+    .kd-idx { color:var(--text-disabled); min-width:28px; text-align:right; }
     .kd-val { flex:1; word-break:break-all; }
-    .kd-key { font-family:var(--font-mono); font-size:var(--fs-sm); }
-    .db-toast { position:fixed; top:12px; right:12px; padding:8px 14px; border-radius:var(--radius); font-size:var(--fs-sm); z-index:999; box-shadow:var(--shadow-2); max-width:360px; }
-    .db-toast.ok { background:var(--success); color:#fff; }
-    .db-toast.err { background:var(--danger); color:#fff; }
-    .db-link { color:var(--accent); cursor:pointer; font-size:var(--fs-sm); }
-  
-    /* 表格增强 */
-    .db-grid th { position: sticky; top: 0; background: var(--bg-secondary); z-index: 2; }
-    .db-grid td { transition: background 150ms; }
-    .db-grid tr:hover td { background: var(--bg-hover); }
-    .db-grid tr.selected td { background: var(--accent-soft); }
-    .db-grid .pk { background: rgba(74, 158, 255, 0.1); }
-    
-    /* 连接卡片 */
-    .db-conn { transition: all 150ms; }
-    .db-conn:hover { border-color: var(--border-strong); transform: translateX(2px); }
-    .db-conn.active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
-    
-    /* 状态指示 */
-    .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-    .status-dot.online { background: var(--success); }
-    .status-dot.offline { background: var(--text-disabled); }
-    .status-dot.busy { background: var(--warning); animation: pulse 1.5s infinite; }
-    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-</style>
-<svg style="display:none" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><symbol id="icon-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></symbol><symbol id="icon-send" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></symbol><symbol id="icon-git-branch" viewBox="0 0 24 24"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></symbol><symbol id="icon-trash-2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></symbol><symbol id="icon-shield-alert" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></symbol><symbol id="icon-hard-drive" viewBox="0 0 24 24"><line x1="2" y1="12" x2="22" y2="12"></line><path d="M17 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></symbol><symbol id="icon-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></symbol><symbol id="icon-file-text" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></symbol><symbol id="icon-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></symbol><symbol id="icon-gauge" viewBox="0 0 24 24"><path d="M12 15l-2-2"></path><path d="M19.07 4.93a10 10 0 1 1-14.14 0"></path><path d="M12 2v4"></path></symbol><symbol id="icon-box" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></symbol></svg>
+    .textarea2 { width:100%; min-height:170px; padding:9px 11px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg-primary); color:var(--text-primary); font-family:var(--font-mono); font-size:var(--fs-xs); line-height:1.6; resize:vertical; outline:none; }
+    .textarea2:focus { border-color:var(--accent); }
+
+    /* ===== 弹窗 / 提示 ===== */
+    .mask { position:fixed; inset:0; background:rgba(0,0,0,.5); display:flex; align-items:center; justify-content:center; z-index:300; }
+    .modal { width:500px; max-width:92vw; max-height:88vh; overflow:auto; background:var(--bg-secondary); border:1px solid var(--border); border-radius:var(--radius-lg); padding:16px; display:flex; flex-direction:column; box-shadow:var(--shadow-2); }
+    .modal-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; font-size:var(--fs-lg); font-weight:var(--fw-semibold); }
+    .field { display:flex; flex-direction:column; gap:5px; margin-bottom:9px; }
+    .field label { font-size:var(--fs-sm); color:var(--text-muted); }
+    .field .p-input, .field select, .field input { width:100%; }
+    .row2 { display:flex; gap:8px; }
+    .row2 > * { flex:1; min-width:0; }
+    .abar { display:flex; align-items:center; gap:8px; margin-top:12px; }
+    .abar .spacer { flex:1; }
+    .toast { position:fixed; top:12px; right:12px; padding:8px 14px; border-radius:var(--radius); font-size:var(--fs-sm); z-index:999; box-shadow:var(--shadow-2); max-width:380px; }
+    .toast.ok { background:var(--success); color:#fff; }
+    .toast.err { background:var(--danger); color:#fff; }
+  </style>
 </head>
 <body>
 <div id="app">
   <div class="db">
-    <div class="db-head">
-      <span class="db-title">🗄 数据库客户端</span>
-      <button class="p-btn p-btn-sm" @click="openConnModal()">新建连接</button>
-      <button class="p-btn p-btn-sm" @click="loadConns">刷新</button>
+    <!-- 顶部工具条 -->
+    <div class="tb">
+      <span class="tb-brand">🗄 数据库客户端</span>
+      <button class="btn2" @click="openConnModal()">＋ 新建连接</button>
+      <button class="btn2" @click="reloadAll">刷新</button>
+      <span class="tb-sep"></span>
+      <button class="btn2" :disabled="!selectedConn" @click="newQueryTab()">＋ 新建查询</button>
+      <button class="btn2" @click="showSettings=true">⚙ 设置</button>
       <div class="spacer"></div>
-      <span v-if="selectedConn" class="db-ctx">当前连接：<b>{{ selectedConn.name }}</b> · {{ selectedConn.dbType }}</span>
+      <span class="tb-meta" v-if="selectedConn">{{ selectedConn.name }} · {{ dbTypeLabel(selectedConn.dbType) }}</span>
+      <span class="tb-meta" v-else>未选择连接</span>
     </div>
 
-    <div class="db-body">
-      <!-- 左：连接列表 + 库表树 -->
-      <div class="db-side">
-        <div class="db-side-head"><span>连接</span><button class="p-btn p-btn-sm" @click="openConnModal()">＋</button></div>
-        <div class="db-side-body">
-          <div v-if="selectedConn && selectedConn.dbType==='redis'" class="db-redis-bar">
-            <select class="p-input p-input-sm" v-model="redisDB" @change="reloadRedisTree">
-              <option v-for="n in 16" :key="n" :value="n-1">DB {{ n-1 }}</option>
-            </select>
-            <input class="p-input p-input-sm" style="flex:1;min-width:90px;" v-model="keyFilter" @input="reloadRedisTree" placeholder="过滤前缀，如 user:" />
-            <button class="p-btn p-btn-sm" @click="reloadRedisTree">刷新</button>
-            <button class="p-btn p-btn-sm p-btn-primary" @click="openNewKey">+ 新建</button>
+    <div class="body">
+      <!-- 左：连接（只到库） -->
+      <div class="side">
+        <div class="side-head">
+          <span>连接</span>
+          <div class="spacer"></div>
+          <button class="act" title="新建连接" @click="openConnModal()">＋</button>
+          <button class="act" title="刷新" @click="reloadAll">⟳</button>
+        </div>
+        <div class="side-body">
+          <div class="side-filter">
+            <input class="inp2" v-model="connFilter" placeholder="搜索连接…" />
           </div>
-          <div v-if="conns.length===0" class="db-empty">还没有连接，点「新建连接」添加。</div>
-          <div v-for="c in conns" :key="c.id" class="db-conn" :class="{active: selectedConn && selectedConn.id===c.id}">
-            <div class="db-conn-row" @click="selectConn(c)">
-              <div style="flex:1; min-width:0;">
-                <div class="db-conn-name">{{ c.name }}</div>
-                <div class="db-conn-meta">{{ c.dbType }} · {{ c.dbType==='sqlite' ? (c.filePath||'(文件)') : (c.host||'') + (c.port?(':'+c.port):'') + (c.database?(' / '+c.database):'') }}</div>
-              </div>
-              <div class="db-actions">
-                <button class="db-act" title="编辑" @click.stop="openConnModal(c)">✎</button>
-                <button class="db-act db-del" title="删除" @click.stop="delConn(c)">🗑</button>
-              </div>
+          <div v-if="!conns.length" class="side-empty">还没有连接<br>点「新建连接」添加 MySQL / SQLite / Redis</div>
+          <div v-else-if="!filteredConns.length" class="side-empty">没有匹配「{{ connFilter }}」的连接</div>
+          <template v-else>
+          <template v-for="c in filteredConns" :key="c.id">
+            <div class="conn" :class="{active: selectedConn && selectedConn.id===c.id}" @click="selectConn(c)">
+              <span class="caret" :class="{blank: !c._open}" @click.stop="toggleConn(c)">{{ c._open ? '▾' : '▸' }}</span>
+              <span class="oico">{{ c.dbType==='redis' ? '⚡' : (c.dbType==='sqlite' ? '📄' : '🖥') }}</span>
+              <span class="cdot" :style="{background: connColor(c)}"></span>
+              <span class="nm">{{ c.name }}</span>
+              <span class="tp">{{ c.dbType }}</span>
+              <span class="acts">
+                <button class="act" title="编辑连接" @click.stop="openConnModal(c)">✎</button>
+                <button class="act del" title="删除连接" @click.stop="delConn(c)">🗑</button>
+              </span>
             </div>
-            <div v-if="selectedConn && selectedConn.id===c.id && treeLoading" class="db-loading">加载库表…</div>
-            <div v-if="selectedConn && selectedConn.id===c.id" class="db-tree">
-              <div v-if="flatNodes.length===0" class="db-empty">暂无库表（点击连接测试连通后展开）。</div>
-              <div v-for="item in flatNodes" :key="item.key" class="db-tnode" :style="{paddingLeft: (6 + item.depth*14) + 'px'}" @click="onNodeClick(item.node)">
-                <span class="db-caret" v-if="hasChildren(item.node)" @click.stop="toggleNode(item.node, item.key)">{{ item.node._expanded ? '▾' : '▸' }}</span>
-                <span class="db-caret" v-else>·</span>
-                <span class="db-tname">{{ item.node.label || item.node.name }}</span>
-                <span class="db-tdetail" v-if="item.node.detail">{{ item.node.detail }}</span>
+            <template v-if="c._open">
+              <div v-if="c._loading" class="side-load">加载库列表…</div>
+              <div v-else-if="c._err" class="side-load" style="color:var(--danger);">{{ c._err }}</div>
+              <div v-else-if="!c._dbs.length" class="side-load">没有可访问的库</div>
+              <div v-for="d in c._dbs" :key="d.name" class="dbnode"
+                   :class="{active: isActiveNode(c,d)}" @click.stop="openNode(c,d)" :title="d.title || d.name">
+                <span class="oico">{{ c.dbType==='redis' ? '#' : '🗄' }}</span>
+                <span class="nm">{{ d.label || d.name }}</span>
+                <span class="dt" v-if="d.detail">{{ d.detail }}</span>
               </div>
-            </div>
-          </div>
+            </template>
+          </template>
+          </template>
         </div>
       </div>
 
-      <!-- 右：查询编辑器 + 结果 -->
-      <div class="db-main">
-        <div class="db-editor" v-if="selectedConn">
-          <div class="db-editor-bar">
-            <span class="db-ctx">库上下文：<b>{{ activeDb || '—' }}</b></span>
-            <div class="spacer"></div>
-            <button class="p-btn p-btn-sm" @click="runQuery">执行 ⌃↵</button>
-            <button class="p-btn p-btn-sm" @click="query=''">清空</button>
+      <!-- 右：标签页 -->
+      <div class="main">
+        <div class="tabs" v-if="tabs.length">
+          <div v-for="t in tabs" :key="t.id" class="tab" :class="{active: t.id===activeTabId}" @click="activate(t)" :title="t.title">
+            <span class="oico">{{ tabIcon(t) }}</span>
+            <span class="tt">{{ t.title }}</span>
+            <span class="tx" @click.stop="closeTab(t)">×</span>
           </div>
-          <textarea class="db-ta" v-model="query" @keydown.ctrl.enter.prevent="runQuery" placeholder="输入 SQL（MySQL / SQLite）或 Redis 命令，例如：SELECT * FROM users LIMIT 100"></textarea>
+          <div class="tab-fill"></div>
         </div>
-        <div v-else class="db-nores" style="flex:1;">请选择左侧的一个连接开始查询。</div>
 
-        <div class="db-resp" v-if="selectedConn">
-          <div class="db-resp-head">
-            <template v-if="keyDetail">
-              <span class="db-ctx">查看 key：<b>{{ keyDetail.key }}</b></span>
-            </template>
-            <template v-else>
-              <span v-if="result" class="db-status" :class="result.success ? 'ok' : 'err'">{{ result.success ? '成功' : '失败' }}</span>
-              <span v-if="result && result.success && result.rowCount>=0" class="db-ctx">{{ result.rowCount }} 行</span>
-              <span v-if="result && result.affected>=0 && !result.rowCount" class="db-ctx">{{ result.affected }} 行受影响</span>
-              <span v-if="result && result.durationMs>=0" class="db-ctx">{{ result.durationMs }} ms</span>
-              <span v-if="result && result.editable" class="db-status ok" style="background:var(--accent-soft); color:var(--accent);">可编辑</span>
-              <span v-if="result && !result.editable && result.editReason" class="db-ctx" :title="result.editReason">💡 {{ result.editReason }}</span>
-            </template>
-            <div class="spacer" style="flex:1;"></div>
-            <span v-if="keyDetail" class="db-ctx">{{ keyDetail.type }} · {{ keyDetail.size }} 项</span>
-          </div>
-          <div class="db-resp-body">
-            <!-- key 详情（Redis） -->
-            <div v-if="keyDetail" class="db-keydetail">
-              <div class="kd-actions">
-                <span class="kd-type" :class="'kd-'+keyDetail.type">{{ keyDetail.type }}</span>
-                <div class="spacer"></div>
-                <button class="p-btn p-btn-sm" @click="copyKeyName">复制名</button>
-                <button class="p-btn p-btn-sm" @click="renameKey">重命名</button>
-                <button class="p-btn p-btn-sm db-del" @click="deleteKey(keyDetail.key)">删除</button>
-                <button class="p-btn p-btn-sm" @click="keyDetail=null; result=null">关闭</button>
+        <div class="empty" v-if="!tabs.length">
+          <div class="big">🗄</div>
+          <div>点击左侧的库，右侧会列出该库的全部表<br>再点表名即可查看建表信息与数据</div>
+          <div class="muted">也可以点工具条上的「＋ 新建查询」直接写 SQL</div>
+        </div>
+
+        <!-- ===== 对象列表（表 / 视图 / 键） ===== -->
+        <div class="pane" v-for="t in tabs" :key="t.id" v-show="t.id===activeTabId">
+          <template v-if="t.kind==='objects' || t.kind==='keys'">
+            <div class="subbar">
+              <span class="crumb"><span class="oico">🗄</span><span class="strong">{{ t.dbLabel }}</span></span>
+              <span class="muted">· {{ t.kind==='keys' ? (t.keys.length + ' 个键') : (t.objects.length + ' 个对象') }}</span>
+              <span class="spacer"></span>
+              <div class="seg" v-if="t.kind==='objects'">
+                <button :class="{on: t.view!=='names'}" @click="t.view='list'">列表</button>
+                <button :class="{on: t.view==='names'}" @click="t.view='names'">简名</button>
               </div>
-              <div class="kd-meta">
-                <span>TTL：</span>
-                <b v-if="keyDetail.ttl<0">永久</b>
-                <b v-else>{{ keyDetail.ttl }} 秒</b>
-                <button class="p-btn p-btn-sm" @click="editTTL">设 TTL</button>
-              </div>
-              <div v-if="keyDetail.type==='string'" class="kd-body">
-                <textarea class="db-ta" v-model="keyDetail.Value" style="min-height:180px;"></textarea>
-                <button class="p-btn p-btn-sm p-btn-primary" @click="saveString">保存值</button>
-              </div>
-              <div v-else-if="keyDetail.type==='hash'" class="kd-body">
-                <table class="db-grid">
-                  <thead><tr><th>字段</th><th>值</th><th></th></tr></thead>
-                  <tbody>
-                    <tr v-for="(it,idx) in keyDetail.Items" :key="idx">
-                      <td class="db-pk">{{ it.field }}</td>
-                      <td><input class="p-input" v-model="it.value" @change="hashFieldSet(it)" /></td>
-                      <td><button class="db-act db-del" @click="hashFieldDel(it.field)">🗑</button></td>
-                    </tr>
-                  </tbody>
-                </table>
-                <div class="db-row2">
-                  <input class="p-input" v-model="newHashField.f" placeholder="字段名" />
-                  <input class="p-input" v-model="newHashField.v" placeholder="值" />
-                  <button class="p-btn p-btn-sm" @click="hashFieldAdd">+ 字段</button>
-                </div>
-              </div>
-              <div v-else-if="keyDetail.type==='list'" class="kd-body">
-                <div v-for="(it,idx) in keyDetail.Items" :key="idx" class="kd-item">
-                  <span class="kd-idx">{{ idx }}</span>
-                  <span class="kd-val">{{ it }}</span>
-                  <button class="db-act db-del" @click="listElemDel(it)">🗑</button>
-                </div>
-                <div class="db-row2">
-                  <input class="p-input" v-model="newListItem" placeholder="新元素" />
-                  <button class="p-btn p-btn-sm" @click="listPush('tail')">尾部追加</button>
-                  <button class="p-btn p-btn-sm" @click="listPush('head')">头部插入</button>
-                </div>
-              </div>
-              <div v-else-if="keyDetail.type==='set'" class="kd-body">
-                <div v-for="(it,idx) in keyDetail.Items" :key="idx" class="kd-item">
-                  <span class="kd-val">{{ it }}</span>
-                  <button class="db-act db-del" @click="setMemberDel(it)">🗑</button>
-                </div>
-                <div class="db-row2">
-                  <input class="p-input" v-model="newSetMember" placeholder="新成员" />
-                  <button class="p-btn p-btn-sm" @click="setMemberAdd">+ 成员</button>
-                </div>
-              </div>
-              <div v-else-if="keyDetail.type==='zset'" class="kd-body">
-                <table class="db-grid">
-                  <thead><tr><th>成员</th><th>分数</th><th></th></tr></thead>
-                  <tbody>
-                    <tr v-for="(it,idx) in keyDetail.Items" :key="idx">
-                      <td class="db-pk">{{ it.member }}</td>
-                      <td><input class="p-input" v-model="it.score" @change="zsetMemberSet(it)" /></td>
-                      <td><button class="db-act db-del" @click="zsetMemberDel(it.member)">🗑</button></td>
-                    </tr>
-                  </tbody>
-                </table>
-                <div class="db-row2">
-                  <input class="p-input" v-model="newZsetMember.m" placeholder="成员" />
-                  <input class="p-input" v-model="newZsetMember.s" placeholder="分数" />
-                  <button class="p-btn p-btn-sm" @click="zsetMemberAdd">+ 成员</button>
-                </div>
-              </div>
-              <div v-else class="db-nores">暂不支持的类型：{{ keyDetail.type }}</div>
+              <button class="btn2" v-if="t.kind==='keys'" @click="openNewKeyModal(t)">＋ 新建 Key</button>
+              <input class="inp2" style="width:170px" v-model="t.filter" :placeholder="t.kind==='keys' ? '过滤 key（* 通配）' : '按名称过滤…'" />
+              <button class="btn2" @click="reloadObjects(t)">刷新</button>
             </div>
-            <!-- 查询结果 -->
-            <template v-else>
-              <div v-if="!result" class="db-nores">尚无结果。</div>
-              <div v-else-if="!result.success" class="db-pre" style="color:var(--danger);">{{ result.error }}</div>
-              <div v-else-if="result.columns && result.columns.length" >
-                <table class="db-grid">
-                  <thead><tr><th v-for="(col,ci) in result.columns" :key="ci" :class="{'db-pk': isPkCol(ci)}">{{ col }}<span v-if="isPkCol(ci)" style="color:var(--accent);"> 🔑</span></th></tr></thead>
+
+            <div class="gridwrap" v-if="t.view!=='names'">
+              <!-- 表 / 视图 -->
+              <table class="grid" v-if="t.kind==='objects'">
+                <thead><tr>
+                  <th style="width:38%">名称</th>
+                  <th style="width:64px">类型</th>
+                  <th style="width:88px">引擎</th>
+                  <th style="width:92px" class="num">行数</th>
+                  <th style="width:150px">排序规则</th>
+                  <th>注释</th>
+                </tr></thead>
+                <tbody>
+                  <tr v-for="o in filteredObjects(t)" :key="o.name" :class="{sel: t.sel===o.name}"
+                      @click="onObjRowClick(t, o)" @dblclick="onObjRowDblClick(t, o)">
+                    <td><span class="tname"><span class="oico">{{ o.type==='view' ? '👁' : '▦' }}</span>{{ o.name }}</span></td>
+                    <td><span class="tag2" :class="o.type==='view' ? 't-view' : 't-table'">{{ o.type==='view' ? '视图' : '表' }}</span></td>
+                    <td>{{ o.engine || '—' }}</td>
+                    <td class="num">{{ o.rows == null || o.rows < 0 ? '—' : o.rows }}</td>
+                    <td style="font-size:10.5px">{{ o.collation || '—' }}</td>
+                    <td>{{ o.comment }}</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="empty" v-if="t.kind==='objects' && !filteredObjects(t).length">
+                <div>{{ t.loading ? '加载中…' : '没有表或视图' }}</div>
+                <div class="muted" v-if="t.error" style="color:var(--danger)">{{ t.error }}</div>
+              </div>
+
+              <!-- Redis 键 -->
+              <table class="grid" v-if="t.kind==='keys'">
+                <thead><tr><th style="width:55%">Key</th><th style="width:110px">类型</th><th>说明</th></tr></thead>
+                <tbody>
+                  <tr v-for="k in filteredKeys(t)" :key="k.key" :class="{sel: t.sel===k.key}"
+                      @click="t.sel=k.key; openKeyTab(t,k)">
+                    <td class="mono">{{ k.key }}</td>
+                    <td><span class="tag2 t-table">{{ k.type }}</span></td>
+                    <td class="muted">{{ k.truncated ? '' : '' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="empty" v-if="t.kind==='keys' && !filteredKeys(t).length">
+                <div>{{ t.loading ? '加载中…' : '没有匹配的 key' }}</div>
+              </div>
+            </div>
+            <!-- 表名紧凑视图（简名）：干净表格，只列名称，多列紧凑排布 -->
+            <div class="namelist-wrap" v-else-if="t.kind==='objects' && t.view==='names'">
+              <table class="namelist">
+                <tr v-for="(row, ri) in nameRows(t)" :key="ri">
+                  <td v-for="o in row" :key="o.name" class="ncell" :class="{sel: t.sel===o.name}"
+                      :title="o.name + '（' + (o.type==='view' ? '视图' : '表') + '）'"
+                      @click="onObjRowClick(t, o)" @dblclick="onObjRowDblClick(t, o)">
+                    <span class="oico">{{ o.type==='view' ? '👁' : '▦' }}</span><span class="nnm">{{ o.name }}</span>
+                  </td>
+                </tr>
+              </table>
+              <div class="empty" v-if="!filteredObjects(t).length"><div>{{ t.loading ? '加载中…' : '没有表或视图' }}</div></div>
+            </div>
+            <div class="pager">
+              <span class="muted" v-if="t.kind==='objects'">单击表名看「建表信息」，双击直接看「数据」（默认 200 行，可在设置里改）</span>
+              <span class="muted" v-else>单击 key 查看详情{{ t.truncated ? '（结果已截断，请用过滤缩小范围）' : '' }}</span>
+            </div>
+          </template>
+
+          <!-- ===== 表：结构 / 数据 / DDL ===== -->
+          <template v-else-if="t.kind==='table'">
+            <div class="subbar">
+              <span class="crumb">
+                <span class="oico">📁</span><span>{{ t.dbLabel }}</span>
+                <span class="sep">/</span>
+                <span class="oico">{{ t.isView ? '👁' : '▦' }}</span><span class="strong">{{ t.table }}</span>
+                <span class="tag2" :class="t.isView ? 't-view' : 't-table'">{{ t.isView ? '视图' : '表' }}</span>
+              </span>
+              <div class="seg">
+                <button :class="{on: t.sub==='struct'}" @click="t.sub='struct'">结构</button>
+                <button :class="{on: t.sub==='data'}" @click="t.sub='data'; ensureData(t)">数据</button>
+                <button :class="{on: t.sub==='ddl'}" @click="t.sub='ddl'">建表语句</button>
+              </div>
+              <span class="muted" v-if="t.struct && t.struct.engine">{{ t.struct.engine }}<template v-if="t.struct.collation"> · {{ t.struct.collation }}</template></span>
+              <span class="spacer"></span>
+              <button class="btn2" @click="openInsert(t)" :disabled="!canCrud(t)">＋ 新增</button>
+              <button class="btn2" @click="deleteRow(t)" :disabled="!canCrud(t) || t.grid.selRow<0">删除行</button>
+              <button class="btn2" @click="exportCsv(t)" :disabled="!t.grid.rows.length">导出 CSV</button>
+              <button class="btn2" @click="reloadTableTab(t)">刷新</button>
+            </div>
+
+            <!-- 结构 -->
+            <div class="struct-scroll pane-struct" v-show="t.sub==='struct'">
+              <div v-if="!t.struct" class="empty"><div>{{ t.loading ? '加载结构…' : '暂无结构信息' }}</div></div>
+              <template v-else>
+                <div class="sect">
+                  <div class="sect-head">
+                    <span>字段（{{ t.struct.columns.length }}）</span>
+                    <div class="spacer"></div>
+                    <span v-if="t.struct.comment">表注释：{{ t.struct.comment }}</span>
+                  </div>
+                  <table class="grid">
+                    <thead><tr>
+                      <th style="width:40px">#</th><th style="width:24%">字段名</th><th style="width:150px">类型</th>
+                      <th style="width:64px">可空</th><th style="width:60px">键</th><th style="width:130px">默认值</th>
+                      <th style="width:150px">额外</th><th>注释</th>
+                    </tr></thead>
+                    <tbody>
+                      <tr v-for="(c,ci) in t.struct.columns" :key="ci" class="no-hover">
+                        <td class="dim">{{ ci+1 }}</td>
+                        <td style="color:var(--text-primary)">{{ c.name }}</td>
+                        <td>{{ c.type }}</td>
+                        <td>{{ c.nullable ? 'YES' : 'NO' }}</td>
+                        <td><span v-if="c.key" class="tag2" :class="keyClass(c.key)">{{ c.key }}</span><span v-else class="dim">—</span></td>
+                        <td><span v-if="c.hasDefault">{{ c.default === '' ? "''" : c.default }}</span><span v-else class="dim">NULL</span></td>
+                        <td>{{ c.extra }}</td>
+                        <td>{{ c.comment }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div class="sect">
+                  <div class="sect-head"><span>索引（{{ t.struct.indexes.length }}）</span></div>
+                  <table class="grid" v-if="t.struct.indexes.length">
+                    <thead><tr><th style="width:28%">索引名</th><th style="width:70px">唯一</th><th style="width:110px">类型</th><th>字段</th></tr></thead>
+                    <tbody>
+                      <tr v-for="(ix,ii) in t.struct.indexes" :key="ii" class="no-hover">
+                        <td style="color:var(--text-primary)">{{ ix.name }}</td>
+                        <td>{{ ix.unique ? 'YES' : 'NO' }}</td>
+                        <td>{{ ix.type }}</td>
+                        <td>{{ (ix.columns||[]).join(', ') }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <div v-else class="msg-box muted">无索引</div>
+                </div>
+
+                <div class="sect" v-if="t.struct.fks && t.struct.fks.length">
+                  <div class="sect-head"><span>外键（{{ t.struct.fks.length }}）</span></div>
+                  <table class="grid">
+                    <thead><tr><th style="width:24%">字段</th><th style="width:24%">引用表</th><th style="width:24%">引用字段</th><th>更新 / 删除</th></tr></thead>
+                    <tbody>
+                      <tr v-for="(f,fi) in t.struct.fks" :key="fi" class="no-hover">
+                        <td style="color:var(--text-primary)">{{ f.column }}</td>
+                        <td>{{ f.refTable }}</td>
+                        <td>{{ f.refColumn }}</td>
+                        <td>{{ f.onUpdate || '—' }} / {{ f.onDelete || '—' }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </template>
+            </div>
+
+            <!-- 数据 -->
+            <div class="struct-scroll pane-data" v-show="t.sub==='data'" style="display:flex;flex-direction:column;">
+              <div class="gridwrap">
+                <div v-if="t.grid.loading" class="empty"><div>加载数据…</div></div>
+                <div v-else-if="t.grid.error" class="err-box">{{ t.grid.error }}</div>
+                <table class="grid" v-else-if="t.grid.columns.length">
+                  <thead><tr>
+                    <th style="width:44px">#</th>
+                    <th v-for="(col,ci) in t.grid.columns" :key="ci" class="sortable" @click="sortBy(t, col)">
+                      {{ col }}<span class="arrow" v-if="t.grid.orderBy===col">{{ t.grid.orderDir==='desc' ? '▾' : '▴' }}</span>
+                      <span v-if="isPk(t,ci)" class="arrow">🔑</span>
+                    </th>
+                  </tr></thead>
                   <tbody>
-                    <tr v-for="(row,ri) in result.rows" :key="ri">
+                    <tr v-for="(row,ri) in t.grid.rows" :key="ri" :class="{sel: t.grid.selRow===ri}" @click="selectRow(t, ri)">
+                      <td class="dim">{{ (t.grid.page-1)*t.grid.pageSize + ri + 1 }}</td>
                       <td v-for="(cell,ci) in row" :key="ci"
-                          :class="[ isPkCol(ci) ? 'db-pk' : '', (result.nulls[ri] && result.nulls[ri][ci]) ? 'db-null' : '', (result.editable && !isPkCol(ci)) ? 'db-editable' : '', (editing.r===ri && editing.c===ci) ? 'db-editing' : '' ]"
-                          @click="beginEdit(ri, ci)">
-                        <input v-if="editing.r===ri && editing.c===ci" v-model="cellDraft" @keydown.enter.prevent="commitEdit(ri,ci)" @keydown.esc.prevent="cancelEdit" @blur="commitEdit(ri,ci)" ref="editInput" />
-                        <template v-else>{{ (result.nulls[ri] && result.nulls[ri][ci]) ? 'NULL' : cell }}</template>
+                          :class="[ isPk(t,ci) ? 'pk' : '', isNull(t,ri,ci) ? 'dim' : '', canEdit(t) && !isPk(t,ci) ? 'editable' : '', isEditing(t,ri,ci) ? 'editing' : '' ]"
+                          @dblclick="beginEdit(t,ri,ci)">
+                        <input v-if="isEditing(t,ri,ci)" v-model="t.grid.draft"
+                               @keydown.enter.prevent="commitEdit(t,ri,ci)" @keydown.esc.prevent="cancelEdit(t)" @blur="commitEdit(t,ri,ci)" ref="editInput" />
+                        <div class="cell" v-else>{{ isNull(t,ri,ci) ? 'NULL' : cell }}</div>
                       </td>
                     </tr>
                   </tbody>
                 </table>
+                <div v-else class="empty"><div>{{ t.grid.message || '无数据' }}</div></div>
               </div>
-              <div v-else-if="result.message!=null && result.message!==''" class="db-pre">{{ result.message }}</div>
-              <div v-else class="db-nores">查询已执行，无返回内容。</div>
-            </template>
-          </div>
+              <div class="pager">
+                <span class="muted">{{ pageInfo(t) }}</span>
+                <span class="pill info" v-if="canEdit(t)">可编辑（双击单元格）</span>
+                <span class="pill warn" v-else-if="t.grid.editReason" :title="t.grid.editReason">只读</span>
+                <div class="spacer"></div>
+                <select class="inp2" v-model.number="t.grid.pageSize" @change="reloadData(t,1)">
+                  <option :value="50">50 条/页</option>
+                  <option :value="100">100 条/页</option>
+                  <option :value="200">200 条/页</option>
+                  <option :value="500">500 条/页</option>
+                </select>
+                <button class="btn2 xs" :disabled="t.grid.page<=1" @click="reloadData(t,1)">«</button>
+                <button class="btn2 xs" :disabled="t.grid.page<=1" @click="reloadData(t,t.grid.page-1)">‹</button>
+                <span class="muted">第 {{ t.grid.page }} 页</span>
+                <button class="btn2 xs" :disabled="!hasNext(t)" @click="reloadData(t,t.grid.page+1)">›</button>
+                <button class="btn2 xs" :disabled="!hasNext(t)" @click="reloadData(t, 999999)">»</button>
+              </div>
+            </div>
+
+            <!-- 建表语句 -->
+            <div class="struct-scroll pane-ddl" v-show="t.sub==='ddl'">
+              <div class="subbar" style="border-bottom:1px solid var(--border);background:transparent;">
+                <span class="muted">CREATE 语句</span>
+                <div class="spacer"></div>
+                <button class="btn2" @click="copyText(t.struct && t.struct.ddl)">复制</button>
+              </div>
+              <pre class="ddl">{{ t.struct && t.struct.ddl ? t.struct.ddl : '（无 DDL）' }}</pre>
+            </div>
+          </template>
+
+          <!-- ===== Redis key 详情 ===== -->
+          <template v-else-if="t.kind==='key'">
+            <div class="subbar">
+              <span class="crumb"><span class="oico">🔑</span><span class="strong mono">{{ t.key }}</span></span>
+              <span class="spacer"></span>
+              <button class="btn2" @click="copyText(t.key)">复制名</button>
+              <button class="btn2" @click="renameKey(t)">重命名</button>
+              <button class="btn2" @click="editTTL(t)">设 TTL</button>
+              <button class="btn2" @click="deleteKey(t)">删除</button>
+              <button class="btn2" @click="reloadKey(t)">刷新</button>
+            </div>
+            <div class="kd" v-if="t.detail">
+              <div class="kd-actions">
+                <span class="kd-type" :class="'kd-'+t.detail.type">{{ t.detail.type }}</span>
+                <span class="kd-meta">TTL：<b>{{ t.detail.ttl < 0 ? '永久' : (t.detail.ttl + ' 秒') }}</b></span>
+              </div>
+              <div v-if="t.detail.type==='string'">
+                <textarea class="textarea2" v-model="t.detail.Value"></textarea>
+                <div style="margin-top:8px"><button class="btn2 solid" @click="saveString(t)">保存值</button></div>
+              </div>
+              <div v-else-if="t.detail.type==='hash'">
+                <table class="grid">
+                  <thead><tr><th style="width:30%">字段</th><th>值</th><th style="width:44px"></th></tr></thead>
+                  <tbody>
+                    <tr v-for="(it,idx) in t.detail.Items" :key="idx">
+                      <td class="pk">{{ it.field }}</td>
+                      <td><input class="inp2" style="width:100%" v-model="it.value" @change="hashFieldSet(t,it)" /></td>
+                      <td><button class="act del" @click="hashFieldDel(t,it.field)">🗑</button></td>
+                    </tr>
+                  </tbody>
+                </table>
+                <div class="row2" style="margin-top:8px">
+                  <input class="inp2" v-model="t.newF" placeholder="新字段名" />
+                  <input class="inp2" v-model="t.newV" placeholder="值" />
+                  <button class="btn2" @click="hashFieldAdd(t)">＋ 字段</button>
+                </div>
+              </div>
+              <div v-else-if="t.detail.type==='list'">
+                <div v-for="(it,idx) in t.detail.Items" :key="idx" class="kd-item">
+                  <span class="kd-idx">{{ idx }}</span><span class="kd-val">{{ it }}</span>
+                  <button class="act del" @click="listElemDel(t,it)">🗑</button>
+                </div>
+                <div class="row2" style="margin-top:8px">
+                  <input class="inp2" v-model="t.newItem" placeholder="新元素" />
+                  <button class="btn2" @click="listPush(t,'head')">头部插入</button>
+                  <button class="btn2" @click="listPush(t,'tail')">尾部追加</button>
+                </div>
+              </div>
+              <div v-else-if="t.detail.type==='set'">
+                <div v-for="(it,idx) in t.detail.Items" :key="idx" class="kd-item">
+                  <span class="kd-val">{{ it }}</span>
+                  <button class="act del" @click="setMemberDel(t,it)">🗑</button>
+                </div>
+                <div class="row2" style="margin-top:8px">
+                  <input class="inp2" v-model="t.newMember" placeholder="新成员" />
+                  <button class="btn2" @click="setMemberAdd(t)">＋ 成员</button>
+                </div>
+              </div>
+              <div v-else-if="t.detail.type==='zset'">
+                <table class="grid">
+                  <thead><tr><th style="width:45%">成员</th><th style="width:110px">分数</th><th style="width:44px"></th></tr></thead>
+                  <tbody>
+                    <tr v-for="(it,idx) in t.detail.Items" :key="idx">
+                      <td class="pk">{{ it.member }}</td>
+                      <td><input class="inp2" style="width:100%" v-model="it.score" @change="zsetMemberSet(t,it)" /></td>
+                      <td><button class="act del" @click="zsetMemberDel(t,it.member)">🗑</button></td>
+                    </tr>
+                  </tbody>
+                </table>
+                <div class="row2" style="margin-top:8px">
+                  <input class="inp2" v-model="t.newM" placeholder="成员" />
+                  <input class="inp2" v-model="t.newS" placeholder="分数" />
+                  <button class="btn2" @click="zsetMemberAdd(t)">＋ 成员</button>
+                </div>
+              </div>
+              <div v-else class="muted">暂不支持的类型：{{ t.detail.type }}</div>
+            </div>
+            <div class="empty" v-else><div>{{ t.loading ? '读取 key…' : '无内容' }}</div></div>
+          </template>
+
+          <!-- ===== SQL 查询（独立标签页） ===== -->
+          <template v-else-if="t.kind==='query'">
+            <div class="subbar">
+              <span class="muted">{{ connTypeOf(t)==='redis' ? 'DB 索引' : '库上下文' }}</span>
+              <select class="inp2" style="min-width:150px" v-model="t.db" @change="onQueryDbChange(t)">
+                <option value="">{{ connTypeOf(t)==='redis' ? '（用连接里的默认库）' : '（未选择）' }}</option>
+                <option v-for="d in dbOptionsOf(t)" :key="d" :value="d">{{ d }}</option>
+              </select>
+              <button class="btn2 solid" @click="runQueryTab(t)" :disabled="t.grid.loading">▶ 执行 <span class="muted" style="color:inherit;opacity:.7">⌃↵</span></button>
+              <button class="btn2" @click="t.sql=''">清空</button>
+              <button class="btn2" @click="exportCsv(t)" :disabled="!t.grid.rows.length">导出 CSV</button>
+              <button class="btn2" @click="openInsert(t)" :disabled="!canCrud(t)">＋ 新增</button>
+              <button class="btn2" @click="deleteRow(t)" :disabled="!canCrud(t) || t.grid.selRow<0">删除行</button>
+              <span class="spacer"></span>
+              <span class="muted">{{ t.connName }}</span>
+            </div>
+            <div class="sqlwrap">
+              <textarea class="sql" ref="sqlArea" :value="t.sql"
+                        @input="onSqlInput(t, $event)"
+                        @keydown="onSqlKey(t, $event)"
+                        @blur="onSqlBlur(t)"
+                        placeholder="SELECT * FROM users LIMIT 100;   -- 选好库上下文后，表名直接写，不用带库名（输入 se/表名前缀会有提示）"></textarea>
+              <div class="suggest" v-if="suggest.open && suggest.tabId===t.id" @mousedown.prevent>
+                <div class="sg-item" v-for="(s,si) in suggest.items" :key="si"
+                     :class="{active: si===suggest.index}" @mousedown.prevent="acceptSuggest(t, s)">
+                  <span class="sg-kind" :class="s.kind==='kw' ? 'kw' : 'tbl'">{{ s.kind==='kw' ? 'SQL' : '表' }}</span>
+                  <span class="sg-name">{{ s.text }}</span>
+                  <span class="sg-tail" v-if="s.kind==='tbl' && s.type">{{ s.type==='view' ? '视图' : '表' }}</span>
+                </div>
+              </div>
+              <div class="statusbar">
+                <span v-if="t.grid.loading" class="muted">执行中…</span>
+                <template v-else-if="t.grid.ran">
+                  <span class="pill" :class="t.grid.error ? 'err' : 'ok'">{{ t.grid.error ? '失败' : '成功' }}</span>
+                  <span class="muted" v-if="!t.grid.error && t.grid.columns.length">{{ t.grid.rows.length }} 行</span>
+                  <span class="muted" v-if="!t.grid.error && !t.grid.columns.length && t.grid.affected >= 0">{{ t.grid.affected }} 行受影响</span>
+                  <span class="muted" v-if="t.grid.durationMs >= 0">{{ t.grid.durationMs }} ms</span>
+                  <span class="pill info" v-if="canEdit(t)">可编辑（双击单元格）</span>
+                  <span class="muted" v-else-if="t.grid.editReason">{{ t.grid.editReason }}</span>
+                </template>
+                <span class="muted" v-else>尚未执行</span>
+              </div>
+              <div class="gridwrap">
+                <div v-if="t.grid.error" class="err-box">{{ t.grid.error }}</div>
+                <table class="grid" v-else-if="t.grid.columns.length">
+                  <thead><tr>
+                    <th v-for="(col,ci) in t.grid.columns" :key="ci">{{ col }}<span v-if="isPk(t,ci)" class="arrow">🔑</span></th>
+                  </tr></thead>
+                  <tbody>
+                    <tr v-for="(row,ri) in t.grid.rows" :key="ri" :class="{sel: t.grid.selRow===ri}" @click="selectRow(t, ri)">
+                      <td v-for="(cell,ci) in row" :key="ci"
+                          :class="[ isPk(t,ci) ? 'pk' : '', isNull(t,ri,ci) ? 'dim' : '', canEdit(t) && !isPk(t,ci) ? 'editable' : '', isEditing(t,ri,ci) ? 'editing' : '' ]"
+                          @dblclick="beginEdit(t,ri,ci)">
+                        <input v-if="isEditing(t,ri,ci)" v-model="t.grid.draft"
+                               @keydown.enter.prevent="commitEdit(t,ri,ci)" @keydown.esc.prevent="cancelEdit(t)" @blur="commitEdit(t,ri,ci)" ref="editInput" />
+                        <div class="cell" v-else>{{ isNull(t,ri,ci) ? 'NULL' : cell }}</div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+                <div v-else-if="!t.grid.error && t.grid.ran" class="empty"><div>{{ t.grid.message || '执行完成，无返回结果集' }}</div></div>
+                <div v-else class="empty"><div>写点 SQL 然后按 ⌃↵ 执行</div></div>
+              </div>
+            </div>
+          </template>
         </div>
       </div>
     </div>
 
-    <!-- 连接编辑弹窗 -->
-    <div v-if="showConnModal" class="db-mask" @click.self="showConnModal=false">
-      <div class="db-modal">
-        <div class="db-modal-head">
+    <!-- 连接弹窗 -->
+    <div v-if="showConnModal" class="mask" @click.self="showConnModal=false">
+      <div class="modal">
+        <div class="modal-head">
           <span>{{ connForm.id ? '编辑连接' : '新建连接' }}</span>
-          <button class="p-btn p-btn-sm" @click="showConnModal=false">✕</button>
+          <button class="btn2" @click="showConnModal=false">✕</button>
         </div>
-        <div class="db-field">
-          <label>名称</label>
-          <input class="p-input" v-model="connForm.name" placeholder="连接名称" />
-        </div>
-        <div class="db-field">
-          <label>类型</label>
+        <div class="field"><label>名称</label><input class="p-input" v-model="connForm.name" placeholder="连接名称" /></div>
+        <div class="field"><label>类型</label>
           <select class="p-input" v-model="connForm.dbType">
             <option value="mysql">MySQL</option>
             <option value="sqlite">SQLite（文件）</option>
@@ -319,94 +664,119 @@
           </select>
         </div>
         <template v-if="connForm.dbType!=='sqlite'">
-          <div class="db-row2">
-            <div class="db-field">
-              <label>主机</label>
-              <input class="p-input" v-model="connForm.host" placeholder="127.0.0.1" />
-            </div>
-            <div class="db-field" style="max-width:120px;">
-              <label>端口</label>
+          <div class="row2">
+            <div class="field"><label>主机</label><input class="p-input" v-model="connForm.host" placeholder="127.0.0.1" /></div>
+            <div class="field" style="max-width:120px;"><label>端口</label>
               <input class="p-input" v-model="connForm.port" :placeholder="connForm.dbType==='redis' ? '6379' : '3306'" />
             </div>
           </div>
-          <div class="db-field">
-            <label>{{ connForm.dbType==='redis' ? '密码（可为空）' : '用户名' }}</label>
-            <input class="p-input" v-model="connForm.username" v-if="connForm.dbType!=='redis'" placeholder="root" />
-            <input class="p-input" v-model="connForm.password" type="password" v-if="connForm.dbType==='redis'" placeholder="auth 密码" />
+          <div class="field" v-if="connForm.dbType==='redis'">
+            <label>密码（可为空）</label>
+            <input class="p-input" v-model="connForm.password" type="password" placeholder="auth 密码" />
           </div>
-          <div class="db-field" v-if="connForm.dbType!=='redis'">
+          <div class="field" v-if="connForm.dbType!=='redis'"><label>用户名</label><input class="p-input" v-model="connForm.username" placeholder="root" /></div>
+          <div class="field" v-if="connForm.dbType!=='redis'">
             <label>密码</label>
             <input class="p-input" v-model="connForm.password" type="password" placeholder="留空 = 不修改（编辑时）" />
           </div>
-          <div class="db-field" v-if="connForm.dbType==='mysql'">
-            <label>默认数据库</label>
-            <input class="p-input" v-model="connForm.database" placeholder="可空，后续用库表树选择" />
-          </div>
-          <div class="db-field" v-if="connForm.dbType==='redis'">
-            <label>库索引 (DB 0-15)</label>
-            <input class="p-input" v-model="connForm.database" placeholder="0" />
+          <div class="field" v-if="connForm.dbType==='mysql'">
+            <label>默认数据库（可空）</label>
+            <input class="p-input" v-model="connForm.database" placeholder="可空，之后点左侧库切换" />
           </div>
         </template>
         <template v-else>
-          <div class="db-field">
-            <label>SQLite 文件</label>
-            <div class="db-row2">
+          <div class="field"><label>SQLite 文件</label>
+            <div class="row2">
               <input class="p-input" v-model="connForm.filePath" placeholder="选择 .db / .sqlite 文件" readonly style="cursor:pointer;" @click="pickSqlite" />
-              <button class="p-btn p-btn-sm" @click="pickSqlite">浏览</button>
+              <button class="btn2" @click="pickSqlite">浏览</button>
             </div>
           </div>
         </template>
-        <div class="db-actions-bar">
-          <button class="p-btn p-btn-sm" @click="testConn" :disabled="testing">{{ testing ? '测试中…' : '测试连接' }}</button>
+        <div class="abar">
+          <button class="btn2" @click="testConn" :disabled="testing">{{ testing ? '测试中…' : '测试连接' }}</button>
           <div class="spacer"></div>
-          <button class="p-btn p-btn-sm" @click="showConnModal=false">取消</button>
-          <button class="p-btn p-btn-sm p-btn-primary" @click="saveConn">保存</button>
+          <button class="btn2" @click="showConnModal=false">取消</button>
+          <button class="btn2 solid" @click="saveConn">保存</button>
         </div>
       </div>
     </div>
 
     <!-- 新建 Key 弹窗 -->
-    <div v-if="showNewKey" class="db-mask" @click.self="showNewKey=false">
-      <div class="db-modal">
-        <div class="db-modal-head"><span>新建 Key</span><button class="p-btn p-btn-sm" @click="showNewKey=false">✕</button></div>
-        <div class="db-modal-body">
-          <div class="db-field"><label>类型</label>
-            <select class="p-input" v-model="newKeyForm.type">
-              <option value="string">String</option>
-              <option value="hash">Hash</option>
-              <option value="list">List</option>
-              <option value="set">Set</option>
-              <option value="zset">ZSet</option>
-            </select>
-          </div>
-          <div class="db-field"><label>Key 名称</label><input class="p-input" v-model="newKeyForm.key" placeholder="如 user:1:name" /></div>
-          <div class="db-field"><label>值 / 内容</label>
-            <textarea class="db-ta" v-model="newKeyForm.value" placeholder="string 填值；hash/list/set/zset 每行一个元素（zset 每行 member:score）" style="min-height:90px;"></textarea>
-          </div>
-          <div class="db-field"><label>TTL（秒，-1 永久）</label><input class="p-input" v-model="newKeyForm.ttl" placeholder="-1" /></div>
-          <div class="db-actions-bar">
-            <div class="spacer"></div>
-            <button class="p-btn p-btn-sm" @click="showNewKey=false">取消</button>
-            <button class="p-btn p-btn-sm p-btn-primary" @click="saveNewKey">创建</button>
-          </div>
+    <div v-if="showNewKey" class="mask" @click.self="showNewKey=false">
+      <div class="modal">
+        <div class="modal-head"><span>新建 Key</span><button class="btn2" @click="showNewKey=false">✕</button></div>
+        <div class="field"><label>类型</label>
+          <select class="p-input" v-model="newKeyForm.type">
+            <option value="string">String</option><option value="hash">Hash</option>
+            <option value="list">List</option><option value="set">Set</option><option value="zset">ZSet</option>
+          </select>
+        </div>
+        <div class="field"><label>Key 名称</label><input class="p-input" v-model="newKeyForm.key" placeholder="如 user:1:name" /></div>
+        <div class="field"><label>值 / 内容</label>
+          <textarea class="textarea2" v-model="newKeyForm.value" placeholder="string 填值；hash/list/set/zset 每行一个元素（zset 每行 member:score）" style="min-height:90px"></textarea>
+        </div>
+        <div class="field"><label>TTL（秒，-1 永久）</label><input class="p-input" v-model="newKeyForm.ttl" placeholder="-1" /></div>
+        <div class="abar">
+          <div class="spacer"></div>
+          <button class="btn2" @click="showNewKey=false">取消</button>
+          <button class="btn2 solid" @click="saveNewKey">创建</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 设置弹窗 -->
+    <div v-if="showSettings" class="mask" @click.self="showSettings=false">
+      <div class="modal">
+        <div class="modal-head"><span>设置</span><button class="btn2" @click="showSettings=false">✕</button></div>
+        <div class="field">
+          <label>默认每页行数（表数据 / 查询结果）</label>
+          <select class="p-input" v-model.number="settings.pageSize">
+            <option :value="50">50 条/页</option>
+            <option :value="100">100 条/页</option>
+            <option :value="200">200 条/页</option>
+            <option :value="500">500 条/页</option>
+          </select>
+          <span class="muted" style="margin-top:4px">双击打开表默认取该值；可随时在结果页的分页下拉里临时调整。</span>
+        </div>
+        <div class="abar">
+          <div class="spacer"></div>
+          <button class="btn2" @click="showSettings=false">取消</button>
+          <button class="btn2 solid" @click="saveSettings">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 新增行弹窗 -->
+    <div v-if="showInsertModal" class="mask" @click.self="showInsertModal=false">
+      <div class="modal">
+        <div class="modal-head"><span>新增一行 · {{ insertTab && insertTab.table }}</span><button class="btn2" @click="showInsertModal=false">✕</button></div>
+        <div class="msg-box muted" style="padding-top:0">留空的字段将使用数据库默认值 / 自增；必填且无默认值的列请务必填写。</div>
+        <div class="field" v-for="(c,ci) in insertForm.cols" :key="ci">
+          <label>{{ c.name }}</label>
+          <input class="p-input" v-model="c.value" :placeholder="c.name" />
+        </div>
+        <div class="abar">
+          <div class="spacer"></div>
+          <button class="btn2" @click="showInsertModal=false">取消</button>
+          <button class="btn2 solid" @click="saveInsert">插入</button>
         </div>
       </div>
     </div>
 
     <!-- 通用确认 -->
-    <div v-if="confirmDialog.visible" class="db-mask" @click.self="confirmCancel">
-      <div class="db-modal" style="width:360px">
-        <div class="db-modal-head"><span>确认操作</span><button class="p-btn p-btn-sm" @click="confirmCancel">✕</button></div>
-        <div style="padding:14px 16px;"><p style="margin:0;line-height:1.6">{{ confirmDialog.message }}</p></div>
-        <div class="db-actions-bar">
+    <div v-if="confirmDialog.visible" class="mask" @click.self="confirmCancel">
+      <div class="modal" style="width:380px">
+        <div class="modal-head"><span>确认操作</span><button class="btn2" @click="confirmCancel">✕</button></div>
+        <div style="padding:6px 2px 2px;line-height:1.7">{{ confirmDialog.message }}</div>
+        <div class="abar">
           <div class="spacer"></div>
-          <button class="p-btn p-btn-sm" @click="confirmCancel">取消</button>
-          <button class="p-btn p-btn-sm" style="background:var(--danger,#e5484d);color:#fff" @click="confirmOk">确认删除</button>
+          <button class="btn2" @click="confirmCancel">取消</button>
+          <button class="btn2" style="background:var(--danger);border-color:var(--danger);color:#fff" @click="confirmOk">确认删除</button>
         </div>
       </div>
     </div>
 
-    <div v-for="(t,ti) in toasts" :key="ti" class="db-toast" :class="t.kind">{{ t.msg }}</div>
+    <div v-for="(t,ti) in toasts" :key="ti" class="toast" :class="t.kind">{{ t.msg }}</div>
   </div>
 </div>
 
@@ -426,8 +796,46 @@
       parent.postMessage({ type:'plugin:execute', id:id, command:command, input: input || {} }, '*')
     })
   }
+  /* ---------- 主题跟随宿主 ----------
+     宿主在「设置里切浅色 / 深色」时发 plugin:theme{theme,locale}；
+     qd-theme.css 里浅色是 html[data-theme="light"] 的变量覆盖，
+     所以把主题同步到 <html> 的 data-theme 属性即可（此前完全没处理这条消息，
+     导致主程序切浅色后插件仍是深色）。plugin:init 里也带 theme，用于首次进入时对齐。 */
+  function applyTheme(d){
+    if(!d) return
+    if(d.theme) document.documentElement.setAttribute('data-theme', d.theme)
+    if(d.locale) document.documentElement.setAttribute('lang', d.locale)
+  }
+  /* 主题兜底：宿主目前只在「主窗口内联 iframe」那条路径投递 theme（那条 Go 侧模板
+     只发了 text/command），插件开成独立窗口时收不到消息，所以再走两级兜底：
+     同源 opener/parent 窗口的 data-theme（监听其变化 + 窗口 focus 时重读）→ 系统偏好。 */
+  ;(function(){
+    var el = document.documentElement
+    var w = null
+    try {
+      if(window.opener && window.opener !== window) w = window.opener
+      else if(window.parent && window.parent !== window) w = window.parent
+    } catch(err){ w = null }
+    function fromWin(){
+      try{ var t = w.document.documentElement.getAttribute('data-theme'); if(t){ el.setAttribute('data-theme', t); return true } }catch(err){}
+      return false
+    }
+    if(w && fromWin()){
+      try { new MutationObserver(fromWin).observe(w.document.documentElement, { attributes:true, attributeFilter:['data-theme'] }) } catch(err){}
+      window.addEventListener('focus', fromWin)
+    }
+    if(window.matchMedia){
+      var mq = window.matchMedia('(prefers-color-scheme: light)')
+      var sys = function(){ if(!el.getAttribute('data-theme')) el.setAttribute('data-theme', mq.matches ? 'light' : 'dark') }
+      sys()
+      if(mq.addEventListener) mq.addEventListener('change', sys)
+    }
+  })()
   window.addEventListener('message', function(e){
     var d = e.data; if(!d) return
+    // 宿主在 iframe onload 后发 plugin:init，此时宿主监听已就绪，再发请求才不会被丢弃
+    if(d.type==='plugin:init'){ applyTheme(d.data); bootNow(d.data || {}); return }
+    if(d.type==='plugin:theme'){ applyTheme(d.data); return }
     if(d.type==='plugin:result' && d.id && pend[d.id]){
       var p = pend[d.id]; delete pend[d.id]
       if(d.error) p.rej(new Error(typeof d.error==='string' ? d.error : (d.error.message||'error')))
@@ -435,8 +843,19 @@
     }
   })
 
+  /* ---------- 启动时机 ----------
+     不在 mounted 里直接发请求（那时宿主监听可能还没挂上，首个请求会被丢掉 →
+     连接列表空白）。等 plugin:init；再留一个兜底定时器给不发 init 的老宿主。 */
+  var booted = false, initSeen = false, initPayload = {}
+  function bootNow(payload){
+    initSeen = true
+    if(payload) initPayload = payload
+    if(booted || !app._vm) return
+    booted = true
+    app._vm.onBoot(initPayload)
+  }
+
   /* ---------- 工具 ---------- */
-  // toast 操作 mounted 实例的响应式 toasts 数组；mount 后由 app._toasts 指向它
   function toast(msg, kind){
     var arr = app._toasts
     if(!arr) return
@@ -448,166 +867,210 @@
     if(kind==='sqlite') return '"' + String(name).replace(/"/g,'""') + '"'
     return '`' + String(name).replace(/`/g,'``') + '`'
   }
+  function blankGrid(){
+    return { columns:[], rows:[], nulls:[], editable:false, primaryKey:'', tableName:'', editReason:'',
+             error:'', message:'', affected:-1, durationMs:-1, loading:false, ran:false,
+             page:1, pageSize:200, total:-1, orderBy:'', orderDir:'asc', edit:{ r:-1, c:-1 }, draft:'', selRow:-1 }
+  }
+  // SQL 关键字提示词库
+  var SQL_KEYWORDS = [
+    'SELECT', 'INSERT INTO', 'UPDATE', 'DELETE FROM', 'FROM', 'WHERE', 'SET', 'VALUES',
+    'LIMIT', 'ORDER BY', 'GROUP BY', 'HAVING', 'JOIN', 'LEFT JOIN', 'RIGHT JOIN', 'INNER JOIN',
+    'ON', 'AND', 'OR', 'NOT', 'NULL', 'IS NULL', 'IS NOT NULL', 'AS', 'DISTINCT',
+    'COUNT', 'SUM', 'AVG', 'MIN', 'MAX', 'LIKE', 'IN', 'BETWEEN', 'EXISTS', 'UNION',
+    'CASE WHEN', 'THEN', 'ELSE', 'END', 'CREATE TABLE', 'DROP TABLE', 'ALTER TABLE',
+    'TRUNCATE', 'DESC', 'SHOW TABLES', 'SHOW DATABASES', 'USE', 'CREATE DATABASE'
+  ]
+  function normResult(r){
+    var g = blankGrid()
+    g.columns = r.columns || []
+    g.rows = r.rows || []
+    g.nulls = r.nulls || []
+    g.editable = !!r.editable
+    g.primaryKey = r.primaryKey || ''
+    g.tableName = r.tableName || ''
+    g.editReason = r.editReason || ''
+    g.error = r.error || ''
+    g.message = r.message || ''
+    g.affected = (r.affected == null ? -1 : r.affected)
+    g.durationMs = (r.durationMs == null ? -1 : r.durationMs)
+    g.ran = true
+    return g
+  }
 
   var app = createApp({
     data: function(){
       return {
         conns: [],
         selectedConn: null,
-        treeRoot: [],
-        treeLoading: false,
-        expanded: {},
-        query: '',
-        activeDb: '',
-        result: null,
-        editing: { r:-1, c:-1 },
-        cellDraft: '',
+        tabs: [],
+        activeTabId: '',
+        tabSeq: 0,
+        connFilter: '',
+        // 连接弹窗
         showConnModal: false,
         testing: false,
         connForm: blankConn(),
-        // Redis 可视化管理
-        redisDB: 0,
-        keyDetail: null,
-        keyLoading: false,
-        keyFilter: '',
+        // Redis 新建 key
         showNewKey: false,
+        pendingKeyTab: null,
         newKeyForm: { type:'string', key:'', value:'', ttl:'-1' },
-        newHashField: { f:'', v:'' },
-        newListItem: '',
-        newSetMember: '',
-        newZsetMember: { m:'', s:'' },
-        ttlDraft: '',
+        // 新增行
+        showInsertModal: false,
+        insertTab: null,
+        insertForm: { cols: [] },
         toasts: [],
-        confirmDialog: { visible:false, message:'', onConfirm:null }
+        confirmDialog: { visible:false, message:'', onConfirm:null },
+        // 设置（持久化到后端 KV）：默认每页行数 / 各连接上次打开的库
+        settings: { pageSize:200, lastDb:{} },
+        showSettings: false,
+        _clickTimer: null,
+        suggest: { open:false, tabId:'', items:[], index:0, start:0, token:'' }
       }
     },
     computed: {
-      flatNodes: function(){
-        var self = this, out = []
-        var walk = function(nodes, depth){
-          nodes.forEach(function(n){
-            var key = self.nodeKey(n, depth)
-            out.push({ node:n, depth:depth, key:key })
-            if(n._expanded && n.children && n.children.length) walk(n.children, depth+1)
-          })
-        }
-        walk(this.treeRoot, 0)
-        return out
+      activeTab: function(){
+        var id = this.activeTabId
+        return this.tabs.find(function(t){ return t.id===id }) || null
+      },
+      filteredConns: function(){
+        var f = (this.connFilter||'').trim().toLowerCase()
+        if(!f) return this.conns
+        return this.conns.filter(function(c){
+          return (c.name||'').toLowerCase().indexOf(f)>=0 || (c.host||'').toLowerCase().indexOf(f)>=0
+        })
       }
     },
     methods: {
+      /* ---------- 连接 ---------- */
+      onBoot: function(payload){
+        var self = this
+        this.loadSettings().then(function(){
+          return self.loadConns()
+        }).then(function(){
+          // 命令面板带文本打开：直接开一个查询标签页
+          if(payload && payload.text && String(payload.text).trim()){
+            // 命令面板带文本打开（如 /db SELECT ...）：此时没有选中连接，
+            // 退回第一个以保证命令仍然可用 —— 这是用户显式发起的查询，
+            // 不同于「打开插件时的默认展开」，不属于自动替用户做选择
+            var c = self.selectedConn || self.conns[0]
+            if(c){
+              self.selectConn(c).then(function(){
+                var t = self.newQueryTab()
+                if(!t) return
+                t.sql = String(payload.text)
+                self.runQueryTab(t)
+              })
+            }
+          }
+        })
+      },
+      loadSettings: function(){
+        var self = this
+        return send('kv.get', { key:'settings' }).then(function(r){
+          var v = r.value
+          if(v && typeof v === 'object'){
+            if(v.pageSize) self.settings.pageSize = v.pageSize
+            if(v.lastDb && typeof v.lastDb === 'object') self.settings.lastDb = v.lastDb
+          }
+        }).catch(function(){ /* 无设置或读取失败 → 用默认值 */ })
+      },
+      persistSettings: function(){
+        send('kv.set', { key:'settings', value: this.settings }).catch(function(){})
+      },
+      setLastDb: function(connId, db){
+        if(!connId || !db) return
+        this.settings.lastDb[connId] = db
+        this.persistSettings()
+      },
       loadConns: function(){
         var self = this
-        send('conn.list', {}).then(function(r){
-          self.conns = (r.connections || []).slice().sort(function(a,b){ return (b.createdAt||'').localeCompare(a.createdAt||'') })
+        return send('conn.list', {}).then(function(r){
+          var list = (r.connections || []).slice().sort(function(a,b){ return (b.createdAt||'').localeCompare(a.createdAt||'') })
+          var prevOpen = {}
+          self.conns.forEach(function(c){ prevOpen[c.id] = c._open })
+          self.conns = list.map(function(c){
+            c._dbs = c._dbs || []
+            c._open = !!prevOpen[c.id]
+            c._loading = false
+            c._err = ''
+            return c
+          })
           if(self.selectedConn){
             var still = self.conns.find(function(c){ return c.id===self.selectedConn.id })
-            self.selectedConn = still || null
-            if(!still) self.treeRoot = []
+            if(still){ self.selectedConn = still } else { self.selectedConn = null; self.tabs = []; self.activeTabId = '' }
           }
+          // 打开插件时不自动选中 / 展开任何连接：连接列表保持折叠，
+          // 右侧显示引导空态，由用户自己点要用的那个连接
+          // （自动挑第一个常常不是想要的，尤其是库名/环境敏感的连接）
         }).catch(function(e){ toast('加载连接失败: '+(e.message||e),'err') })
       },
       selectConn: function(c){
         this.selectedConn = c
-        this.result = null
-        this.activeDb = (c.dbType==='mysql') ? (c.database||'') : ''
-        this.query = ''
-        this.loadTree(c)
-      },
-      loadTree: function(c){
         var self = this
-        self.treeLoading = true
-        send('tree.list', { id:c.id }).then(function(r){
-          self.treeRoot = (r.nodes||[]).map(function(n){ n._expanded = !!n.children && n.children.length>0; n._loaded = !!n.children; return n })
-        }).catch(function(e){ toast('库表树加载失败: '+(e.message||e),'err') })
-        .finally(function(){ self.treeLoading = false })
+        return this.ensureConnOpen(c).then(function(){
+          // 自动打开该连接「上次打开的库」，免去每次重选库上下文
+          var db = self.settings.lastDb[c.id]
+          if(db && !self.tabs.some(function(t){ return t.connId===c.id && t.kind==='objects' && t.db===db })){
+            var node = (c._dbs||[]).find(function(d){ return d.name===db }) || { name:db, label:db, kind: c.dbType==='redis' ? 'redis' : '' }
+            self.openNode(c, node)
+          }
+        })
       },
-      nodeKey: function(n, depth){
-        // 用父链 + 自身名生成稳定 key
-        return (this.selectedConn ? this.selectedConn.id : '') + '|' + (n._path||n.name)
+      toggleConn: function(c){
+        if(c._open){ c._open = false; return }
+        this.ensureConnOpen(c)
       },
-      hasChildren: function(n){ return n.kind==='database' || n.kind==='folder' || n.kind==='table' || n.kind==='view' || (n.children && n.children.length) },
-      toggleNode: function(n, key){
+      ensureConnOpen: function(c){
         var self = this
-        if(n._loaded && n.children){ n._expanded = !n._expanded; return }
-        if(n.kind==='database'){
-          n._expanded = true; n._loading = true
-          send('tree.objects', { id:self.selectedConn.id, database:n.name }).then(function(r){
-            n.children = r.nodes || []; n._loaded = true
-          }).catch(function(e){ toast('加载表失败: '+(e.message||e),'err'); n._expanded=false })
-          .finally(function(){ n._loading=false })
-        } else {
-          n._expanded = !n._expanded; n._loaded = true
+        c._open = true
+        if(c._dbs && c._dbs.length) return Promise.resolve(c._dbs)
+        c._loading = true; c._err = ''
+        if(c.dbType==='redis'){
+          // Redis 直接给出 0-15 号库节点，无需后端探测
+          c._dbs = []
+          for(var i=0;i<16;i++) c._dbs.push({ name:String(i), label:'DB ' + i, detail:'', kind:'redis' })
+          c._loading = false
+          return Promise.resolve(c._dbs)
         }
+        return send('tree.list', { id:c.id }).then(function(r){
+          var nodes = r.nodes || []
+          c._dbs = nodes.map(function(n){
+            var label = n.label || n.name
+            var detail = n.detail || ''
+            if(c.dbType==='sqlite'){
+              label = baseName(c.filePath) || n.name
+              detail = 'SQLite'
+            }
+            return { name:n.name, label:label, detail:detail, kind:n.kind }
+          })
+          return c._dbs
+        }).catch(function(e){
+          c._err = '读取库列表失败: ' + (e.message||e)
+          c._dbs = []
+        }).finally(function(){ c._loading = false })
       },
-      onNodeClick: function(n){
-        var c = this.selectedConn
-        if(!c) return
-        if((n.kind==='table' || n.kind==='view') && c.dbType!=='redis'){
-          var tbl = quoteIdent(c.dbType, n.name)
-          if(c.dbType==='mysql' && this.activeDb) tbl = quoteIdent('mysql', this.activeDb) + '.' + tbl
-          this.query = 'SELECT * FROM ' + tbl + ' LIMIT 100'
-        } else if(n.kind==='key' && c.dbType==='redis'){
-          this.redisKeyGet(n.name)
-        } else if(n.kind==='database' && c.dbType==='mysql'){
-          this.activeDb = n.name
-          this.toggleNode(n)
-        }
-      },
-      runQuery: function(){
-        var c = this.selectedConn
-        if(!c){ toast('请先选择连接','err'); return }
-        if(!this.query.trim()){ toast('查询内容为空','err'); return }
+      reloadAll: function(){
         var self = this
-        this.result = null; this.editing = { r:-1, c:-1 }
-        send('query.run', { id:c.id, query:this.query }).then(function(r){
-          // 规整：后端返回 rows 为二维字符串数组，nulls 同维
-          r.rows = r.rows || []
-          r.nulls = r.nulls || []
-          self.result = r
-          if(r.editable) toast('单表查询结果可双击单元格直接编辑','ok')
-        }).catch(function(e){ toast('查询失败: '+(e.message||e),'err') })
+        this.tabs.forEach(function(t){ if(t.connId){ t._stale = true } })
+        this.loadConns().then(function(){
+          var c = self.selectedConn
+          if(c){ c._dbs = []; self.ensureConnOpen(c) }
+          var t = self.activeTab
+          if(t) self.reloadTab(t)
+        })
       },
-      isPkCol: function(ci){
-        if(!this.result || !this.result.editable) return false
-        var pk = this.result.primaryKey
-        return this.result.columns[ci] === pk
-      },
-      beginEdit: function(ri, ci){
-        if(!this.result || !this.result.editable) return
-        if(this.isPkCol(ci)) return
-        this.editing = { r:ri, c:ci }
-        this.cellDraft = (this.result.nulls[ri] && this.result.nulls[ri][ci]) ? '' : (this.result.rows[ri][ci]||'')
+      delConn: function(c){
         var self = this
-        this.$nextTick(function(){ if(self.$refs.editInput && self.$refs.editInput[0]) self.$refs.editInput[0].focus() })
-      },
-      cancelEdit: function(){ this.editing = { r:-1, c:-1 } },
-      commitEdit: function(ri, ci){
-        if(this.editing.r!==ri || this.editing.c!==ci) return
-        var self = this
-        var val = this.cellDraft
-        var old = (this.result.nulls[ri] && this.result.nulls[ri][ci]) ? '' : (this.result.rows[ri][ci]||'')
-        if(val === old){ this.editing = { r:-1, c:-1 }; return }
-        var pkCol = this.result.primaryKey
-        var pkIdx = this.result.columns.indexOf(pkCol)
-        var pkVal = (pkIdx>=0) ? this.result.rows[ri][pkIdx] : ''
-        var col = this.result.columns[ci]
-        var sets = {}; sets[col] = val
-        var nulls = (val==='') ? [col] : []
-        send('row.update', {
-          id: this.selectedConn.id,
-          tableName: this.result.tableName,
-          pkColumn: pkCol,
-          pkValue: pkVal,
-          sets: sets,
-          nulls: nulls
-        }).then(function(r){
-          self.result.rows[ri][ci] = val
-          if(!self.result.nulls[ri]) self.result.nulls[ri] = []
-          self.result.nulls[ri][ci] = (val==='')
-          toast(r.message || '已更新','ok')
-        }).catch(function(e){ toast('更新失败: '+(e.message||e),'err') })
-        .finally(function(){ self.editing = { r:-1, c:-1 } })
+        this.askConfirm('删除连接「' + c.name + '」？此操作不可撤销。', function(){
+          send('conn.delete', { id:c.id }).then(function(){
+            self.tabs = self.tabs.filter(function(t){ return t.connId !== c.id })
+            if(!self.tabs.some(function(t){ return t.id===self.activeTabId })) self.activeTabId = self.tabs.length ? self.tabs[0].id : ''
+            if(self.selectedConn && self.selectedConn.id===c.id) self.selectedConn = null
+            self.loadConns()
+            toast('已删除','ok')
+          }).catch(function(e){ toast('删除失败: '+(e.message||e),'err') })
+        })
       },
       openConnModal: function(c){
         this.connForm = c ? {
@@ -620,8 +1083,7 @@
         var self = this
         if(window.qdPickFile){
           window.qdPickFile({ title:'选择 SQLite 数据库文件', filter:'SQLite DB (*.db;*.sqlite;*.sqlite3)', pattern:'*.db;*.sqlite;*.sqlite3' })
-            .then(function(p){ if(p) self.connForm.filePath = p })
-            .catch(function(){})
+            .then(function(p){ if(p) self.connForm.filePath = p }).catch(function(){})
         } else { toast('当前环境不支持文件选择','err') }
       },
       saveConn: function(){
@@ -631,9 +1093,16 @@
         send('conn.save', {
           id:f.id, name:f.name, dbType:f.dbType, host:f.host, port:Number(f.port)||0,
           username:f.username, password:f.password, database:f.database, filePath:f.filePath
-        }).then(function(r){
+        }).then(function(){
           self.showConnModal = false
-          self.loadConns()
+          var prev = self.selectedConn
+          self.selectedConn = null
+          self.loadConns().then(function(){
+            if(prev){
+              var c = self.conns.find(function(x){ return x.id===prev.id || x.name===f.name })
+              if(c){ c._dbs = []; self.selectConn(c) }
+            }
+          })
           toast('连接已保存','ok')
         }).catch(function(e){ toast('保存失败: '+(e.message||e),'err') })
       },
@@ -645,187 +1114,657 @@
           id:f.id, name:f.name, dbType:f.dbType, host:f.host, port:Number(f.port)||0,
           username:f.username, password:f.password, database:f.database, filePath:f.filePath
         }).then(function(r){
-          if(r.ok) toast('连接成功 ✓','ok')
-          else toast('连接失败: '+(r.error||'未知错误'),'err')
+          if(r.ok) toast('连接成功 ✓','ok'); else toast('连接失败: '+(r.error||'未知错误'),'err')
         }).catch(function(e){ toast('测试失败: '+(e.message||e),'err') })
         .finally(function(){ self.testing = false })
       },
+
+      /* ---------- 标签页 ---------- */
+      newTab: function(o){
+        var id = o.id || ('tab_' + (++this.tabSeq))
+        var exist = this.tabs.find(function(t){ return t.id===id })
+        if(exist){ this.activeTabId = exist.id; return exist }
+        var t = Object.assign({ id:id, filter:'', sel:'', loading:false, _stale:false }, o)
+        if(t.kind==='table' || t.kind==='query'){
+          if(!t.grid) t.grid = blankGrid()
+          t.grid.pageSize = this.settings.pageSize // 用设置的默认每页行数
+        }
+        this.tabs.push(t)
+        this.activeTabId = id
+        // 必须返回响应式代理（直接返回原始对象的话，后续 tab.xxx 赋值不会触发渲染）
+        return this.tabs[this.tabs.length - 1]
+      },
+      activate: function(t){ this.activeTabId = t.id; this.selectedConn = this.conns.find(function(c){ return c.id===t.connId }) || this.selectedConn },
+      closeTab: function(t){
+        var i = this.tabs.findIndex(function(x){ return x.id===t.id })
+        if(i<0) return
+        this.tabs.splice(i,1)
+        if(this.activeTabId===t.id) this.activeTabId = this.tabs.length ? this.tabs[Math.min(i, this.tabs.length-1)].id : ''
+      },
+      tabIcon: function(t){
+        if(t.kind==='objects') return '🗄'
+        if(t.kind==='keys') return '#'
+        if(t.kind==='key') return '🔑'
+        if(t.kind==='query') return '▷'
+        return t.isView ? '👁' : '▦'
+      },
+      connTypeOf: function(t){
+        var c = this.conns.find(function(x){ return x.id===t.connId })
+        return c ? c.dbType : ''
+      },
+      dbOptionsOf: function(t){
+        var c = this.conns.find(function(x){ return x.id===t.connId })
+        var out = [], seen = {}
+        var push = function(n){ if(n && !seen[n]){ seen[n]=1; out.push(n) } }
+        if(c){
+          (c._dbs||[]).forEach(function(d){
+            // MySQL / Redis 的库节点都可以作为查询上下文；SQLite 只有一个文件库
+            if(c.dbType==='mysql') push(d.name)
+            else if(c.dbType==='redis') push(String(d.name))
+          })
+        }
+        if(t.db) push(t.db)
+        return out
+      },
+      reloadTab: function(t){
+        if(!t) return
+        if(t.kind==='objects' || t.kind==='keys') this.reloadObjects(t)
+        else if(t.kind==='table') this.reloadTableTab(t)
+        else if(t.kind==='key') this.reloadKey(t)
+      },
+      isActiveNode: function(c, d){
+        var t = this.activeTab
+        if(!t || t.connId!==c.id) return false
+        if(t.kind==='objects' || t.kind==='keys') return t.db === d.name
+        return t.db === d.name
+      },
+
+      /* ---------- 左树 → 打开对象列表 ---------- */
+      openNode: function(c, d){
+        this.selectedConn = c
+        this.setLastDb(c.id, d.name) // 记住该连接上次打开的库，下次默认选中
+        if(c.dbType==='redis'){ return this.openKeysTab(c, d) }
+        return this.openObjectsTab(c, d)
+      },
+      openObjectsTab: function(c, d){
+        var t = this.newTab({
+          id: 'obj:' + c.id + ':' + d.name, kind:'objects', connId:c.id, connName:c.name,
+          db: d.name, dbLabel: d.label || d.name, objects:[], view:'list', title: d.label || d.name
+        })
+        if(!t.objects.length || t._stale){ this.reloadObjects(t) }
+        return t
+      },
+      openKeysTab: function(c, d){
+        var t = this.newTab({
+          id: 'keys:' + c.id + ':' + d.name, kind:'keys', connId:c.id, connName:c.name,
+          db: d.name, dbLabel: d.label || d.name, keys:[], title: d.label || d.name
+        })
+        if(!t.keys.length || t._stale){ this.reloadObjects(t) }
+        return t
+      },
+      reloadObjects: function(t){
+        var self = this
+        t._stale = false
+        if(t.kind==='keys'){
+          t.loading = true
+          var payload = { id:t.connId, dbIndex: Number(t.db)||0, limit:1000 }
+          if(t.filter) payload.pattern = t.filter.indexOf('*')>=0 ? t.filter : ('*' + t.filter + '*')
+          return send('redis.keyList', payload).then(function(r){
+            t.keys = r.keys || []
+            t.truncated = !!r.truncated
+          }).catch(function(e){ toast('读取键失败: '+(e.message||e),'err'); t.keys = [] })
+          .finally(function(){ t.loading = false })
+        }
+        t.loading = true
+        return send('table.list', { id:t.connId, database:t.db }).then(function(r){
+          t.objects = r.objects || []
+          t.error = r.error || ''
+        }).catch(function(e){ t.error = e.message || String(e); t.objects = [] })
+        .finally(function(){ t.loading = false })
+      },
+      filteredObjects: function(t){
+        var f = (t.filter||'').toLowerCase()
+        if(!f) return t.objects
+        return t.objects.filter(function(o){ return o.name.toLowerCase().indexOf(f)>=0 })
+      },
+      filteredKeys: function(t){
+        var f = (t.filter||'').toLowerCase()
+        if(!f) return t.keys
+        return t.keys.filter(function(k){ return k.key.toLowerCase().indexOf(f)>=0 })
+      },
+      // 简名视图：把对象列表按 4 列折行，得到一个二维数组供表格渲染
+      nameRows: function(t){
+        var arr = this.filteredObjects(t)
+        var cols = 4, rows = []
+        for(var i=0;i<arr.length;i+=cols){ rows.push(arr.slice(i, i+cols)) }
+        return rows
+      },
+      // 连接色点：按连接 id 稳定哈希出颜色（Navicat 风格，便于在列表里一眼区分）
+      connColor: function(c){
+        var s = (c.id || c.name || 'x')
+        var h = 0
+        for(var i=0;i<s.length;i++){ h = (h*31 + s.charCodeAt(i)) & 0x7fffffff }
+        return 'hsl(' + (h % 360) + ', 60%, 52%)'
+      },
+      // 对象列表行：单击→结构（短延迟，给双击让路）；双击→数据
+      onObjRowClick: function(t, o){
+        var self = this
+        t.sel = o.name
+        if(this._clickTimer) clearTimeout(this._clickTimer)
+        this._clickTimer = setTimeout(function(){ self.openTableTab(t, o, 'struct') }, 200)
+      },
+      onObjRowDblClick: function(t, o){
+        if(this._clickTimer) clearTimeout(this._clickTimer)
+        this.openTableTab(t, o, 'data')
+      },
+
+      /* ---------- 表：结构 / 数据 ---------- */
+      openTableTab: function(objTab, o, sub){
+        var c = this.conns.find(function(x){ return x.id===objTab.connId })
+        var t = this.newTab({
+          id: 'tbl:' + objTab.connId + ':' + objTab.db + ':' + o.name, kind:'table',
+          connId: objTab.connId, connName: c ? c.name : '', db: objTab.db, dbLabel: objTab.dbLabel,
+          table: o.name, isView: o.type==='view', title: o.name, sub: sub || 'struct', struct:null
+        })
+        // 复用已存在的标签页时也要同步上下文并切到目标子视图
+        t.connId = objTab.connId
+        t.connName = c ? c.name : ''
+        t.db = objTab.db
+        t.dbLabel = objTab.dbLabel
+        t.table = o.name
+        t.isView = (o.type === 'view')
+        if(sub) t.sub = sub
+        if(!t.struct) this.loadStructure(t)
+        if(t.sub === 'data') this.ensureData(t)
+        return t
+      },
+      reloadTableTab: function(t){
+        this.loadStructure(t)
+        if(t.sub==='data') this.reloadData(t, t.grid.page)
+      },
+      loadStructure: function(t){
+        var self = this
+        t.loading = true
+        return send('table.structure', { id:t.connId, database:t.db, table:t.table }).then(function(r){
+          t.struct = r
+        }).catch(function(e){ toast('读取结构失败: '+(e.message||e),'err') })
+        .finally(function(){ t.loading = false })
+      },
+      ensureData: function(t){
+        t.grid = t.grid || blankGrid()
+        if(!t.grid.ran) this.reloadData(t, 1)
+      },
+      reloadData: function(t, page){
+        var self = this
+        t.grid = t.grid || blankGrid()
+        var g = t.grid
+        if(page==='last') page = Math.max(1, totalPages(g))
+        if(page >= 999999) page = Math.max(1, totalPages(g))
+        if(page < 1) page = 1
+        g.loading = true
+        g.page = page
+        return send('table.rows', {
+          id:t.connId, database:t.db, table:t.table,
+          page:page, pageSize:g.pageSize, orderBy:g.orderBy, orderDir:g.orderDir
+        }).then(function(r){
+          var n = normResult(r)
+          n.page = r.page || page
+          n.pageSize = r.pageSize || g.pageSize
+          n.total = (r.total == null ? -1 : r.total)
+          n.orderBy = r.orderBy || ''
+          n.orderDir = r.orderDir || 'asc'
+          n.loading = false
+          t.grid = n
+        }).catch(function(e){
+          g.loading = false; g.ran = true
+          g.error = e.message || String(e)
+        })
+      },
+      sortBy: function(t, col){
+        var g = t.grid
+        if(!g || !g.columns.length) return
+        if(g.orderBy===col) g.orderDir = (g.orderDir==='asc' ? 'desc' : 'asc')
+        else { g.orderBy = col; g.orderDir = 'asc' }
+        this.reloadData(t, 1)
+      },
+      keyClass: function(k){
+        k = String(k).toUpperCase()
+        if(k==='PRI') return 't-pri'
+        if(k==='UNI') return 't-uni'
+        return 't-mul'
+      },
+
+      /* ---------- 结果网格（查询 / 数据共用） ---------- */
+      isPk: function(t, ci){
+        var g = t.grid
+        if(!g || !g.editable || !g.primaryKey) return false
+        return g.columns[ci] === g.primaryKey
+      },
+      // 是否可对当前结果做整行增删（需可编辑 + 已知表名与主键）
+      canCrud: function(t){
+        var g = t.grid
+        return !!(g && g.editable && g.tableName && g.primaryKey)
+      },
+      selectRow: function(t, ri){ if(t.grid) t.grid.selRow = ri },
+      canEdit: function(t){ return !!(t.grid && t.grid.editable) },
+      isNull: function(t, ri, ci){ return !!(t.grid && t.grid.nulls[ri] && t.grid.nulls[ri][ci]) },
+      isEditing: function(t, ri, ci){ var e=t.grid && t.grid.edit; return !!e && e.r===ri && e.c===ci },
+      beginEdit: function(t, ri, ci){
+        var g = t.grid
+        if(!g || !g.editable || this.isPk(t,ci)) return
+        g.edit = { r:ri, c:ci }
+        g.draft = this.isNull(t,ri,ci) ? '' : (g.rows[ri][ci] || '')
+        var self = this
+        this.$nextTick(function(){ if(self.$refs.editInput && self.$refs.editInput[0]) self.$refs.editInput[0].focus() })
+      },
+      cancelEdit: function(t){ if(t.grid) t.grid.edit = { r:-1, c:-1 } },
+      commitEdit: function(t, ri, ci){
+        var g = t.grid
+        if(!g || g.edit.r!==ri || g.edit.c!==ci) return
+        var val = g.draft
+        var old = this.isNull(t,ri,ci) ? '' : (g.rows[ri][ci] || '')
+        if(val === old){ g.edit = { r:-1, c:-1 }; return }
+        var pkIdx = g.columns.indexOf(g.primaryKey)
+        var pkVal = pkIdx >= 0 ? g.rows[ri][pkIdx] : ''
+        var col = g.columns[ci]
+        var sets = {}; sets[col] = val
+        var nulls = (val === '') ? [col] : []
+        var self = this
+        send('row.update', {
+          id:t.connId, database:t.db, tableName:g.tableName,
+          pkColumn:g.primaryKey, pkValue:pkVal, sets:sets, nulls:nulls
+        }).then(function(r){
+          g.rows[ri][ci] = val
+          if(!g.nulls[ri]) g.nulls[ri] = []
+          g.nulls[ri][ci] = (val === '')
+          toast(r.message || '已更新','ok')
+        }).catch(function(e){ toast('更新失败: '+(e.message||e),'err') })
+        .finally(function(){ g.edit = { r:-1, c:-1 } })
+      },
+      openInsert: function(t){
+        var g = t.grid
+        if(!g || !g.editable){ return }
+        this.insertTab = t
+        this.insertForm = { cols: (g.columns||[]).map(function(c){ return { name:c, value:'' } }) }
+        this.showInsertModal = true
+      },
+      saveInsert: function(){
+        var t = this.insertTab, self = this
+        if(!t || !t.grid || !t.grid.tableName){ return }
+        var values = {}
+        this.insertForm.cols.forEach(function(c){
+          var v = (c.value == null ? '' : String(c.value)).trim()
+          if(v === ''){ return }
+          values[c.name] = v
+        })
+        if(!Object.keys(values).length){
+          toast('请至少填写一个字段','err'); return
+        }
+        send('row.insert', { id:t.connId, database:t.db, tableName:t.grid.tableName, values:values })
+          .then(function(r){
+            self.showInsertModal = false
+            toast(r.message || '已新增','ok')
+            self.reloadData(t, t.grid.page)
+          }).catch(function(e){ toast('新增失败: '+(e.message||e),'err') })
+      },
+      deleteRow: function(t){
+        var g = t.grid
+        if(!g || !g.editable || !g.tableName || !g.primaryKey){ toast('当前结果不可编辑','err'); return }
+        var ri = g.selRow
+        if(ri == null || ri < 0){ toast('请先单击选中一行','err'); return }
+        var pkIdx = g.columns.indexOf(g.primaryKey)
+        if(pkIdx < 0){ toast('找不到主键列','err'); return }
+        var pkVal = g.rows[ri][pkIdx]
+        var self = this
+        this.askConfirm('删除选中的第 '+(ri+1)+' 行（'+g.primaryKey+' = '+pkVal+'）？此操作不可撤销。', function(){
+          send('row.delete', { id:t.connId, database:t.db, tableName:g.tableName, pkColumn:g.primaryKey, pkValue:pkVal })
+            .then(function(r){
+              toast(r.message || '已删除','ok')
+              self.reloadData(t, g.page)
+            }).catch(function(e){ toast('删除失败: '+(e.message||e),'err') })
+        })
+      },
+      pageInfo: function(t){
+        var g = t.grid
+        if(!g || !g.rows.length) return g && g.total >= 0 ? ('共 ' + g.total + ' 行') : '无数据'
+        var from = (g.page-1)*g.pageSize + 1
+        var to = from + g.rows.length - 1
+        return g.total >= 0
+          ? ('第 ' + from + '–' + to + ' 行，共 ' + g.total + ' 行')
+          : ('第 ' + from + '–' + to + ' 行（总数未统计）')
+      },
+      hasNext: function(t){
+        var g = t.grid
+        if(!g) return false
+        if(g.total >= 0) return g.page * g.pageSize < g.total
+        return g.rows.length >= g.pageSize
+      },
+
+      /* ---------- 查询标签页 ---------- */
+      newQueryTab: function(){
+        var c = this.selectedConn
+        if(!c){ toast('请先选择连接','err'); return null }
+        var n = this.tabs.filter(function(x){ return x.kind==='query' }).length
+        var t = this.newTab({
+          id: 'q:' + (++this.tabSeq), kind:'query', connId:c.id, connName:c.name,
+          db: (this.settings.lastDb[c.id] || c.database || ''), dbLabel:'', sql:'',
+          tables:[], tableTypes:{}, title: n === 0 ? '查询' : ('查询 ' + (n+1))
+        })
+        this.loadQueryTables(t)
+        return t
+      },
+      loadQueryTables: function(t){
+        var c = this.conns.find(function(x){ return x.id===t.connId })
+        if(!c || c.dbType==='redis' || !t.db){ t.tables = []; return }
+        var self = this
+        send('table.list', { id:t.connId, database:t.db }).then(function(r){
+          t.tables = (r.objects||[]).map(function(o){ return o.name })
+          t.tableTypes = {}
+          ;(r.objects||[]).forEach(function(o){ t.tableTypes[o.name] = o.type })
+        }).catch(function(){ t.tables = [] })
+      },
+      runQueryTab: function(t){
+        var self = this
+        if(!t){ return }
+        if(!String(t.sql||'').trim()){ toast('查询内容为空','err'); return }
+        t.grid.loading = true
+        t.grid.error = ''
+        send('query.run', { id:t.connId, query:t.sql, database:t.db || '' }).then(function(r){
+          var g = normResult(r)
+          g.loading = false
+          t.grid = g
+          if(g.editable) toast('单表查询结果可双击单元格直接编辑','ok')
+        }).catch(function(e){
+          t.grid.loading = false; t.grid.ran = true; t.grid.error = e.message || String(e)
+        })
+      },
+      /* ---------- SQL 自动提示 ---------- */
+      onSqlInput: function(t, e){
+        t.sql = e.target.value
+        this._sqlEl = e.target
+        this.computeSuggest(t, e.target)
+      },
+      onSqlKey: function(t, e){
+        var s = this.suggest
+        if(s.open && s.items.length){
+          if(e.key==='ArrowDown'){ e.preventDefault(); s.index = (s.index+1) % s.items.length; return }
+          if(e.key==='ArrowUp'){ e.preventDefault(); s.index = (s.index-1+s.items.length) % s.items.length; return }
+          if((e.key==='Enter' || e.key==='Tab') && !e.ctrlKey && !e.metaKey){
+            e.preventDefault(); this.acceptSuggest(t, s.items[s.index]); return
+          }
+          if(e.key==='Escape'){ s.open = false; return }
+        }
+      },
+      onSqlBlur: function(t){
+        // 点击提示项用 mousedown.prevent 保焦，这里仅兜底关闭
+        this.suggest.open = false
+      },
+      computeSuggest: function(t, el){
+        var caret = el.selectionStart
+        if(caret == null){ this.suggest.open = false; return }
+        var before = t.sql.slice(0, caret)
+        var m = before.match(/([A-Za-z_][A-Za-z0-9_]*)$/)
+        if(!m){ this.suggest.open = false; return }
+        var token = m[1]
+        var start = caret - token.length
+        var low = token.toLowerCase()
+        var items = []
+        SQL_KEYWORDS.forEach(function(k){
+          var kl = k.toLowerCase()
+          if(kl.indexOf(low)===0 && kl!==low) items.push({ kind:'kw', text:k })
+        })
+        ;(t.tables||[]).forEach(function(n){
+          var nl = n.toLowerCase()
+          if(nl.indexOf(low)===0 && nl!==low) items.push({ kind:'tbl', text:n, type: t.tableTypes ? t.tableTypes[n] : '' })
+        })
+        if(!items.length){ this.suggest.open = false; return }
+        this.suggest = { open:true, tabId:t.id, items:items, index:0, start:start, token:token }
+      },
+      acceptSuggest: function(t, s){
+        var el = this._sqlEl
+        var start = this.suggest.start
+        var end = start + this.suggest.token.length
+        t.sql = t.sql.slice(0, start) + s.text + t.sql.slice(end)
+        this.suggest.open = false
+        var newCaret = start + s.text.length
+        var self = this
+        this.$nextTick(function(){
+          if(el && el.focus){ el.focus(); try { el.setSelectionRange(newCaret, newCaret) } catch(e){} }
+        })
+      },
+      onQueryDbChange: function(t){
+        // 切换查询的库上下文后记住，下次新建查询默认选中；并刷新表名提示
+        if(t.db) this.setLastDb(t.connId, t.db)
+        this.loadQueryTables(t)
+      },
+      saveSettings: function(){
+        this.persistSettings()
+        // 已打开的表 / 查询标签页同步默认每页行数（数据在下次翻页时按新值加载）
+        var self = this, ps = this.settings.pageSize
+        this.tabs.forEach(function(t){
+          if((t.kind==='table' || t.kind==='query') && t.grid) t.grid.pageSize = ps
+        })
+        this.showSettings = false
+        toast('设置已保存','ok')
+      },
+      exportCsv: function(t){
+        var g = t.grid
+        if(!g.rows.length) return
+        var esc = function(v){ return '"' + String(v==null?'':v).replace(/"/g,'""') + '"' }
+        var lines = [g.columns.map(esc).join(',')]
+        g.rows.forEach(function(row,ri){
+          lines.push(row.map(function(c,ci){ return esc(self_isNull(g,ri,ci) ? '' : c) }).join(','))
+        })
+        var csv = '\ufeff' + lines.join('\r\n')
+        var name = (g.tableName || 'query') + '_' + new Date().toISOString().slice(0,19).replace(/[:T]/g,'-') + '.csv'
+        var blob = new Blob([csv], { type:'text/csv;charset=utf-8' })
+        var a = document.createElement('a')
+        a.href = URL.createObjectURL(blob); a.download = name
+        document.body.appendChild(a); a.click(); document.body.removeChild(a)
+        setTimeout(function(){ URL.revokeObjectURL(a.href) }, 2000)
+        toast('已导出 ' + g.rows.length + ' 行','ok')
+      },
+
+      /* ---------- Redis key ---------- */
+      // ri = redis input：统一带上连接 id 与当前库索引（点 DB 3 就操作 DB 3）
+      ri: function(t, extra){
+        var o = { id: t.connId, dbIndex: String(t.db == null ? '' : t.db) }
+        if(extra){ for(var k in extra){ if(Object.prototype.hasOwnProperty.call(extra,k)) o[k] = extra[k] } }
+        return o
+      },
+      openKeyTab: function(listTab, k){
+        var c = this.conns.find(function(x){ return x.id===listTab.connId })
+        var t = this.newTab({
+          id: 'key:' + listTab.connId + ':' + listTab.db + ':' + k.key, kind:'key',
+          connId:listTab.connId, connName: c ? c.name : '', db:listTab.db, dbLabel:listTab.dbLabel,
+          key:k.key, title:k.key, detail:null
+        })
+        this.reloadKey(t)
+        return t
+      },
+      reloadKey: function(t){
+        var self = this
+        t.loading = true
+        return send('redis.keyGet', this.ri(t, { key:t.key })).then(function(r){
+          t.detail = r
+        }).catch(function(e){ toast('读取 key 失败: '+(e.message||e),'err') })
+        .finally(function(){ t.loading = false })
+      },
+      saveString: function(t){
+        var self = this
+        send('redis.keySet', this.ri(t, { key:t.key, rtype:'string', value:t.detail.Value, ttl:-1 })).then(function(){
+          toast('已保存','ok'); self.reloadKey(t)
+        }).catch(function(e){ toast('保存失败: '+(e.message||e),'err') })
+      },
+      hashFieldSet: function(t, it){
+        var self = this
+        send('redis.hashFieldSet', this.ri(t, { key:t.key, field:it.field, value:it.value }))
+          .then(function(){ toast('字段已更新','ok') })
+          .catch(function(e){ toast('更新失败: '+(e.message||e),'err'); self.reloadKey(t) })
+      },
+      hashFieldAdd: function(t){
+        var self = this
+        if(!(t.newF||'').trim()){ toast('请输入字段名','err'); return }
+        send('redis.hashFieldSet', this.ri(t, { key:t.key, field:t.newF, value:t.newV||'' })).then(function(){
+          t.newF=''; t.newV=''; toast('字段已添加','ok'); self.reloadKey(t)
+        }).catch(function(e){ toast('添加失败: '+(e.message||e),'err') })
+      },
+      hashFieldDel: function(t, field){
+        var self = this
+        send('redis.hashFieldDel', this.ri(t, { key:t.key, field:field })).then(function(){
+          toast('字段已删除','ok'); self.reloadKey(t)
+        }).catch(function(e){ toast('删除失败: '+(e.message||e),'err') })
+      },
+      listPush: function(t, where){
+        var self = this
+        if(!(t.newItem||'').trim()){ toast('请输入元素','err'); return }
+        send('redis.listPush', this.ri(t, { key:t.key, value:t.newItem, where:where })).then(function(){
+          t.newItem=''; toast('已追加','ok'); self.reloadKey(t)
+        }).catch(function(e){ toast('追加失败: '+(e.message||e),'err') })
+      },
+      listElemDel: function(t, value){
+        var self = this
+        send('redis.listElemDel', this.ri(t, { key:t.key, value:value })).then(function(){
+          toast('已删除','ok'); self.reloadKey(t)
+        }).catch(function(e){ toast('删除失败: '+(e.message||e),'err') })
+      },
+      setMemberAdd: function(t){
+        var self = this
+        if(!(t.newMember||'').trim()){ toast('请输入成员','err'); return }
+        send('redis.setMemberAdd', this.ri(t, { key:t.key, member:t.newMember })).then(function(){
+          t.newMember=''; toast('已添加','ok'); self.reloadKey(t)
+        }).catch(function(e){ toast('添加失败: '+(e.message||e),'err') })
+      },
+      setMemberDel: function(t, member){
+        var self = this
+        send('redis.setMemberDel', this.ri(t, { key:t.key, member:member })).then(function(){
+          toast('已删除','ok'); self.reloadKey(t)
+        }).catch(function(e){ toast('删除失败: '+(e.message||e),'err') })
+      },
+      zsetMemberSet: function(t, it){
+        var self = this
+        send('redis.zsetMemberSet', this.ri(t, { key:t.key, member:String(it.member), score:String(it.score) }))
+          .then(function(){ toast('分数已更新','ok') })
+          .catch(function(e){ toast('更新失败: '+(e.message||e),'err'); self.reloadKey(t) })
+      },
+      zsetMemberAdd: function(t){
+        var self = this
+        if(!(t.newM||'').trim()){ toast('请输入成员','err'); return }
+        send('redis.zsetMemberSet', this.ri(t, { key:t.key, member:t.newM, score:t.newS||'0' })).then(function(){
+          t.newM=''; t.newS=''; toast('成员已添加','ok'); self.reloadKey(t)
+        }).catch(function(e){ toast('添加失败: '+(e.message||e),'err') })
+      },
+      zsetMemberDel: function(t, member){
+        var self = this
+        send('redis.zsetMemberDel', this.ri(t, { key:t.key, member:member })).then(function(){
+          toast('已删除','ok'); self.reloadKey(t)
+        }).catch(function(e){ toast('删除失败: '+(e.message||e),'err') })
+      },
+      renameKey: function(t){
+        var self = this
+        var nk = prompt('重命名为：', t.key)
+        if(!nk || nk===t.key) return
+        send('redis.keyRename', this.ri(t, { key:t.key, newKey:nk })).then(function(){
+          t.key = nk; t.title = nk
+          self.reloadKey(t); toast('已重命名','ok')
+        }).catch(function(e){ toast('重命名失败: '+(e.message||e),'err') })
+      },
+      deleteKey: function(t){
+        var self = this
+        this.askConfirm('删除 key「' + t.key + '」？此操作不可撤销。', function(){
+          var lt = self.tabs.find(function(x){ return x.kind==='keys' && x.connId===t.connId && x.db===t.db })
+          send('redis.keyDelete', self.ri(t, { keys:[t.key] })).then(function(){
+            toast('已删除','ok')
+            self.closeTab(t)
+            if(lt) self.reloadObjects(lt)
+          }).catch(function(e){ toast('删除失败: '+(e.message||e),'err') })
+        })
+      },
+      editTTL: function(t){
+        var self = this
+        var v = prompt('设置 TTL（秒，-1 表示永不过期）：', t.detail.ttl < 0 ? '-1' : String(t.detail.ttl))
+        if(v===null) return
+        var sec = parseInt(v, 10)
+        if(isNaN(sec)){ toast('请输入数字','err'); return }
+        send('redis.keyExpire', this.ri(t, { key:t.key, seconds:sec })).then(function(){
+          toast('TTL 已更新','ok'); self.reloadKey(t)
+        }).catch(function(e){ toast('设置失败: '+(e.message||e),'err') })
+      },
+      openNewKeyModal: function(t){
+        this.pendingKeyTab = t || null
+        this.newKeyForm = { type:'string', key:'', value:'', ttl:'-1' }
+        this.showNewKey = true
+      },
+      saveNewKey: function(){
+        var self = this
+        var f = this.newKeyForm
+        var lt = this.pendingKeyTab || this.tabs.find(function(x){ return x.kind==='keys' })
+        if(!lt){ toast('请先打开一个 Redis 库','err'); return }
+        if(!f.key.trim()){ toast('请输入 Key 名称','err'); return }
+        var extra = { key:f.key, rtype:f.type, ttl:parseInt(f.ttl||'-1',10) }
+        if(f.type==='string'){ extra.value = f.value }
+        else {
+          var lines = f.value.split('\n').map(function(s){ return s.trim() }).filter(function(s){ return s!=='' })
+          if(f.type==='hash'){
+            var fields = {}
+            lines.forEach(function(l){ var i=l.indexOf(':'); if(i>0){ fields[l.slice(0,i)] = l.slice(i+1) } else { fields[l]='' } })
+            extra.fields = fields
+          } else if(f.type==='zset'){
+            extra.items = lines.map(function(l){ var i=l.lastIndexOf(':'); return { member: i>0?l.slice(0,i):l, score: i>0?l.slice(i+1):'0' } })
+          } else { extra.items = lines }
+        }
+        send('redis.keySet', this.ri(lt, extra)).then(function(){
+          self.showNewKey = false
+          self.reloadObjects(lt)
+          toast('已创建','ok')
+        }).catch(function(e){ toast('创建失败: '+(e.message||e),'err') })
+      },
+      copyText: function(s){
+        var v = s || ''
+        if(!v){ toast('没有可复制的内容','err'); return }
+        if(window.copyViaHost){ window.copyViaHost(v) }
+        else if(navigator.clipboard){ navigator.clipboard.writeText(v).catch(function(){}) }
+        toast('已复制','ok')
+      },
+
+      /* ---------- 其它 ---------- */
       askConfirm: function(msg, cb){ this.confirmDialog = { visible:true, message:msg, onConfirm:cb } },
       confirmOk: function(){ var cb=this.confirmDialog.onConfirm; this.confirmDialog.visible=false; this.confirmDialog.onConfirm=null; if(cb) cb() },
       confirmCancel: function(){ this.confirmDialog.visible=false; this.confirmDialog.onConfirm=null },
-      delConn: function(c){
-        var self = this
-        this.askConfirm('删除连接「' + c.name + '」？此操作不可撤销。', function(){
-          send('conn.delete', { id:c.id }).then(function(){
-            if(self.selectedConn && self.selectedConn.id===c.id){ self.selectedConn=null; self.treeRoot=[]; self.result=null }
-            self.loadConns()
-            toast('已删除','ok')
-          }).catch(function(e){ toast('删除失败: '+(e.message||e),'err') })
-        })
-      }
-    },
-    // ---- Redis 可视化管理 ----
-    reloadRedisTree: function(){
-      var self = this
-      if(!this.selectedConn || this.selectedConn.dbType!=='redis') return
-      self.treeLoading = true
-      var payload = { id:this.selectedConn.id }
-      if(this.redisDB>=0) payload.dbIndex = this.redisDB
-      if(this.keyFilter) payload.pattern = this.keyFilter
-      send('tree.list', payload).then(function(r){
-        self.treeRoot = (r.nodes||[]).map(function(n){ n._expanded = !!n.children && n.children.length>0; n._loaded = !!n.children; return n })
-      }).catch(function(e){ toast('加载键树失败: '+(e.message||e),'err') })
-      .finally(function(){ self.treeLoading = false })
-    },
-    redisKeyGet: function(key){
-      var self = this
-      this.result = null
-      this.keyLoading = true
-      this.keyDetail = null
-      send('redis.keyGet', { id:this.selectedConn.id, key:key }).then(function(r){
-        self.keyDetail = r
-      }).catch(function(e){ toast('读取 key 失败: '+(e.message||e),'err') })
-      .finally(function(){ self.keyLoading = false })
-    },
-    saveString: function(){
-      var self = this
-      send('redis.keySet', { id:this.selectedConn.id, key:this.keyDetail.key, rtype:'string', value:this.keyDetail.Value, ttl:-1 }).then(function(){
-        toast('已保存','ok'); self.redisKeyGet(self.keyDetail.key)
-      }).catch(function(e){ toast('保存失败: '+(e.message||e),'err') })
-    },
-    hashFieldSet: function(it){
-      var self = this
-      send('redis.hashFieldSet', { id:this.selectedConn.id, key:this.keyDetail.key, field:it.field, value:it.value }).then(function(){
-        toast('字段已更新','ok')
-      }).catch(function(e){ toast('更新失败: '+(e.message||e),'err'); self.redisKeyGet(self.keyDetail.key) })
-    },
-    hashFieldAdd: function(){
-      var self = this
-      if(!this.newHashField.f.trim()){ toast('请输入字段名','err'); return }
-      send('redis.hashFieldSet', { id:this.selectedConn.id, key:this.keyDetail.key, field:this.newHashField.f, value:this.newHashField.v }).then(function(){
-        self.newHashField = { f:'', v:'' }; toast('字段已添加','ok'); self.redisKeyGet(self.keyDetail.key)
-      }).catch(function(e){ toast('添加失败: '+(e.message||e),'err') })
-    },
-    hashFieldDel: function(field){
-      var self = this
-      send('redis.hashFieldDel', { id:this.selectedConn.id, key:this.keyDetail.key, field:field }).then(function(){
-        toast('字段已删除','ok'); self.redisKeyGet(self.keyDetail.key)
-      }).catch(function(e){ toast('删除失败: '+(e.message||e),'err') })
-    },
-    listPush: function(where){
-      var self = this
-      if(!this.newListItem.trim()){ toast('请输入元素','err'); return }
-      send('redis.listPush', { id:this.selectedConn.id, key:this.keyDetail.key, value:this.newListItem, where:where }).then(function(){
-        self.newListItem=''; toast('已追加','ok'); self.redisKeyGet(self.keyDetail.key)
-      }).catch(function(e){ toast('追加失败: '+(e.message||e),'err') })
-    },
-    listElemDel: function(value){
-      var self = this
-      send('redis.listElemDel', { id:this.selectedConn.id, key:this.keyDetail.key, value:value }).then(function(){
-        toast('已删除','ok'); self.redisKeyGet(self.keyDetail.key)
-      }).catch(function(e){ toast('删除失败: '+(e.message||e),'err') })
-    },
-    setMemberAdd: function(){
-      var self = this
-      if(!this.newSetMember.trim()){ toast('请输入成员','err'); return }
-      send('redis.setMemberAdd', { id:this.selectedConn.id, key:this.keyDetail.key, member:this.newSetMember }).then(function(){
-        self.newSetMember=''; toast('已添加','ok'); self.redisKeyGet(self.keyDetail.key)
-      }).catch(function(e){ toast('添加失败: '+(e.message||e),'err') })
-    },
-    setMemberDel: function(member){
-      var self = this
-      send('redis.setMemberDel', { id:this.selectedConn.id, key:this.keyDetail.key, member:member }).then(function(){
-        toast('已删除','ok'); self.redisKeyGet(self.keyDetail.key)
-      }).catch(function(e){ toast('删除失败: '+(e.message||e),'err') })
-    },
-    zsetMemberSet: function(it){
-      var self = this
-      send('redis.zsetMemberSet', { id:this.selectedConn.id, key:this.keyDetail.key, member:String(it.member), score:String(it.score) }).then(function(){
-        toast('分数已更新','ok')
-      }).catch(function(e){ toast('更新失败: '+(e.message||e),'err'); self.redisKeyGet(self.keyDetail.key) })
-    },
-    zsetMemberAdd: function(){
-      var self = this
-      if(!this.newZsetMember.m.trim()){ toast('请输入成员','err'); return }
-      send('redis.zsetMemberSet', { id:this.selectedConn.id, key:this.keyDetail.key, member:this.newZsetMember.m, score:this.newZsetMember.s||'0' }).then(function(){
-        self.newZsetMember={m:'',s:''}; toast('成员已添加','ok'); self.redisKeyGet(self.keyDetail.key)
-      }).catch(function(e){ toast('添加失败: '+(e.message||e),'err') })
-    },
-    zsetMemberDel: function(member){
-      var self = this
-      send('redis.zsetMemberDel', { id:this.selectedConn.id, key:this.keyDetail.key, member:member }).then(function(){
-        toast('已删除','ok'); self.redisKeyGet(self.keyDetail.key)
-      }).catch(function(e){ toast('删除失败: '+(e.message||e),'err') })
-    },
-    copyKeyName: function(){
-      var k = this.keyDetail ? this.keyDetail.key : ''
-      if(window.copyViaHost && k){ window.copyViaHost(k) }
-      else if(navigator.clipboard && k){ navigator.clipboard.writeText(k).catch(function(){}) }
-      toast('已复制 key 名','ok')
-    },
-    renameKey: function(){
-      var self = this
-      var nk = prompt('重命名为：', this.keyDetail.key)
-      if(!nk || nk===this.keyDetail.key) return
-      send('redis.keyRename', { id:this.selectedConn.id, key:this.keyDetail.key, newKey:nk }).then(function(){
-        toast('已重命名','ok'); self.redisKeyGet(nk)
-      }).catch(function(e){ toast('重命名失败: '+(e.message||e),'err') })
-    },
-    deleteKey: function(key){
-      var self = this
-      this.askConfirm('删除 key「' + key + '」？此操作不可撤销。', function(){
-        send('redis.keyDelete', { id:self.selectedConn.id, keys:[key] }).then(function(){
-          self.keyDetail = null; self.result = null
-          self.reloadRedisTree()
-          toast('已删除','ok')
-        }).catch(function(e){ toast('删除失败: '+(e.message||e),'err') })
-      })
-    },
-    editTTL: function(){
-      var self = this
-      var v = prompt('设置 TTL（秒，-1 表示永不过期）：', this.keyDetail.ttl<0 ? '-1' : String(this.keyDetail.ttl))
-      if(v===null) return
-      var sec = parseInt(v, 10)
-      if(isNaN(sec)){ toast('请输入数字','err'); return }
-      send('redis.keyExpire', { id:this.selectedConn.id, key:this.keyDetail.key, seconds:sec }).then(function(){
-        toast('TTL 已更新','ok'); self.redisKeyGet(self.keyDetail.key)
-      }).catch(function(e){ toast('设置失败: '+(e.message||e),'err') })
-    },
-    openNewKey: function(){ this.newKeyForm = { type:'string', key:'', value:'', ttl:'-1' }; this.showNewKey = true },
-    saveNewKey: function(){
-      var self = this
-      var f = this.newKeyForm
-      if(!f.key.trim()){ toast('请输入 Key 名称','err'); return }
-      var payload = { id:this.selectedConn.id, key:f.key, rtype:f.type, ttl:parseInt(f.ttl||'-1',10) }
-      if(f.type==='string'){ payload.value = f.value }
-      else {
-        var lines = f.value.split('\n').map(function(s){ return s.trim() }).filter(function(s){ return s!=='' })
-        if(f.type==='hash'){
-          var fields = {}; lines.forEach(function(l){ var i=l.indexOf(':'); if(i>0){ fields[l.slice(0,i)] = l.slice(i+1) } else { fields[l]='' } }); payload.fields = fields
-        } else if(f.type==='zset'){
-          var zs = lines.map(function(l){ var i=l.lastIndexOf(':'); return { member: i>0?l.slice(0,i):l, score: i>0?l.slice(i+1):'0' } }); payload.items = zs
-        } else { payload.items = lines }
-      }
-      send('redis.keySet', payload).then(function(){
-        self.showNewKey = false; self.reloadRedisTree(); toast('已创建','ok')
-      }).catch(function(e){ toast('创建失败: '+(e.message||e),'err') })
+      dbTypeLabel: function(t){ return t==='mysql' ? 'MySQL' : (t==='redis' ? 'Redis' : 'SQLite') }
     },
     watch: {
-      // 切换数据库类型时联动默认端口，避免选 Redis 仍留 MySQL 的 3306
-      'connForm.dbType': function (t) {
-        if (t === 'redis') this.connForm.port = 6379
-        else if (t === 'mysql') this.connForm.port = 3306
+      'connForm.dbType': function(v){
+        if(v==='redis') this.connForm.port = 6379
+        else if(v==='mysql') this.connForm.port = 3306
       }
     },
-    mounted: function(){ this.loadConns() }
+    mounted: function(){
+      // 正常路径由 plugin:init 触发 bootNow；这里只是兜底
+      setTimeout(function(){ bootNow({}) }, 1000)
+    }
   })
 
   function blankConn(){
     return { id:'', name:'', dbType:'mysql', host:'127.0.0.1', port:3306, username:'root', password:'', database:'', filePath:'' }
   }
+  function baseName(p){
+    if(!p) return ''
+    var s = String(p).replace(/\\/g,'/')
+    var i = s.lastIndexOf('/')
+    return i>=0 ? s.slice(i+1) : s
+  }
+  function totalPages(g){
+    if(g.total < 0) return Math.max(1, g.page)
+    return Math.max(1, Math.ceil(g.total / (g.pageSize||100)))
+  }
+  // 供 exportCsv 使用的无 this 版本（在 Vue 方法外，避免闭包 this 混乱）
+  function self_isNull(g, ri, ci){ return !!(g.nulls[ri] && g.nulls[ri][ci]) }
+
   var mounted = app.mount('#app')
-  // 把响应式 toasts 数组暴露给 toast 闭包
   app._toasts = mounted.toasts
+  app._vm = mounted
+  if(initSeen && !booted) bootNow(initPayload)
 })()
 </script>
 </body>
