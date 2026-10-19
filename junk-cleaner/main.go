@@ -338,6 +338,7 @@ func runTask(t *pdfTask, name string, fn func(t *pdfTask)) {
 		defer func() {
 			if r := recover(); r != nil {
 				diagLogf("TASK PANIC [%s] %v\n%s", name, r, debug.Stack())
+				qdLogPanic(fmt.Sprintf("TASK PANIC [%s]", name), r)
 				finishTask(t, nil, fmt.Errorf("任务内部错误: %v", r))
 			}
 		}()
@@ -565,6 +566,8 @@ func fileDeleteCategory(c junkCategory) (freed, deleted, skipped int64) {
 // ---- 主循环 ----
 
 func main() {
+	qdLogStart()
+	defer qdLogExit()
 	setupDiagLog()
 	diagLogf("进程启动 pid=%d", os.Getpid())
 	defer diagLogf("进程退出")
@@ -577,6 +580,9 @@ func main() {
 		}
 		data := strings.TrimSpace(line)
 		if data == "" {
+			continue
+		}
+		if qdObserveLine(data) {
 			continue
 		}
 		// 每请求独立 goroutine：任何 handler 都不阻塞 stdin 读循环，host.ping 永远秒回
@@ -593,6 +599,7 @@ func dispatchWithDiag(raw string) {
 	defer func() {
 		if r := recover(); r != nil {
 			diagLogf("PANIC %v\n%s", r, debug.Stack())
+			qdLogPanic("PANIC", r)
 		}
 	}()
 	var req rpcRequest
@@ -1009,6 +1016,7 @@ func strFrom(m map[string]interface{}, key string, def ...string) string {
 }
 
 func respond(id int64, result interface{}) {
+	defer qdFinishRequest(id, 0, "")
 	payload, err := json.Marshal(result)
 	if err != nil {
 		respondError(id, -32603, "marshal result failed: "+err.Error())
@@ -1018,6 +1026,7 @@ func respond(id int64, result interface{}) {
 }
 
 func respondError(id int64, code int, msg string) {
+	defer qdFinishRequest(id, code, msg)
 	writeResponse(rpcResponse{JSONRPC: "2.0", ID: id, Error: &rpcError{Code: code, Message: msg}})
 }
 

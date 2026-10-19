@@ -2,8 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
-	"runtime/debug"
 	"sort"
 	"time"
 
@@ -75,7 +73,7 @@ func handleTimeline(id int64, input map[string]interface{}) {
 func runTimeline(t *asyncTask, repo *git.Repository, c *object.Commit, file string, input map[string]interface{}) {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Printf("git-workbench: panic in timeline task %s: %v\n%s", t.ID, r, debug.Stack())
+			qdLogPanic(fmt.Sprintf("timeline task %s", t.ID), r)
 			t.fail(fmt.Errorf("panic: %v", r))
 		}
 	}()

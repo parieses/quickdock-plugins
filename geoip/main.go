@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"runtime/debug"
 	"strings"
 	"time"
 )
@@ -30,6 +29,8 @@ type RPCError struct {
 }
 
 func main() {
+	qdLogStart()
+	defer qdLogExit()
 	reader := bufio.NewReader(os.Stdin)
 
 	for {
@@ -41,6 +42,9 @@ func main() {
 		if line == "" {
 			continue
 		}
+		if qdObserveLine(line) {
+			continue
+		}
 		var req RPCRequest
 		if err := json.Unmarshal([]byte(line), &req); err != nil {
 			continue
@@ -48,7 +52,7 @@ func main() {
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
-					fmt.Fprintf(os.Stderr, "geoip panic: %v\n%s\n", r, debug.Stack())
+					qdLogPanic("geoip panic", r)
 					respondError(req.ID, -32000, fmt.Sprintf("internal error: %v", r))
 				}
 			}()
@@ -141,11 +145,13 @@ func handleGeoip(id int64, cmd string, input map[string]interface{}) {
 }
 
 func respond(id int64, result interface{}) {
+	defer qdFinishRequest(id, 0, "")
 	data, _ := json.Marshal(RPCResponse{JSONRPC: "2.0", ID: id, Result: mustMarshal(result)})
 	data = append(data, '\n')
 	os.Stdout.Write(data)
 }
 func respondError(id int64, code int, msg string) {
+	defer qdFinishRequest(id, code, msg)
 	data, _ := json.Marshal(RPCResponse{JSONRPC: "2.0", ID: id, Error: &RPCError{Code: code, Message: msg}})
 	data = append(data, '\n')
 	os.Stdout.Write(data)

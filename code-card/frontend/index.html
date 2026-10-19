@@ -397,5 +397,34 @@ textarea:focus{border-color:var(--accent,#4a9eff)}
   render()
 })()
 </script>
+<!-- 运行期异常上报：未捕获异常 / Promise 拒绝 -> 宿主 plugin-YYYYMMDD.log（E 级） -->
+<script>
+(function () {
+  if (window.__qdErrHook) return
+  window.__qdErrHook = true
+  var sent = 0, last = {}
+  function report(kind, msg, stack) {
+    try {
+      if (sent >= 20) return // 单页最多 20 条，防止循环报错刷屏
+      var key = kind + '|' + msg
+      var now = Date.now()
+      if (last[key] && now - last[key] < 10000) return // 同一错误 10s 内只报一次
+      last[key] = now
+      sent++
+      if (typeof window.qdHostCall !== 'function') return
+      window.qdHostCall('log.error', {
+        message: '前端' + kind + ': ' + msg + (stack ? ' | ' + String(stack).slice(0, 600) : '')
+      }).catch(function () {})
+    } catch (e) {}
+  }
+  window.addEventListener('error', function (e) {
+    report('未捕获异常', (e && e.message) || 'unknown', e && e.error && e.error.stack)
+  })
+  window.addEventListener('unhandledrejection', function (e) {
+    var r = e && e.reason
+    report('Promise 拒绝', (r && r.message) || String(r), r && r.stack)
+  })
+})()
+</script>
 </body>
 </html>

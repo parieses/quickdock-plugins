@@ -4,9 +4,6 @@ package main
 
 import (
 	"errors"
-	"fmt"
-	"os"
-	"runtime/debug"
 	"time"
 )
 
@@ -17,7 +14,7 @@ func pickScreenColor() (r, g, b uint8, err error) {
 func waitPickLoop(epoch int) {
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Fprintf(os.Stderr, "color-converter waitPickLoop panic: %v\n%s\n", r, debug.Stack())
+			qdLogPanic("color-converter waitPickLoop panic", r)
 		}
 	}()
 	time.Sleep(50 * time.Millisecond)

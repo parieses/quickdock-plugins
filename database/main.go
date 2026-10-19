@@ -52,7 +52,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
@@ -147,6 +146,7 @@ func strMapFrom(input map[string]interface{}, key string) map[string]string {
 var outMu sync.Mutex
 
 func respond(id int64, result interface{}) {
+	defer qdFinishRequest(id, 0, "")
 	outMu.Lock()
 	defer outMu.Unlock()
 	out, _ := json.Marshal(map[string]interface{}{"jsonrpc": "2.0", "id": id, "result": result})
@@ -154,6 +154,7 @@ func respond(id int64, result interface{}) {
 }
 
 func respondError(id int64, code int, msg string) {
+	defer qdFinishRequest(id, code, msg)
 	outMu.Lock()
 	defer outMu.Unlock()
 	out, _ := json.Marshal(map[string]interface{}{
@@ -341,6 +342,8 @@ func handleKVList(id int64, input map[string]interface{}) {
 }
 
 func main() {
+	qdLogStart()
+	defer qdLogExit()
 	// 存储初始化失败不阻塞进程启动：后续命令会各自返回错误，host.ping 仍可用
 	initStore()
 
@@ -355,6 +358,9 @@ func main() {
 		if data == "" {
 			continue
 		}
+		if qdObserveLine(data) {
+			continue
+		}
 		// 每个请求独立 goroutine：任何 handler 都不阻塞 stdin 读循环，
 		// host.ping 永远秒回，杜绝"同步 handler 卡住 → 健康检查超时 → 被误杀"。
 		wg.Add(1)
@@ -364,7 +370,7 @@ func main() {
 				if r := recover(); r != nil {
 					// 外层兜底：handler 层 recover 已把大多数 panic 转成错误响应；
 					// 这里只兜底 dispatch 自身未捕获的崩溃，记日志即可，避免重复回包。
-					fmt.Fprintf(os.Stderr, "database dispatch panic: %v\n%s\n", r, debug.Stack())
+					qdLogPanic("database dispatch panic", r)
 				}
 			}()
 			dispatch(raw)

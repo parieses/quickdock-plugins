@@ -5,10 +5,11 @@
 // 故每个请求独立 goroutine，host.ping 永远秒回（pdf-toolkit v0.1.6 根治的整类死法）。
 //
 // 命令：
-//   scan    列出某目录下的图片文件与子目录（仅元数据，不读像素）
-//   thumb   批量解码并缩放生成缩略图（base64 dataURL，≤12 张/次，防 1MB 截断）
-//   preview 生成单张大图预览（≤900px，base64 dataURL）
-//   exif    解析单张图片的 EXIF 元数据（JPEG，依赖 goexif）
+//
+//	scan    列出某目录下的图片文件与子目录（仅元数据，不读像素）
+//	thumb   批量解码并缩放生成缩略图（base64 dataURL，≤12 张/次，防 1MB 截断）
+//	preview 生成单张大图预览（≤900px，base64 dataURL）
+//	exif    解析单张图片的 EXIF 元数据（JPEG，依赖 goexif）
 package main
 
 import (
@@ -23,12 +24,11 @@ import (
 	"image/draw"
 	_ "image/gif"
 	"image/jpeg"
-	_ "image/png"
 	"image/png"
+	_ "image/png"
 	"io"
 	"os"
 	"path/filepath"
-	"runtime/debug"
 	"sort"
 	"strconv"
 	"strings"
@@ -88,6 +88,8 @@ const (
 )
 
 func main() {
+	qdLogStart()
+	defer qdLogExit()
 	reader := bufio.NewReader(os.Stdin)
 	var wg sync.WaitGroup
 	for {
@@ -97,6 +99,9 @@ func main() {
 		}
 		data := strings.TrimSpace(line)
 		if data == "" {
+			continue
+		}
+		if qdObserveLine(data) {
 			continue
 		}
 		wg.Add(1)
@@ -111,7 +116,7 @@ func main() {
 func dispatchWithRecover(raw string) {
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Fprintf(os.Stderr, "[panic] photo-library: %v\n%s\n", r, debug.Stack())
+			qdLogPanic("[panic] photo-library", r)
 			var pre struct {
 				ID int64 `json:"id"`
 			}
@@ -834,7 +839,7 @@ func handleEdit(id int64, input map[string]interface{}) {
 	}
 	b := preview.Bounds()
 	respond(id, map[string]interface{}{
-		"ok": true,
+		"ok":      true,
 		"dataUrl": "data:image/jpeg;base64," + base64.StdEncoding.EncodeToString(buf.Bytes()),
 		"width":   b.Dx(), "height": b.Dy(),
 	})
@@ -970,8 +975,8 @@ func handleSession(id int64, input map[string]interface{}) {
 // ---- 地图 / 插件配置：持久化到 plugin-data/<id>/config.json ----
 
 type pluginConfig struct {
-	MapProvider  string `json:"mapProvider"`  // osm | tianditu
-	TiandituKey  string `json:"tiandituKey"`  // 天地图 tk（仅在 tianditu 时必填）
+	MapProvider string `json:"mapProvider"` // osm | tianditu
+	TiandituKey string `json:"tiandituKey"` // 天地图 tk（仅在 tianditu 时必填）
 }
 
 func configPath() string { return filepath.Join(getCacheDir(), "config.json") }
@@ -1029,7 +1034,9 @@ func ensureRGBA(src image.Image) *image.RGBA {
 }
 
 func subImage(src image.Image, r image.Rectangle) image.Image {
-	if si, ok := src.(interface{ SubImage(image.Rectangle) image.Image }); ok {
+	if si, ok := src.(interface {
+		SubImage(image.Rectangle) image.Image
+	}); ok {
 		return si.SubImage(r)
 	}
 	b := r
@@ -1081,7 +1088,7 @@ func adjustImage(src *image.RGBA, brightness, contrast int, filter string) *imag
 	b := src.Bounds()
 	dst := image.NewRGBA(b)
 	c := float64(contrast) * 2.55
-	factor := (259.0*(c+255.0)) / (255.0*(259.0-c))
+	factor := (259.0 * (c + 255.0)) / (255.0 * (259.0 - c))
 	bv := float64(brightness) * 2.55
 	for y := b.Min.Y; y < b.Max.Y; y++ {
 		for x := b.Min.X; x < b.Max.X; x++ {
@@ -1274,6 +1281,7 @@ func strSlice(m map[string]interface{}, key string) []string {
 }
 
 func respond(id int64, result interface{}) {
+	defer qdFinishRequest(id, 0, "")
 	payload, err := json.Marshal(result)
 	if err != nil {
 		respondError(id, -32603, "marshal result failed: "+err.Error())
@@ -1283,6 +1291,7 @@ func respond(id int64, result interface{}) {
 }
 
 func respondError(id int64, code int, msg string) {
+	defer qdFinishRequest(id, code, msg)
 	writeResponse(rpcResponse{JSONRPC: "2.0", ID: id, Error: &rpcError{Code: code, Message: msg}})
 }
 

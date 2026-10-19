@@ -32,7 +32,6 @@ import (
 	"net/url"
 	"os"
 	"regexp"
-	"runtime/debug"
 	"sort"
 	"strconv"
 	"strings"
@@ -118,6 +117,7 @@ var (
 )
 
 func respond(id int64, payload interface{}) {
+	defer qdFinishRequest(id, 0, "")
 	b, err := json.Marshal(payload)
 	if err != nil {
 		respondError(id, -32603, "internal error: "+err.Error())
@@ -131,6 +131,7 @@ func respond(id int64, payload interface{}) {
 }
 
 func respondError(id int64, code int, msg string) {
+	defer qdFinishRequest(id, code, msg)
 	resp := rpcResponse{JSONRPC: "2.0", ID: id, Error: &rpcError{Code: code, Message: msg}}
 	writeMu.Lock()
 	_ = json.NewEncoder(stdout).Encode(resp)
@@ -537,7 +538,7 @@ func checkValidity(email string) validityResult {
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				_, _ = fmt.Fprintf(os.Stderr, "PANIC in checkValidity mx lookup: %v\n%s", r, debug.Stack())
+				qdLogPanic("PANIC in checkValidity mx lookup", r)
 			}
 		}()
 		var res mxRes
@@ -711,7 +712,7 @@ func runProbes(ctx context.Context, client *http.Client, email, domain string, o
 		go func(i int, s siteConfig) {
 			defer func() {
 				if r := recover(); r != nil {
-					_, _ = fmt.Fprintf(os.Stderr, "PANIC in runProbes worker (%s): %v\n%s", s.Key, r, debug.Stack())
+					qdLogPanic(fmt.Sprintf("PANIC in runProbes worker (%s)", s.Key), r)
 				}
 			}()
 			defer wg.Done()
@@ -765,7 +766,7 @@ func handleCheck(id int64, input map[string]interface{}) {
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				_, _ = fmt.Fprintf(os.Stderr, "PANIC in handleCheck task: %v\n%s", r, debug.Stack())
+				qdLogPanic("PANIC in handleCheck task", r)
 				finishTask(t, nil, fmt.Errorf("internal panic: %v", r))
 			}
 		}()
@@ -779,7 +780,7 @@ func handleCheck(id int64, input map[string]interface{}) {
 		go func() {
 			defer func() {
 				if r := recover(); r != nil {
-					_, _ = fmt.Fprintf(os.Stderr, "PANIC in handleCheck validity probe: %v\n%s", r, debug.Stack())
+					qdLogPanic("PANIC in handleCheck validity probe", r)
 					vch <- validityResult{}
 				}
 			}()
@@ -884,7 +885,7 @@ func handleDiag(id int64, input map[string]interface{}) {
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				_, _ = fmt.Fprintf(os.Stderr, "PANIC in handleDiag task: %v\n%s", r, debug.Stack())
+				qdLogPanic("PANIC in handleDiag task", r)
 				finishTask(t, nil, fmt.Errorf("internal panic: %v", r))
 			}
 		}()
@@ -906,7 +907,7 @@ func handleDiag(id int64, input map[string]interface{}) {
 			go func(s siteConfig) {
 				defer func() {
 					if r := recover(); r != nil {
-						_, _ = fmt.Fprintf(os.Stderr, "PANIC in handleDiag worker (%s): %v\n%s", s.Key, r, debug.Stack())
+						qdLogPanic(fmt.Sprintf("PANIC in handleDiag worker (%s)", s.Key), r)
 					}
 				}()
 				defer wg.Done()
@@ -972,6 +973,8 @@ func diagProbe(ctx context.Context, client *http.Client, s siteConfig, email, do
 // ---- 主循环 ----
 
 func main() {
+	qdLogStart()
+	defer qdLogExit()
 	reader := bufio.NewReader(os.Stdin)
 	var wg sync.WaitGroup
 	for {
@@ -981,6 +984,9 @@ func main() {
 		}
 		data := strings.TrimSpace(line)
 		if data == "" {
+			continue
+		}
+		if qdObserveLine(data) {
 			continue
 		}
 		wg.Add(1)
@@ -996,7 +1002,7 @@ func dispatch(raw string) {
 	var req rpcRequest
 	defer func() {
 		if r := recover(); r != nil {
-			_, _ = fmt.Fprintf(os.Stderr, "PANIC %v\n%s", r, debug.Stack())
+			qdLogPanic("PANIC", r)
 			if req.ID != 0 {
 				respondError(req.ID, -32603, "internal error: panic recovered")
 			}

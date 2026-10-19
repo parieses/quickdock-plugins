@@ -502,11 +502,11 @@ func handleTableRows(id int64, input map[string]interface{}) {
 	if ordCol == "" && pk != "" {
 		ordCol, ordDir = pk, "ASC"
 	}
-	q := "SELECT * FROM " + tbl + where
+	baseSQL := "SELECT * FROM " + tbl + where
 	if ordCol != "" {
-		q += " ORDER BY " + quoteIdent(conn.kind, ordCol) + " " + ordDir
+		baseSQL += " ORDER BY " + quoteIdent(conn.kind, ordCol) + " " + ordDir
 	}
-	q += fmt.Sprintf(" LIMIT %d OFFSET %d", size, (page-1)*size)
+	q := baseSQL + fmt.Sprintf(" LIMIT %d OFFSET %d", size, (page-1)*size)
 
 	start := time.Now()
 	ctx, cancel := context.WithTimeout(context.Background(), dbQueryTimeout)
@@ -515,6 +515,9 @@ func handleTableRows(id int64, input map[string]interface{}) {
 	res.DurationMs = time.Since(start).Milliseconds()
 	res.Page, res.PageSize, res.OrderBy, res.OrderDir = page, size, orderBy, orderDir
 	res.Total = -1
+	// SQL 预览：参数内联成可复制文本；SQLFull 去掉分页便于直接复用
+	res.SQL = inlineSQLArgs(q, fargs)
+	res.SQLFull = inlineSQLArgs(baseSQL, fargs)
 	if err != nil {
 		res.Success = false
 		res.Error = err.Error()

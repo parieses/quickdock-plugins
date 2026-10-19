@@ -64,6 +64,9 @@ type DbQueryResult struct {
 	// 多语句模式下填充：第几条语句（从 1 开始）与原始语句文本
 	Index     int    `json:"index"`
 	Statement string `json:"statement"`
+	// SQL 预览：table.rows 返回实际执行的 SQL（参数已内联），便于前端展示/复制
+	SQL     string `json:"sql"`     // 含 LIMIT/OFFSET，即本页真实执行的语句
+	SQLFull string `json:"sqlFull"` // 去掉分页，便于直接拿去复用
 }
 
 // DbQueryMultiResult 一次「query.run」可能包含多条以分号分隔的语句，每条对应一个 DbQueryResult。
@@ -319,6 +322,54 @@ func splitSQLStatements(sql string) []string {
 		stmts = append(stmts, s)
 	}
 	return stmts
+}
+
+// sqlLiteral 把单个参数渲染成 SQL 字面量（仅用于「SQL 预览」展示，不参与实际执行）。
+func sqlLiteral(v interface{}) string {
+	switch x := v.(type) {
+	case nil:
+		return "NULL"
+	case string:
+		return "'" + strings.ReplaceAll(x, "'", "''") + "'"
+	case []byte:
+		return "'" + strings.ReplaceAll(string(x), "'", "''") + "'"
+	case time.Time:
+		return "'" + x.Format("2006-01-02 15:04:05") + "'"
+	default:
+		return fmt.Sprint(x)
+	}
+}
+
+// inlineSQLArgs 把查询里的 ? 占位符替换成实际参数，产出可直接复制的完整 SQL。
+// 会跳过引号与反斜杠转义内的 ?，避免误替换字面量里的问号。
+func inlineSQLArgs(query string, args []interface{}) string {
+	if len(args) == 0 {
+		return query
+	}
+	var b strings.Builder
+	ai := 0
+	inSingle, inDouble := false, false
+	for i := 0; i < len(query); i++ {
+		ch := query[i]
+		switch {
+		case ch == '\\' && (inSingle || inDouble) && i+1 < len(query):
+			b.WriteByte(ch)
+			i++
+			b.WriteByte(query[i])
+		case ch == '\'' && !inDouble:
+			inSingle = !inSingle
+			b.WriteByte(ch)
+		case ch == '"' && !inSingle:
+			inDouble = !inDouble
+			b.WriteByte(ch)
+		case ch == '?' && !inSingle && !inDouble && ai < len(args):
+			b.WriteString(sqlLiteral(args[ai]))
+			ai++
+		default:
+			b.WriteByte(ch)
+		}
+	}
+	return b.String()
 }
 
 func execSQL(ctx context.Context, d *sql.DB, query string, args ...interface{}) (*DbQueryResult, error) {

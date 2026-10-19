@@ -50,7 +50,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"runtime/debug"
 	"sort"
 	"strconv"
 	"strings"
@@ -104,6 +103,7 @@ func writeLine(v interface{}) {
 }
 
 func respond(id int64, result interface{}) {
+	defer qdFinishRequest(id, 0, "")
 	payload, err := json.Marshal(result)
 	if err != nil {
 		respondError(id, -32603, "marshal result failed: "+err.Error())
@@ -113,6 +113,7 @@ func respond(id int64, result interface{}) {
 }
 
 func respondError(id int64, code int, msg string) {
+	defer qdFinishRequest(id, code, msg)
 	writeLine(rpcResponse{JSONRPC: "2.0", ID: id, Error: &rpcError{Code: code, Message: msg}})
 }
 
@@ -1217,7 +1218,7 @@ func (a *app) disconnect() {
 func (a *app) readLoop(conn net.Conn) {
 	defer func() {
 		if r := recover(); r != nil {
-			hostLog("error", "readLoop panic: %v\n%s", r, debug.Stack())
+			qdLogPanic("readLoop", r)
 		}
 		a.mu.Lock()
 		if a.conn == conn {
@@ -2094,6 +2095,8 @@ func (a *app) handleExecute(input map[string]interface{}, cmd string) (interface
 // ============================================================ 入口
 
 func main() {
+	qdLogStart()
+	defer qdLogExit()
 	appState.cfg = defaultConfig()
 	// 配置落在 <用户主目录>/.quickdock/plugin-data/<id>/config.json，与插件安装目录分离；
 	// ensureDataFile 首次运行会把安装目录里的老 config.json 迁过来。
@@ -2130,6 +2133,10 @@ func main() {
 		if len(line) == 0 {
 			continue
 		}
+		// 只吞自己 log.* 的回包；host.* 的回包仍交给下方 dispatch 派发
+		if qdObserveLine(string(line)) {
+			continue
+		}
 		var req rpcRequest
 		if err := json.Unmarshal(line, &req); err != nil {
 			respondError(0, -32700, "parse error: "+err.Error())
@@ -2138,7 +2145,7 @@ func main() {
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
-					hostLog("error", "dispatch panic: %v\n%s", r, debug.Stack())
+					qdLogPanic("dispatch", r)
 					if req.ID != 0 {
 						respondError(req.ID, -32000, fmt.Sprintf("internal error: %v", r))
 					}

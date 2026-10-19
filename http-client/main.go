@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"runtime/debug"
 	"strings"
 	"sync"
 )
@@ -103,6 +102,7 @@ func strSliceFrom(input map[string]interface{}, key string) []string {
 var outMu sync.Mutex
 
 func respond(id int64, result interface{}) {
+	defer qdFinishRequest(id, 0, "")
 	outMu.Lock()
 	defer outMu.Unlock()
 	out, _ := json.Marshal(map[string]interface{}{"jsonrpc": "2.0", "id": id, "result": result})
@@ -110,6 +110,7 @@ func respond(id int64, result interface{}) {
 }
 
 func respondError(id int64, code int, msg string) {
+	defer qdFinishRequest(id, code, msg)
 	outMu.Lock()
 	defer outMu.Unlock()
 	out, _ := json.Marshal(map[string]interface{}{
@@ -147,6 +148,8 @@ func dispatch(raw string) {
 }
 
 func main() {
+	qdLogStart()
+	defer qdLogExit()
 	// 数据库路径：<用户主目录>/.quickdock/plugin-data/io.github.parieses.http-client/
 	// （与插件安装目录分离，升级不丢；见 datadir.go）。首启会把安装目录里的老库搬过来。
 	dbPath := ensureDataFile("io.github.parieses.http-client.db")
@@ -174,6 +177,9 @@ func main() {
 		if data == "" {
 			continue
 		}
+		if qdObserveLine(data) {
+			continue
+		}
 		wg.Add(1)
 		go func(raw string) {
 			defer wg.Done()
@@ -186,7 +192,7 @@ func main() {
 			defer func() {
 				if panicked {
 					if r := recover(); r != nil {
-						fmt.Fprintf(os.Stderr, "[panic] http-client dispatch: %v\n%s\n", r, debug.Stack())
+						qdLogPanic("[panic] http-client dispatch", r)
 						respondError(reqID, -32603, "internal error")
 					}
 				}

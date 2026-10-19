@@ -4,8 +4,6 @@ package main
 
 import (
 	"fmt"
-	"os"
-	"runtime/debug"
 	"syscall"
 	"time"
 	"unsafe"
@@ -73,7 +71,7 @@ func isKeyDown(vk uint32) bool {
 func waitPickLoop(epoch int) {
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Fprintf(os.Stderr, "color-converter waitPickLoop panic: %v\n%s\n", r, debug.Stack())
+			qdLogPanic("color-converter waitPickLoop panic", r)
 		}
 	}()
 	const waitTimeout = 60 * time.Second

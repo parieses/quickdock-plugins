@@ -26,3 +26,25 @@ func TestSplitSQLStatements(t *testing.T) {
 		}
 	}
 }
+
+func TestInlineSQLArgs(t *testing.T) {
+	cases := []struct {
+		q    string
+		args []interface{}
+		want string
+	}{
+		{"SELECT * FROM t", nil, "SELECT * FROM t"},
+		{"SELECT * FROM `t` WHERE `a` LIKE ? AND `b` LIKE ?",
+			[]interface{}{"%x%", "it's"}, "SELECT * FROM `t` WHERE `a` LIKE '%x%' AND `b` LIKE 'it''s'"},
+		// 引号内的 ? 不能被替换
+		{"SELECT '?' AS q WHERE a = ?", []interface{}{"1"}, "SELECT '?' AS q WHERE a = '1'"},
+		{"SELECT * FROM t WHERE a = ? AND b = ? LIMIT 100 OFFSET 200",
+			[]interface{}{nil, 12}, "SELECT * FROM t WHERE a = NULL AND b = 12 LIMIT 100 OFFSET 200"},
+	}
+	for i, c := range cases {
+		got := inlineSQLArgs(c.q, c.args)
+		if got != c.want {
+			t.Errorf("case %d: got %q want %q", i, got, c.want)
+		}
+	}
+}

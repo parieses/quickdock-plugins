@@ -18,9 +18,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
-	"runtime/debug"
 	"strings"
 	"sync"
 )
@@ -94,6 +92,7 @@ func strSliceFrom(input map[string]interface{}, key string) []string {
 var outMu sync.Mutex
 
 func respond(id int64, result interface{}) {
+	defer qdFinishRequest(id, 0, "")
 	outMu.Lock()
 	defer outMu.Unlock()
 	out, _ := json.Marshal(map[string]interface{}{"jsonrpc": "2.0", "id": id, "result": result})
@@ -101,6 +100,7 @@ func respond(id int64, result interface{}) {
 }
 
 func respondError(id int64, code int, msg string) {
+	defer qdFinishRequest(id, code, msg)
 	outMu.Lock()
 	defer outMu.Unlock()
 	out, _ := json.Marshal(map[string]interface{}{
@@ -183,6 +183,8 @@ func handleCommand(id int64, p executeParams) {
 }
 
 func main() {
+	qdLogStart()
+	defer qdLogExit()
 	reader := bufio.NewReader(os.Stdin)
 	var wg sync.WaitGroup
 	for {
@@ -194,6 +196,9 @@ func main() {
 		if data == "" {
 			continue
 		}
+		if qdObserveLine(data) {
+			continue
+		}
 		// 每个请求独立 goroutine：任何 handler 都不阻塞 stdin 读循环，
 		// host.ping 永远秒回，杜绝"同步 handler 卡住 → 健康检查超时 → 被误杀"。
 		wg.Add(1)
@@ -201,7 +206,7 @@ func main() {
 			defer wg.Done()
 			defer func() {
 				if r := recover(); r != nil {
-					log.Printf("git-workbench: panic in request handler: %v\n%s", r, debug.Stack())
+					qdLogPanic("request handler", r)
 					var rq rpcRequest
 					id := int64(0)
 					if json.Unmarshal([]byte(raw), &rq) == nil {

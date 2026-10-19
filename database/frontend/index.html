@@ -165,6 +165,15 @@
     .pager { display:flex; align-items:center; gap:5px; height:31px; padding:0 9px; border-top:1px solid var(--border); background:var(--bg-secondary); flex-shrink:0; font-size:var(--fs-xs); }
     .pager .spacer { flex:1; }
 
+    /* SQL 预览（筛选/排序后的可复制语句） */
+    .sqlprev { flex-shrink:0; border-top:1px solid var(--border); background:var(--bg-secondary); }
+    .sqlprev-head { display:flex; align-items:center; gap:6px; height:29px; padding:0 9px; font-size:var(--fs-xs); }
+    .sqlprev-head .spacer { flex:1; }
+    .sqlprev-body { margin:0; max-height:150px; overflow:auto; padding:8px 11px; border-top:1px solid var(--border);
+      background:var(--bg-primary); color:var(--text-primary); font-family:var(--font-mono);
+      font-size:var(--fs-xs); line-height:1.6; white-space:pre-wrap; word-break:break-all;
+      user-select:text; -webkit-user-select:text; }
+
     /* 结构视图的分区 */
     .sect { border-bottom:1px solid var(--border); }
     .sect-head { display:flex; align-items:center; gap:8px; height:28px; padding:0 10px; background:var(--bg-secondary); border-bottom:1px solid var(--border); font-size:var(--fs-xs); font-weight:var(--fw-semibold); color:var(--text-muted); position:sticky; top:0; z-index:3; }
@@ -539,6 +548,26 @@
                 <span class="muted">第 {{ t.grid.page }} 页</span>
                 <button class="btn2 xs" :disabled="!hasNext(t)" @click="reloadData(t,t.grid.page+1)">›</button>
                 <button class="btn2 xs" :disabled="!hasNext(t)" @click="reloadData(t, 999999)">»</button>
+              </div>
+
+              <!-- SQL 预览：展示本次实际执行的语句（筛选/排序/分页已体现），可直接复制 -->
+              <div class="sqlprev" v-if="t.grid.sql">
+                <div class="sqlprev-head">
+                  <button class="btn2 xs" @click="t.showSql = !t.showSql" :title="t.showSql ? '收起 SQL 预览' : '展开 SQL 预览'">
+                    {{ t.showSql ? '▾' : '▸' }} SQL 预览
+                  </button>
+                  <template v-if="t.showSql">
+                    <button class="btn2 xs" @click="t.sqlOmitPage = !t.sqlOmitPage"
+                            :title="t.sqlOmitPage ? '当前不含分页，点击切换为含 LIMIT/OFFSET' : '当前含分页，点击切换为不含 LIMIT/OFFSET'">
+                      {{ t.sqlOmitPage ? '不含分页' : '含分页' }}
+                    </button>
+                    <button class="btn2 xs" @click="copyText(t.sqlOmitPage ? t.grid.sqlFull : t.grid.sql)">⧉ 复制</button>
+                    <button class="btn2 xs" @click="openSqlInQuery(t)" title="把这段 SQL 复制到新的查询页继续编辑">↗ 查询页</button>
+                  </template>
+                  <div class="spacer"></div>
+                  <span class="pill filt" v-if="hasFilter(t)">筛选条件已并入 WHERE</span>
+                </div>
+                <pre class="sqlprev-body" v-if="t.showSql">{{ t.sqlOmitPage ? (t.grid.sqlFull || t.grid.sql) : t.grid.sql }}</pre>
               </div>
             </div>
 
@@ -972,6 +1001,8 @@
     g.affected = (r.affected == null ? -1 : r.affected)
     g.durationMs = (r.durationMs == null ? -1 : r.durationMs)
     g.truncated = !!r.truncated
+    g.sql = r.sql || ''
+    g.sqlFull = r.sqlFull || ''
     g.ran = true
     return g
   }
@@ -1221,8 +1252,9 @@
         var exist = this.tabs.find(function(t){ return t.id===id })
         if(exist){ this.activeTabId = exist.id; return exist }
         var t = Object.assign({ id:id, filter:'', sel:'', loading:false, _stale:false,
-          // 多结果（多条 SQL）、列宽、列名补全、数据页筛选
-          multiResults:null, activeResult:0, colWidths:{}, tableCols:{}, filters:{} }, o)
+          // 多结果（多条 SQL）、列宽、列名补全、数据页筛选、SQL 预览
+          multiResults:null, activeResult:0, colWidths:{}, tableCols:{}, filters:{},
+          showSql:false, sqlOmitPage:false }, o)
         if(t.kind==='table' || t.kind==='query'){
           if(!t.grid) t.grid = blankGrid()
           t.grid.pageSize = this.settings.pageSize // 用设置的默认每页行数
@@ -1437,12 +1469,28 @@
       },
       applyFilter: function(t){
         if(!t || !t.grid) return
+        t.showSql = true // 筛选后自动展开 SQL 预览，方便核对/复制
         this.reloadData(t, 1)
       },
       clearFilter: function(t){
         if(!t) return
         t.filters = {}
         this.reloadData(t, 1)
+      },
+      // 把数据页当前 SQL（已含筛选/排序）开到查询页，便于继续编辑
+      openSqlInQuery: function(t){
+        if(!t || !t.grid || !t.grid.sql){ toast('暂无 SQL 可打开','err'); return }
+        var c = this.conns.find(function(x){ return x.id===t.connId })
+        if(!c){ toast('找不到连接','err'); return }
+        var n = this.tabs.filter(function(x){ return x.kind==='query' }).length
+        var q = this.newTab({
+          id: 'q:' + (++this.tabSeq), kind:'query', connId:c.id, connName:c.name,
+          db: t.db || '', dbLabel:'',
+          sql: (t.sqlOmitPage ? (t.grid.sqlFull || t.grid.sql) : t.grid.sql),
+          tables:[], tableTypes:{}, title: n === 0 ? '查询' : ('查询 ' + (n+1))
+        })
+        this.loadQueryTables(q)
+        toast('已在新查询页打开','ok')
       },
       sortBy: function(t, col){
         var g = t.grid
@@ -2084,6 +2132,35 @@
   app._toasts = mounted.toasts
   app._vm = mounted
   if(initSeen && !booted) bootNow(initPayload)
+})()
+</script>
+<!-- 运行期异常上报：未捕获异常 / Promise 拒绝 -> 宿主 plugin-YYYYMMDD.log（E 级） -->
+<script>
+(function () {
+  if (window.__qdErrHook) return
+  window.__qdErrHook = true
+  var sent = 0, last = {}
+  function report(kind, msg, stack) {
+    try {
+      if (sent >= 20) return // 单页最多 20 条，防止循环报错刷屏
+      var key = kind + '|' + msg
+      var now = Date.now()
+      if (last[key] && now - last[key] < 10000) return // 同一错误 10s 内只报一次
+      last[key] = now
+      sent++
+      if (typeof window.qdHostCall !== 'function') return
+      window.qdHostCall('log.error', {
+        message: '前端' + kind + ': ' + msg + (stack ? ' | ' + String(stack).slice(0, 600) : '')
+      }).catch(function () {})
+    } catch (e) {}
+  }
+  window.addEventListener('error', function (e) {
+    report('未捕获异常', (e && e.message) || 'unknown', e && e.error && e.error.stack)
+  })
+  window.addEventListener('unhandledrejection', function (e) {
+    var r = e && e.reason
+    report('Promise 拒绝', (r && r.message) || String(r), r && r.stack)
+  })
 })()
 </script>
 </body>

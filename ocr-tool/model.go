@@ -136,6 +136,7 @@ func startDownload() {
 		defer func() {
 			if r := recover(); r != nil {
 				logf("startDownload panic: %v\n%s", r, debug.Stack())
+				qdLogPanic("startDownload panic", r)
 				fmt.Fprintf(os.Stderr, "ocr-tool startDownload panic: %v\n", r)
 				dl.mu.Lock()
 				dl.active = false

@@ -23,7 +23,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"runtime/debug"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -274,6 +273,8 @@ func (r *benchRun) percentiles(hist []int64) (p50, p90, p95, p99 int64) {
 var stdout = bufio.NewWriter(os.Stdout)
 
 func main() {
+	qdLogStart()
+	defer qdLogExit()
 	reader := bufio.NewReader(os.Stdin)
 	for {
 		line, err := reader.ReadString('\n')
@@ -284,10 +285,13 @@ func main() {
 		if data == "" {
 			continue
 		}
+		if qdObserveLine(data) {
+			continue
+		}
 		go func(raw string) {
 			defer func() {
 				if r := recover(); r != nil {
-					fmt.Fprintf(os.Stderr, "[api-loadtest] dispatch panic: %v\n%s\n", r, debug.Stack())
+					qdLogPanic("[api-loadtest] dispatch panic", r)
 					var req rpcRequest
 					if err := json.Unmarshal([]byte(raw), &req); err == nil && req.ID != 0 {
 						respondError(req.ID, -32603, fmt.Sprintf("internal panic: %v", r))
@@ -549,7 +553,7 @@ func (r *benchRun) run() {
 	}()
 	defer func() {
 		if rec := recover(); rec != nil {
-			fmt.Fprintf(os.Stderr, "[api-loadtest] bench run panic: %v\n%s\n", rec, debug.Stack())
+			qdLogPanic("[api-loadtest] bench run panic", rec)
 		}
 	}()
 
@@ -569,7 +573,7 @@ func (r *benchRun) run() {
 		go func() {
 			defer func() {
 				if r := recover(); r != nil {
-					fmt.Fprintf(os.Stderr, "[api-loadtest] duration watcher panic: %v\n%s\n", r, debug.Stack())
+					qdLogPanic("[api-loadtest] duration watcher panic", r)
 				}
 			}()
 			time.Sleep(time.Duration(r.cfg.DurationSec) * time.Second)
@@ -619,7 +623,7 @@ func (r *benchRun) worker(client *http.Client, ctx context.Context, wg *sync.Wai
 	defer wg.Done()
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Fprintf(os.Stderr, "[api-loadtest] worker panic: %v\n%s\n", r, debug.Stack())
+			qdLogPanic("[api-loadtest] worker panic", r)
 		}
 	}()
 	for {
@@ -675,6 +679,7 @@ func doRequest(client *http.Client, ctx context.Context, cfg benchConfig) (laten
 // ---- 响应 ----
 
 func respond(id int64, result interface{}) {
+	defer qdFinishRequest(id, 0, "")
 	payload, err := json.Marshal(result)
 	if err != nil {
 		respondError(id, -32603, "marshal result failed: "+err.Error())
@@ -684,6 +689,7 @@ func respond(id int64, result interface{}) {
 }
 
 func respondError(id int64, code int, msg string) {
+	defer qdFinishRequest(id, code, msg)
 	writeResponse(rpcResponse{JSONRPC: "2.0", ID: id, Error: &rpcError{Code: code, Message: msg}})
 }
 

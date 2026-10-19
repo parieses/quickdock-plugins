@@ -18,7 +18,6 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
-	"runtime/debug"
 	"strings"
 
 	_ "golang.org/x/image/bmp"
@@ -284,12 +283,14 @@ func boolFrom(input map[string]interface{}, key string) bool {
 var answered bool
 
 func respond(id int64, result interface{}) {
+	defer qdFinishRequest(id, 0, "")
 	out, _ := json.Marshal(map[string]interface{}{"jsonrpc": "2.0", "id": id, "result": result})
 	answered = true
 	fmt.Println(string(out))
 }
 
 func respondError(id int64, code int, msg string) {
+	defer qdFinishRequest(id, code, msg)
 	out, _ := json.Marshal(map[string]interface{}{
 		"jsonrpc": "2.0", "id": id,
 		"error": map[string]interface{}{"code": code, "message": msg},
@@ -431,6 +432,8 @@ func dispatch(raw string) {
 }
 
 func main() {
+	qdLogStart()
+	defer qdLogExit()
 	reader := bufio.NewReader(os.Stdin)
 	for {
 		line, err := reader.ReadString('\n')
@@ -439,6 +442,9 @@ func main() {
 		}
 		data := strings.TrimSpace(line)
 		if data == "" {
+			continue
+		}
+		if qdObserveLine(data) {
 			continue
 		}
 
@@ -452,7 +458,7 @@ func main() {
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
-					fmt.Fprintf(os.Stderr, "image-studio dispatch panic: id=%d err=%v\n%s\n", rid.ID, r, debug.Stack())
+					qdLogPanic(fmt.Sprintf("image-studio dispatch panic: id=%d", rid.ID), r)
 					if !answered && rid.ID != 0 {
 						respondError(rid.ID, -32603, fmt.Sprintf("internal panic: %v", r))
 					}

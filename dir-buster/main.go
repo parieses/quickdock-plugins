@@ -12,7 +12,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
@@ -79,6 +78,7 @@ func intFrom(m map[string]interface{}, k string, def int) int {
 var outMu sync.Mutex
 
 func respond(id int64, result interface{}) {
+	defer qdFinishRequest(id, 0, "")
 	out, _ := json.Marshal(map[string]interface{}{"jsonrpc": "2.0", "id": id, "result": result})
 	outMu.Lock()
 	fmt.Println(string(out))
@@ -86,6 +86,7 @@ func respond(id int64, result interface{}) {
 }
 
 func respondError(id int64, code int, msg string) {
+	defer qdFinishRequest(id, code, msg)
 	out, _ := json.Marshal(map[string]interface{}{
 		"jsonrpc": "2.0", "id": id,
 		"error": map[string]interface{}{"code": code, "message": msg},
@@ -168,7 +169,7 @@ func (s *session) run(candidates []string, timeoutMs int) {
 			defer wg.Done()
 			defer func() {
 				if r := recover(); r != nil {
-					fmt.Fprintf(os.Stderr, "[panic] dir-buster worker: %v\n%s\n", r, debug.Stack())
+					qdLogPanic("[panic] dir-buster worker", r)
 				}
 			}()
 			select {
@@ -299,7 +300,7 @@ func handleStart(id int64, input map[string]interface{}) {
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				fmt.Fprintf(os.Stderr, "[panic] dir-buster run: %v\n%s\n", r, debug.Stack())
+				qdLogPanic("[panic] dir-buster run", r)
 				s.mu.Lock()
 				s.errMsg = fmt.Sprintf("panic: %v", r)
 				s.running = false
@@ -396,6 +397,8 @@ func dispatch(raw string) {
 }
 
 func main() {
+	qdLogStart()
+	defer qdLogExit()
 	reader := bufio.NewReader(os.Stdin)
 	var wg sync.WaitGroup
 	for {
@@ -407,12 +410,15 @@ func main() {
 		if data == "" {
 			continue
 		}
+		if qdObserveLine(data) {
+			continue
+		}
 		wg.Add(1)
 		go func(raw string) {
 			defer wg.Done()
 			defer func() {
 				if r := recover(); r != nil {
-					fmt.Fprintf(os.Stderr, "[panic] dir-buster dispatch: %v\n%s\n", r, debug.Stack())
+					qdLogPanic("[panic] dir-buster dispatch", r)
 					var req rpcRequest
 					if err := json.Unmarshal([]byte(raw), &req); err == nil && req.ID != 0 {
 						respondError(req.ID, -32603, "internal error")

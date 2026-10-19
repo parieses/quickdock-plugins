@@ -48,6 +48,8 @@ var modelsDirCache string
 var answered bool
 
 func main() {
+	qdLogStart()
+	defer qdLogExit()
 	initLog()
 	reader := bufio.NewReader(os.Stdin)
 
@@ -58,6 +60,9 @@ func main() {
 		}
 		line = strings.TrimSpace(line)
 		if line == "" {
+			continue
+		}
+		if qdObserveLine(line) {
 			continue
 		}
 
@@ -71,6 +76,7 @@ func main() {
 			defer func() {
 				if r := recover(); r != nil {
 					logf("dispatch panic: %v\n%s", r, debug.Stack())
+					qdLogPanic("dispatch panic", r)
 					fmt.Fprintf(os.Stderr, "ocr-tool dispatch panic: method=%s id=%d err=%v\n", req.Method, req.ID, r)
 					if !answered && req.ID != 0 {
 						respondError(req.ID, -32603, fmt.Sprintf("internal panic: %v", r))
@@ -156,6 +162,7 @@ func handleExecute(req RPCRequest) {
 var stdoutMu sync.Mutex
 
 func respond(id int64, result interface{}) {
+	defer qdFinishRequest(id, 0, "")
 	data, _ := json.Marshal(RPCResponse{
 		JSONRPC: "2.0",
 		ID:      id,
@@ -170,6 +177,7 @@ func respond(id int64, result interface{}) {
 }
 
 func respondError(id int64, code int, msg string) {
+	defer qdFinishRequest(id, code, msg)
 	logf("respondError id=%d code=%d msg=%s", id, code, msg)
 	data, _ := json.Marshal(RPCResponse{
 		JSONRPC: "2.0",

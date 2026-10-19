@@ -13,7 +13,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
@@ -63,6 +62,7 @@ func intFrom(m map[string]interface{}, k string, def int) int {
 var writeMu sync.Mutex
 
 func respond(id int64, result interface{}) {
+	defer qdFinishRequest(id, 0, "")
 	out, _ := json.Marshal(map[string]interface{}{"jsonrpc": "2.0", "id": id, "result": result})
 	writeMu.Lock()
 	fmt.Println(string(out))
@@ -70,6 +70,7 @@ func respond(id int64, result interface{}) {
 }
 
 func respondError(id int64, code int, msg string) {
+	defer qdFinishRequest(id, code, msg)
 	out, _ := json.Marshal(map[string]interface{}{
 		"jsonrpc": "2.0", "id": id,
 		"error": map[string]interface{}{"code": code, "message": msg},
@@ -133,7 +134,7 @@ func (s *session) snapshot() map[string]interface{} {
 func (s *session) run() {
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Fprintf(os.Stderr, "PANIC in session.run: %v\n%s", r, debug.Stack())
+			qdLogPanic("PANIC in session.run", r)
 		}
 		s.mu.Lock()
 		s.running = false
@@ -146,7 +147,7 @@ func (s *session) run() {
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				fmt.Fprintf(os.Stderr, "PANIC in session stop-watcher: %v\n%s", r, debug.Stack())
+				qdLogPanic("PANIC in session stop-watcher", r)
 			}
 		}()
 		select {
@@ -340,7 +341,7 @@ func handleStop(id int64, input map[string]interface{}) {
 func dispatch(raw string) {
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Fprintf(os.Stderr, "PANIC in dispatch: %v\n%s", r, debug.Stack())
+			qdLogPanic("PANIC in dispatch", r)
 			var req rpcRequest
 			if err := json.Unmarshal([]byte(raw), &req); err == nil && req.ID != 0 {
 				respondError(req.ID, -32603, "internal error: panic recovered")
@@ -378,6 +379,8 @@ func dispatch(raw string) {
 }
 
 func main() {
+	qdLogStart()
+	defer qdLogExit()
 	reader := bufio.NewReader(os.Stdin)
 	var wg sync.WaitGroup
 	for {
@@ -387,6 +390,9 @@ func main() {
 		}
 		data := strings.TrimSpace(line)
 		if data == "" {
+			continue
+		}
+		if qdObserveLine(data) {
 			continue
 		}
 		wg.Add(1)

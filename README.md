@@ -23,7 +23,7 @@
 | [密码与加密工具箱](./crypto-toolbox/) | `io.github.parieses.crypto-toolbox` | 1.0.2 | 随机密码 / 口令生成（字符集可配、熵值与强度评估）＋ AES-GCM / AES-CBC 加解密 ＋ RSA-OAEP 密钥对与加解密 ＋ PBKDF2 密钥派生，全部在本机完成，不联网、不上传 |
 | [cURL 转代码](./curl-converter/) | `io.github.parieses.curl-converter` | 1.0.2 | 把 curl 命令解析成 Python / Go / JavaScript / PHP 请求代码，也支持把 fetch、requests 代码反向转回 curl |
 | [UUID & 假数据生成器](./data-generator/) | `io.github.parieses.data-generator` | 1.0.2 | UUID v4 / v7 生成（批量、可大写）＋ 随机字符串 / 整数 / 字节 ＋ 测试假数据（姓名 / 手机 / 邮箱 / 公司 / 地址 / 身份证(测试) / 日期 / 网址 / 用户名 / 人员），全部在本机生成，不联网、不上传 |
-| [数据库客户端](./database/) | `io.github.parieses.database` | 1.4.6 | 轻量数据库连接与查询工具：MySQL / SQLite / Redis 连接管理、SQL 与 Redis 命令执行、库表浏览器（库→表/视图→字段、Redis 键树）、Redis 键类型感知详情与增删改（string/hash/list/set/zset）、TTL 与 DB 管理、结果网格内联行编辑。数据独立存储（存于 `~/.quickdock/plugin-data/`，升级不丢）。 |
+| [数据库客户端](./database/) | `io.github.parieses.database` | 1.4.7 | 轻量数据库连接与查询工具：MySQL / SQLite / Redis 连接管理、SQL 与 Redis 命令执行、库表浏览器（库→表/视图→字段、Redis 键树）、Redis 键类型感知详情与增删改（string/hash/list/set/zset）、TTL 与 DB 管理、结果网格内联行编辑、数据页 SQL 预览（可复制 / 一键转到查询页）。数据独立存储（存于 `~/.quickdock/plugin-data/`，升级不丢）。 |
 | [目录探测](./dir-buster/) | `io.github.parieses.dir-buster` | 1.0.2 | 对指定目标 URL 用内置常见路径字典进行轻量探测（自用）：并发受限、可配扩展名，采用异步会话模型实时返回命中的非 404 路径。仅探测你授权的目标，内置字典、不递归 |
 | [磁盘分析器](./disk-analyzer/) | `io.github.parieses.disk-analyzer` | 1.0.4 | 可视化磁盘空间占用分析工具，类似 SpaceSniffer，支持树图展示目录结构 |
 | [Emoji 搜索](./emoji-search/) | `io.github.parieses.emoji-search` | 1.0.4 | 搜索 Emoji 并一键复制到剪贴板 |

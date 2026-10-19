@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
-	"runtime/debug"
 	"strings"
 
 	"system-tools/sysutil"
@@ -44,6 +43,8 @@ var runRoots = []struct {
 var regTypeRe = regexp.MustCompile(`REG_(SZ|EXPAND_SZ|MULTI_SZ|DWORD|BINARY|NONE)`)
 
 func main() {
+	qdLogStart()
+	defer qdLogExit()
 	reader := bufio.NewReader(os.Stdin)
 
 	for {
@@ -55,6 +56,9 @@ func main() {
 		if line == "" {
 			continue
 		}
+		if qdObserveLine(line) {
+			continue
+		}
 		var req RPCRequest
 		if err := json.Unmarshal([]byte(line), &req); err != nil {
 			continue
@@ -62,7 +66,7 @@ func main() {
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
-					fmt.Fprintf(os.Stderr, "startup-manager panic: %v\n%s\n", r, debug.Stack())
+					qdLogPanic("startup-manager panic", r)
 					respondError(req.ID, -32000, fmt.Sprintf("internal error: %v", r))
 				}
 			}()
@@ -339,11 +343,13 @@ func toggleFolder(kind, name string, enable bool) error {
 }
 
 func respond(id int64, result interface{}) {
+	defer qdFinishRequest(id, 0, "")
 	data, _ := json.Marshal(RPCResponse{JSONRPC: "2.0", ID: id, Result: mustMarshal(result)})
 	data = append(data, '\n')
 	os.Stdout.Write(data)
 }
 func respondError(id int64, code int, msg string) {
+	defer qdFinishRequest(id, code, msg)
 	data, _ := json.Marshal(RPCResponse{JSONRPC: "2.0", ID: id, Error: &RPCError{Code: code, Message: msg}})
 	data = append(data, '\n')
 	os.Stdout.Write(data)

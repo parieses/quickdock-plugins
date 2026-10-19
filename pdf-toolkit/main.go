@@ -168,6 +168,7 @@ func dispatchWithDiag(raw string) {
 	defer func() {
 		if r := recover(); r != nil {
 			diagLogf("PANIC %v\n%s", r, debug.Stack())
+			qdLogPanic("PANIC", r)
 		}
 	}()
 	method := ""
@@ -191,6 +192,8 @@ func dispatchWithDiag(raw string) {
 }
 
 func main() {
+	qdLogStart()
+	defer qdLogExit()
 	setupDiagLog()
 	diagLogf("进程启动 pid=%d", os.Getpid())
 	defer diagLogf("进程退出")
@@ -203,6 +206,9 @@ func main() {
 		}
 		data := strings.TrimSpace(line)
 		if data == "" {
+			continue
+		}
+		if qdObserveLine(data) {
 			continue
 		}
 		// 每个请求独立 goroutine：任何 handler（含同步慢操作：info 最长 15s、剪贴板
@@ -321,6 +327,7 @@ func handleMerge(id int64, input map[string]interface{}) {
 		defer func() {
 			if r := recover(); r != nil {
 				diagLogf("PANIC in merge task %s: %v\n%s", t.ID, r, debug.Stack())
+				qdLogPanic(fmt.Sprintf("PANIC in merge task %s", t.ID), r)
 				finishPDFTask(t, nil, fmt.Errorf("panic: %v", r))
 			}
 		}()
@@ -371,6 +378,7 @@ func handleSplit(id int64, input map[string]interface{}) {
 		defer func() {
 			if r := recover(); r != nil {
 				diagLogf("PANIC in split task %s: %v\n%s", t.ID, r, debug.Stack())
+				qdLogPanic(fmt.Sprintf("PANIC in split task %s", t.ID), r)
 				finishPDFTask(t, nil, fmt.Errorf("panic: %v", r))
 			}
 		}()
@@ -407,6 +415,7 @@ func handleCompress(id int64, input map[string]interface{}) {
 		defer func() {
 			if r := recover(); r != nil {
 				diagLogf("PANIC in compress task %s: %v\n%s", t.ID, r, debug.Stack())
+				qdLogPanic(fmt.Sprintf("PANIC in compress task %s", t.ID), r)
 				finishPDFTask(t, nil, fmt.Errorf("panic: %v", r))
 			}
 		}()
@@ -459,6 +468,7 @@ func handleWatermark(id int64, input map[string]interface{}) {
 		defer func() {
 			if r := recover(); r != nil {
 				diagLogf("PANIC in watermark task %s: %v\n%s", t.ID, r, debug.Stack())
+				qdLogPanic(fmt.Sprintf("PANIC in watermark task %s", t.ID), r)
 				finishPDFTask(t, nil, fmt.Errorf("panic: %v", r))
 			}
 		}()
@@ -493,6 +503,7 @@ func handleExtractImages(id int64, input map[string]interface{}) {
 		defer func() {
 			if r := recover(); r != nil {
 				diagLogf("PANIC in extract task %s: %v\n%s", t.ID, r, debug.Stack())
+				qdLogPanic(fmt.Sprintf("PANIC in extract task %s", t.ID), r)
 				finishPDFTask(t, nil, fmt.Errorf("panic: %v", r))
 			}
 		}()
@@ -968,6 +979,7 @@ func formatSize(bytes int64) string {
 // ---- 响应函数 ----
 
 func respond(id int64, result interface{}) {
+	defer qdFinishRequest(id, 0, "")
 	payload, err := json.Marshal(result)
 	if err != nil {
 		respondError(id, -32603, "marshal result failed: "+err.Error())
@@ -977,6 +989,7 @@ func respond(id int64, result interface{}) {
 }
 
 func respondError(id int64, code int, msg string) {
+	defer qdFinishRequest(id, code, msg)
 	writeResponse(rpcResponse{JSONRPC: "2.0", ID: id, Error: &rpcError{Code: code, Message: msg}})
 }
 

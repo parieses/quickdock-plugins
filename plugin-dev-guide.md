@@ -1066,6 +1066,93 @@ window.addEventListener('message', (e) => {
 
 ---
 
+## 日志规范（运行期可观测性）
+
+目标是**一条时间线**：宿主主日志说「何时拉起 / 停止 / 重启插件」，插件日志说「插件内部做了什么、
+哪一步失败、失败在哪个命令上」。两边写入同一目录、同一套分级与时间格式，排障时按插件 ID 过滤即可
+把两段对上：
+
+```
+<dataDir>/logs/quickdock-YYYYMMDD.log   宿主：启动 / 热键 / 插件加载 / 崩溃重启
+<dataDir>/logs/plugin-YYYYMMDD.log      插件：[plugin:<id>] 前缀，I / W / E 三级
+```
+
+行格式固定为 `时间 [级别] [plugin:<id>] 消息`，消息里**不要再写时间戳**（会重复）。
+
+### 三条写入通道
+
+| 运行时 | 写法 | 落盘级别 |
+|---|---|---|
+| `native` | JSON-RPC 请求 `log.info` / `log.warn` / `log.error`，`params:{"message":"..."}` | I / W / E |
+| `goja` | `api.log(msg)` / `api.warn(msg)` / `api.error(msg)` | I / W / E |
+| `none` 与所有插件前端 | `qdHostCall('log.info'/'log.warn'/'log.error', { message })` | I / W / E |
+
+共同约束：
+
+- **必须带 `id`**（native）：宿主对无 `id` 的「通知」会静默丢弃，日志会直接消失。
+- **一条日志一行**：消息里的换行会被宿主按行拆成多条（还会污染日志结构），堆栈、HTTP 响应、
+  子进程输出都要先压成一行再截断。
+- **不要写进插件安装目录**：插件自己的诊断文件放 `<plugin-data>/logs/`，升级不会丢。
+
+### 必埋点清单
+
+「能跑起来」不等于「出事查得到」。下面这些点每个插件都该有，缺一个就会出现「用户说失败了，
+日志里什么都没有」：
+
+| 时点 | 级别 | 建议内容 |
+|---|---|---|
+| 进程启动 | I | `进程启动 pid=… os=… exe=…` |
+| `initialize` 握手 | I | 收到 + 完成（带 `hostVersion`，失败要记 E） |
+| 命令开始 | I | `命令开始 command=… id=…`（高频轮询命令按 2s 节流） |
+| 命令完成 | I | `命令完成 command=… 耗时=…`（≥1s 才记，避免刷屏） |
+| 命令失败 | E | `命令失败 command=… code=… msg=… 耗时=…` |
+| 未识别命令 / 参数不合法 | W | `command 未识别`、`请求不合法`（属调用方问题，不是插件故障） |
+| panic | E | `PANIC where=… err=… stack=…`（**必须带栈，且只占一行**） |
+| 慢命令 | W | 耗时 ≥10s 提醒（宿主默认 20s 超时，快到了要能看出来） |
+| 收到 `shutdown` / stdin 关闭 | I | `收到 shutdown，准备退出（已运行 …）` |
+| 前端未捕获异常 / Promise 拒绝 | E | `前端未捕获异常: … | stack…`（单页 20 条上限、同错 10s 去重） |
+
+### 统一字段风格
+
+沿用宿主日志的写法：关键信息用 `k=v`，多个字段空格分隔，耗时用 `38ms` / `1.2s` / `650µs`。
+
+```
+[I] [plugin:io.github.parieses.port-scanner] 命令开始 command=port-check id=2
+[I] [plugin:io.github.parieses.port-scanner] port-check 完成 耗时=1ms
+[E] [plugin:io.github.parieses.port-scanner] scan 失败 code=-32603 msg=permission denied 耗时=3.20s
+[W] [plugin:io.github.parieses.port-scanner] 命令耗时偏高 耗时=12.4s（宿主默认 20s 超时，可调 plugin.json backend.timeout）
+```
+
+### 现成实现（直接复用，别重写）
+
+| 文件 | 用途 |
+|---|---|
+| `templates/qdlog.go` | native 插件的日志模块：`qdLogStart/Exit`、`qdObserveLine`、`qdFinishRequest`、`qdLogPanic` |
+| `tools/apply_qdlog.py` | 把 `qdlog.go` 复制进插件并自动埋点（main 读循环 / respond / respondError / panic）；`--all` 全量、`--dry-run` 预览 |
+| `templates/qdlog_shim.js` | goja 插件末尾追加的包裹层：包住 `handleExecute` / `handleInitialize`，记录耗时与异常 |
+| `templates/qdlog_frontend.html` | 前端页面末尾的异常上报钩子（`window.error` + `unhandledrejection`） |
+
+native 侧的关键设计（改之前先看 `qdlog.go` 顶部注释）：
+
+- `respond` / `respondError` 是**所有**失败路径的唯一出口，在这两处埋点即可覆盖全部 handler，
+  不必每个 handler 各写一遍；错误码按语义分级（`-32601` / `-32602` / `-32700` 记 W，其余记 E）。
+- `qdObserveLine` 只吞**自己 `log.*` 的回包**（`method` 为空且 id 命中 `qdPending`），
+  `host.*` 的回包照旧交回原逻辑——否则会误吞插件正在等待的 host 响应，直接把调用方卡死。
+  为彻底避免 id 撞车，日志请求的自增 id 从 `1<<40` 起。
+- 日志先记「进程启动」，再记握手与命令；`defer qdLogExit()` 保证 stdin 关闭时留下退出与运行时长。
+
+### 反例
+
+| 写法 | 后果 |
+|---|---|
+| `fmt.Fprintf(os.Stderr, "... panic: %v\n%s", r, debug.Stack())` | 宿主固定记 **WARN**、且堆栈按行拆成几十条；应改 `qdLogPanic`（记 E、单行、带前几帧） |
+| 发 `log.info` 不带 `id` | 宿主静默丢弃，日志直接不见 |
+| 每条命令都完整打一遍（含 200ms 一次的 `task-status` 轮询） | 刷屏淹没真正的错误；应节流 |
+| 把日志写进插件安装目录 | 升级时整个目录被改名卷走，日志丢失 |
+| 前端报错只 `console.error` | GUI 子系统下根本看不到；应经 `qdHostCall('log.error')` 上报 |
+
+---
+
 ## 安装与调试
 
 ### 安装插件

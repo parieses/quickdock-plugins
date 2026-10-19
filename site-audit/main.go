@@ -23,7 +23,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"runtime/debug"
 	"sort"
 	"strconv"
 	"strings"
@@ -86,6 +85,7 @@ func intFrom(m map[string]interface{}, k string, def int) int {
 var writeMu sync.Mutex
 
 func respond(id int64, result interface{}) {
+	defer qdFinishRequest(id, 0, "")
 	out, _ := json.Marshal(map[string]interface{}{"jsonrpc": "2.0", "id": id, "result": result})
 	writeMu.Lock()
 	defer writeMu.Unlock()
@@ -93,6 +93,7 @@ func respond(id int64, result interface{}) {
 }
 
 func respondError(id int64, code int, msg string) {
+	defer qdFinishRequest(id, code, msg)
 	out, _ := json.Marshal(map[string]interface{}{
 		"jsonrpc": "2.0", "id": id,
 		"error": map[string]interface{}{"code": code, "message": msg},
@@ -104,7 +105,7 @@ func respondError(id int64, code int, msg string) {
 
 // recoverAndLog 记录 panic 到 stderr（不污染 stdout JSON-RPC 流），含完整堆栈。
 func recoverAndLog(where string, r interface{}) {
-	fmt.Fprintf(os.Stderr, "[site-audit][panic:%s] %v\n%s\n", where, r, debug.Stack())
+	qdLogPanic(fmt.Sprintf("[site-audit][panic:%s]", where), r)
 }
 
 // safeDispatch 包裹 dispatch，捕获 panic 防止 os.Exit 杀进程；
@@ -533,15 +534,15 @@ func handlePropagation(id int64, input map[string]interface{}) {
 		if !ok {
 			continue
 		}
-			ans := toStringSlice(res["answers"])
-			sort.Strings(ans)
-			key := strings.Join(ans, "|")
-			if firstSet == "" {
-				firstSet = key
-			} else if key != firstSet {
-				consistent = false
-			}
-			successful = append(successful, ans)
+		ans := toStringSlice(res["answers"])
+		sort.Strings(ans)
+		key := strings.Join(ans, "|")
+		if firstSet == "" {
+			firstSet = key
+		} else if key != firstSet {
+			consistent = false
+		}
+		successful = append(successful, ans)
 	}
 	if len(successful) == 0 {
 		consistent = false
@@ -1030,6 +1031,8 @@ func dispatch(raw string) {
 }
 
 func main() {
+	qdLogStart()
+	defer qdLogExit()
 	reader := bufio.NewReader(os.Stdin)
 	var wg sync.WaitGroup
 	for {
@@ -1039,6 +1042,9 @@ func main() {
 		}
 		data := strings.TrimSpace(line)
 		if data == "" {
+			continue
+		}
+		if qdObserveLine(data) {
 			continue
 		}
 		wg.Add(1)

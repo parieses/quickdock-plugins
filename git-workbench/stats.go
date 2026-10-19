@@ -2,8 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
-	"runtime/debug"
 	"sort"
 	"time"
 
@@ -62,7 +60,7 @@ func handleStatsStart(id int64, input map[string]interface{}) {
 func runStats(t *asyncTask, repo *git.Repository, limit int) {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Printf("git-workbench: panic in stats task %s: %v\n%s", t.ID, r, debug.Stack())
+			qdLogPanic(fmt.Sprintf("stats task %s", t.ID), r)
 			t.fail(fmt.Errorf("panic: %v", r))
 		}
 	}()

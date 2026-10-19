@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"runtime/debug"
 	"strings"
 	"sync"
 )
@@ -62,6 +61,8 @@ var stdoutMu sync.Mutex
 var cbSeq int64 = 1_000_000_000
 
 func main() {
+	qdLogStart()
+	defer qdLogExit()
 	reader := bufio.NewReader(os.Stdin)
 	for {
 		line, err := reader.ReadString('\n')
@@ -70,6 +71,9 @@ func main() {
 		}
 		data := strings.TrimSpace(line)
 		if data == "" {
+			continue
+		}
+		if qdObserveLine(data) {
 			continue
 		}
 		var req rpcRequest
@@ -84,7 +88,7 @@ func main() {
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
-					fmt.Fprintf(os.Stderr, "color-converter dispatch panic: %v\n%s\n", r, debug.Stack())
+					qdLogPanic("color-converter dispatch panic", r)
 					respondError(req.ID, -32000, fmt.Sprintf("internal error: %v", r))
 				}
 			}()
@@ -232,6 +236,7 @@ func pickResult(r, g, b uint8, copied bool) map[string]interface{} {
 }
 
 func respond(id int64, result interface{}) {
+	defer qdFinishRequest(id, 0, "")
 	payload, err := json.Marshal(result)
 	if err != nil {
 		respondError(id, -32603, "marshal result failed: "+err.Error())
@@ -241,6 +246,7 @@ func respond(id int64, result interface{}) {
 }
 
 func respondError(id int64, code int, msg string) {
+	defer qdFinishRequest(id, code, msg)
 	writeResponse(rpcResponse{JSONRPC: "2.0", ID: id, Error: &rpcError{Code: code, Message: msg}})
 }
 

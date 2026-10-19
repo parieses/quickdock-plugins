@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"runtime/debug"
 	"strings"
 
 	"system-tools/sysutil"
@@ -41,6 +40,8 @@ type ExecuteParams struct {
 }
 
 func main() {
+	qdLogStart()
+	defer qdLogExit()
 	reader := bufio.NewReader(os.Stdin)
 
 	for {
@@ -50,6 +51,9 @@ func main() {
 		}
 		line = strings.TrimSpace(line)
 		if line == "" {
+			continue
+		}
+		if qdObserveLine(line) {
 			continue
 		}
 
@@ -62,7 +66,7 @@ func main() {
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
-					fmt.Fprintf(os.Stderr, "hosts-manager dispatch panic: method=%s id=%d err=%v\n%s\n", req.Method, req.ID, r, debug.Stack())
+					qdLogPanic(fmt.Sprintf("hosts-manager dispatch panic: method=%s id=%d", req.Method, req.ID), r)
 					if !answered && req.ID != 0 {
 						respondError(req.ID, -32603, fmt.Sprintf("internal panic: %v", r))
 					}
@@ -130,6 +134,7 @@ func handleExecute(req RPCRequest) {
 var answered bool
 
 func respond(id int64, result interface{}) {
+	defer qdFinishRequest(id, 0, "")
 	data, _ := json.Marshal(RPCResponse{
 		JSONRPC: "2.0",
 		ID:      id,
@@ -141,6 +146,7 @@ func respond(id int64, result interface{}) {
 }
 
 func respondError(id int64, code int, msg string) {
+	defer qdFinishRequest(id, code, msg)
 	data, _ := json.Marshal(RPCResponse{
 		JSONRPC: "2.0",
 		ID:      id,

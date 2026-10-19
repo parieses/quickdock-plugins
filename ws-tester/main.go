@@ -13,7 +13,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
@@ -76,6 +75,7 @@ func (wc *wsConn) pushMessage(m map[string]interface{}) {
 }
 
 func respond(id int64, result interface{}) {
+	defer qdFinishRequest(id, 0, "")
 	respondedMu.Lock()
 	responded[id] = true
 	respondedMu.Unlock()
@@ -86,6 +86,7 @@ func respond(id int64, result interface{}) {
 }
 
 func respondError(id int64, code int, msg string) {
+	defer qdFinishRequest(id, code, msg)
 	respondedMu.Lock()
 	responded[id] = true
 	respondedMu.Unlock()
@@ -120,7 +121,7 @@ func handleConnect(id int64, input map[string]interface{}) {
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				fmt.Fprintf(os.Stderr, "PANIC in ws read loop %s: %v\n%s\n", cid, r, debug.Stack())
+				qdLogPanic(fmt.Sprintf("PANIC in ws read loop %s", cid), r)
 			}
 		}()
 		for {
@@ -279,6 +280,8 @@ func dispatch(raw string) {
 }
 
 func main() {
+	qdLogStart()
+	defer qdLogExit()
 	reader := bufio.NewReader(os.Stdin)
 	var wg sync.WaitGroup
 	for {
@@ -290,12 +293,15 @@ func main() {
 		if data == "" {
 			continue
 		}
+		if qdObserveLine(data) {
+			continue
+		}
 		wg.Add(1)
 		go func(raw string) {
 			defer wg.Done()
 			defer func() {
 				if r := recover(); r != nil {
-					fmt.Fprintf(os.Stderr, "PANIC in dispatch: %v\n%s\n", r, debug.Stack())
+					qdLogPanic("PANIC in dispatch", r)
 					var req rpcRequest
 					if err := json.Unmarshal([]byte(raw), &req); err == nil {
 						respondedMu.Lock()

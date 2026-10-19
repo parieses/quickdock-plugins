@@ -31,7 +31,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"runtime/debug"
 	"sort"
 	"strconv"
 	"strings"
@@ -181,6 +180,8 @@ func (j *scanJob) isDone() bool {
 }
 
 func main() {
+	qdLogStart()
+	defer qdLogExit()
 	reader := bufio.NewReader(os.Stdin)
 
 	for {
@@ -192,6 +193,9 @@ func main() {
 		if data == "" {
 			continue
 		}
+		if qdObserveLine(data) {
+			continue
+		}
 
 		var req rpcRequest
 		if err := json.Unmarshal([]byte(data), &req); err != nil {
@@ -201,7 +205,7 @@ func main() {
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
-					fmt.Fprintf(os.Stderr, "disk-analyzer dispatch panic: %v\n%s\n", r, debug.Stack())
+					qdLogPanic("disk-analyzer dispatch panic", r)
 					respondError(req.ID, -32000, fmt.Sprintf("internal error: %v", r))
 				}
 			}()
@@ -596,15 +600,15 @@ func handleScanStatus(id int64, input map[string]interface{}) {
 		}
 	}
 	respond(id, map[string]interface{}{
-		"jobId":       path,
-		"done":        j.done,
-		"truncated":   j.truncated,
-		"scannedDirs": atomic.LoadInt64(&j.scannedDirs),
-		"elapsedMs":   time.Since(j.startedAt).Milliseconds(),
-		"version":     j.version,
-		"progress":    progress,
-		"unchanged":   false,
-		"root":        rootPayload,
+		"jobId":         path,
+		"done":          j.done,
+		"truncated":     j.truncated,
+		"scannedDirs":   atomic.LoadInt64(&j.scannedDirs),
+		"elapsedMs":     time.Since(j.startedAt).Milliseconds(),
+		"version":       j.version,
+		"progress":      progress,
+		"unchanged":     false,
+		"root":          rootPayload,
 		"treeTruncated": treeTruncated,
 	})
 }
@@ -639,7 +643,7 @@ func handleScanStop(id int64, input map[string]interface{}) {
 func (j *scanJob) run(ctx context.Context) {
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Fprintf(os.Stderr, "disk-analyzer scanJob.run panic: %v\n%s\n", r, debug.Stack())
+			qdLogPanic("disk-analyzer scanJob.run panic", r)
 			j.mu.Lock()
 			j.done = true
 			j.truncated = true
@@ -782,7 +786,7 @@ func (j *scanJob) walk(ctx context.Context, path string, node *dirNode, depth in
 			defer wg.Done()
 			defer func() {
 				if r := recover(); r != nil {
-					fmt.Fprintf(os.Stderr, "disk-analyzer walk worker panic: %v\n%s\n", r, debug.Stack())
+					qdLogPanic("disk-analyzer walk worker panic", r)
 				}
 			}()
 			sem <- struct{}{}
@@ -892,7 +896,7 @@ func scanLevelR(path string, depth, limit int, deadline time.Time, rootStarted t
 			defer wg.Done()
 			defer func() {
 				if r := recover(); r != nil {
-					fmt.Fprintf(os.Stderr, "disk-analyzer scanLevelR worker panic: %v\n%s\n", r, debug.Stack())
+					qdLogPanic("disk-analyzer scanLevelR worker panic", r)
 				}
 			}()
 			sem <- struct{}{}
@@ -994,6 +998,7 @@ func dirSize(root string, deadline time.Time, perDir time.Duration) (int64, bool
 // ---- 响应 ----
 
 func respond(id int64, result interface{}) {
+	defer qdFinishRequest(id, 0, "")
 	payload, err := json.Marshal(result)
 	if err != nil {
 		respondError(id, -32603, "marshal result failed: "+err.Error())
@@ -1003,6 +1008,7 @@ func respond(id int64, result interface{}) {
 }
 
 func respondError(id int64, code int, msg string) {
+	defer qdFinishRequest(id, code, msg)
 	writeResponse(rpcResponse{JSONRPC: "2.0", ID: id, Error: &rpcError{Code: code, Message: msg}})
 }
 

@@ -22,13 +22,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"regexp"
-	"runtime/debug"
 	"sort"
 	"strings"
 	"sync"
@@ -57,7 +55,7 @@ func isAnswered(id int64) bool {
 
 // recoverLog 打印 panic 堆栈到 stderr（绝不写 stdout，避免污染 JSON-RPC 协议流）。
 func recoverLog(tag string, r interface{}) {
-	log.Printf("[panic] %s: %v\n%s", tag, r, debug.Stack())
+	qdLogPanic(tag, r)
 }
 
 /* ==================== 数据源 ==================== */
@@ -730,6 +728,7 @@ func boolFrom(m map[string]interface{}, key string, def bool) bool {
 var writeMu sync.Mutex
 
 func respond(id int64, result interface{}) {
+	defer qdFinishRequest(id, 0, "")
 	markAnswered(id)
 	out, _ := json.Marshal(map[string]interface{}{"jsonrpc": "2.0", "id": id, "result": result})
 	writeMu.Lock()
@@ -738,6 +737,7 @@ func respond(id int64, result interface{}) {
 }
 
 func respondError(id int64, code int, msg string) {
+	defer qdFinishRequest(id, code, msg)
 	markAnswered(id)
 	out, _ := json.Marshal(map[string]interface{}{
 		"jsonrpc": "2.0", "id": id,
@@ -866,6 +866,8 @@ func dispatch(raw string) {
 }
 
 func main() {
+	qdLogStart()
+	defer qdLogExit()
 	reader := bufio.NewReader(os.Stdin)
 	var wg sync.WaitGroup
 	for {
@@ -875,6 +877,9 @@ func main() {
 		}
 		data := strings.TrimSpace(line)
 		if data == "" {
+			continue
+		}
+		if qdObserveLine(data) {
 			continue
 		}
 		wg.Add(1)
