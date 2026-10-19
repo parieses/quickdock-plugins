@@ -87,15 +87,12 @@ func (d *downloadState) snapshot() map[string]interface{} {
 	}
 }
 
-// modelsDir 返回模型存储目录（由 initialize 解析 pluginDir 后设置，兜底用 exe 同目录）。
+// modelsDir 返回模型存储目录（<plugin-data>/models，与插件安装目录分离）。
 func modelsDir() string {
 	if modelsDirCache != "" {
 		return modelsDirCache
 	}
-	if e, err := os.Executable(); err == nil {
-		return filepath.Join(filepath.Dir(e), "models")
-	}
-	return filepath.Join(os.TempDir(), "ocr-tool-models")
+	return ensureDataDir("models")
 }
 
 // allAssetsPresent 检查所有必需资产是否已下载且非空。

@@ -529,15 +529,14 @@ func imageDimensions(path string) (int, int, string) {
 	return cfg.Width, cfg.Height, format
 }
 
-// ---- 资料库 / 收藏：持久化到用户缓存目录（不污染照片目录） ----
+// ---- 资料库 / 收藏 / 配置 / 缩略图：持久化到宿主数据根的 plugin-data/<id>/ 下
+// （与插件安装目录分离，升级不丢；不污染照片目录）。见 datadir.go。
 func getCacheDir() string {
 	cacheDirOnce.Do(func() {
-		base, err := os.UserCacheDir()
-		if err != nil || base == "" {
-			base = os.TempDir()
-		}
-		cacheDirVal = filepath.Join(base, "quickdock-photo-library")
-		_ = os.MkdirAll(cacheDirVal, 0o755)
+		cacheDirVal = pluginDataDir()
+		migrateLegacyJSON(cacheDirVal)
+		// 注意：这里不能调 thumbDir()，它会反过来调 getCacheDir() → sync.Once 自锁死。
+		_ = os.MkdirAll(filepath.Join(cacheDirVal, "thumbs"), 0o755)
 	})
 	return cacheDirVal
 }
@@ -545,9 +544,12 @@ func getCacheDir() string {
 var cacheDirOnce sync.Once
 var cacheDirVal string
 
+// thumbDir 缩略图缓存子目录：与 JSON 数据分开，LRU 清理不会误删收藏 / 配置。
+func thumbDir() string { return filepath.Join(getCacheDir(), "thumbs") }
+
 func thumbCachePath(path string, mtime int64, maxDim int) string {
 	h := sha1.Sum([]byte(fmt.Sprintf("%s|%d|%d", path, mtime, maxDim)))
-	return filepath.Join(getCacheDir(), fmt.Sprintf("t_%x.jpg", h))
+	return filepath.Join(thumbDir(), fmt.Sprintf("t_%x.jpg", h))
 }
 
 func readCache(p string) ([]byte, bool) {
@@ -566,7 +568,7 @@ func writeCache(p string, b []byte) {
 // pruneCache 限制缩略图缓存目录体积：仅保留最近 maxCache 个文件，删除最旧的
 func pruneCache() {
 	const maxCache = 2000
-	dir := getCacheDir()
+	dir := thumbDir()
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return
@@ -965,7 +967,7 @@ func handleSession(id int64, input map[string]interface{}) {
 	respond(id, map[string]interface{}{"ok": true, "mode": mode, "path": path})
 }
 
-// ---- 地图 / 插件配置：持久化到用户缓存目录 config.json ----
+// ---- 地图 / 插件配置：持久化到 plugin-data/<id>/config.json ----
 
 type pluginConfig struct {
 	MapProvider  string `json:"mapProvider"`  // osm | tianditu

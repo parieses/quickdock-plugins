@@ -18,12 +18,12 @@
 | [代码运行沙箱](./code-runner/) | `io.github.parieses.code-runner` | 1.0.3 | 在浏览器内运行 JS / HTML 片段并实时预览，可选加载 Pyodide 运行 Python。无需安装任何环境。 |
 | [颜色工具](./color-converter/) | `io.github.parieses.color-converter` | 1.0.4 | 颜色格式互转（HEX / RGB / HSL）+ 屏幕取色，支持常见英文色名识别 |
 | [对比工具](./compare/) | `io.github.parieses.compare` | 1.0.3 | 文件/图片对比（元数据 + 图片预览 + 文本内容差异）与文本块逐行 Diff 合二为一 |
-| [qpm接收端](./control-receiver/) | `io.github.parieses.control-receiver` | 1.0.11 | 手机屏幕镜像接收端 + 控制端：连接 QuestPhoneMirror 发送端实时显示画面，鼠标点击/拖拽反向操控真机（配套手机端发送端见 https://github.com/parieses/QuestPhoneMirror） |
+| [qpm接收端](./control-receiver/) | `io.github.parieses.control-receiver` | 1.0.12 | 手机屏幕镜像接收端 + 控制端：连接 QuestPhoneMirror 发送端实时显示画面，鼠标点击/拖拽反向操控真机（配套手机端发送端见 https://github.com/parieses/QuestPhoneMirror） |
 | [Crontab 解释器](./cron-explainer/) | `io.github.parieses.cron-explainer` | 1.0.3 | 解析 cron 表达式（含义/下次执行/小时分布），并可可视化生成表达式、实时预览下次执行时间 |
 | [密码与加密工具箱](./crypto-toolbox/) | `io.github.parieses.crypto-toolbox` | 1.0.2 | 随机密码 / 口令生成（字符集可配、熵值与强度评估）＋ AES-GCM / AES-CBC 加解密 ＋ RSA-OAEP 密钥对与加解密 ＋ PBKDF2 密钥派生，全部在本机完成，不联网、不上传 |
 | [cURL 转代码](./curl-converter/) | `io.github.parieses.curl-converter` | 1.0.2 | 把 curl 命令解析成 Python / Go / JavaScript / PHP 请求代码，也支持把 fetch、requests 代码反向转回 curl |
 | [UUID & 假数据生成器](./data-generator/) | `io.github.parieses.data-generator` | 1.0.2 | UUID v4 / v7 生成（批量、可大写）＋ 随机字符串 / 整数 / 字节 ＋ 测试假数据（姓名 / 手机 / 邮箱 / 公司 / 地址 / 身份证(测试) / 日期 / 网址 / 用户名 / 人员），全部在本机生成，不联网、不上传 |
-| [数据库客户端](./database/) | `io.github.parieses.database` | 1.4.4 | 轻量数据库连接与查询工具：MySQL / SQLite / Redis 连接管理、SQL 与 Redis 命令执行、库表浏览器（库→表/视图→字段、Redis 键树）、Redis 键类型感知详情与增删改（string/hash/list/set/zset）、TTL 与 DB 管理、结果网格内联行编辑与整行增删、CSV 导出。数据稳定存储（重装不丢）。 |
+| [数据库客户端](./database/) | `io.github.parieses.database` | 1.4.6 | 轻量数据库连接与查询工具：MySQL / SQLite / Redis 连接管理、SQL 与 Redis 命令执行、库表浏览器（库→表/视图→字段、Redis 键树）、Redis 键类型感知详情与增删改（string/hash/list/set/zset）、TTL 与 DB 管理、结果网格内联行编辑。数据独立存储（存于 `~/.quickdock/plugin-data/`，升级不丢）。 |
 | [目录探测](./dir-buster/) | `io.github.parieses.dir-buster` | 1.0.2 | 对指定目标 URL 用内置常见路径字典进行轻量探测（自用）：并发受限、可配扩展名，采用异步会话模型实时返回命中的非 404 路径。仅探测你授权的目标，内置字典、不递归 |
 | [磁盘分析器](./disk-analyzer/) | `io.github.parieses.disk-analyzer` | 1.0.4 | 可视化磁盘空间占用分析工具，类似 SpaceSniffer，支持树图展示目录结构 |
 | [Emoji 搜索](./emoji-search/) | `io.github.parieses.emoji-search` | 1.0.4 | 搜索 Emoji 并一键复制到剪贴板 |
@@ -46,11 +46,11 @@
 | [字帖打印](./hanzi-copybook/) | `io.github.parieses.hanzi-copybook` | 1.0.7 | 汉字描红字帖生成器：支持任意汉字定制、拼音与笔顺显示、田字格/米字格排版，面向小学生规范书写与笔顺习惯养成，一键导出/打印 |
 | [文件哈希](./hash-calc/) | `io.github.parieses.hash-calc` | 1.0.6 | 计算文件的 MD5/SHA1/SHA256/SHA512 摘要，结果一键复制 |
 | [Hosts 管理器](./hosts-manager/) | `io.github.parieses.hosts-manager` | 1.0.4 | 管理系统 hosts 文件条目，一键启用/禁用/新增 |
-| [HTTP 客户端](./http-client/) | `io.github.parieses.http-client` | 1.0.5 | 轻量 HTTP 请求调试客户端：项目管理请求、目录与文档树、环境变量与 {{var}} 替换、请求历史重放、Postman 集合导入。数据独立存储。 |
+| [HTTP 客户端](./http-client/) | `io.github.parieses.http-client` | 1.0.7 | 轻量 HTTP 请求调试客户端：项目管理请求、目录与文档树、环境变量与 {{var}} 替换、请求历史重放、Postman 集合导入。数据独立存储。 |
 | [图片工坊](./image-studio/) | `io.github.parieses.image-studio` | 1.0.3 | 仿 Squoosh 实时对比：左右预览对比，质量滑块、缩放(锁定比例/百分比/预设)、旋转/翻转、亮度/对比度/饱和度调整，实时预览文件大小与压缩率 |
 | [图床上传](./image-uploader/) | `io.github.parieses.image-uploader` | 1.0.2 | 选择本地图片，读取后通过宿主网络能力上传到图床（freeimage.host / imgbb），返回可访问的图片链接，链接可一键复制。不上传任何其它文件。 |
 | [JSON 工具箱](./json-toolbox/) | `io.github.parieses.json-toolbox` | 1.0.4 | JSON 编辑器（格式化/折叠/编辑）、JSON → TypeScript / Go、JSON ↔ YAML / TOML / XML 互转 |
-| [Windows 垃圾清理](./junk-cleaner/) | `io.github.parieses.junk-cleaner` | 1.0.3 | 扫描并清理系统垃圾文件：临时文件/更新缓存/缩略图缓存/预读取/崩溃转储等，安全只读扫描+确认后删除 |
+| [Windows 垃圾清理](./junk-cleaner/) | `io.github.parieses.junk-cleaner` | 1.0.4 | 扫描并清理系统垃圾文件：临时文件/更新缓存/缩略图缓存/预读取/崩溃转储等，安全只读扫描+确认后删除 |
 | [JWT 解码器](./jwt-decoder/) | `io.github.parieses.jwt-decoder` | 1.0.3 | 解码 JWT Token，查看 Header/Payload，验证过期时间 |
 | [登录爆破测试器](./login-tester/) | `io.github.parieses.login-tester` | 1.0.2 | 对自身网站登录接口进行密码库撞库/爆破安全自检，支持并发、限速与锁定检测。仅用于你拥有或已授权的站点。 |
 | [邮箱足迹查询](./mail-check/) | `io.github.parieses.mail-check` | 1.0.4 | 邮箱足迹与有效性检查：全量 123 站探测（参考 holehe 适配，Gravatar/GitHub/ProtonMail/Spotify 等已校准，其余逐步补），语法 / MX / SMTP 有效性验证 |
@@ -60,11 +60,11 @@
 | [思维导图](./mindmap/) | `io.github.parieses.mindmap` | 1.0.2 | 把 Markdown 大纲 / 缩进列表实时渲染成思维导图，自动分层配色、可点击折叠分支、支持缩放与导出 PNG / SVG |
 | [扫雷](./minesweeper/) | `io.github.parieses.minesweeper` | 1.0.3 | 复刻 Windows 原生扫雷：经典灰色立体棋盘、笑脸重置、LED 雷数/计时器，支持初级/中级/高级与自定义 |
 | [网络诊断箱](./netdiag/) | `io.github.parieses.netdiag` | 1.0.2 | 将 Ping 监视、路由追踪、局域网扫描、IP 归属地、端口指纹五个网络工具合并为单一插件，按需切换标签页，共享一个原生子进程 |
-| [OCR 文字识别](./ocr-tool/) | `io.github.parieses.ocr-tool` | 2.0.4 | 基于 PaddleOCR (ONNX) 的离线文字识别，支持中英文，首次使用自动下载约 178MB 模型（ModelScope 镜像），之后完全离线运行，跨 Windows / macOS / Linux。 |
+| [OCR 文字识别](./ocr-tool/) | `io.github.parieses.ocr-tool` | 2.0.5 | 基于 PaddleOCR (ONNX) 的离线文字识别，支持中英文，首次使用自动下载约 178MB 模型（ModelScope 镜像），之后完全离线运行，跨 Windows / macOS / Linux。 |
 | [OTP 验证器](./otp/) | `io.github.parieses.otp` | 1.0.1 | 本地 TOTP 两步验证码生成器（兼容 Google Authenticator），密钥仅存本机，离线可用。 |
 | [包版本速查](./package-check/) | `io.github.parieses.package-check` | 1.1.3 | 输入包名，并发查询 npm / PyPI / Composer / Go 四个仓库的版本信息；并基于 OSV.dev 查询包版本的已知漏洞（CVE / 安全公告） |
-| [PDF 工具箱](./pdf-toolkit/) | `io.github.parieses.pdf-toolkit` | 1.0.2 | PDF 处理工具箱：合并/拆分/压缩/加水印/提取图片，无需安装 Adobe Acrobat |
-| [照片库浏览](./photo-library/) | `io.github.parieses.photo-library` | 1.4.0 | 选择本地文件夹，网格缩略图浏览照片，按日期/文件夹筛选，点击查看 EXIF 拍摄信息与参数 |
+| [PDF 工具箱](./pdf-toolkit/) | `io.github.parieses.pdf-toolkit` | 1.0.3 | PDF 处理工具箱：合并/拆分/压缩/加水印/提取图片，无需安装 Adobe Acrobat |
+| [照片库浏览](./photo-library/) | `io.github.parieses.photo-library` | 1.4.1 | 选择本地文件夹，网格缩略图浏览照片，按日期/文件夹筛选，点击查看 EXIF 拍摄信息与参数 |
 | [端口检查器](./port-scanner/) | `io.github.parieses.port-scanner` | 1.0.6 | 检查端口占用，显示进程名和 PID |
 | [二维码工具](./qrcode/) | `io.github.parieses.qrcode` | 1.0.3 | 文本/URL 生成二维码，支持保存 PNG；从图片识别二维码内容 |
 | [正则提取工具](./regex-extractor/) | `io.github.parieses.regex-extractor` | 1.0.4 | 正则提取与替换：匹配高亮、分组捕获、反向引用替换（$1/$2）、一键复制结果 |

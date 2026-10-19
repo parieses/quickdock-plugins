@@ -20,6 +20,88 @@ type DbObject struct {
 	Collation string `json:"collation"`
 }
 
+// handleTableColumns 返回某库内每张表 / 视图的列名映射（按表名 → 列名数组），
+// 供前端 SQL 自动补全在 WHERE 等子句后给出列名提示。
+func handleTableColumns(id int64, input map[string]interface{}) {
+	cid := strFrom(input, "id")
+	dbName := strFrom(input, "database")
+	if cid == "" {
+		respondError(id, -32602, "缺少连接 id")
+		return
+	}
+	saved, conn, err := openSavedWithDB(cid, dbName)
+	if err != nil {
+		respondError(id, -32000, err.Error())
+		return
+	}
+	defer conn.close()
+	if conn.kind == "redis" {
+		respond(id, map[string]interface{}{"columns": map[string][]string{}})
+		return
+	}
+	cols, e := listTableColumns(conn.sqlDB, conn.kind, orDefault(dbName, saved.Database))
+	if e != nil {
+		respondError(id, -32000, e.Error())
+		return
+	}
+	respond(id, map[string]interface{}{"columns": cols})
+}
+
+func listTableColumns(d *sql.DB, kind, dbName string) (map[string][]string, error) {
+	out := map[string][]string{}
+	ctx, cancel := context.WithTimeout(context.Background(), dbQueryTimeout)
+	defer cancel()
+	if kind == "sqlite" {
+		rows, err := d.QueryContext(ctx,
+			"SELECT name FROM sqlite_master WHERE type IN ('table','view') AND name NOT LIKE 'sqlite_%' ORDER BY name")
+		if err != nil {
+			return out, err
+		}
+		var names []string
+		for rows.Next() {
+			var n string
+			if rows.Scan(&n) == nil {
+				names = append(names, n)
+			}
+		}
+		rows.Close()
+		for _, n := range names {
+			ir, err := d.QueryContext(ctx, "PRAGMA table_info("+quoteIdent("sqlite", n)+")")
+			if err != nil {
+				continue
+			}
+			var cols []string
+			for ir.Next() {
+				var cid int
+				var cname, ctype string
+				var notnull, pk int
+				var dflt sql.NullString
+				if ir.Scan(&cid, &cname, &ctype, &notnull, &dflt, &pk) == nil && cname != "" {
+					cols = append(cols, cname)
+				}
+			}
+			ir.Close()
+			out[n] = cols
+		}
+		return out, nil
+	}
+	q := "SELECT TABLE_NAME, COLUMN_NAME FROM information_schema.COLUMNS " +
+		"WHERE TABLE_SCHEMA = ? ORDER BY TABLE_NAME, ORDINAL_POSITION"
+	rows, err := d.QueryContext(ctx, q, dbName)
+	if err != nil {
+		return out, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var t, c string
+		if err := rows.Scan(&t, &c); err != nil {
+			continue
+		}
+		out[t] = append(out[t], c)
+	}
+	return out, rows.Err()
+}
+
 // handleTableList 列出某个库下的全部表 / 视图（含引擎、行数、注释等元信息）。
 func handleTableList(id int64, input map[string]interface{}) {
 	cid := strFrom(input, "id")
@@ -393,17 +475,43 @@ func handleTableRows(id int64, input map[string]interface{}) {
 		}
 	}
 
+	// 列级筛选（Navicat 式）：每列一个值，拼接为 AND col LIKE ?（%值%）
+	filters := strMapFrom(input, "filters")
+	var conds []string
+	var fargs []interface{}
+	for col, val := range filters {
+		if strings.TrimSpace(val) == "" {
+			continue
+		}
+		conds = append(conds, quoteIdent(conn.kind, col)+" LIKE ?")
+		fargs = append(fargs, "%"+val+"%")
+	}
+	where := ""
+	if len(conds) > 0 {
+		where = " WHERE " + strings.Join(conds, " AND ")
+	}
+
 	tbl := quoteIdent(conn.kind, table)
-	q := "SELECT * FROM " + tbl
-	if orderBy != "" {
-		q += " ORDER BY " + quoteIdent(conn.kind, orderBy) + " " + strings.ToUpper(orderDir)
+
+	// 主键：既用于「无排序时默认按主键排」，也用于后面的内联编辑判定。
+	// 不指定 ORDER BY 时 MySQL / SQLite 的返回顺序不保证稳定，翻页会出现
+	// 重复行或漏行；按主键排序可以让分页结果确定下来。
+	pk, pkReason := primaryKeyOf(conn.sqlDB, conn.kind, effDB, table)
+
+	ordCol, ordDir := orderBy, strings.ToUpper(orderDir)
+	if ordCol == "" && pk != "" {
+		ordCol, ordDir = pk, "ASC"
+	}
+	q := "SELECT * FROM " + tbl + where
+	if ordCol != "" {
+		q += " ORDER BY " + quoteIdent(conn.kind, ordCol) + " " + ordDir
 	}
 	q += fmt.Sprintf(" LIMIT %d OFFSET %d", size, (page-1)*size)
 
 	start := time.Now()
 	ctx, cancel := context.WithTimeout(context.Background(), dbQueryTimeout)
 	defer cancel()
-	res, err := execSQL(ctx, conn.sqlDB, q)
+	res, err := execSQL(ctx, conn.sqlDB, q, fargs...)
 	res.DurationMs = time.Since(start).Milliseconds()
 	res.Page, res.PageSize, res.OrderBy, res.OrderDir = page, size, orderBy, orderDir
 	res.Total = -1
@@ -418,15 +526,14 @@ func handleTableRows(id int64, input map[string]interface{}) {
 	// 总行数：单独短超时，慢表就放弃（前端显示「?」而不是卡住）
 	cctx, ccancel := context.WithTimeout(context.Background(), 8*time.Second)
 	var total int64
-	if e := conn.sqlDB.QueryRowContext(cctx, "SELECT COUNT(*) FROM "+tbl).Scan(&total); e == nil {
+	if e := conn.sqlDB.QueryRowContext(cctx, "SELECT COUNT(*) FROM "+tbl+where, fargs...).Scan(&total); e == nil {
 		res.Total = total
 	}
 	ccancel()
 
-	// 主键 → 是否可内联编辑
-	pk, reason := primaryKeyOf(conn.sqlDB, conn.kind, effDB, table)
+	// 主键 → 是否可内联编辑（pk / pkReason 已在建查询前算好）
 	if pk == "" {
-		res.EditReason = reason
+		res.EditReason = pkReason
 	} else {
 		has := false
 		for _, c := range res.Columns {

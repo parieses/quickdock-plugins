@@ -363,8 +363,7 @@ func diagLogf(format string, args ...interface{}) {
 }
 
 func setupDiagLog() {
-	f, err := os.OpenFile(filepath.Join(filepath.Dir(os.Args[0]), "junk-cleaner.log"),
-		os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(diagLogPath(), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		return
 	}

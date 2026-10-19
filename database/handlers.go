@@ -76,6 +76,8 @@ func handleConnSave(id int64, input map[string]interface{}) {
 			respondError(id, -32000, err.Error())
 			return
 		}
+		// 主机 / 账号 / 密码 / 默认库可能已改，丢弃旧连接缓存
+		invalidateConnCache(rec.ID)
 	} else {
 		if in.Password != "" {
 			enc, e := encryptSecret(in.Password)
@@ -89,6 +91,7 @@ func handleConnSave(id int64, input map[string]interface{}) {
 			respondError(id, -32000, err.Error())
 			return
 		}
+		invalidateConnCache(rec.ID)
 	}
 	rec.Password = ""
 	respond(id, map[string]interface{}{"connection": rec})
@@ -105,6 +108,7 @@ func handleConnDelete(id int64, input map[string]interface{}) {
 		respondError(id, -32000, err.Error())
 		return
 	}
+	invalidateConnCache(cid)
 	respond(id, map[string]interface{}{"ok": true})
 }
 
@@ -164,26 +168,16 @@ func handleQueryRun(id int64, input map[string]interface{}) {
 	}
 
 	start := time.Now()
-	res, err := conn.exec(query)
-	res.DurationMs = time.Since(start).Milliseconds()
+	multi, err := conn.execMulti(query, dbCtx)
 	if err != nil {
-		res.Success = false
-		res.Error = err.Error()
-		// MySQL 未选定库时的原始报错很晦涩（Error 1046），补一句可操作的提示。
-		if conn.kind == "mysql" && strings.TrimSpace(dbCtx) == "" && isNoDatabaseErr(err) {
-			res.Error += "\n\n提示：当前连接没有默认库，也没有选中「库上下文」。" +
-				"请在左侧展开一个数据库并点击它（或在连接配置里填写「默认数据库」），" +
-				"之后直接写 SELECT * FROM 表名 即可，无需带库名前缀。"
-		}
-		respond(id, res)
+		respond(id, &DbQueryMultiResult{
+			Success: false,
+			Error:   err.Error(),
+		})
 		return
 	}
-	res.Success = true
-	// 单表 SELECT 且含主键列时，标记结果可编辑（供前端网格内联修改）。
-	if conn.kind != "redis" {
-		enrichEditable(conn, dbCtx, query, res)
-	}
-	respond(id, res)
+	multi.DurationMs = time.Since(start).Milliseconds()
+	respond(id, multi)
 }
 
 // isNoDatabaseErr 判断是否为 MySQL「未选择数据库」错误（Error 1046）。

@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"runtime/debug"
 	"strings"
 	"sync"
@@ -148,14 +147,9 @@ func dispatch(raw string) {
 }
 
 func main() {
-	// 数据库路径：<可执行文件目录>/data/io.github.parieses.http-client.db
-	exe, err := os.Executable()
-	if err != nil {
-		exe, _ = os.Getwd()
-	}
-	binDir := filepath.Dir(exe)
-	dataDir := filepath.Join(binDir, "data")
-	dbPath := filepath.Join(dataDir, "io.github.parieses.http-client.db")
+	// 数据库路径：<用户主目录>/.quickdock/plugin-data/io.github.parieses.http-client/
+	// （与插件安装目录分离，升级不丢；见 datadir.go）。首启会把安装目录里的老库搬过来。
+	dbPath := ensureDataFile("io.github.parieses.http-client.db")
 
 	db, err := openDB(dbPath)
 	if err != nil {

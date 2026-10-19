@@ -137,7 +137,7 @@ func exeSuffix() string {
 }
 
 // ---- 诊断日志（v0.1.7）----
-// 写入插件目录下 pdf-toolkit.log（打开失败静默降级，不干扰主流程）。
+// 写入 plugin-data/<id>/logs/pdf-toolkit.log（打开失败静默降级，不干扰主流程）。
 // 用途：宿主弹「连续 N 次无响应」时，本文件可还原插件侧时间轴——
 // 收到哪些请求、ping 是否处理、哪个 handler 慢、Flush 是否卡、有无 panic。
 var (
@@ -156,8 +156,7 @@ func diagLogf(format string, args ...interface{}) {
 }
 
 func setupDiagLog() {
-	f, err := os.OpenFile(filepath.Join(filepath.Dir(os.Args[0]), "pdf-toolkit.log"),
-		os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(diagLogPath(), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		return // 只读目录/权限问题：静默降级
 	}

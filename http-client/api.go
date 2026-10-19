@@ -14,9 +14,8 @@ import (
 
 const (
 	httpClientMaxBody   = 16 << 20
-	httpClientTimeout   = 30 * time.Second
+	httpClientTimeout   = 110 * time.Second
 	httpClientMaxRedirs = 10
-	httpTimeout         = 30 * time.Second
 	// 单行 stdout 上限约 1MB；响应体过大时再做一次线路截断，避免宿主截断破坏 JSON 协议帧。
 	httpClientWireBodyCap = 512 << 10
 )

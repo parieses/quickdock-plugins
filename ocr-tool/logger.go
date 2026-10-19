@@ -16,7 +16,7 @@ var (
 	logF           *os.File
 )
 
-// initLog 初始化落盘日志：写入插件可执行文件同目录的 ocr-tool.log，
+// initLog 初始化落盘日志：写入 <plugin-data>/logs/ocr-tool.log（与插件安装目录分离），
 // 并把内置 OCR 脚本另存为 ocr-tool.script.ps1 便于核对实际执行的 PowerShell。
 // 顺带扫一次上一次进程被强杀遗留的 qd-ocr-*.tmp 图，避免 %TEMP% 越积越多。
 func initLog() {
@@ -68,14 +68,15 @@ func exePath() string {
 	return "(unknown)"
 }
 
+// logFilePath 日志固定落在 <plugin-data>/logs/ocr-tool.log（不用安装目录，升级会被卷走）。
+// OCR_LOG_DIR 可覆盖（调试用）。
 func logFilePath() string {
+	dir := filepath.Join(dataRoot(), "logs")
 	if env := os.Getenv("OCR_LOG_DIR"); env != "" {
-		return filepath.Join(env, "ocr-tool.log")
+		dir = env
 	}
-	if e, err := os.Executable(); err == nil {
-		return filepath.Join(filepath.Dir(e), "ocr-tool.log")
-	}
-	return filepath.Join(os.TempDir(), "ocr-tool.log")
+	_ = os.MkdirAll(dir, 0o755)
+	return filepath.Join(dir, "ocr-tool.log")
 }
 
 // logf 写入一条带时间戳的日志（多字节安全，按 rune 截断）。

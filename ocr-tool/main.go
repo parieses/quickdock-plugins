@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"runtime"
 	"runtime/debug"
 	"strings"
@@ -41,7 +40,7 @@ type ExecuteParams struct {
 	Input   map[string]interface{} `json:"input"`
 }
 
-// modelsDirCache 由 initialize 解析的 pluginDir 拼接 /models 得到，模型存储于此。
+// modelsDirCache 模型存储目录（固定为 <plugin-data>/models；initialize 时按需迁移老模型）。
 var modelsDirCache string
 
 // answered 标记当前请求是否已回包，用于 dispatch 层 panic recover 避免重复回包。
@@ -98,7 +97,8 @@ func handleRequest(req RPCRequest) {
 	}
 }
 
-// handleInitialize 握手：解析主程序传入的 pluginDir，派生模型目录。
+// handleInitialize 握手：解析主程序传入的 pluginDir（仅用于日志 / 旧模型迁移位置提示），
+// 模型目录固定为 <plugin-data>/models —— 与插件安装目录分离，升级不用重下 178MB 模型。
 func handleInitialize(req RPCRequest) {
 	var p struct {
 		PluginDir string `json:"pluginDir"`
@@ -106,11 +106,7 @@ func handleInitialize(req RPCRequest) {
 	if len(req.Params) > 0 {
 		_ = json.Unmarshal(req.Params, &p)
 	}
-	if p.PluginDir != "" {
-		modelsDirCache = filepath.Join(p.PluginDir, "models")
-	} else if e, err := os.Executable(); err == nil {
-		modelsDirCache = filepath.Join(filepath.Dir(e), "models")
-	}
+	modelsDirCache = ensureDataDir("models")
 	logf("initialize: pluginDir=%q modelsDir=%q", p.PluginDir, modelsDirCache)
 	respond(req.ID, map[string]interface{}{
 		"status":   "ready",

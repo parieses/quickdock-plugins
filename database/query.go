@@ -33,13 +33,19 @@ func sqlQuote(s string) string {
 const dbQueryTimeout = 30 * time.Second
 const dbMaxRows = 1000
 
-// DbQueryResult 查询结果（不落库）。
+// dbMultiTotalTimeout 是多条语句执行的总超时上限。
+// 必须小于 plugin.json 里的 backend.timeout（120s），否则宿主会先掐断请求，
+// 前端只能看到「插件响应超时」，拿不到具体的 SQL 错误。
+const dbMultiTotalTimeout = 110 * time.Second
+
+// DbQueryResult 单条 SQL 的执行结果（不落库）。
 type DbQueryResult struct {
 	Success    bool       `json:"success"`
 	Columns    []string   `json:"columns"`
 	Rows       [][]string `json:"rows"`
 	Nulls      [][]bool   `json:"nulls"` // 与 Rows 同维度，标记该单元格是否为 SQL NULL
 	RowCount   int        `json:"rowCount"`
+	Truncated  bool       `json:"truncated"` // 结果是否因超过 dbMaxRows 被截断
 	Affected   int64      `json:"affected"`
 	Message    string     `json:"message"`
 	Error      string     `json:"error"`
@@ -55,6 +61,19 @@ type DbQueryResult struct {
 	PageSize int    `json:"pageSize"`
 	OrderBy  string `json:"orderBy"`
 	OrderDir string `json:"orderDir"`
+	// 多语句模式下填充：第几条语句（从 1 开始）与原始语句文本
+	Index     int    `json:"index"`
+	Statement string `json:"statement"`
+}
+
+// DbQueryMultiResult 一次「query.run」可能包含多条以分号分隔的语句，每条对应一个 DbQueryResult。
+// 前端据此渲染「结果 1 / 结果 2 / …」可切换标签。
+type DbQueryMultiResult struct {
+	Statements int              `json:"statements"` // 切分出的语句总数
+	Results    []DbQueryResult `json:"results"`    // 每条语句的结果（遇错即止，含出错那条）
+	Success    bool             `json:"success"`    // 是否全部成功
+	DurationMs int64            `json:"durationMs"` // 整体耗时
+	Error      string           `json:"error"`      // 整体级错误（如全部执行失败时的摘要）
 }
 
 // enrichEditable 探测结果是否来自「单表 SELECT 且含主键列」，若是则填充可编辑元数据。
@@ -241,10 +260,71 @@ func isSelectLike(q string) bool {
 	return false
 }
 
-func execSQL(ctx context.Context, d *sql.DB, query string) (*DbQueryResult, error) {
+// splitSQLStatements 按分号切分多条 SQL 语句，尊重单/双引号字符串、反引号标识符与
+// 行注释（-- / #）块注释（/* */）。空语句会被丢弃。返回的每条语句不含结尾的分号。
+func splitSQLStatements(sql string) []string {
+	var stmts []string
+	var b strings.Builder
+	inSingle, inDouble, inBacktick := false, false, false
+	inLineComment, inBlockComment := false, false
+	runes := []rune(sql)
+	for i := 0; i < len(runes); i++ {
+		c := runes[i]
+		switch {
+		case inLineComment:
+			if c == '\n' {
+				inLineComment = false
+				b.WriteRune(c)
+			}
+			continue
+		case inBlockComment:
+			if c == '*' && i+1 < len(runes) && runes[i+1] == '/' {
+				inBlockComment = false
+				i++ // 跳过 /
+			}
+			continue
+		case c == '-' && i+1 < len(runes) && runes[i+1] == '-':
+			inLineComment = true
+			i++ // 跳过第二个 -
+			continue
+		case c == '#' && (i == 0 || runes[i-1] == '\n' || runes[i-1] == ' ' || runes[i-1] == '\t'):
+			inLineComment = true
+			continue
+		case c == '/' && i+1 < len(runes) && runes[i+1] == '*':
+			inBlockComment = true
+			i++ // 跳过 *
+			continue
+		case c == '\'' && !inDouble && !inBacktick:
+			inSingle = !inSingle
+			b.WriteRune(c)
+			continue
+		case c == '"' && !inSingle && !inBacktick:
+			inDouble = !inDouble
+			b.WriteRune(c)
+			continue
+		case c == '`' && !inSingle && !inDouble:
+			inBacktick = !inBacktick
+			b.WriteRune(c)
+			continue
+		case c == ';' && !inSingle && !inDouble && !inBacktick:
+			if s := strings.TrimSpace(b.String()); s != "" {
+				stmts = append(stmts, s)
+			}
+			b.Reset()
+			continue
+		}
+		b.WriteRune(c)
+	}
+	if s := strings.TrimSpace(b.String()); s != "" {
+		stmts = append(stmts, s)
+	}
+	return stmts
+}
+
+func execSQL(ctx context.Context, d *sql.DB, query string, args ...interface{}) (*DbQueryResult, error) {
 	res := &DbQueryResult{}
 	if isSelectLike(query) {
-		rows, err := d.QueryContext(ctx, query)
+		rows, err := d.QueryContext(ctx, query, args...)
 		if err != nil {
 			return res, err
 		}
@@ -276,6 +356,10 @@ func execSQL(ctx context.Context, d *sql.DB, query string) (*DbQueryResult, erro
 			res.Rows = append(res.Rows, cells)
 			res.Nulls = append(res.Nulls, rowNull)
 			if len(res.Rows) >= dbMaxRows {
+				// 再看一眼是否真的还有行：正好 dbMaxRows 行时不应误报截断
+				if rows.Next() {
+					res.Truncated = true
+				}
 				break
 			}
 		}
@@ -283,7 +367,7 @@ func execSQL(ctx context.Context, d *sql.DB, query string) (*DbQueryResult, erro
 		res.Success = true
 		return res, rows.Err()
 	}
-	r, err := d.ExecContext(ctx, query)
+	r, err := d.ExecContext(ctx, query, args...)
 	if err != nil {
 		return res, err
 	}

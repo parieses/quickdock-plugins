@@ -113,6 +113,43 @@
     table.grid td.editable { cursor:text; }
     table.grid td.editing { padding:0; }
     table.grid td.editing input { width:100%; height:23px; border:none; outline:2px solid var(--accent); outline-offset:-2px; padding:0 8px; background:var(--bg-primary); color:var(--text-primary); font-family:var(--font-mono); font-size:var(--fs-xs); }
+
+    /* ===== 可拖拽列宽的结果网格 ===== */
+    table.grid.grid-resizable { table-layout:fixed; }
+    table.grid.grid-resizable th { position:relative; }
+    table.grid.grid-resizable td {
+      white-space:nowrap; word-break:normal; overflow:hidden; text-overflow:ellipsis; max-width:none;
+    }
+    table.grid.grid-resizable td .cell { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-height:none; line-height:1.5; }
+    /* 编辑态放行：输入框/文本正常显示 */
+    table.grid.grid-resizable td.editing,
+    table.grid.grid-resizable td.editing input { white-space:normal; overflow:visible; }
+
+    /* 列宽拖拽手柄：贴在表头右边缘 */
+    .col-resizer { position:absolute; top:0; right:-3px; width:7px; height:100%; cursor:col-resize; z-index:4; }
+    .col-resizer:hover { background:var(--accent); }
+    .col-resizer:active { background:var(--accent); }
+
+    /* ===== 多语句结果标签页 ===== */
+    .result-tabs { display:flex; align-items:stretch; flex-wrap:wrap; gap:0; background:var(--bg-secondary); border-bottom:1px solid var(--border); flex-shrink:0; max-height:78px; overflow:auto; }
+    .rtab { display:flex; align-items:center; gap:6px; padding:5px 12px; border:none; border-right:1px solid var(--border); background:transparent; color:var(--text-muted); font-size:var(--fs-xs); cursor:pointer; white-space:nowrap; }
+    .rtab:hover { background:var(--bg-hover); color:var(--text-primary); }
+    .rtab.active { background:var(--bg-primary); color:var(--text-primary); box-shadow: inset 0 -2px 0 var(--accent); }
+    .rtab-no { font-weight:var(--fw-medium); }
+    .rtab-badge { font-size:10px; padding:1px 6px; border-radius:8px; background:var(--bg-tertiary); color:var(--text-muted); }
+    .rtab-badge.bad-ok { background:var(--success-soft); color:var(--success); }
+    .rtab-badge.bad-err { background:var(--danger-soft); color:var(--danger); }
+    .rtab-badge.bad-aff { background:var(--warning-soft); color:var(--warning); }
+    .rtab-run { margin-left:2px; padding:1px 6px; border:1px solid var(--border); border-radius:5px; background:var(--bg-tertiary); color:var(--text-muted); font-size:11px; line-height:1.4; cursor:pointer; }
+    .rtab-run:hover:not(:disabled) { background:var(--accent-soft); color:var(--accent); border-color:var(--accent); }
+    .rtab-run:disabled { opacity:.5; cursor:default; }
+
+    /* ===== 数据页筛选行（Navicat 式） ===== */
+    table.grid.grid-resizable tr.filter-row th { position:sticky; top:27px; z-index:2; height:26px; padding:2px 4px; background:var(--bg-secondary); border-bottom:1px solid var(--border); }
+    table.grid.grid-resizable tr.filter-row th.corner { background:var(--bg-tertiary); }
+    .col-filter { width:100%; height:20px; padding:0 5px; border:1px solid var(--border); border-radius:3px; background:var(--bg-primary); color:var(--text-primary); font-size:11px; outline:none; }
+    .col-filter:focus { border-color:var(--accent); }
+    .pill.filt { background:var(--accent-soft); color:var(--accent); }
     /* 大字段单元格：限制高度，超出滚动，避免单行被撑得很高 */
     table.grid td .cell { max-height:140px; overflow:auto; white-space:pre-wrap; word-break:break-all; font-family:var(--font-mono); font-size:var(--fs-xs); line-height:1.5; }
     tr.no-hover:hover td { background:transparent !important; }
@@ -145,6 +182,7 @@
     .suggest .sg-kind { font-size:9.5px; padding:1px 6px; border-radius:3px; color:#fff; flex-shrink:0; }
     .suggest .sg-kind.kw { background:var(--accent); }
     .suggest .sg-kind.tbl { background:var(--success); }
+    .suggest .sg-kind.col { background:var(--warning); }
     .suggest .sg-name { font-family:var(--font-mono); color:var(--text-primary); }
     .suggest .sg-tail { margin-left:auto; font-size:10px; color:var(--text-muted); }
     /* 表名紧凑视图（简名）：干净表格，只列名称，多列紧凑排布 */
@@ -446,14 +484,28 @@
               <div class="gridwrap">
                 <div v-if="t.grid.loading" class="empty"><div>加载数据…</div></div>
                 <div v-else-if="t.grid.error" class="err-box">{{ t.grid.error }}</div>
-                <table class="grid" v-else-if="t.grid.columns.length">
-                  <thead><tr>
-                    <th style="width:44px">#</th>
-                    <th v-for="(col,ci) in t.grid.columns" :key="ci" class="sortable" @click="sortBy(t, col)">
-                      {{ col }}<span class="arrow" v-if="t.grid.orderBy===col">{{ t.grid.orderDir==='desc' ? '▾' : '▴' }}</span>
-                      <span v-if="isPk(t,ci)" class="arrow">🔑</span>
-                    </th>
-                  </tr></thead>
+                <table class="grid grid-resizable" v-else-if="t.grid.columns.length"
+                       :style="{ width: 'max(100%, ' + gridWidth(t) + 'px)' }">
+                  <colgroup>
+                    <col style="width:44px" />
+                    <col v-for="(col,ci) in t.grid.columns" :key="'c'+ci" :style="{ width: colWidth(t, col) }" />
+                  </colgroup>
+                  <thead>
+                    <tr>
+                      <th style="width:44px">#</th>
+                      <th v-for="(col,ci) in t.grid.columns" :key="ci" class="sortable" @click="sortBy(t, col)">
+                        {{ col }}<span class="arrow" v-if="t.grid.orderBy===col">{{ t.grid.orderDir==='desc' ? '▾' : '▴' }}</span>
+                        <span v-if="isPk(t,ci)" class="arrow">🔑</span>
+                        <span class="col-resizer" @mousedown.stop="startResize(t, col, $event)" @click.stop></span>
+                      </th>
+                    </tr>
+                    <tr class="filter-row">
+                      <th class="corner"></th>
+                      <th v-for="(col,ci) in t.grid.columns" :key="'f'+ci">
+                        <input class="col-filter" v-model="t.filters[col]" @keyup.enter="applyFilter(t)" :placeholder="'筛选 ' + col" :title="'按 ' + col + ' 筛选（LIKE %值%）'" />
+                      </th>
+                    </tr>
+                  </thead>
                   <tbody>
                     <tr v-for="(row,ri) in t.grid.rows" :key="ri" :class="{sel: t.grid.selRow===ri}" @click="selectRow(t, ri)">
                       <td class="dim">{{ (t.grid.page-1)*t.grid.pageSize + ri + 1 }}</td>
@@ -462,7 +514,7 @@
                           @dblclick="beginEdit(t,ri,ci)">
                         <input v-if="isEditing(t,ri,ci)" v-model="t.grid.draft"
                                @keydown.enter.prevent="commitEdit(t,ri,ci)" @keydown.esc.prevent="cancelEdit(t)" @blur="commitEdit(t,ri,ci)" ref="editInput" />
-                        <div class="cell" v-else>{{ isNull(t,ri,ci) ? 'NULL' : cell }}</div>
+                        <div class="cell" v-else :title="isNull(t,ri,ci) ? '' : cell">{{ isNull(t,ri,ci) ? 'NULL' : cell }}</div>
                       </td>
                     </tr>
                   </tbody>
@@ -473,6 +525,8 @@
                 <span class="muted">{{ pageInfo(t) }}</span>
                 <span class="pill info" v-if="canEdit(t)">可编辑（双击单元格）</span>
                 <span class="pill warn" v-else-if="t.grid.editReason" :title="t.grid.editReason">只读</span>
+                <span class="pill filt" v-if="hasFilter(t)">已筛选（{{ filterCount(t) }} 列）</span>
+                <button class="btn2 xs" v-if="hasFilter(t)" @click="clearFilter(t)">✕ 清除筛选</button>
                 <div class="spacer"></div>
                 <select class="inp2" v-model.number="t.grid.pageSize" @change="reloadData(t,1)">
                   <option :value="50">50 条/页</option>
@@ -587,7 +641,12 @@
                 <option value="">{{ connTypeOf(t)==='redis' ? '（用连接里的默认库）' : '（未选择）' }}</option>
                 <option v-for="d in dbOptionsOf(t)" :key="d" :value="d">{{ d }}</option>
               </select>
-              <button class="btn2 solid" @click="runQueryTab(t)" :disabled="t.grid.loading">▶ 执行 <span class="muted" style="color:inherit;opacity:.7">⌃↵</span></button>
+              <button class="btn2 solid" @click="runQueryTab(t)" :disabled="t.grid.loading">
+                <template v-if="t.selText">▶ 执行选中</template>
+                <template v-else>▶ 执行</template>
+                <span class="muted" style="color:inherit;opacity:.7">⌃↵</span>
+              </button>
+              <button class="btn2" v-if="t.selText" @click="clearSqlSelection(t)" title="取消选区，恢复执行全部">取消选中</button>
               <button class="btn2" @click="t.sql=''">清空</button>
               <button class="btn2" @click="exportCsv(t)" :disabled="!t.grid.rows.length">导出 CSV</button>
               <button class="btn2" @click="openInsert(t)" :disabled="!canCrud(t)">＋ 新增</button>
@@ -600,11 +659,14 @@
                         @input="onSqlInput(t, $event)"
                         @keydown="onSqlKey(t, $event)"
                         @blur="onSqlBlur(t)"
-                        placeholder="SELECT * FROM users LIMIT 100;   -- 选好库上下文后，表名直接写，不用带库名（输入 se/表名前缀会有提示）"></textarea>
+                        @focus="onSqlFocus(t, $event)"
+                        @mouseup="onSqlSelect(t, $event)"
+                        @keyup="onSqlSelect(t, $event)"
+                        placeholder="SELECT * FROM users LIMIT 100;   -- 选中一段再点「执行」可只跑选中的那条；输入 se/表名前缀会有提示"></textarea>
               <div class="suggest" v-if="suggest.open && suggest.tabId===t.id" @mousedown.prevent>
                 <div class="sg-item" v-for="(s,si) in suggest.items" :key="si"
                      :class="{active: si===suggest.index}" @mousedown.prevent="acceptSuggest(t, s)">
-                  <span class="sg-kind" :class="s.kind==='kw' ? 'kw' : 'tbl'">{{ s.kind==='kw' ? 'SQL' : '表' }}</span>
+                  <span class="sg-kind" :class="s.kind">{{ s.kind==='kw' ? 'SQL' : (s.kind==='tbl' ? '表' : '列') }}</span>
                   <span class="sg-name">{{ s.text }}</span>
                   <span class="sg-tail" v-if="s.kind==='tbl' && s.type">{{ s.type==='view' ? '视图' : '表' }}</span>
                 </div>
@@ -616,16 +678,31 @@
                   <span class="muted" v-if="!t.grid.error && t.grid.columns.length">{{ t.grid.rows.length }} 行</span>
                   <span class="muted" v-if="!t.grid.error && !t.grid.columns.length && t.grid.affected >= 0">{{ t.grid.affected }} 行受影响</span>
                   <span class="muted" v-if="t.grid.durationMs >= 0">{{ t.grid.durationMs }} ms</span>
+                  <span class="pill warn" v-if="!t.grid.error && t.grid.truncated"
+                        title="单次最多返回 1000 行；请加 LIMIT 或 WHERE 缩小范围">仅显示前 1000 行</span>
                   <span class="pill info" v-if="canEdit(t)">可编辑（双击单元格）</span>
                   <span class="muted" v-else-if="t.grid.editReason">{{ t.grid.editReason }}</span>
                 </template>
                 <span class="muted" v-else>尚未执行</span>
               </div>
+              <div class="result-tabs" v-if="t.multiResults && t.multiResults.length > 1">
+                <div v-for="(rs,i) in t.multiResults" :key="i" :class="['rtab', {active: t.activeResult===i}]" @click="switchResult(t,i)">
+                  <span class="rtab-no">结果 {{ i+1 }}</span>
+                  <span class="rtab-badge" :class="rs.error ? 'bad-err' : (rs.columns.length ? 'bad-ok' : 'bad-aff')">
+                    {{ rs.error ? '✗' : (rs.columns.length ? rs.rows.length + ' 行' : (rs.affected>=0 ? rs.affected + ' 影响' : '完成')) }}
+                  </span>
+                  <button class="rtab-run" @click.stop="runQueryTab(t, {statementIndex:i})" title="只重新执行这条语句" :disabled="t.grid.loading">↻</button>
+                </div>
+              </div>
               <div class="gridwrap">
                 <div v-if="t.grid.error" class="err-box">{{ t.grid.error }}</div>
-                <table class="grid" v-else-if="t.grid.columns.length">
+                <table class="grid grid-resizable" v-else-if="t.grid.columns.length"
+                       :style="{ width: 'max(100%, ' + gridWidth(t) + 'px)' }">
+                  <colgroup>
+                    <col v-for="(col,ci) in t.grid.columns" :key="'c'+ci" :style="{ width: colWidth(t, col) }" />
+                  </colgroup>
                   <thead><tr>
-                    <th v-for="(col,ci) in t.grid.columns" :key="ci">{{ col }}<span v-if="isPk(t,ci)" class="arrow">🔑</span></th>
+                    <th v-for="(col,ci) in t.grid.columns" :key="ci">{{ col }}<span v-if="isPk(t,ci)" class="arrow">🔑</span><span class="col-resizer" @mousedown.stop="startResize(t, col, $event)" @click.stop></span></th>
                   </tr></thead>
                   <tbody>
                     <tr v-for="(row,ri) in t.grid.rows" :key="ri" :class="{sel: t.grid.selRow===ri}" @click="selectRow(t, ri)">
@@ -634,7 +711,7 @@
                           @dblclick="beginEdit(t,ri,ci)">
                         <input v-if="isEditing(t,ri,ci)" v-model="t.grid.draft"
                                @keydown.enter.prevent="commitEdit(t,ri,ci)" @keydown.esc.prevent="cancelEdit(t)" @blur="commitEdit(t,ri,ci)" ref="editInput" />
-                        <div class="cell" v-else>{{ isNull(t,ri,ci) ? 'NULL' : cell }}</div>
+                        <div class="cell" v-else :title="isNull(t,ri,ci) ? '' : cell">{{ isNull(t,ri,ci) ? 'NULL' : cell }}</div>
                       </td>
                     </tr>
                   </tbody>
@@ -894,8 +971,27 @@
     g.message = r.message || ''
     g.affected = (r.affected == null ? -1 : r.affected)
     g.durationMs = (r.durationMs == null ? -1 : r.durationMs)
+    g.truncated = !!r.truncated
     g.ran = true
     return g
+  }
+  // 把后端的「多语句结果」规范化为前端可用结构：results 为每条语句的 grid，
+  // t.grid 始终指向当前激活的那条（引用，便于单元格编辑持久化）。
+  function normResultMulti(r){
+    var list = r.results || []
+    var results = list.map(function(res, i){
+      var g = normResult(res)
+      g.index = (res.index != null ? res.index : (i + 1))
+      g.statement = res.statement || ''
+      g.error = res.error || ''
+      return g
+    })
+    if(!results.length){
+      var empty = normResult({})
+      empty.error = r.error || '无结果'
+      results = [empty]
+    }
+    return { statements: r.statements || results.length, results: results, active: 0 }
   }
 
   var app = createApp({
@@ -1124,7 +1220,9 @@
         var id = o.id || ('tab_' + (++this.tabSeq))
         var exist = this.tabs.find(function(t){ return t.id===id })
         if(exist){ this.activeTabId = exist.id; return exist }
-        var t = Object.assign({ id:id, filter:'', sel:'', loading:false, _stale:false }, o)
+        var t = Object.assign({ id:id, filter:'', sel:'', loading:false, _stale:false,
+          // 多结果（多条 SQL）、列宽、列名补全、数据页筛选
+          multiResults:null, activeResult:0, colWidths:{}, tableCols:{}, filters:{} }, o)
         if(t.kind==='table' || t.kind==='query'){
           if(!t.grid) t.grid = blankGrid()
           t.grid.pageSize = this.settings.pageSize // 用设置的默认每页行数
@@ -1292,6 +1390,7 @@
       },
       ensureData: function(t){
         t.grid = t.grid || blankGrid()
+        if(!t.colWidths || Object.keys(t.colWidths).length === 0) this.loadColWidths(t)
         if(!t.grid.ran) this.reloadData(t, 1)
       },
       reloadData: function(t, page){
@@ -1303,9 +1402,14 @@
         if(page < 1) page = 1
         g.loading = true
         g.page = page
+        // 仅透传非空的筛选条件（Navicat 式列筛选）
+        var f = {}
+        var filters = t.filters || {}
+        for(var k in filters){ if(Object.prototype.hasOwnProperty.call(filters, k) && String(filters[k]).trim() !== '') f[k] = filters[k] }
         return send('table.rows', {
           id:t.connId, database:t.db, table:t.table,
-          page:page, pageSize:g.pageSize, orderBy:g.orderBy, orderDir:g.orderDir
+          page:page, pageSize:g.pageSize, orderBy:g.orderBy, orderDir:g.orderDir,
+          filters: f
         }).then(function(r){
           var n = normResult(r)
           n.page = r.page || page
@@ -1319,6 +1423,26 @@
           g.loading = false; g.ran = true
           g.error = e.message || String(e)
         })
+      },
+      /* ---------- 数据页筛选（Navicat 式） ---------- */
+      hasFilter: function(t){
+        var filters = t.filters || {}
+        for(var k in filters){ if(Object.prototype.hasOwnProperty.call(filters, k) && String(filters[k]).trim() !== '') return true }
+        return false
+      },
+      filterCount: function(t){
+        var n = 0, filters = t.filters || {}
+        for(var k in filters){ if(Object.prototype.hasOwnProperty.call(filters, k) && String(filters[k]).trim() !== '') n++ }
+        return n
+      },
+      applyFilter: function(t){
+        if(!t || !t.grid) return
+        this.reloadData(t, 1)
+      },
+      clearFilter: function(t){
+        if(!t) return
+        t.filters = {}
+        this.reloadData(t, 1)
       },
       sortBy: function(t, col){
         var g = t.grid
@@ -1349,6 +1473,53 @@
       canEdit: function(t){ return !!(t.grid && t.grid.editable) },
       isNull: function(t, ri, ci){ return !!(t.grid && t.grid.nulls[ri] && t.grid.nulls[ri][ci]) },
       isEditing: function(t, ri, ci){ var e=t.grid && t.grid.edit; return !!e && e.r===ri && e.c===ci },
+      /* ---------- 列宽拖拽（数据页 / 查询页共用） ---------- */
+      colWidthPx: function(t, col){
+        var w = t.colWidths && t.colWidths[col]
+        return w ? w : 150
+      },
+      colWidth: function(t, col){ return this.colWidthPx(t, col) + 'px' },
+      gridWidth: function(t){
+        var sum = (t.kind === 'table' ? 44 : 0)
+        var self = this
+        ;(t.grid.columns || []).forEach(function(c){ sum += self.colWidthPx(t, c) })
+        return sum
+      },
+      startResize: function(t, col, e){
+        e.preventDefault(); e.stopPropagation()
+        if(!t.colWidths) t.colWidths = {}
+        var startX = e.clientX
+        var startW = this.colWidthPx(t, col)
+        var self = this
+        function onMove(ev){
+          var w = Math.max(60, startW + (ev.clientX - startX))
+          t.colWidths[col] = w
+        }
+        function onUp(){
+          document.removeEventListener('mousemove', onMove)
+          document.removeEventListener('mouseup', onUp)
+          document.body.style.cursor = ''
+          document.body.style.userSelect = ''
+          if(t.kind === 'table' && t.table) self.saveColWidths(t)
+        }
+        document.addEventListener('mousemove', onMove)
+        document.addEventListener('mouseup', onUp)
+        document.body.style.cursor = 'col-resize'
+        document.body.style.userSelect = 'none'
+      },
+      saveColWidths: function(t){
+        if(!t.connId || !t.table) return
+        var key = 'colw:' + t.connId + ':' + t.db + ':' + t.table
+        send('kv.set', { key:key, value:t.colWidths }).catch(function(){})
+      },
+      loadColWidths: function(t){
+        if(!t.connId || !t.table) return
+        var key = 'colw:' + t.connId + ':' + t.db + ':' + t.table
+        var self = this
+        send('kv.get', { key:key }).then(function(r){
+          if(r && r.value && typeof r.value === 'object') t.colWidths = r.value
+        }).catch(function(){})
+      },
       beginEdit: function(t, ri, ci){
         var g = t.grid
         if(!g || !g.editable || this.isPk(t,ci)) return
@@ -1455,37 +1626,130 @@
       },
       loadQueryTables: function(t){
         var c = this.conns.find(function(x){ return x.id===t.connId })
-        if(!c || c.dbType==='redis' || !t.db){ t.tables = []; return }
+        if(!c || c.dbType==='redis' || !t.db){ t.tables = []; t.tableTypes = {}; t.tableCols = {}; return }
         var self = this
         send('table.list', { id:t.connId, database:t.db }).then(function(r){
           t.tables = (r.objects||[]).map(function(o){ return o.name })
           t.tableTypes = {}
           ;(r.objects||[]).forEach(function(o){ t.tableTypes[o.name] = o.type })
-        }).catch(function(){ t.tables = [] })
+          return send('table.columns', { id:t.connId, database:t.db })
+        }).then(function(cr){
+          if(cr) t.tableCols = cr.columns || {}
+        }).catch(function(){ t.tables = []; t.tableTypes = {}; t.tableCols = {} })
       },
-      runQueryTab: function(t){
+      runQueryTab: function(t, opts){
         var self = this
         if(!t){ return }
-        if(!String(t.sql||'').trim()){ toast('查询内容为空','err'); return }
+        opts = opts || {}
+        // 决定要执行的 SQL：
+        // 1) 编辑器里有文本选区 → 只执行选区（满足「选中一条执行那一条」）
+        // 2) 指定了某条结果索引（结果标签上的 ↻）→ 只执行那一条
+        // 3) 否则执行全部
+        var query = t.sql
+        var ranSelection = false
+        var sel = this.getEditorSelection(t)
+        if(sel && sel.trim()){
+          query = sel.trim()
+          ranSelection = true
+        } else if(opts.statementIndex != null && t.multiResults && t.multiResults[opts.statementIndex]){
+          query = (t.multiResults[opts.statementIndex].statement || t.sql)
+        }
+        if(!String(query||'').trim()){ toast('查询内容为空','err'); return }
+        t.grid = t.grid || blankGrid()
         t.grid.loading = true
         t.grid.error = ''
-        send('query.run', { id:t.connId, query:t.sql, database:t.db || '' }).then(function(r){
-          var g = normResult(r)
-          g.loading = false
-          t.grid = g
-          if(g.editable) toast('单表查询结果可双击单元格直接编辑','ok')
+        t.grid.ran = false
+        send('query.run', { id:t.connId, query:query, database:t.db || '' }).then(function(r){
+          var m = normResultMulti(r)
+          if(opts.statementIndex != null && t.multiResults && t.multiResults[opts.statementIndex]){
+            // 只更新这一条结果，保留多结果标签结构
+            var idx = opts.statementIndex
+            var g = m.results[0]
+            g.statement = (t.multiResults[idx].statement || g.statement)
+            t.multiResults[idx] = g
+            t.activeResult = idx
+            t.grid = g
+            toast('已重新执行 结果 ' + (idx+1), g.error ? 'err' : 'ok')
+          } else {
+            t.multiResults = m.results
+            t.activeResult = 0
+            t.grid = m.results[0]
+            var ok = m.results.filter(function(x){ return !x.error }).length
+            if(ranSelection){
+              toast('已执行选中的 SQL（共 ' + m.results.length + ' 条语句）', ok === m.results.length ? 'ok' : 'warn')
+            } else if(r.statements > 1){
+              toast(ok + '/' + r.statements + ' 条语句执行成功，点击下方结果标签切换', ok === r.statements ? 'ok' : 'warn')
+            } else if(m.results[0].editable){
+              toast('单表查询结果可双击单元格直接编辑', 'ok')
+            }
+          }
         }).catch(function(e){
-          t.grid.loading = false; t.grid.ran = true; t.grid.error = e.message || String(e)
+          var g = t.grid || blankGrid()
+          g.loading = false; g.ran = true; g.error = e.message || String(e)
+          if(opts.statementIndex != null && t.multiResults && t.multiResults[opts.statementIndex]){
+            t.multiResults[opts.statementIndex] = g
+            t.activeResult = opts.statementIndex
+          } else {
+            t.multiResults = [g]; t.activeResult = 0
+          }
+          t.grid = g
         })
+      },
+      // 读取编辑器里当前文本选区（实时从 DOM 取，最可靠）
+      getEditorSelection: function(t){
+        var el = t._sqlEl
+        if(!el || !el.value){ return '' }
+        var s = el.selectionStart, e = el.selectionEnd
+        if(e > s){ return el.value.substring(s, e) }
+        return ''
+      },
+      clearSqlSelection: function(t){
+        t.selText = ''
+        if(t._sqlEl && t._sqlEl.blur) t._sqlEl.blur()
+      },
+      // 在多条 SQL 的结果之间切换
+      switchResult: function(t, i){
+        if(!t.multiResults || !t.multiResults[i]) return
+        t.activeResult = i
+        t.grid = t.multiResults[i]
       },
       /* ---------- SQL 自动提示 ---------- */
       onSqlInput: function(t, e){
         t.sql = e.target.value
-        this._sqlEl = e.target
+        t._sqlEl = e.target
+        t.selText = '' // 输入会改变选区，清空「选中执行」状态
         this.computeSuggest(t, e.target)
       },
+      onSqlFocus: function(t, e){
+        t._sqlEl = e.target
+      },
+      // 记录编辑器里的文本选区，供「执行选中」使用
+      onSqlSelect: function(t, e){
+        t._sqlEl = e.target
+        var s = e.target.selectionStart, en = e.target.selectionEnd
+        t.selText = (en > s) ? e.target.value.substring(s, en) : ''
+      },
       onSqlKey: function(t, e){
+        // ⌃/⌘ + Enter：执行（编辑器里有选区时只执行选区）
+        if((e.ctrlKey || e.metaKey) && (e.key === 'Enter' || e.keyCode === 13)){
+          e.preventDefault()
+          this.suggest.open = false
+          this.runQueryTab(t)
+          return
+        }
         var s = this.suggest
+        // Tab：没有补全弹窗时插入两个空格（写 SQL 时更容易对齐），而不是把焦点移走
+        if(e.key === 'Tab' && !(s.open && s.items.length)){
+          e.preventDefault()
+          var el = e.target
+          var a = el.selectionStart, b = el.selectionEnd
+          var v = t.sql || ''
+          t.sql = v.slice(0, a) + '  ' + v.slice(b)
+          this.$nextTick(function(){
+            try { el.focus(); el.setSelectionRange(a + 2, a + 2) } catch(err){}
+          })
+          return
+        }
         if(s.open && s.items.length){
           if(e.key==='ArrowDown'){ e.preventDefault(); s.index = (s.index+1) % s.items.length; return }
           if(e.key==='ArrowUp'){ e.preventDefault(); s.index = (s.index-1+s.items.length) % s.items.length; return }
@@ -1508,17 +1772,72 @@
         var token = m[1]
         var start = caret - token.length
         var low = token.toLowerCase()
+        // 根据光标所在的 SQL 子句决定提示「表名」还是「列名」
+        var ctx = this.sqlClauseContext(before)
         var items = []
+        if(ctx === 'table' || ctx === 'both'){
+          ;(t.tables||[]).forEach(function(n){
+            var nl = n.toLowerCase()
+            if(nl.indexOf(low)===0 && nl!==low) items.push({ kind:'tbl', text:n, type: t.tableTypes ? t.tableTypes[n] : '' })
+          })
+        }
+        if(ctx === 'column' || ctx === 'both'){
+          var self = this
+          this.columnsForContext(t, before).forEach(function(c){
+            var cl = c.toLowerCase()
+            if(cl.indexOf(low)===0 && cl!==low) items.push({ kind:'col', text:c })
+          })
+        }
         SQL_KEYWORDS.forEach(function(k){
           var kl = k.toLowerCase()
           if(kl.indexOf(low)===0 && kl!==low) items.push({ kind:'kw', text:k })
         })
-        ;(t.tables||[]).forEach(function(n){
-          var nl = n.toLowerCase()
-          if(nl.indexOf(low)===0 && nl!==low) items.push({ kind:'tbl', text:n, type: t.tableTypes ? t.tableTypes[n] : '' })
+        // 去重（同一名字可能同时命中表/列）并截断，列在前、表其次、关键字最后
+        var seen = {}, uniq = []
+        items.forEach(function(it){
+          var k = it.kind + '|' + it.text
+          if(seen[k]) return
+          seen[k] = 1; uniq.push(it)
         })
-        if(!items.length){ this.suggest.open = false; return }
-        this.suggest = { open:true, tabId:t.id, items:items, index:0, start:start, token:token }
+        var order = { col:0, tbl:1, kw:2 }
+        uniq.sort(function(a,b){ return (order[a.kind]||9) - (order[b.kind]||9) })
+        if(!uniq.length){ this.suggest.open = false; return }
+        this.suggest = { open:true, tabId:t.id, items:uniq.slice(0, 50), index:0, start:start, token:token }
+      },
+      // 推断光标前的 SQL 子句类型：table=提示表名，column=提示列名，both=两者
+      sqlClauseContext: function(before){
+        var s = before
+          .replace(/\/\*[\s\S]*?\*\//g, ' ')   // 块注释
+          .replace(/--[^\n]*/g, ' ')            // 行注释 --
+          .replace(/#[^\n]*/g, ' ')             // 行注释 #
+          .replace(/'[^']*'/g, " '' ")          // 字符串
+          .replace(/"[^"]*"/g, ' "" ')
+          .replace(/`[^`]*`/g, ' `` ')
+        var m = s.match(/([A-Za-z_]+)\s*$/)
+        var kw = m ? m[1].toUpperCase() : ''
+        var tableKw = { FROM:1, JOIN:1, LEFT:1, RIGHT:1, INNER:1, OUTER:1, CROSS:1, INTO:1, UPDATE:1, TABLE:1, USING:1 }
+        var columnKw = { WHERE:1, AND:1, OR:1, ON:1, HAVING:1, SET:1, SELECT:1, ORDER:1, GROUP:1, BY:1, VALUES:1 }
+        if(tableKw[kw]) return 'table'
+        if(columnKw[kw]) return 'column'
+        return 'both'
+      },
+      // 从整段 SQL 的 FROM/JOIN 中抽取涉及的表，汇聚其列名作为候选
+      columnsForContext: function(t, before){
+        var sql = t.sql || ''
+        var names = []
+        // 抽取 FROM / JOIN 后的表名（支持 `db.table` 与别名，`users u` 的别名会被忽略）
+        var re = /(?:FROM|JOIN)\s+[`"]?([A-Za-z_][A-Za-z0-9_]*)(?:\.[`"]?([A-Za-z_][A-Za-z0-9_]*))?/gi
+        var mm
+        while((mm = re.exec(sql))){
+          var name = mm[2] || mm[1]
+          if(name) names.push(name)
+        }
+        var tc = t.tableCols || {}
+        var set = {}, cols = []
+        names.forEach(function(n){
+          ;(tc[n]||[]).forEach(function(c){ if(!set[c]){ set[c] = 1; cols.push(c) } })
+        })
+        return cols
       },
       acceptSuggest: function(t, s){
         var el = this._sqlEl

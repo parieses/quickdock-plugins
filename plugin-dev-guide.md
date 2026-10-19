@@ -753,6 +753,64 @@ if (!path) return            // 用户取消
 > ✅ 与 `qdPickFile`（`PickFilePath`）同源，复用同一套原生对话框链路。
 > ⚠️ **不要**在插件后端用 `exec.Command("powershell", ...)` 弹 `FolderBrowserDialog` 选目录——慢、依赖 WinForms、关闭后焦点不归还宿主（需 `user32` 兜底），且 PowerShell 会把 `user32` 返回的 `True` 混进 stdout 污染路径。旧插件 git-workbench / pdf-toolkit 已统一迁移到 `qdPickFolder`。
 
+### 数据持久化：插件数据一律放 `plugin-data`，**不进安装目录**
+
+> 🚫 **强制约束：插件自己落盘的数据（数据库、配置、下载的模型、缓存、日志）不得写在插件安装目录 `<plugins>/<id>/` 里。**
+
+原因：宿主是**重命名式更新**——升级时把 `<plugins>/<id>/` 整个改名成 `<id>.bak.<旧版本>`，再把新版本解压进去，随后清理 `.bak`。写在安装目录里的数据会被一起卷走，表现为「升级后配置没了 / 连接丢了 / 模型要重下」。
+
+统一位置（与 `plugins/`、`logs/`、`sites/`、`quickdock.db` 同级）：
+
+```
+<用户主目录>/.quickdock/plugin-data/<plugin-id>/
+  ├─ data.db / config.json …   插件自己的持久化文件
+  ├─ models/                   体积大的下载资产（如 OCR 模型）
+  └─ logs/                     插件自己的诊断日志（不要和应用主日志混写）
+```
+
+- 环境变量 `QUICKDOCK_PLUGIN_DATA` 可覆盖根目录（测试隔离 / 宿主将来统一指定时用）
+- 不要用 `%APPDATA%` / `os.UserConfigDir()` 作为**首选**位置：它常被「已知文件夹移动」重定向到 OneDrive / 网盘，SQLite（WAL）在重定向目录下会锁失效甚至损坏；只在主目录取不到时兜底
+- **首次运行要迁移历史数据**：按 `安装目录/<name>`、`安装目录/data/<name>`、`plugins/<id>/<name>`、`plugins/<id>.bak.*/<name>` 的顺序找老文件，搬到新目录（复制或 rename，目标已存在就不动），用户才不会有「升级即失忆」的体感
+
+native 插件的最小实现（每个插件自带一份，无需公共包；`database` / `http-client` / `control-receiver` / `ocr-tool` / `photo-library` 均已按此改造）：
+
+```go
+const pluginID = "io.github.parieses.my-plugin"
+
+// dataRoot 插件稳定数据目录（可用 QUICKDOCK_PLUGIN_DATA 覆盖）。
+func dataRoot() string {
+	if p := os.Getenv("QUICKDOCK_PLUGIN_DATA"); p != "" {
+		return p
+	}
+	if home, err := os.UserHomeDir(); err == nil && home != "" {
+		return filepath.Join(home, ".quickdock", "plugin-data", pluginID)
+	}
+	return filepath.Join(os.TempDir(), "quickdock-plugin-data", pluginID)
+}
+
+// ensureDataFile 确保目录存在并返回文件路径；目标不存在时先从历史位置迁移。
+func ensureDataFile(name string) string {
+	dir := dataRoot()
+	_ = os.MkdirAll(dir, 0o755)
+	dst := filepath.Join(dir, name)
+	if _, err := os.Stat(dst); err == nil {
+		return dst
+	}
+	for _, src := range legacyCandidates(name) { // 安装目录 / .bak.* 备份目录
+		if err := copyFile(src, dst); err == nil {
+			break
+		}
+	}
+	return dst
+}
+```
+
+> 参考实现：`database/datadir`（`store.go`）与 `http-client/datadir.go` 里有完整的历史数据回收逻辑（含 SQLite `-wal` / `-shm` 伴随文件、跨盘 tree copy）。
+>
+> ⚠️ 仅「随插件打包的静态资源」（图标、字典、`frontend/data/*.bin.js` 这类只读素材）属于插件本体，留在安装目录是对的；**用户产生的数据**才必须搬到 `plugin-data`。
+>
+> 💡 纯前端 / goja 插件不需要自己管目录：`db.set` / `db.get`（宿主 SQLite，按 plugin_id 隔离）与 `localStorage` 都不在插件目录里。但 `db.*` 更稳、且不会和其它插件串味，优先用它。
+
 ---
 
 ## 权限声明
@@ -1040,7 +1098,7 @@ window.addEventListener('message', (e) => {
 1. **native 插件 stdout 主通道专用于 JSON-RPC**: 协议外的散行（`fmt.Println` / `console.log` 落到 stdout）虽已被宿主捕获进插件日志（`[stdout]` 前缀，不破坏通信），但超大单行会被截断、多行 JSON 无法解析——调试输出请统一走 `log.info` / `log.warn` / `log.error`（或 stderr）
 2. **错误处理**: 始终用 JSON-RPC 错误响应返回错误
 3. **热键冲突**: 如果多个插件声明相同热键，后安装的插件注册会失败
-4. **存储隔离**: 插件的 `db.*` Host Method 只能读写自己 `plugin_id` 的数据
+4. **存储隔离**: 插件的 `db.*` Host Method 只能读写自己 `plugin_id` 的数据；**自己落盘的文件必须放 `<用户主目录>/.quickdock/plugin-data/<id>/`，不得写进插件安装目录**（升级会把安装目录整个卷走，见「数据持久化」一节）
 
 ---
 

@@ -24,7 +24,9 @@
 // 本地端口设计（见 README「端口建议」）：
 //   controlPort（默认 24556）本地控制通道 WebSocket（状态/日志/画面参数推送，JSON）
 //   streamPort = controlPort + 1（默认 24557）本地视频流 WebSocket（H.264 AVCC 二进制帧）
-//   两个服务都只监听 127.0.0.1，不对外暴露；端口持久化在插件目录 config.json。
+//   两个服务都只监听 127.0.0.1，不对外暴露；端口持久化在宿主数据根下的
+//   <用户主目录>/.quickdock/plugin-data/io.github.parieses.control-receiver/config.json
+//   （与插件安装目录分离，升级不丢；见 datadir.go）。
 //
 // 前端 ↔ 后端消息格式：
 //   控制通道（文本 JSON）：{"t":"status"|"screen"|"config"|"devices"|"log", ...}
@@ -2093,7 +2095,9 @@ func (a *app) handleExecute(input map[string]interface{}, cmd string) (interface
 
 func main() {
 	appState.cfg = defaultConfig()
-	appState.cfgPath = filepath.Join(exeDir(), "config.json")
+	// 配置落在 <用户主目录>/.quickdock/plugin-data/<id>/config.json，与插件安装目录分离；
+	// ensureDataFile 首次运行会把安装目录里的老 config.json 迁过来。
+	appState.cfgPath = ensureDataFile("config.json")
 	appState.startedAt = time.Now()
 	appState.lastTick = time.Now()
 	appState.pull = pullBuf{maxChunks: 180, maxBytes: 6 << 20}
@@ -2159,9 +2163,9 @@ func handleRequest(req rpcRequest) {
 			_ = json.Unmarshal(req.Params, &p)
 		}
 		if p.PluginDir != "" {
+			// pluginDir 只做展示 / 旧数据迁移来源，配置路径始终固定在 plugin-data 下。
 			appState.mu.Lock()
 			appState.pluginDir = p.PluginDir
-			appState.cfgPath = filepath.Join(p.PluginDir, "config.json")
 			appState.mu.Unlock()
 		}
 		appState.mu.Lock()

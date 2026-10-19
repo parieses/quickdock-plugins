@@ -203,6 +203,8 @@ func dispatch(raw string) {
 
 // shutdown 释放资源并立即退出（宿主 stopPlugin / 卸载 / 更新前触发的通知）。
 func shutdown() {
+	// 先关掉缓存的外库连接：SQLite 句柄不释放会锁住 .db 文件，影响宿主更新 / 用户操作
+	closeAllConnCache()
 	storeMu.Lock()
 	if store != nil {
 		_ = store.Close()
@@ -241,6 +243,8 @@ func handleCommand(id int64, p executeParams) {
 	// 对象浏览（Navicat 式：库 → 表列表 → 结构 / 数据）
 	case "table.list":
 		handleTableList(id, p.Input)
+	case "table.columns":
+		handleTableColumns(id, p.Input)
 	case "table.structure":
 		handleTableStructure(id, p.Input)
 	case "table.rows":
