@@ -33,7 +33,8 @@
     "frontend"
   ],
   "permissions": {
-    "network": true
+    "network": true,
+    "filesystem": true
   },
   "commands": [
     {

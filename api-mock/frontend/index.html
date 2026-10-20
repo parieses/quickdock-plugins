@@ -104,6 +104,7 @@ window.copyViaHost=function(t,cb){var id="cp_"+(++window.__amSeq),done=false;fun
       function onMsg(e){var d=e&&e.data;if(d&&d.type==='plugin:result'&&d.id===id){window.removeEventListener('message',onMsg);if(d.error)reject(new Error(d.error));else resolve(d.data)}}
       window.addEventListener('message',onMsg)
       parent.postMessage({type:'plugin:execute',id:id,command:command,input:params||{}}, '*')
+      setTimeout(function(){window.removeEventListener('message',onMsg);reject(new Error('请求超时：后端 30 秒无响应'))},30000)
     })
   }
   function genId(){return 'r'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)}

@@ -25,7 +25,14 @@
     "frontend"
   ],
   "permissions": {
-    "filesystem": false,
+    "filesystem": {
+      "read": [
+        "~/.quickdock/plugin-data/io.github.parieses.control-receiver"
+      ],
+      "write": [
+        "~/.quickdock/plugin-data/io.github.parieses.control-receiver"
+      ]
+    },
     "network": true
   },
   "ports": {

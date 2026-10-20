@@ -85,10 +85,14 @@ func handleCalc(id int64, input map[string]interface{}) {
 	if algo == "" {
 		algo = "sha256"
 	}
-	h := pickHash(algo)
+
+	// 数据源（文件 / 文本）：先拿 reader，算法再决定读几遍。
+	// 原来前端为 4 个算法各发一次 calc，后端每次 os.Open + io.Copy 读完整文件 ——
+	// 一个 4GB 镜像要读 4 遍。现在 algo=all 用 io.MultiWriter 一次读完算 4 个。
+	var reader io.Reader
 	target := ""
 	if mode == "text" {
-		io.WriteString(h, rawStrFrom(input, "text"))
+		reader = strings.NewReader(rawStrFrom(input, "text"))
 		target = "(文本输入)"
 	} else {
 		path := strFrom(input, "path")
@@ -102,11 +106,39 @@ func handleCalc(id int64, input map[string]interface{}) {
 			return
 		}
 		defer f.Close()
-		if _, err := io.Copy(h, f); err != nil {
+		reader = f
+		target = path
+	}
+
+	if algo == "all" {
+		names := []string{"md5", "sha1", "sha256", "sha512"}
+		sums := map[string]hash.Hash{
+			"md5": md5.New(), "sha1": sha1.New(), "sha256": sha256.New(), "sha512": sha512.New(),
+		}
+		ws := make([]io.Writer, 0, len(names))
+		for _, n := range names {
+			ws = append(ws, sums[n])
+		}
+		if _, err := io.Copy(io.MultiWriter(ws...), reader); err != nil {
 			respondError(id, -1, "读取失败: "+err.Error())
 			return
 		}
-		target = path
+		out := make(map[string]string, len(names))
+		for _, n := range names {
+			out[n] = hex.EncodeToString(sums[n].Sum(nil))
+		}
+		respond(id, map[string]interface{}{
+			"target": target,
+			"mode":   mode,
+			"hashes": out,
+		})
+		return
+	}
+
+	h := pickHash(algo)
+	if _, err := io.Copy(h, reader); err != nil {
+		respondError(id, -1, "读取失败: "+err.Error())
+		return
 	}
 	respond(id, map[string]interface{}{
 		"target": target,
@@ -132,7 +164,15 @@ func dispatch(raw string) {
 		if len(req.Params) > 0 {
 			_ = json.Unmarshal(req.Params, &params)
 		}
-		switch strings.ToLower(strings.TrimSpace(params.Command)) {
+		// 命令别名：plugin.json 的 commands[].id 是 hash-calc，后端历史实现是 calc。
+		// 带前端的插件走 plugin:init 打开窗口，命令 id 不会到后端；但纯后端命令路径
+		// （宿主 ExecutePluginCommand）会把 id 原样发过来，别名兜住这一条，避免 -32601。
+		cmd := strings.ToLower(strings.TrimSpace(params.Command))
+		switch cmd {
+		case "hash-calc":
+			cmd = "calc"
+		}
+		switch cmd {
 		case "calc":
 			handleCalc(req.ID, params.Input)
 		default:

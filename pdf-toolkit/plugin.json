@@ -34,7 +34,17 @@
   ],
   "permissions": {
     "filesystem": true,
-    "clipboard": true
+    "clipboard": true,
+    "process": [
+      "pdfcpu",
+      "powershell",
+      "pbcopy",
+      "xclip",
+      "xsel",
+      "explorer",
+      "open",
+      "xdg-open"
+    ]
   },
   "commands": [
     {

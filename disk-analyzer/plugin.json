@@ -25,7 +25,12 @@
     "frontend"
   ],
   "permissions": {
-    "filesystem": true
+    "filesystem": true,
+    "process": [
+      "explorer",
+      "open",
+      "xdg-open"
+    ]
   },
   "commands": [
     {

@@ -467,6 +467,17 @@ func pruneEmptyDirs(root string) {
 
 // ---- 语言缓存：检测 / 路径解析 / 命令式清理 ----
 
+// 探测与路径解析结果在进程内缓存一次。
+// 这些探测每次都要起一个 powershell（冷启动 200~600ms）：`npm config get cache`、
+// `pnpm store path`、`Get-Command ...` 各自一次，打开面板/点扫描时串行跑下来要白等
+// 1~3 秒，而答案在一次会话里不会变。插件进程常驻（宿主惰性复活），所以缓存到这里。
+var (
+	probeMu    sync.Mutex
+	probeCache = map[string]bool{}     // 分类 key -> 该工具是否可用
+	rootsMu    sync.Mutex
+	rootsCache = map[string][]string{} // 分类 key -> 解析出的根目录
+)
+
 // catAvailable 判断分类是否应展示：Detect 为空始终可用；非空则要求该程序可找到。
 // 部分工具以 .ps1 形式存在（如 npm/pnpm），exec.LookPath 默认找不到，
 // 用 PowerShell 的 Get-Command 兜底探测，避免已安装却隐藏。
@@ -474,10 +485,24 @@ func catAvailable(c junkCategory) bool {
 	if c.Detect == "" {
 		return true
 	}
-	if _, err := exec.LookPath(c.Detect); err == nil {
-		return true
+	probeMu.Lock()
+	if v, ok := probeCache[c.Key]; ok {
+		probeMu.Unlock()
+		return v
 	}
-	return probePowerShell("if(Get-Command " + c.Detect + " -ErrorAction SilentlyContinue){exit 0}else{exit 1}")
+	probeMu.Unlock()
+
+	ok := false
+	if _, err := exec.LookPath(c.Detect); err == nil {
+		ok = true
+	} else {
+		ok = probePowerShell("if(Get-Command " + c.Detect + " -ErrorAction SilentlyContinue){exit 0}else{exit 1}")
+	}
+
+	probeMu.Lock()
+	probeCache[c.Key] = ok
+	probeMu.Unlock()
+	return ok
 }
 
 // probePowerShell 运行一段 PowerShell 脚本，按退出码返回是否成功。
@@ -500,7 +525,24 @@ func shOut(name string, args ...string) string {
 // resolveRoots 返回分类实际要扫描/清理的根目录。
 // 语言缓存路径往往由工具自身决定（如 GOCACHE），用 `go env` / `npm config` 等动态解析；
 // 解析失败则回退到静态 Roots（默认路径），保证总能给出可用路径。
+// 解析结果按分类 key 缓存：scan 与 clean 都会调到这里，不缓存等于每次都重跑一遍子进程。
 func resolveRoots(c junkCategory) []string {
+	rootsMu.Lock()
+	if v, ok := rootsCache[c.Key]; ok {
+		rootsMu.Unlock()
+		return v
+	}
+	rootsMu.Unlock()
+
+	roots := resolveRootsUncached(c)
+
+	rootsMu.Lock()
+	rootsCache[c.Key] = roots
+	rootsMu.Unlock()
+	return roots
+}
+
+func resolveRootsUncached(c junkCategory) []string {
 	switch c.Key {
 	case "go-build-cache":
 		if s := shOut("go", "env", "GOCACHE"); s != "" {
@@ -535,6 +577,21 @@ func runCleanCmd(cmdStr string) (string, error) {
 	err := cmd.Run()
 	diagLogf("clean cmd [%s] err=%v out=%s", cmdStr, err, out.String())
 	return out.String(), err
+}
+
+// emptyRecycleBin 通过 Shell API 清空回收站（PowerShell 的 Clear-RecycleBin 底层即
+// SHEmptyRecycleBin）。不能走 os.Remove：$Recycle.Bin 下的 $I*（索引）与 $R*（内容）
+// 是成对的，按文件逐个删会留下脏索引，资源管理器里出现点不掉的幽灵条目；而且别的
+// 用户的 SID 子目录在普通权限下删不掉，会全部计入 skipped 却仍对外报「已清理」。
+// 失败时明确返回错误，不回退到逐文件删除 —— 宁可如实报错，也不留一个烂回收站。
+func emptyRecycleBin(c junkCategory) (freed, deleted int64, err error) {
+	// 先统计体积：清空后就没法算了（失败也不影响，仅用于「释放了多少」的展示）
+	collectFiles(c, func(_ string, s int64) { freed += s; deleted++ })
+	out, e := runCleanCmd(`powershell -NoProfile -Command "Clear-RecycleBin -Force -ErrorAction SilentlyContinue"`)
+	if e != nil {
+		return 0, 0, fmt.Errorf("清空回收站失败（可能需要管理员权限）：%v %s", e, strings.TrimSpace(out))
+	}
+	return freed, deleted, nil
 }
 
 // fileDeleteCategory 逐文件删除分类下匹配的文件（跳过被占用项），并尽力清理空目录。
@@ -768,7 +825,17 @@ func handleClean(id int64, input map[string]interface{}) {
 		for _, c := range valid {
 			updateTaskMessage(t, "正在清理："+c.Name)
 			var freed, deleted, skipped int64
-			if c.CleanCmd != "" && catAvailable(c) {
+			var catErr string
+			if c.Key == "recycle-bin" {
+				// 回收站单独走 Shell API：不能逐文件删（见 emptyRecycleBin 注释）
+				var err error
+				freed, deleted, err = emptyRecycleBin(c)
+				if err != nil {
+					catErr = err.Error()
+					diagLogf("清空回收站失败: %v", err)
+					freed, deleted = 0, 0
+				}
+			} else if c.CleanCmd != "" && catAvailable(c) {
 				// 命令式清理：先统计占用，再执行对应工具原生命令（如 go clean -cache）
 				collectFiles(c, func(_ string, s int64) { freed += s; deleted++ })
 				if out, err := runCleanCmd(c.CleanCmd); err != nil {
@@ -784,6 +851,7 @@ func handleClean(id int64, input map[string]interface{}) {
 				"freed":   freed,
 				"deleted": deleted,
 				"skipped": skipped,
+				"error":   catErr,
 			})
 			totalFreed += freed
 			totalDeleted += deleted

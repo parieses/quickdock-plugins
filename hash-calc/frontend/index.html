@@ -62,6 +62,7 @@ function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;
       var id='hash_'+(++seq)
       pend[id]={resolve:resolve,reject:reject}
       parent.postMessage({type:'plugin:execute',id:id,command:command,input:input||{}},'*')
+      setTimeout(function(){var t=pend[id];if(t&&!t.__timeout){t.__timeout=1;(t.reject||t.rej)(new Error('请求超时：后端 30 秒无响应'))}},30000)
     })
   }
   window.addEventListener('message',function(e){
@@ -102,29 +103,33 @@ function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;
     })
   }
 
+  var epoch=0   // 每选一次文件就 +1：上一个文件的回包晚到时直接丢弃，避免把旧值写进新结果
   function calcAll(){
     if(!filePath){hint.textContent='请先选择文件';return}
     hint.textContent='计算中…'
     renderSkeleton()
-    var done=0
-    ALGOS.forEach(function(algo){
-      send('calc',{mode:'file',path:filePath,algo:algo}).then(function(r){
-        var L=lines[r.algo]||lines[algo]
-        if(!L)return
+    var my=++epoch
+    // 一次请求算四种摘要（后端 io.MultiWriter 单次读盘）；文件只读一遍
+    send('calc',{mode:'file',path:filePath,algo:'all'}).then(function(r){
+      if(my!==epoch)return
+      var hs=(r&&r.hashes)||{}
+      ALGOS.forEach(function(algo){
+        var L=lines[algo];if(!L)return
+        var v=hs[algo]||''
         L.hash.classList.remove('pending')
-        L.hash.textContent=r.hash
-        L.copy.classList.remove('disabled')
-        L.copy.setAttribute('data-v',r.hash)
-      }).catch(function(e){
-        var L=lines[algo]
-        if(!L)return
+        L.hash.textContent=v||'(未返回)'
+        if(v){L.copy.classList.remove('disabled');L.copy.setAttribute('data-v',v)}
+      })
+      hint.textContent='完成'
+    }).catch(function(e){
+      if(my!==epoch)return
+      ALGOS.forEach(function(algo){
+        var L=lines[algo];if(!L)return
         L.hash.classList.remove('pending')
         L.hash.classList.add('error')
         L.hash.textContent='失败：'+(e&&e.message?e.message:e)
-      }).then(function(){
-        done++
-        if(done===ALGOS.length)hint.textContent='完成'
       })
+      hint.textContent=''
     })
   }
 

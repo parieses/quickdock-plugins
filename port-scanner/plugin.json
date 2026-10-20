@@ -80,7 +80,17 @@
     "entry": "frontend/index.html"
   },
   "permissions": {
-    "filesystem": true
+    "filesystem": true,
+    "process": [
+      "netstat",
+      "tasklist",
+      "taskkill",
+      "netsh",
+      "wmic",
+      "explorer",
+      "open",
+      "xdg-open"
+    ]
   },
   "capabilities": [
     "command",

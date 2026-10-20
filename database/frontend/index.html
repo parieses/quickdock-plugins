@@ -900,6 +900,7 @@
       var id = 'db_' + (++seq)
       pend[id] = { res: res, rej: rej }
       parent.postMessage({ type:'plugin:execute', id:id, command:command, input: input || {} }, '*')
+      setTimeout(function(){var t=pend[id];if(t&&!t.__timeout){t.__timeout=1;(t.reject||t.rej)(new Error('请求超时：后端 30 秒无响应'))}},30000)
     })
   }
   /* ---------- 主题跟随宿主 ----------

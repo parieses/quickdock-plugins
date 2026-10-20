@@ -83,6 +83,14 @@ jobs:
           echo "检测到的插件: [$plugins]"
           echo "changed_plugins=$plugins" >> "$GITHUB_OUTPUT"
 
+      - name: Static checks (frontend links / styles / manifest)
+        shell: bash
+        run: |
+          # 断链、未定义样式类、未定义 CSS 变量、plugin.json 不合法 —— 这些都不会让编译失败，
+          # 但会让用户装上一个排版塌掉/按钮没颜色的插件。全量检查（77 个插件约 1 秒），
+          # 避免「改了 A 顺手弄坏 B」这种情况落到发布包里。
+          python3 tools/check_plugins.py
+
       - name: Build pdfcpu for pdf-toolkit
         if: contains(steps.changed.outputs.changed_plugins, 'pdf-toolkit')
         shell: bash

@@ -36,6 +36,7 @@
   --radius-xs: 4px;
   --radius-sm: 6px;
   --radius: 8px;
+  --radius-md: 10px;   /* 中间档：卡片内的小块容器 */
   --radius-lg: 12px;
   --radius-xl: 16px;
   --radius-pill: 999px;
@@ -55,6 +56,7 @@
   --fs-lg: 14px;
   --fs-xl: 16px;
   --fs-2xl: 20px;
+  --fw-normal: 400;
   --fw-medium: 500;
   --fw-semibold: 600;
 
@@ -131,6 +133,8 @@ body {
 .p-btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
 .p-btn-ghost { background: transparent; border-color: transparent; }
 .p-btn-ghost:hover { background: var(--bg-hover); border-color: transparent; }
+.p-btn-danger { background: var(--danger); color: #fff; border-color: var(--danger); }
+.p-btn-danger:hover { opacity: 0.9; }
 .p-btn-sm { height: 26px; padding: 0 10px; font-size: var(--fs-xs); }
 .p-btn:disabled, .p-btn[disabled] { opacity: 0.5; cursor: not-allowed; }
 
@@ -179,7 +183,7 @@ body {
 .p-tabs { display: flex; gap: var(--sp-1); padding: var(--sp-2) var(--sp-3); background: var(--bg-secondary); border-bottom: 1px solid var(--border); flex-shrink: 0; }
 .p-tab { height: 30px; padding: 0 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-tertiary); color: var(--text-secondary); font-size: var(--fs-sm); cursor: pointer; white-space: nowrap; transition: background var(--transition), color var(--transition), border-color var(--transition); }
 .p-tab:hover { color: var(--text-primary); background: var(--bg-hover); }
-.p-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.p-tab.active, .p-tab-active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
 /* ============================================================
  * 文本 / 列表 / 卡片

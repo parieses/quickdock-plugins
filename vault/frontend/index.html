@@ -24,6 +24,7 @@ body{margin:0}
 .item .del{color:#e24b4a;cursor:pointer;font-size:12px}
 .empty{display:flex;align-items:center;justify-content:center;flex:1;color:var(--text-muted);font-size:13px}
 #msg{font-size:12px;color:#e24b4a;min-height:14px}
+.warn{padding:8px 10px;border:1px solid #c07d00;border-radius:var(--radius);background:rgba(245,176,37,.12);color:#c07d00;font-size:12px;line-height:1.5}
 </style>
 </head>
 <body>
@@ -42,21 +43,66 @@ var key=null,salt=null,entries=[],lastPw='',useSubtle=!!(window.crypto&&crypto.s
 function setMsg(t){var m=document.getElementById('msg');if(m)m.textContent=t||''}
 function loadRaw(){try{return localStorage.getItem('vault_data')}catch(e){return null}}
 function saveRaw(s){try{localStorage.setItem('vault_data',s)}catch(e){}}
-// 降级加密：沙箱不透明源下 crypto.subtle 不可用，用纯 JS 异或混淆（仅本地工具，非安全上下文）
+// ---- 降级模式说明 ----
+// 沙箱为不透明源（opaque origin）时 window.crypto.subtle 不可用，WebCrypto 的 AES-GCM 拿不到。
+// 此时只能退回纯 JS 的异或混淆 —— 它【不是加密】，只能防「顺手看一眼」，挡不住拿到数据的人。
+// 所以这里做三件事：① 明确告知用户当前是弱保护；② 加一个校验位让「密码输错」能立刻判定；
+// ③ 新建密码库时提高主密码门槛。不静默降级成「看起来像 AES」。
+var MIN_PW = 8 // 新建密码库的主密码下限（已解密的旧库不受影响，避免把 4 位老库锁死）
+
 function fnv1a(s){var h=0x811c9dc5;for(var i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,0x01000193)}return (h>>>0)}
 function fbKey(pw,s){var sb='';for(var i=0;i<s.length;i++)sb+=(s[i]>>>0).toString(16);return fnv1a(pw+'|'+sb)}
+// fbCheck：密码校验位。异或没有认证标签，光靠解密后 JSON.parse 失败来判错会把
+// 「主密码错误」显示成「出错：Unexpected token...」，且极端情况下可能解出合法但错误的 JSON。
+function fbCheck(pw,s){return fbKey(pw,s).toString(16)}
 function xorCrypt(str,ks){var out='';for(var i=0;i<str.length;i++)out+=String.fromCharCode(str.charCodeAt(i)^ks.charCodeAt(i%ks.length));return out}
 function fbEncrypt(plain,pw,s){return btoa(unescape(encodeURIComponent(xorCrypt(plain,pw+':'+fbKey(pw,s)))))}
 function fbDecrypt(b64,pw,s){try{return xorCrypt(decodeURIComponent(escape(atob(b64))),pw+':'+fbKey(pw,s))}catch(e){return null}}
 async function derive(pw,s){lastPw=pw;if(!useSubtle)return {fb:true};var enc=new TextEncoder();var k=await crypto.subtle.importKey('raw',enc.encode(pw),'PBKDF2',false,['deriveKey']);return crypto.subtle.deriveKey({name:'PBKDF2',salt:s,iterations:100000,hash:'SHA-256'},k,{name:'AES-GCM',length:256},false,['encrypt','decrypt'])}
-async function unlock(){try{var pw=document.getElementById('mp').value;if(pw.length<4){setMsg('主密码至少 4 位');return}var raw=loadRaw();if(!raw){salt=crypto.getRandomValues(new Uint8Array(16));key=await derive(pw,salt);entries=[];await save();buildUI();return}var parts=JSON.parse(raw);salt=new Uint8Array(parts.salt);if(parts.mode==='fb'){key={fb:true};var plain=fbDecrypt(parts.data,pw,salt);if(plain==null){setMsg('主密码错误');return}entries=JSON.parse(plain);buildUI();return}key=await derive(pw,salt);try{var dec=await crypto.subtle.decrypt({name:'AES-GCM',iv:new Uint8Array(parts.iv)},key,new Uint8Array(parts.data));entries=JSON.parse(new TextDecoder().decode(dec));buildUI()}catch(e){setMsg('主密码错误')}}catch(e){setMsg('出错：'+(e&&e.message||e))}}
-async function save(){if(!key)return;if(key.fb){saveRaw(JSON.stringify({mode:'fb',salt:Array.from(salt),data:fbEncrypt(JSON.stringify(entries),lastPw,salt)}));return}var iv=crypto.getRandomValues(new Uint8Array(12));var buf=await crypto.subtle.encrypt({name:'AES-GCM',iv:iv},key,new TextEncoder().encode(JSON.stringify(entries)));saveRaw(JSON.stringify({mode:'subtle',salt:Array.from(salt),iv:Array.from(iv),data:Array.from(new Uint8Array(buf))}))}
-function buildUI(){var app=document.getElementById('app');app.innerHTML='<div class="row"><input class="inp" id="site" placeholder="网站/名称" style="flex:1"><input class="inp" id="user" placeholder="账号" style="flex:1"><input class="inp" id="pass" placeholder="密码" style="flex:1.2"><button class="btn primary" id="add">添加</button><button class="btn" id="exp">导出</button><input type="file" id="imp" style="display:none"><button class="btn" id="impb">导入</button><button class="btn" id="lockb">锁定</button></div><div class="list" id="list"></div>';document.getElementById('add').onclick=add;document.getElementById('exp').onclick=exportFile;document.getElementById('impb').onclick=function(){document.getElementById('imp').click()};document.getElementById('imp').onchange=importFile;document.getElementById('lockb').onclick=function(){key=null;salt=null;entries=[];location.reload()};renderList();document.getElementById('list').addEventListener('click',onListClick)}
+
+async function unlock(){
+  var mp=document.getElementById('mp'),pw=mp.value,raw=loadRaw();
+  if(!raw){
+    // 首次创建：此时才校验强度
+    if(pw.length<MIN_PW){setMsg('主密码至少 '+MIN_PW+' 位（这是你唯一的钥匙，忘记无法找回）');return}
+    salt=crypto.getRandomValues(new Uint8Array(16));
+    key=await derive(pw,salt);entries=[];await save();
+    mp.value='';buildUI();return;
+  }
+  // 已有密码库：不对长度设限（老库可能是 4 位，加限制等于把用户锁死在自己的数据外）
+  var parts;
+  try{parts=JSON.parse(raw)}catch(e){setMsg('密码库数据损坏，无法解析');return}
+  salt=new Uint8Array(parts.salt||[]);
+  lastPw=pw;
+  if(parts.mode==='fb'){
+    // 有校验位就先比校验位，一错即返回；没有校验位的老数据退回「解析成功后判错」
+    if(parts.check&&parts.check!==fbCheck(pw,salt)){setMsg('主密码错误');return}
+    key={fb:true};
+    var plain=fbDecrypt(parts.data,pw,salt);
+    if(plain==null){setMsg('主密码错误');return}
+    try{entries=JSON.parse(plain)}catch(e){setMsg('主密码错误');key=null;return}
+    buildUI();return;
+  }
+  key=await derive(pw,salt);
+  try{
+    var dec=await crypto.subtle.decrypt({name:'AES-GCM',iv:new Uint8Array(parts.iv)},key,new Uint8Array(parts.data));
+    entries=JSON.parse(new TextDecoder().decode(dec));buildUI();
+  }catch(e){setMsg('主密码错误');key=null}
+}
+
+async function save(){
+  if(!key)return;
+  if(key.fb){saveRaw(JSON.stringify({mode:'fb',salt:Array.from(salt),check:fbCheck(lastPw,salt),data:fbEncrypt(JSON.stringify(entries),lastPw,salt)}));return}
+  var iv=crypto.getRandomValues(new Uint8Array(12));
+  var buf=await crypto.subtle.encrypt({name:'AES-GCM',iv:iv},key,new TextEncoder().encode(JSON.stringify(entries)));
+  saveRaw(JSON.stringify({mode:'subtle',salt:Array.from(salt),iv:Array.from(iv),data:Array.from(new Uint8Array(buf))}))
+}
+function buildUI(){var app=document.getElementById('app');var warn=key&&key.fb?'<div class="warn">⚠️ 当前环境拿不到 WebCrypto，密码库以降级模式（异或混淆）保存：只能挡住「顺手一瞥」，挡不住拿到数据的人。建议在正常安装的 QuickDock 窗口中使用。</div>':'';app.innerHTML=warn+'<div class="row"><input class="inp" id="site" placeholder="网站/名称" style="flex:1"><input class="inp" id="user" placeholder="账号" style="flex:1"><input class="inp" id="pass" placeholder="密码" style="flex:1.2"><button class="btn primary" id="add">添加</button><button class="btn" id="exp">导出</button><input type="file" id="imp" style="display:none"><button class="btn" id="impb">导入</button><button class="btn" id="lockb">锁定</button></div><div class="list" id="list"></div>';document.getElementById('add').onclick=add;document.getElementById('exp').onclick=exportFile;document.getElementById('impb').onclick=function(){document.getElementById('imp').click()};document.getElementById('imp').onchange=importFile;document.getElementById('lockb').onclick=function(){key=null;salt=null;entries=[];location.reload()};renderList();document.getElementById('list').addEventListener('click',onListClick)}
 function renderList(){var l=document.getElementById('list');if(!l)return;if(!entries.length){l.innerHTML='<div class="empty">还没有条目</div>';return}l.innerHTML='';entries.forEach(function(e,i){var d=document.createElement('div');d.className='item';d.innerHTML='<div class="m"><div class="t">'+esc(e.site)+'</div><div class="u">'+esc(e.user)+'</div></div><div class="p">'+'•'.repeat(Math.min(12,(e.pass||'').length))+'</div><span class="act" data-i="'+i+'">复制</span><span class="del" data-i="'+i+'">删</span>';l.appendChild(d)})}
-function onListClick(ev){if(ev.target.classList.contains('act')){window.copyViaHost(entries[+ev.target.dataset.i].pass)}else if(ev.target.classList.contains('del')){entries.splice(+ev.target.dataset.i,1);save();renderList()}}
+function onListClick(ev){if(ev.target.classList.contains('act')){window.copyViaHost(entries[+ev.target.dataset.i].pass)}else if(ev.target.classList.contains('del')){var i=+ev.target.dataset.i,it=entries[i]||{};if(!confirm('删除「'+(it.site||'')+'」？删除后无法恢复。'))return;entries.splice(i,1);save();renderList()}}
 async function add(){var s=document.getElementById('site').value.trim(),u=document.getElementById('user').value.trim(),p=document.getElementById('pass').value;if(!s||!p)return;entries.push({site:s,user:u,pass:p});await save();document.getElementById('site').value='';document.getElementById('user').value='';document.getElementById('pass').value='';renderList()}
-function exportFile(){var blob=new Blob([loadRaw()||''],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='vault-backup.json';a.click()}
-function importFile(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(){saveRaw(r.result);alert('已导入，重新解锁');location.reload()};r.readAsText(f)}
+function exportFile(){var raw=loadRaw();if(!raw){alert('还没有数据可导出：请先添加条目');return}var blob=new Blob([raw],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='vault-backup.json';a.click()}
+function importFile(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(){if(loadRaw()&&!confirm('导入会用「'+f.name+'」完全覆盖当前密码库，原有条目将无法恢复。确认导入？')){e.target.value='';return}saveRaw(r.result);alert('已导入，请用对应的主密码重新解锁');location.reload()};r.readAsText(f)}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 document.getElementById('unlock').onclick=unlock;
 </script>

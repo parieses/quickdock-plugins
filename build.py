@@ -164,9 +164,40 @@ def should_exclude(name: str, path_parts: list) -> bool:
     return False
 
 
+# 随插件分发的第三方可执行文件：不是本地编译产物，必须进 zip。
+# pdf-toolkit 依赖 CI 下载的 pdfcpu.exe（见 .github/workflows/build-plugins.yml），
+# 它落在插件根目录，不能按「根目录 .exe 一律排除」的规则误删。
+BUNDLED_BINARIES = {"pdfcpu.exe", "pdfcpu"}
+
+
+def is_stale_artifact(fname: str, rel_root: str, plugin_id: str) -> bool:
+    """判断是否为插件根目录下的历史残留/构建产物，不应进入 zip。
+
+    背景：早期插件把二进制命名为 <插件ID>.exe（如 io.github.parieses.hash-calc.exe），
+    后来改成 <entry>.exe。旧文件留在本地目录里，git 因 .gitignore 忽略 *.exe 看不到它，
+    但 build.py 的 os.walk 会把它当普通文件收进 zip —— 结果一个 4.3MB 的后端塞两份，
+    且 CI（干净 checkout 后只编译一次）永远复现不出来。
+
+    native 当前平台的二进制一律由 .build/<platform> 显式写入 zip 根，所以根目录任何
+    可执行文件都是残留。子目录（如 bin/、tools/）不在此列，留给需要随包分发第三方
+    工具的插件使用（BUNDLED_BINARIES 是历史遗留的根目录白名单）。
+    """
+    low = fname.lower()
+    if low in BUNDLED_BINARIES:
+        return False
+    # 1) 插件根目录下的可执行文件：一律排除，避免与 .build 写入的产物重名/重复
+    if rel_root == "" and low.endswith((".exe", ".test", ".out")):
+        return True
+    # 2) 以插件 ID 命名的文件（旧命名规则的产物，任何位置都排除）
+    if plugin_id and low.startswith(plugin_id.lower()):
+        return True
+    return False
+
+
 def create_zip(plugin_dir: Path, manifest: dict, output_path: Path, platform: str,
                build_root: Path, include_build: bool = True) -> Path:
     runtime = manifest.get("backend", {}).get("runtime", "")
+    plugin_id = manifest.get("id", "")
     # 所有平台的入口二进制名：插件目录里出现的一律不收集（历史残留/异平台产物），
     # 统一由 .build/<platform> 按当前平台显式引入，避免同名重复或平台错配。
     entry_bins = {
@@ -195,6 +226,10 @@ def create_zip(plugin_dir: Path, manifest: dict, output_path: Path, platform: st
             if should_exclude(fname, rel_root.split(os.sep)):
                 continue
             if fname in entry_bins:
+                continue
+            # 旧命名残留 / 根目录可执行文件：见 is_stale_artifact 注释
+            if is_stale_artifact(fname, rel_root, plugin_id):
+                print(f"   ⚠️  跳过残留产物: {os.path.join(rel_root, fname) if rel_root else fname}")
                 continue
 
             full_path = os.path.join(root, fname)

@@ -262,7 +262,13 @@ func dispatch(raw string) {
 		if len(req.Params) > 0 {
 			_ = json.Unmarshal(req.Params, &params)
 		}
-		switch strings.ToLower(strings.TrimSpace(params.Command)) {
+		// 命令别名：plugin.json 声明的是 ws-test，后端入口是 connect（见 hash-calc 同类注释）
+		cmd := strings.ToLower(strings.TrimSpace(params.Command))
+		switch cmd {
+		case "ws-test":
+			cmd = "connect"
+		}
+		switch cmd {
 		case "connect":
 			handleConnect(req.ID, params.Input)
 		case "send":

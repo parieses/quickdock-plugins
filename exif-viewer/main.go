@@ -170,7 +170,13 @@ func dispatch(raw string) {
 		if len(req.Params) > 0 {
 			_ = json.Unmarshal(req.Params, &params)
 		}
-		switch strings.ToLower(strings.TrimSpace(params.Command)) {
+		// 命令别名：plugin.json 声明的是 exif-view，后端历史实现是 read（见 hash-calc 同类注释）
+		cmd := strings.ToLower(strings.TrimSpace(params.Command))
+		switch cmd {
+		case "exif-view":
+			cmd = "read"
+		}
+		switch cmd {
 		case "read":
 			handleRead(req.ID, params.Input)
 		default:

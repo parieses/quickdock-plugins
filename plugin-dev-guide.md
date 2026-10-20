@@ -511,6 +511,7 @@ Host Method 是宿主注册的能力表。**三种运行时共用同一张表、
 | `host.shell.open` | 打开 URL / 文件 / 目录（走 `sysutil.OpenDetached`，禁裸 exec）→ `{"success":true}` | `shell` 目标前缀白名单（如 `["file:///C:/Users/me","https://docs.example.com"]`）；`true` 全放行 |
 | `host.process.list` | 列出全部进程 → `{processes:[{pid,name,memBytes}], count}`（CPU 单样本无意义，留 0） | 无需权限 |
 | `host.process.kill` | 结束进程 → `{success, pid}` | `processKill: true`（显式开关，默认拒绝） |
+| `host.process.exec` | 执行外部程序 → `{success, output, exitCode, error?}`；超时默认 10s（可传 `timeout` 毫秒，上限 120s），args 最多 64 个 | `process` 程序名白名单（如 `["netstat","reg"]`）；`true` 全放行 |
 | `host.window.hide` / `host.window.show` | 临时隐藏 / 恢复宿主窗口：同时管主窗口、命令面板窗口与**本插件的独立窗口**，隐藏前各自记录原可见性，恢复时只还原原本可见的（供屏幕取色等场景避免遮挡取样区域） | 无需权限 |
 | `host.mcp.call` | 调用宿主内置 MCP 工具 → `{tool, result}` | 无需权限（等级门见下） |
 | `db.get` / `db.set` / `db.delete` / `db.list` | 插件私有 KV，按 `plugin_id` 强隔离，单值 ≤256 KiB | 无需权限 |
@@ -823,23 +824,41 @@ func ensureDataFile(name string) string {
   "filesystem": false,                           // 文件对话框；要读写文件需写成 {"read": [...], "write": [...]}
   "clipboard": true,                             // 能否读写剪贴板
   "shell": false,                               // false=无；true=全放行；数组=目标前缀白名单
+  "process": false,                             // false=无；true=全放行；数组=可执行程序名白名单
   "processKill": false                          // 是否允许结束进程（高危，默认关）
 }
 ```
 
-`network` / `shell` 支持 **bool 或数组**（`true` = 全放行，数组 = 白名单）；`processKill` 是独立 bool 开关；`filesystem` 支持 **bool 或对象**（语义不同，别混用）：
+`network` / `shell` / `process` 支持 **bool 或数组**（`true` = 全放行，数组 = 白名单）；`processKill` 是独立 bool 开关；`filesystem` 支持 **bool 或对象**（语义不同，别混用）：
 
 ```json
 "network":   ["https://api.github.com", "*.example.com"]   // 仅这两个域名放行；重定向目标也受校验
 "shell":     ["file:///C:/Users/me", "https://docs.example.com"]  // 仅这些前缀目标可打开
+"process":   ["netstat", "reg", "tasklist"]                 // 仅这几个程序可执行
 "filesystem": true                                    // 只能弹文件/保存对话框
 "filesystem": { "read": ["~/Documents/**"], "write": ["~/Downloads/**"] }  // 对话框 + 按 scope 读写
 ```
 
+> `process` 的白名单匹配的是**程序自身**（basename），不是路径：声明 `"netstat"` 允许
+> PATH 里任意位置的 `netstat`（含 `netstat.exe`），声明绝对路径
+> `"C:\\Windows\\System32\\netstat.exe"` 则只允许那一个文件。
+> 不支持通配符——`"*.exe"` 等于放行 `powershell`，白名单会失效。
+>
+> ⚠️ **`process` 管的是「启动」，`processKill` 管的是「结束」**，两者都是高危操作，需分别声明。
+> 放行 `powershell` / `cmd` 相当于把整台机器交出去（参数里可以塞任意脚本），
+> 尽量只声明真正需要的系统工具。
+
 > 老插件里普遍存在的 `"filesystem": true` 一律按「仅对话框」解释，**升级后不会凭空
 > 获得任何读写能力**。路径 scope 的匹配规则见「文件系统访问（`host.fs.*`）」。
 >
-> ⚠️ **`network` / `shell` / `processKill` 是「清单静态声明」，不是「运行时按对话框授权」**：宿主没有「用户选了某路径/点了某链接就临时放行」的机制。插件要访问的路径/域名必须**预先写进 `plugin.json` 的白名单**后重新安装——这是有意的 fail-closed，保证最小权限可审计。
+> ⚠️ **`network` / `shell` / `process` / `processKill` 是「清单静态声明」，不是「运行时按对话框授权」**：宿主没有「用户选了某路径/点了某链接就临时放行」的机制。插件要访问的路径/域名必须**预先写进 `plugin.json` 的白名单**后重新安装——这是有意的 fail-closed，保证最小权限可审计。
+
+> ⚠️ **native 插件自己调 `exec.Command` 时，宿主在运行期拦不住**——
+> native 是独立子进程，不走宿主的 Host Method 注册表，权限校验管不到它。
+> 这类插件**必须**在 `plugin.json` 里声明 `permissions.process`，
+> 否则授权契约与实现不符（用户在市场页看到的权限列表就不含「执行程序」）。
+> 宿主会在安装期做静态审计核对声明与实现，不一致时告警。
+> 若希望**运行期真正强制**，请改用 `host.process.exec`（由宿主代执行，白名单可拦）。
 
 ### 安全边界
 
@@ -850,6 +869,7 @@ func ensureDataFile(name string) string {
 | **进程隔离** | native 插件运行在独立子进程，崩溃不影响主程序 |
 | **JS 沙箱** | goja 引擎纯 Go 实现，不直接提供文件系统/网络 API；需要时经 `api.host('http.get' / 'host.dialog.open' / ...)` 转发到宿主注册表，受 `permissions` 管控 |
 | **权限声明** | `plugin.json` 声明所需权限，Host Method 层运行时校验 |
+| **进程执行** | `host.process.exec` 由宿主代执行，程序名按 `process` 白名单逐次校验；native 插件自己调 `exec.Command` 的那一路运行期拦不住，靠安装期静态审计核对声明 |
 | **路径 scope** | 文件读写按 `filesystem.read/write` 白名单判定；判定前先把路径解析为绝对真实路径（展开 `~`、消除 `..`、解析符号链接**与 Windows 目录联接**），阻断借链接/相对路径逃出白名单 |
 | **Nonce 握手** | iframe postMessage 携带随机 nonce，防止跨源消息伪造 |
 | **存储隔离** | 每个插件只能读写 `plugin_data` 中自己 `plugin_id` 的数据 |

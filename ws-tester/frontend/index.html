@@ -69,6 +69,7 @@ function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;
       var id='ws_'+(++seq)
       pend[id]={resolve:resolve,reject:reject}
       parent.postMessage({type:'plugin:execute',id:id,command:command,input:input||{}},'*')
+      setTimeout(function(){var t=pend[id];if(t&&!t.__timeout){t.__timeout=1;(t.reject||t.rej)(new Error('请求超时：后端 30 秒无响应'))}},30000)
     })
   }
   window.addEventListener('message',function(e){

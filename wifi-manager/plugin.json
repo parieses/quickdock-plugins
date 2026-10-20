@@ -109,7 +109,16 @@
     "entry": "frontend/index.html"
   },
   "permissions": {
-    "filesystem": true
+    "filesystem": true,
+    "process": [
+      "netstat",
+      "tasklist",
+      "taskkill",
+      "netsh",
+      "explorer",
+      "open",
+      "xdg-open"
+    ]
   },
   "capabilities": [
     "command",

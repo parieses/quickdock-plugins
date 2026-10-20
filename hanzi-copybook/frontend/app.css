@@ -31,6 +31,7 @@
 
 .cp-hint { font-size: var(--fs-xs); color: var(--text-muted); line-height: 1.6; }
 .cp-count { font-size: var(--fs-xs); color: var(--text-secondary); }
+.p-count { font-size: var(--fs-xs); color: var(--text-secondary); }
 
 .cp-main { flex: 1; overflow: auto; padding: var(--sp-5); background: var(--bg-primary); }
 #pages { display: flex; flex-direction: column; align-items: center; gap: 18px; }
