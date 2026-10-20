@@ -25,6 +25,7 @@
 
 > 以下日期取自真实提交记录。更早的变更见 [Releases](https://github.com/parieses/quickdock-plugins/releases) 与各插件 `plugin.json` 的 `changelog`。
 
+- **2026-10-20 · 数据回显与持久化修复（http-client / calcsheet / database / control-receiver）**：修复 http-client「数据已在 plugin-data 里却不显示」（首屏目录列表传空项目 ID 只返回空集；以及库文件名字认错导致静默新建空库）、calcsheet「稿纸保存后重新打开是空白」（后端数据返回前就渲染、返回后又不再重渲染）；并为 database、control-receiver 补上「同目录异名库复用」与「配置损坏时回退历史有效配置」，四处均新增启动诊断日志便于定位。
 - **2026-10-20 · 统一前端桥接注入（全仓库 77 个插件）**：移除各插件内联桥接脚本副本（共 126 份），改由宿主统一注入（`qdHostCall` / 主题 / 异常上报 / `qdCrypto`）；插件体积减小、消除多份实现漂移，并即时获得主题跟随与 `host.crypto.*` 能力。
 - **2026-10-20 · 共享代码单一来源治理**：`qd-theme.css` / `components.css` 收敛为 `templates/` 单一来源，由 `tools/sync_shared.py` 同步、`tools/check_shared.py` 做 CI 漂移门禁。
 - **2026-10-19 · 全仓库统一运行期日志**；插件数据统一迁到 `plugin-data`，`database` / `http-client` 连接与超时优化。
@@ -59,7 +60,7 @@
 | [Crontab 解释器](./cron-explainer/) | 1.0.3 | 解析 cron 表达式（含义/下次执行/小时分布），并可可视化生成表达式、实时预览下次执行时间 |
 | [Emoji 搜索](./emoji-search/) | 1.0.4 | 搜索 Emoji 并一键复制到剪贴板 |
 | [Git 工作台](./git-workbench/) | 1.0.4 | Git 仓库一体化工作台：仓库浏览、二分定位 bug 引入提交、三方合并冲突可视化解决、代码演化时间轴、历史改写（改作者/删敏感文件）、仓库体检与知识孤岛识别。 |
-| [HTTP 客户端](./http-client/) | 1.0.7 | 轻量 HTTP 请求调试客户端：项目管理请求、目录与文档树、环境变量与 {{var}} 替换、请求历史重放、Postman 集合导入。数据独立存储。 |
+| [HTTP 客户端](./http-client/) | 1.0.8 | 轻量 HTTP 请求调试客户端：项目管理请求、目录与文档树、环境变量与 {{var}} 替换、请求历史重放、Postman 集合导入。数据独立存储。 |
 | [JSON 工具箱](./json-toolbox/) | 1.0.4 | JSON 编辑器（格式化/折叠/编辑）、JSON → TypeScript / Go、JSON ↔ YAML / TOML / XML 互转 |
 | [JWT 解码器](./jwt-decoder/) | 1.0.3 | 解码 JWT Token，查看 Header/Payload，验证过期时间 |
 | [Markdown 渲染](./markdown-preview/) | 1.0.3 | 实时渲染 Markdown（GFM：标题/列表/表格/任务列表/引用）+ 代码高亮，一键复制为 HTML |
@@ -71,12 +72,12 @@
 | [包版本速查](./package-check/) | 1.1.3 | 输入包名，并发查询 npm / PyPI / Composer / Go 四个仓库的版本信息；并基于 OSV.dev 查询包版本的已知漏洞（CVE / 安全公告） |
 | [对比工具](./compare/) | 1.0.3 | 文件/图片对比（元数据 + 图片预览 + 文本内容差异）与文本块逐行 Diff 合二为一 |
 | [打字练习](./type-trainer/) | 1.0.3 | 开发者向打字训练器：英文 / 中文 / 代码 / 导入四种模式，支持导入 TXT 字库，实时统计 WPM 与准确率，本地记录历史与最佳成绩 |
-| [数据库客户端](./database/) | 1.4.7 | 轻量数据库连接与查询工具：MySQL / SQLite / Redis 连接管理、SQL 与 Redis 命令执行、库表浏览器（库→表/视图→字段、Redis 键树）、Redis 键类型感知详情与增删改（string/hash/list/set/zset）、TTL 与 DB 管理、结果网格内联行编辑。数据独立存储。 |
+| [数据库客户端](./database/) | 1.4.8 | 轻量数据库连接与查询工具：MySQL / SQLite / Redis 连接管理、SQL 与 Redis 命令执行、库表浏览器（库→表/视图→字段、Redis 键树）、Redis 键类型感知详情与增删改（string/hash/list/set/zset）、TTL 与 DB 管理、结果网格内联行编辑。数据独立存储。 |
 | [文件哈希](./hash-calc/) | 1.0.7 | 计算文件的 MD5/SHA1/SHA256/SHA512 摘要，结果一键复制 |
 | [文本工具箱](./text-encoder/) | 1.0.5 | Base64 / URL / HTML 编解码，MD5 / SHA1 / SHA256 / SHA512 哈希与 HMAC 签名，Base64 图片识别预览，2/8/10/16 进制互转与字节单位换算 |
 | [时间转换](./time-converter/) | 1.0.3 | Unix 时间戳 / ISO 8601 / 中文日期 / 相对时间互转，支持任意时区偏移输出 |
 | [正则提取工具](./regex-extractor/) | 1.0.4 | 正则提取与替换：匹配高亮、分组捕获、反向引用替换（$1/$2）、一键复制结果 |
-| [计算稿纸](./calcsheet/) | 1.0.4 | 兼具草稿纸自由度与电子表格智能的多行计算工具，支持行号引用、变量定义、函数计算 |
+| [计算稿纸](./calcsheet/) | 1.0.5 | 兼具草稿纸自由度与电子表格智能的多行计算工具，支持行号引用、变量定义、函数计算 |
 | [邮箱足迹查询](./mail-check/) | 1.0.4 | 邮箱足迹与有效性检查：全量 123 站探测（参考 holehe 适配，Gravatar/GitHub/ProtonMail/Spotify 等已校准，其余逐步补），语法 / MX / SMTP 有效性验证 |
 | [颜色工具](./color-converter/) | 1.0.4 | 颜色格式互转（HEX / RGB / HSL）+ 屏幕取色，支持常见英文色名识别 |
 
@@ -122,7 +123,7 @@
 |------|------|------|
 | [IP 归属地](./geoip/) | 1.0.3 | 查询 IP 的地理位置、运营商、时区与坐标，支持指定 IP 或查询本机公网 IP。 |
 | [WebSocket 测试](./ws-tester/) | 1.0.4 | 连接 ws/wss 服务，发送消息并实时查看返回的帧，支持多连接与历史 |
-| [qpm接收端](./control-receiver/) | 1.0.12 | 手机屏幕镜像接收端 + 控制端：连接 QuestPhoneMirror 发送端实时显示画面，鼠标点击/拖拽反向操控真机（配套手机端发送端见 https://github.com/parieses/QuestPhoneMirror） |
+| [qpm接收端](./control-receiver/) | 1.0.13 | 手机屏幕镜像接收端 + 控制端：连接 QuestPhoneMirror 发送端实时显示画面，鼠标点击/拖拽反向操控真机（配套手机端发送端见 https://github.com/parieses/QuestPhoneMirror） |
 | [子域名枚举](./subdomain-enum/) | 1.0.2 | 被动收集域名子域名（证书透明日志 CertSpotter / crt.sh + HackerTarget + urlscan + rapiddns + AlienVault OTX），可选并发解析 A 记录筛选存活 |
 | [目录探测](./dir-buster/) | 1.0.2 | 对指定目标 URL 用内置常见路径字典进行轻量探测（自用）：并发受限、可配扩展名，采用异步会话模型实时返回命中的非 404 路径。仅探测你授权的目标，内置字典、不递归 |
 | [站点审计箱](./site-audit/) | 1.0.4 | 将 WHOIS 查询、SSL 证书检查、DNS 查询、DNS 传播检查、HTTP 状态码速查、HTTP 安全头审计六个站点工具合并为单一插件，按需切换标签页，共享一个原生子进程 |

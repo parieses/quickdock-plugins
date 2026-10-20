@@ -2099,8 +2099,10 @@ func main() {
 	defer qdLogExit()
 	appState.cfg = defaultConfig()
 	// 配置落在 <用户主目录>/.quickdock/plugin-data/<id>/config.json，与插件安装目录分离；
-	// ensureDataFile 首次运行会把安装目录里的老 config.json 迁过来。
-	appState.cfgPath = ensureDataFile("config.json")
+	// ensureDataFile 在规范文件缺失/损坏时会回退到历史位置里仍有效的配置。
+	cfgPath, cfgStatus := ensureDataFile("config.json")
+	appState.cfgPath = cfgPath
+	hostLog("info", "配置就绪 path=%s status=%s", appState.cfgPath, cfgStatus)
 	appState.startedAt = time.Now()
 	appState.lastTick = time.Now()
 	appState.pull = pullBuf{maxChunks: 180, maxBytes: 6 << 20}

@@ -151,6 +151,69 @@ func legacyCandidates() []string {
 	return out
 }
 
+// findDBInDir 在目录里找一个已存在的 SQLite 主库文件（扩展名恰好为 .db，
+// 排除 -wal / -shm / -journal 等伴随文件），排除与 canonical 同名的文件。
+// 用于「库文件用了别的名字落在 plugin-data/<id>/ 里」时仍能识别并复用。
+// 与 http-client 的 ensureDataFile 加固保持一致，堵上「同目录异名库被忽略」这一小概率缺口。
+func findDBInDir(dir, canonical string) string {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return ""
+	}
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		fn := e.Name()
+		if !strings.HasSuffix(fn, ".db") {
+			continue
+		}
+		if fn == canonical {
+			continue
+		}
+		return filepath.Join(dir, fn)
+	}
+	return ""
+}
+
+// dbHasData 判断给定 SQLite 文件是否含有效业务数据（db_connections 表有行）。
+// 否则（文件损坏 / 不是本插件的库 / 空库）一律视为无数据。
+func dbHasData(path string) bool {
+	if _, err := os.Stat(path); err != nil {
+		return false
+	}
+	d, err := sql.Open("sqlite", sqliteDSN(path))
+	if err != nil {
+		return false
+	}
+	defer d.Close()
+	d.SetMaxOpenConns(1)
+	var n int
+	if err := d.QueryRow("SELECT COUNT(*) FROM db_connections").Scan(&n); err != nil {
+		return false
+	}
+	return n > 0
+}
+
+// copySiblings 复制主文件及 SQLite 的 -wal / -shm 伴随文件
+// （最新数据可能还停在 -wal 里，只拷主文件会丢最近的写入）。
+func copySiblings(src, dst string) error {
+	copied := false
+	for _, suf := range []string{"", "-wal", "-shm"} {
+		if _, err := os.Stat(src + suf); err != nil {
+			continue
+		}
+		if err := copyFile(src+suf, dst+suf); err != nil {
+			return err
+		}
+		copied = true
+	}
+	if !copied {
+		return os.ErrNotExist
+	}
+	return nil
+}
+
 // sqliteDSN 构造 SQLite file: DSN；% ? # 会干扰解析，需转义
 func sqliteDSN(path string) string {
 	esc := strings.NewReplacer("%", "%25", "?", "%3F", "#", "%23").Replace(filepath.ToSlash(path))
@@ -166,6 +229,26 @@ func initStore() {
 		return
 	}
 	dbPath := filepath.Join(dir, dbName)
+
+	// 同目录内若存在其它名字的库文件（如 database.db / data.db / 旧版命名），
+	// 且规范文件缺失或为空占位库，则优先复用带数据的那个，避免误建空库导致
+	// 「连接配置看不到了」。与 http-client 的 ensureDataFile 加固保持一致。
+	status := "created"
+	if _, err := os.Stat(dbPath); err == nil {
+		if dbHasData(dbPath) {
+			status = "exists"
+		} else {
+			status = "empty-placeholder"
+		}
+	}
+	if status != "exists" {
+		if alt := findDBInDir(dir, dbName); alt != "" && dbHasData(alt) {
+			if err := copySiblings(alt, dbPath); err == nil {
+				status = "reused-alt:" + filepath.Base(alt)
+			}
+		}
+	}
+
 	d, err := sql.Open("sqlite", sqliteDSN(dbPath))
 	if err != nil {
 		storeErr = fmt.Errorf("打开插件数据库失败: %w", err)
@@ -183,6 +266,7 @@ func initStore() {
 		return
 	}
 	store = d
+	qdLogInfo("数据库就绪 path=%s status=%s", dbPath, status)
 	// 打开成功后做一次历史数据回收（见 adoptHistoricalData）
 	adoptHistoricalData()
 }

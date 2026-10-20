@@ -12,6 +12,7 @@ package main
 // QUICKDOCK_PLUGIN_DATA 可显式覆盖（测试隔离 / 宿主将来统一指定时用）。
 
 import (
+	"encoding/json"
 	"io"
 	"os"
 	"path/filepath"
@@ -74,26 +75,50 @@ func modTime(p string) time.Time {
 	return time.Time{}
 }
 
-// ensureDataFile 返回 <dataRoot>/name 的绝对路径；目标不存在时先把历史位置的老文件搬过来
-// （复制而非移动：原始备份保持原样，失败也不影响启动）。
-func ensureDataFile(name string) string {
+// configFileValid 判断配置文件是否「非空且为合法 JSON 对象」（用于决定能否复用）。
+func configFileValid(path string) bool {
+	data, err := os.ReadFile(path)
+	if err != nil || len(data) == 0 {
+		return false
+	}
+	var v map[string]interface{}
+	if err := json.Unmarshal(data, &v); err != nil {
+		return false
+	}
+	return true
+}
+
+// ensureDataFile 返回 <dataRoot>/name 的绝对路径，以及「数据来自何处」的状态说明
+// （落启动日志，便于排查配置丢失）。
+//
+// 目标已存在且合法 → "exists"；
+// 目标缺失 / 空 / 损坏 → 先在历史位置（安装目录 / .bak 备份）找一份合法配置迁过来，
+//   → "migrated:<来源>"；
+// 都找不到 → 返回空路径，状态 "created"（新建默认配置）。
+// 与 http-client 的 ensureDataFile 加固对齐：规范文件损坏时不再静默用空库/默认配置，
+// 而是优先复用历史位置里仍有效的数据。
+func ensureDataFile(name string) (string, string) {
 	dir := dataRoot()
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return filepath.Join(dir, name)
+		return filepath.Join(dir, name), "created(err-mkdir)"
 	}
 	dst := filepath.Join(dir, name)
-	if _, err := os.Stat(dst); err == nil {
-		return dst
+
+	// 1) 目标本身已是合法配置 → 直接用它。
+	if configFileValid(dst) {
+		return dst, "exists"
 	}
+
+	// 2) 历史位置（安装目录 / .bak 备份）里找一份合法配置迁过来。
 	for _, src := range legacyCandidates(name) {
-		if _, err := os.Stat(src); err != nil {
-			continue
-		}
-		if err := copyFile(src, dst); err == nil {
-			break
+		if configFileValid(src) {
+			if err := copyFile(src, dst); err == nil {
+				return dst, "migrated:" + src
+			}
 		}
 	}
-	return dst
+
+	return dst, "created"
 }
 
 func copyFile(src, dst string) error {

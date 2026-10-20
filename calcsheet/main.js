@@ -13,7 +13,13 @@ function handleInitialize(params) {
     'updated_at TEXT' +
     ')'
   )
-  api.log('数据库就绪')
+  // 诊断：打印现有稿纸数量，便于「保存了却看不到」时确认后端确实有数据
+  var n = 0
+  try {
+    var rows = api.db.query('SELECT COUNT(*) AS c FROM sheets')
+    if (rows && rows.length > 0) n = rows[0].c
+  } catch (e) {}
+  api.log('稿纸表就绪, 现有 ' + n + ' 张稿纸')
   return { status: 'ready', version: '0.2.0' }
 }
 

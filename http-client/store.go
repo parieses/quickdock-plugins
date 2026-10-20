@@ -219,6 +219,24 @@ func (d *DB) Close() error {
 	return d.conn.Close()
 }
 
+// dbHasData 判断 SQLite 文件是否为「含业务数据的有效库」：能打开，且核心表中至少存在一行。
+// 空库（首次误建的 0 行库、或表尚未创建的残缺库）返回 false，供 ensureDataFile 决定复用候选源。
+// 只读打开，不影响原文件；表不存在时 QueryRow 报错，跳过即可。
+func dbHasData(path string) bool {
+	conn, err := sql.Open("sqlite", path)
+	if err != nil {
+		return false
+	}
+	defer conn.Close()
+	var n int
+	for _, t := range []string{"http_projects", "api_requests", "http_folders", "http_request_history"} {
+		if err := conn.QueryRow("SELECT COUNT(*) FROM " + t).Scan(&n); err == nil && n > 0 {
+			return true
+		}
+	}
+	return false
+}
+
 func (d *DB) migrate() error {
 	stmts := []string{
 		`CREATE TABLE IF NOT EXISTS api_requests (
@@ -520,7 +538,16 @@ func (d *DB) DeleteEnvironment(id string) error {
 const httpFolderCols = `id, project_id, parent_id, name, sort, created_at, updated_at`
 
 func (d *DB) ListFolders(projectID string) ([]HttpFolder, error) {
-	rows, err := d.q(`SELECT `+httpFolderCols+` FROM http_folders WHERE project_id=? ORDER BY sort ASC, created_at ASC`, projectID)
+	// 空 projectId 视为「列出全部目录」：前端首屏一次性加载所有目录用于渲染整棵树，
+	// 避免逐项目重复请求。此前空 projectId 走 WHERE project_id='' 返回空集，导致所有
+	// 目录节点与其下的请求在 UI 里完全不可见（表现为"数据没回显"）。
+	var rows *sql.Rows
+	var err error
+	if projectID == "" {
+		rows, err = d.q(`SELECT ` + httpFolderCols + ` FROM http_folders ORDER BY project_id ASC, sort ASC, created_at ASC`)
+	} else {
+		rows, err = d.q(`SELECT `+httpFolderCols+` FROM http_folders WHERE project_id=? ORDER BY sort ASC, created_at ASC`, projectID)
+	}
 	if err != nil {
 		return nil, err
 	}

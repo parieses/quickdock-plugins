@@ -19,6 +19,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -86,27 +87,89 @@ func modTime(p string) time.Time {
 	return time.Time{}
 }
 
-// ensureDataFile 返回 <dataRoot>/name 的绝对路径；目标不存在时先把历史位置的老文件搬过来
-// （复制而非移动：原始备份保持原样，失败也不影响启动）。
-func ensureDataFile(name string) string {
+// ensureDataFile 返回 <dataRoot>/name 的绝对路径，以及一条「数据来自何处」的状态说明
+// （供启动日志回显，便于排查「数据已在 plugin-data 里却没回显」）。
+//
+// 目标已存在 → "exists"（数据就位）；
+// 目录里有其它名字的库文件被复用 → "reused-alt:<文件名>"（修复文件名不符导致的新建空库）；
+// 从历史位置（安装目录 / .bak 备份）迁过来 → "migrated:<来源路径>"；
+// 都找不到 → "created"（新建空库，意味着此前的数据没被认出来 —— 排查重点）。
+// ensureDataFile 返回 <dataRoot>/name 的绝对路径，以及「数据来自何处」的状态说明（落启动日志）。
+//
+// 数据定位优先级：
+//  1. 目标文件已存在且非空（项目/请求/目录/历史任一行）→ "exists"；
+//  2. 目标文件不存在，或已被旧版本误建为空库（0 行）——先在 dataRoot 里找其它名字的库文件
+//     （如 http-client.db / data.db / 旧版命名），再找历史位置（安装目录 / .bak 备份），
+//     取第一个「有数据」的来源复制复用（覆盖空库）→ "reused-alt:<名>" / "migrated:<来源>"；
+//  3. 都找不到 → 返回空库路径，状态 "created"（此时数据确实没被认出来，是排查重点）。
+//
+// 关键：若旧版本已把目标文件建成了空库，绝不能因为"文件存在"就直接返回，否则会一直卡在空库、
+// 表现为"数据已在 plugin-data 却回显不出"。只有当目标是非空库时才短路返回。
+func ensureDataFile(name string) (string, string) {
 	dir := dataRoot()
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return filepath.Join(dir, name)
+		return filepath.Join(dir, name), "created(err-mkdir)"
 	}
 	dst := filepath.Join(dir, name)
-	if _, err := os.Stat(dst); err == nil {
-		return dst
+
+	// 1) 目标本身已是有效非空库 → 直接用它。
+	if st, err := os.Stat(dst); err == nil && st.Size() > 0 && dbHasData(dst) {
+		return dst, "exists"
 	}
+
+	// 2) 同目录内其它名字的库文件（修复文件名不符 / 旧版本空库占位）。
+	if alt := findDBInDir(dir, name); alt != "" {
+		if _, ok := statDB(alt); ok {
+			if err := copySiblings(alt, dst); err == nil {
+				return dst, "reused-alt:" + filepath.Base(alt)
+			}
+		}
+	}
+
+	// 3) 历史位置（安装目录 / .bak 备份）迁移。
 	for _, src := range legacyCandidates(name) {
-		if _, err := os.Stat(src); err != nil {
+		if _, ok := statDB(src); !ok {
 			continue
 		}
 		if err := copySiblings(src, dst); err != nil {
 			continue
 		}
-		break
+		return dst, "migrated:" + src
 	}
-	return dst
+
+	return dst, "created"
+}
+
+// statDB 返回文件是否存在且含有效业务数据（用于决定能否复用）。
+func statDB(path string) (bool, bool) {
+	if _, err := os.Stat(path); err != nil {
+		return false, false
+	}
+	return true, dbHasData(path)
+}
+
+// findDBInDir 在目录里找一个已存在的 SQLite 主库文件（扩展名恰好为 .db，
+// 排除 -wal / -shm / -journal 等伴随文件），排除与 canonical 同名的文件。
+// 用于「库文件用了别的名字落在 plugin-data/<id>/ 里」时仍能识别并复用。
+func findDBInDir(dir, canonical string) string {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return ""
+	}
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		fn := e.Name()
+		if !strings.HasSuffix(fn, ".db") {
+			continue
+		}
+		if fn == canonical {
+			continue
+		}
+		return filepath.Join(dir, fn)
+	}
+	return ""
 }
 
 // copySiblings 复制主文件及 SQLite 的 -wal / -shm 伴随文件

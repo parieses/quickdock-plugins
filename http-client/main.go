@@ -152,7 +152,8 @@ func main() {
 	defer qdLogExit()
 	// 数据库路径：<用户主目录>/.quickdock/plugin-data/io.github.parieses.http-client/
 	// （与插件安装目录分离，升级不丢；见 datadir.go）。首启会把安装目录里的老库搬过来。
-	dbPath := ensureDataFile("io.github.parieses.http-client.db")
+	dbPath, dbStatus := ensureDataFile("io.github.parieses.http-client.db")
+	qdLogInfo("数据库就绪 path=%s status=%s", dbPath, dbStatus)
 
 	db, err := openDB(dbPath)
 	if err != nil {

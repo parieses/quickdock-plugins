@@ -118,58 +118,90 @@ class CalcSheetApp {
 
   /** 首次渲染（构造之后调用，确保 DOM 和全局 app 就绪） */
   init() {
-    this._load()
-    if (!this.activeId && this.sheets.length > 0) this.activeId = this.sheets[0].id
-    if (this.sheets.length === 0) this._create('计算稿纸 1')
     this._bindEvents()
-    renderAll(this)
+    // 关键修复：必须先等后端数据就绪，再决定是否新建默认稿纸、再渲染。
+    // 此前 init 会提前新建一个空白稿纸并立即渲染，后端已存的数据异步回来后
+    // 却从未触发重渲染 —— 表现为「数据已保存，但打开看不到」。
+    // （插件 iframe 为 opaque origin，localStorage 不可用，后端 api.db 才是可信源）
+    this._load().then(() => {
+      if (this.sheets.length === 0) {
+        this._create('计算稿纸 1')
+      } else if (!this.activeId) {
+        this.activeId = this.sortedSheets[0].id
+      }
+      renderAll(this)
+    })
   }
 
+  /**
+   * 从后端 api.db 加载全部稿纸。返回一个在所有数据就绪后才 resolve 的 Promise，
+   * 以便 init 在其后渲染。后端是可信源（iframe 为 opaque origin，localStorage
+   * 每会话清空/不可用）；localStorage 仅作「未同步到后端的本地草稿」兜底。
+   */
   _load() {
-    // 先尝试从后端加载
-    pluginExec('list-sheets', {}).then(r => {
-      if (r && r.sheets && r.sheets.length > 0) {
-        // 合并后端数据与本地数据
-        let raw = null; try { raw = localStorage.getItem(STORAGE_KEY) } catch (e) { raw = null }
-        const local = JSON.parse(raw || '{"sheets":[],"activeId":null}')
-        const localIds = new Set(local.sheets.map(s => s.id))
-        let merged = local.sheets.slice()
-        for (let i = 0; i < r.sheets.length; i++) {
-          const rs = r.sheets[i]
-          if (!localIds.has(rs.id)) {
-            // 从后端加载完整数据
-            pluginExec('load-sheet', { id: rs.id }).then(r2 => {
-              if (r2 && r2.sheet) {
-                merged.push(r2.sheet)
-                this.sheets = merged
-                this._save()
-              }
-            }).catch(() => {})
-          }
-        }
-        // 合并已有的 sheets 数据（lines 在本地更完整）
-        this.sheets = merged
-        if (r.sheets.length > local.sheets.length && !this.activeId) {
-          this.activeId = r.sheets[0].id
+    return pluginExec('list-sheets', {})
+      .then(r => {
+        const backend = (r && r.sheets) || []
+        if (backend.length === 0) return this._loadLocalFallback()
+        // 逐个拉取完整稿纸（含 lines / pinned）
+        return Promise.all(backend.map(rs =>
+          pluginExec('load-sheet', { id: rs.id })
+            .then(r2 => (r2 && r2.sheet) ? r2.sheet : null)
+            .catch(() => null)
+        )).then(sheets => {
+          sheets = sheets.filter(Boolean)
+          // 合并 localStorage 中可能「未同步到后端」的本地草稿
+          try {
+            const raw = localStorage.getItem(STORAGE_KEY)
+            const local = JSON.parse(raw || '{"sheets":[]}')
+            const byId = new Map(sheets.map(s => [s.id, s]))
+            for (const ls of (local.sheets || [])) {
+              const ex = byId.get(ls.id)
+              if (!ex) byId.set(ls.id, ls)
+              else if ((ls.updatedAt || '') > (ex.updatedAt || '')) byId.set(ls.id, ls)
+            }
+            sheets = [...byId.values()]
+          } catch (e) {}
+          this.sheets = sheets
+          if (!this.activeId) this.activeId = sheets[0].id
+          this._persistAll() // 把合并结果写回后端 + 本地缓存，保证下次仍可从后端加载
+        })
+      })
+      .catch(() => this._loadLocalFallback())
+  }
+
+  /** 后端不可用时的纯 localStorage 兜底（本地草稿不会丢） */
+  _loadLocalFallback() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY)
+      if (raw) {
+        const p = JSON.parse(raw)
+        if (p.sheets && p.sheets.length) {
+          this.sheets = p.sheets
+          this.activeId = p.activeId || p.sheets[0].id
+          this._persistAll() // 把本地草稿补进后端，保证下次能从后端加载
         }
       }
-    }).catch(() => {
-      // 后端不可用，回退 LocalStorage
-      this._loadLocal()
-    })
-    // 同时加载本地数据（保证启动速度）
-    this._loadLocal()
+    } catch (e) {}
+    return Promise.resolve()
   }
-  _loadLocal() {
-    try { const d=localStorage.getItem(STORAGE_KEY); if (d) { const p=JSON.parse(d); this.sheets=p.sheets||[]; this.activeId=p.activeId||null } } catch(e) {}
-  }
+
   _save() {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ sheets:this.sheets, activeId:this.activeId })) } catch(e) {}
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ sheets: this.sheets, activeId: this.activeId })) } catch (e) {}
     this._syncBackend()
   }
+
+  /** 把全部稿纸同步到后端（修复「只存 active 稿纸」的局限，避免切换稿纸丢数据） */
+  _persistAll() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ sheets: this.sheets, activeId: this.activeId })) } catch (e) {}
+    for (const s of this.sheets) {
+      pluginExec('save-sheet', { sheet: { id: s.id, name: s.name, lines: s.lines, pinned: s.pinned } }).catch(() => {})
+    }
+  }
+
   _syncBackend() {
     const s = this.activeSheet; if (!s) return
-    pluginExec('save-sheet', { sheet: { id:s.id, name:s.name, lines:s.lines, pinned:s.pinned } }).catch(() => {})
+    pluginExec('save-sheet', { sheet: { id: s.id, name: s.name, lines: s.lines, pinned: s.pinned } }).catch(() => {})
   }
 
   get activeSheet() { return this.sheets.find(s=>s.id===this.activeId)||null }
