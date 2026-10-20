@@ -384,10 +384,9 @@ COLOR_SPEC = {
 | 插件 | 调用链路 | 演示点 |
 |---|---|---|
 | `batch-rename` | `qdPickFolder()` → `host.fs.list` → 规则链 → `host.fs.move` | 目录选择 + 批量改名（冲突跳过） |
-| `file-search` | `host.fs.list`（递归）→ `host.fs.read` → SHA-256 去重 → `host.fs.remove`（回收站） | 递归遍历 + 内容哈希 + 安全删除 |
 | `image-uploader` | `qdPickFile()` → `host.fs.read`（base64）→ `http.post`（图床） | 文件读取 + 绕过 iframe CORS 的上传 |
 
-完整源码见 `plugins/external/{batch-rename,file-search,image-uploader}/frontend/index.html`。
+完整源码见 `batch-rename/frontend/index.html` 与 `image-uploader/frontend/index.html`（仓库根目录即插件根，路径不再带 `plugins/external/` 前缀）。
 
 ---
 
@@ -1080,7 +1079,7 @@ window.addEventListener('message', (e) => {
 
 - **静态文本**：按元素选择器遍历取原始文本查翻译（注意缓存 `data-orig` 原文，避免重复翻译）。
 - **动态消息**：`showResult(el, 'success', L('成功合并 {n} 个 PDF', { n: count }))`，占位用 `{name}`。
-- 完整样板见 `plugins/external/pdf-toolkit/frontend/index.html` 顶部 i18n 段。宿主 `common.js`
+- 完整样板见 `pdf-toolkit/frontend/index.html` 顶部 i18n 段。宿主 `common.js`
   （主程序重建后自动注入到所有插件页面）也提供标准版 `window.QD.i18n(langPack)`，结构与上文一致，
   届时可直接替换。
 
@@ -1258,7 +1257,7 @@ native 侧的关键设计（改之前先看 `qdlog.go` 顶部注释）：
 
 ## 插件参考（避免重复造轮子）
 
-以下能力均已有现成外部插件（位于 `plugins/external/`，ID 为 `io.github.parieses.*`），开发新插件前先确认是否已覆盖。2026-08-24 起**内置插件已全部外置**，`plugins/builtin/` 仅保留 `common.css` / `common.js` 骨架（宿主向后兼容注入用）：
+以下能力均已有现成插件（位于**本仓库根目录各插件子目录**，如 `database/`、`http-client/`、`md2card/`，ID 为 `io.github.parieses.*`），开发新插件前先确认是否已覆盖。2026-08-24 起宿主侧**内置插件已全部外置**，宿主的 `plugins/builtin/` 仅保留 `common.css` / `common.js` 骨架（向后兼容注入用）：
 
 <!--DEVGUIDE_PLUGINS_START-->
 
@@ -1351,7 +1350,7 @@ native 侧的关键设计（改之前先看 `qdlog.go` 顶部注释）：
 | wifi-manager | 查看网络列表、WiFi 密码、连接状态 |
 | ws-tester | 连接 ws/wss 服务，发送消息并实时查看返回的帧，支持多连接与历史 |
 
-> 以上 77 个插件均已迁至 `plugins/external/`（ID 改为 `io.github.parieses.*`），代码可直接复用。goja/none 插件演示「零宿主依赖、纯 JS 自包含」的外部化样板；native 插件演示「Go 源码 vendor + 自编译 entry exe」模式（`build.py` 直接在插件目录 `go build`）。完整 goja 模板见上文「完整示例」。
+> 以上 77 个插件均在本仓库根目录各有独立子目录（ID 为 `io.github.parieses.*`），代码可直接复用。goja/none 插件演示「零宿主依赖、纯 JS 自包含」的外部化样板；native 插件演示「Go 源码 vendor + 自编译 entry exe」模式（`build.py` 直接在插件目录 `go build`）。完整 goja 模板见上文「完整示例」。
 
 <!--DEVGUIDE_PLUGINS_END-->
 
@@ -1361,11 +1360,10 @@ native 侧的关键设计（改之前先看 `qdlog.go` 顶部注释）：
 
 - **Goja 模板**：`plugins/templates/goja/` 目录下的 Goja 模板项目（含 `main.js` 骨架）。
 - **none 插件范式**（纯前端经宿主桥接调 Host API）：
-  - `plugins/external/batch-rename/` —— `qdPickFolder` → `host.fs.list` → 规则链 → `host.fs.move` 批量改名（冲突跳过）。
-  - `plugins/external/file-search/` —— `host.fs.list` 递归遍历 + `host.fs.read` 取内容 + SHA-256 去重 + `host.fs.remove` 安全删除。
-  - `plugins/external/image-uploader/` —— `qdPickFile` → `host.fs.read`（base64）→ `http.post` 图床上传，演示绕过 iframe CORS 的上传。
-  - `plugins/external/calcsheet/` —— 纯前端计算稿纸（`none` runtime）最小样板。
+  - `batch-rename/` —— `qdPickFolder` → `host.fs.list` → 规则链 → `host.fs.move` 批量改名（冲突跳过）。
+  - `image-uploader/` —— `qdPickFile` → `host.fs.read`（base64）→ `http.post` 图床上传，演示绕过 iframe CORS 的上传。
+  - `calcsheet/` —— 纯前端计算稿纸（`none` runtime）最小样板。
 - **native 插件完整范例**：
-  - `plugins/external/pdf-toolkit/` —— 含合并/拆分/压缩/水印/提取图片/PDF 信息，演示了「多选文件选择 + 目录输出 + 自带 pdfcpu.exe + pickFolder 后端命令」全套实战模式。
-  - `plugins/external/hosts-manager/` —— 演示 native 插件「vendor Go 源码 + build.py 自动编译 entry exe」模式。
-  - `plugins/external/ocr-tool/` —— 演示 native 插件调用大模型/外部推理后端（`PaddleOCR` ONNX）的离线识别模式。
+  - `pdf-toolkit/` —— 含合并/拆分/压缩/水印/提取图片/PDF 信息，演示了「多选文件选择 + 目录输出 + 自带 pdfcpu.exe + pickFolder 后端命令」全套实战模式。
+  - `hosts-manager/` —— 演示 native 插件「vendor Go 源码 + build.py 自动编译 entry exe」模式。
+  - `ocr-tool/` —— 演示 native 插件调用大模型/外部推理后端（`PaddleOCR` ONNX）的离线识别模式。
