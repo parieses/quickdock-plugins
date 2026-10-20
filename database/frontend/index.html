@@ -913,31 +913,16 @@
     if(d.theme) document.documentElement.setAttribute('data-theme', d.theme)
     if(d.locale) document.documentElement.setAttribute('lang', d.locale)
   }
-  /* 主题兜底：宿主目前只在「主窗口内联 iframe」那条路径投递 theme（那条 Go 侧模板
-     只发了 text/command），插件开成独立窗口时收不到消息，所以再走两级兜底：
-     同源 opener/parent 窗口的 data-theme（监听其变化 + 窗口 focus 时重读）→ 系统偏好。 */
-  ;(function(){
-    var el = document.documentElement
-    var w = null
-    try {
-      if(window.opener && window.opener !== window) w = window.opener
-      else if(window.parent && window.parent !== window) w = window.parent
-    } catch(err){ w = null }
-    function fromWin(){
-      try{ var t = w.document.documentElement.getAttribute('data-theme'); if(t){ el.setAttribute('data-theme', t); return true } }catch(err){}
-      return false
-    }
-    if(w && fromWin()){
-      try { new MutationObserver(fromWin).observe(w.document.documentElement, { attributes:true, attributeFilter:['data-theme'] }) } catch(err){}
-      window.addEventListener('focus', fromWin)
-    }
-    if(window.matchMedia){
-      var mq = window.matchMedia('(prefers-color-scheme: light)')
-      var sys = function(){ if(!el.getAttribute('data-theme')) el.setAttribute('data-theme', mq.matches ? 'light' : 'dark') }
-      sys()
-      if(mq.addEventListener) mq.addEventListener('change', sys)
-    }
-  })()
+  /* 注：原先此处还有一段「同源 opener/parent + prefers-color-scheme」两级主题兜底，
+     2026-10-20 已删除。理由：
+       1) 宿主 BRIDGE_SCRIPT 统一注入 plugin:theme -> data-theme 同步，比那段更完整；
+       2) 同源兜底在 iframe 沙箱（sandbox 不含 allow-same-origin，opaque origin）下
+          本就永远抛 SecurityError，是死代码；
+       3) 宿主主题为「跟随系统」时，currentThemeName() 已把系统偏好归一成 light/dark
+          再下发。插件侧再多兜一层，反而会在 plugin:theme 抵达之前先用系统偏好打上
+          data-theme，造成一次浅色闪变（FOUC）。
+     注：上面的 applyTheme() 保留 —— 它还兼着 locale -> <html lang> 同步，
+     那是宿主 BRIDGE_SCRIPT 不做的职责。 */
   window.addEventListener('message', function(e){
     var d = e.data; if(!d) return
     // 宿主在 iframe onload 后发 plugin:init，此时宿主监听已就绪，再发请求才不会被丢弃
@@ -2133,35 +2118,6 @@
   app._toasts = mounted.toasts
   app._vm = mounted
   if(initSeen && !booted) bootNow(initPayload)
-})()
-</script>
-<!-- 运行期异常上报：未捕获异常 / Promise 拒绝 -> 宿主 plugin-YYYYMMDD.log（E 级） -->
-<script>
-(function () {
-  if (window.__qdErrHook) return
-  window.__qdErrHook = true
-  var sent = 0, last = {}
-  function report(kind, msg, stack) {
-    try {
-      if (sent >= 20) return // 单页最多 20 条，防止循环报错刷屏
-      var key = kind + '|' + msg
-      var now = Date.now()
-      if (last[key] && now - last[key] < 10000) return // 同一错误 10s 内只报一次
-      last[key] = now
-      sent++
-      if (typeof window.qdHostCall !== 'function') return
-      window.qdHostCall('log.error', {
-        message: '前端' + kind + ': ' + msg + (stack ? ' | ' + String(stack).slice(0, 600) : '')
-      }).catch(function () {})
-    } catch (e) {}
-  }
-  window.addEventListener('error', function (e) {
-    report('未捕获异常', (e && e.message) || 'unknown', e && e.error && e.error.stack)
-  })
-  window.addEventListener('unhandledrejection', function (e) {
-    var r = e && e.reason
-    report('Promise 拒绝', (r && r.message) || String(r), r && r.stack)
-  })
 })()
 </script>
 </body>

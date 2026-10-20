@@ -68,5 +68,5 @@
     "zh-CN": "查看并启停注册表 Run 键与启动文件夹的开机项",
     "en-US": "List and toggle registry Run keys and Startup folder shortcuts."
   },
-  "changelog": "## v1.0.1\n\n- 【顺带修一个致命 bug】列表渲染脚本少一个右括号，导致整页 JS 解析失败、插件界面完全不工作（与本次主题修复一起发布）\n- 跟随宿主浅色 / 深色主题：监听宿主的 plugin:theme 消息并同步 <html data-theme>；plugin:init 自带的 theme 也会应用。此前主程序切换主题后插件不跟随\n\n## v1.0.0\n\n- 枚举并启停注册表 Run 键与启动文件夹中的开机项"
+  "changelog": "## v1.0.1\n\n- 【顺带修一个致命 bug】列表渲染脚本少一个右括号，导致整页 JS 解析失败、插件界面完全不工作（与本次主题修复一起发布）\n- 跟随宿主浅色 / 深色主题：监听宿主的 plugin:theme 消息并同步 <html data-theme>；plugin:init 自带的 theme 也会应用。此前主程序切换主题后插件不跟随\n\n## v1.0.0\n\n- 枚举并启停注册表 Run 键与启动文件夹中的开机项\n- 统一前端桥接注入"
 }

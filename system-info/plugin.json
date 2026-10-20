@@ -58,5 +58,5 @@
     "zh-CN": "neofetch 式采集操作系统、CPU、内存、显卡、磁盘与运行时长",
     "en-US": "neofetch-style overview of OS, CPU, RAM, GPU, disks and uptime."
   },
-  "changelog": "## v1.0.1\n\n- 跟随宿主浅色 / 深色主题：监听宿主的 plugin:theme 消息并同步 <html data-theme>（qd-theme.css 的浅色是 html[data-theme=\"light\"] 的变量覆盖）；plugin:init 自带的 theme 也会应用，首屏即对齐。此前主程序切换主题后插件不跟随（本次为全仓库统一修复）\n\n## v1.0.0\n\n- 一键采集系统/硬件概览（OS、CPU、内存、显卡、磁盘、运行时长）"
+  "changelog": "## v1.0.1\n\n- 跟随宿主浅色 / 深色主题：监听宿主的 plugin:theme 消息并同步 <html data-theme>（qd-theme.css 的浅色是 html[data-theme=\"light\"] 的变量覆盖）；plugin:init 自带的 theme 也会应用，首屏即对齐。此前主程序切换主题后插件不跟随（本次为全仓库统一修复）\n\n## v1.0.0\n\n- 一键采集系统/硬件概览（OS、CPU、内存、显卡、磁盘、运行时长）\n- 统一前端桥接注入"
 }

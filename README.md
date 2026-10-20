@@ -2,6 +2,16 @@
 
 存放我开发的所有 QuickDock 非内置插件。QuickDock 是 Windows 桌面效率工具（[主仓库](https://github.com/parieses/quickdock)），插件提供命令面板命令与独立前端页面两种形态。
 
+## 最近更新
+
+- **2026-10-20 · 统一前端桥接注入（全仓库 77 个插件）**
+  - 移除各插件内联的前端桥接脚本副本（共 126 份），改由宿主统一注入（`qdHostCall` / 主题 / 异常上报 / `qdCrypto` 等）；插件体积减小、消除多份实现漂移。
+  - 随之获得宿主桥最新能力：主题跟随（`plugin:init` 现携带 `theme` / `locale`，宿主切换浅色/深色后插件即时跟随，此前独立窗口不跟随）、`host.crypto.*` 加密桥。
+  - 版本号：已发布插件（`hash-calc`）patch +1；其余未发布插件版本不变，仅补变更日志。
+- **2026-10-20 · 共享代码单一来源治理**
+  - `qd-theme.css` / `components.css` 收敛为 `templates/` 单一来源；`tools/sync_shared.py` 负责同步、`tools/check_shared.py` 做 CI 漂移门禁（当前 0 漂移）。
+  - `photo-library` 的 `qd-theme.css` 登记为已知 fork：豁免逐字节比对，但强制其 `:root` 主题令牌与 base 保持一致。
+
 ## 插件列表
 
 <!--PLUGINS_TABLE_START-->
@@ -23,7 +33,7 @@
 | [密码与加密工具箱](./crypto-toolbox/) | `io.github.parieses.crypto-toolbox` | 1.0.2 | 随机密码 / 口令生成（字符集可配、熵值与强度评估）＋ AES-GCM / AES-CBC 加解密 ＋ RSA-OAEP 密钥对与加解密 ＋ PBKDF2 密钥派生，全部在本机完成，不联网、不上传 |
 | [cURL 转代码](./curl-converter/) | `io.github.parieses.curl-converter` | 1.0.2 | 把 curl 命令解析成 Python / Go / JavaScript / PHP 请求代码，也支持把 fetch、requests 代码反向转回 curl |
 | [UUID & 假数据生成器](./data-generator/) | `io.github.parieses.data-generator` | 1.0.2 | UUID v4 / v7 生成（批量、可大写）＋ 随机字符串 / 整数 / 字节 ＋ 测试假数据（姓名 / 手机 / 邮箱 / 公司 / 地址 / 身份证(测试) / 日期 / 网址 / 用户名 / 人员），全部在本机生成，不联网、不上传 |
-| [数据库客户端](./database/) | `io.github.parieses.database` | 1.4.7 | 轻量数据库连接与查询工具：MySQL / SQLite / Redis 连接管理、SQL 与 Redis 命令执行、库表浏览器（库→表/视图→字段、Redis 键树）、Redis 键类型感知详情与增删改（string/hash/list/set/zset）、TTL 与 DB 管理、结果网格内联行编辑、数据页 SQL 预览（可复制 / 一键转到查询页）。数据独立存储（存于 `~/.quickdock/plugin-data/`，升级不丢）。 |
+| [数据库客户端](./database/) | `io.github.parieses.database` | 1.4.7 | 轻量数据库连接与查询工具：MySQL / SQLite / Redis 连接管理、SQL 与 Redis 命令执行、库表浏览器（库→表/视图→字段、Redis 键树）、Redis 键类型感知详情与增删改（string/hash/list/set/zset）、TTL 与 DB 管理、结果网格内联行编辑。数据独立存储。 |
 | [目录探测](./dir-buster/) | `io.github.parieses.dir-buster` | 1.0.2 | 对指定目标 URL 用内置常见路径字典进行轻量探测（自用）：并发受限、可配扩展名，采用异步会话模型实时返回命中的非 404 路径。仅探测你授权的目标，内置字典、不递归 |
 | [磁盘分析器](./disk-analyzer/) | `io.github.parieses.disk-analyzer` | 1.0.4 | 可视化磁盘空间占用分析工具，类似 SpaceSniffer，支持树图展示目录结构 |
 | [Emoji 搜索](./emoji-search/) | `io.github.parieses.emoji-search` | 1.0.4 | 搜索 Emoji 并一键复制到剪贴板 |
@@ -44,7 +54,7 @@
 | [IP 归属地](./geoip/) | `io.github.parieses.geoip` | 1.0.3 | 查询 IP 的地理位置、运营商、时区与坐标，支持指定 IP 或查询本机公网 IP。 |
 | [Git 工作台](./git-workbench/) | `io.github.parieses.git-workbench` | 1.0.4 | Git 仓库一体化工作台：仓库浏览、二分定位 bug 引入提交、三方合并冲突可视化解决、代码演化时间轴、历史改写（改作者/删敏感文件）、仓库体检与知识孤岛识别。 |
 | [字帖打印](./hanzi-copybook/) | `io.github.parieses.hanzi-copybook` | 1.0.7 | 汉字描红字帖生成器：支持任意汉字定制、拼音与笔顺显示、田字格/米字格排版，面向小学生规范书写与笔顺习惯养成，一键导出/打印 |
-| [文件哈希](./hash-calc/) | `io.github.parieses.hash-calc` | 1.0.6 | 计算文件的 MD5/SHA1/SHA256/SHA512 摘要，结果一键复制 |
+| [文件哈希](./hash-calc/) | `io.github.parieses.hash-calc` | 1.0.7 | 计算文件的 MD5/SHA1/SHA256/SHA512 摘要，结果一键复制 |
 | [Hosts 管理器](./hosts-manager/) | `io.github.parieses.hosts-manager` | 1.0.4 | 管理系统 hosts 文件条目，一键启用/禁用/新增 |
 | [HTTP 客户端](./http-client/) | `io.github.parieses.http-client` | 1.0.7 | 轻量 HTTP 请求调试客户端：项目管理请求、目录与文档树、环境变量与 {{var}} 替换、请求历史重放、Postman 集合导入。数据独立存储。 |
 | [图片工坊](./image-studio/) | `io.github.parieses.image-studio` | 1.0.3 | 仿 Squoosh 实时对比：左右预览对比，质量滑块、缩放(锁定比例/百分比/预设)、旋转/翻转、亮度/对比度/饱和度调整，实时预览文件大小与压缩率 |

@@ -127,10 +127,30 @@ def check_frontend(d, plugin_dir):
 
     # 4) 内联宿主行为脚本：宿主已统一注入（BRIDGE_SCRIPT / quickdock-runtime），
     #    插件再内联一份既是重复代码，也会随宿主能力演进而漂移。
+    #    2026-10-20 起全仓 126 份副本已清理（tools/strip_inline_bridge.py），
+    #    这里保留为回归守卫。
     for marker, why in (("__qdErrHook", "前端异常上报钩子"),
-                        ("qd-theme-follow", "主题跟随脚本")):
+                        ("qd-theme-follow", "主题跟随脚本"),
+                        ("__qdBridge", "宿主桥接脚本自身")):
         if marker in html:
             warn(d, f"内联{why}（{marker}）已由宿主统一注入，应删除内联副本")
+
+    # 4b) 「换皮版」主题跟随：写法各不相同，但特征一样——读 opener/parent 的
+    #     document，或用 prefers-color-scheme 猜主题。两者在当前沙箱下都无效：
+    #     iframe sandbox 不含 allow-same-origin（opaque origin），读 parent.document
+    #     必抛 SecurityError；而宿主主题为「跟随系统」时 currentThemeName() 已归一成
+    #     light/dark 再下发，插件侧再兜一层反而会造成浅色闪变。
+    #     只扫 <script> 块，避开注释里的说明文字。
+    for js in re.findall(r"<script(?![^>]*\bsrc\s*=)[^>]*>(.*?)</script>", html, re.S):
+        hits = []
+        if re.search(r"(?:window|self)\.(?:opener|parent)\s*(?:!==[^;]*)?\.document", js):
+            hits.append("同源 opener/parent.document 兜底")
+        if "matchMedia" in js and "prefers-color-scheme" in js:
+            hits.append("prefers-color-scheme 主题兜底")
+        if hits:
+            warn(d, f"内联主题兜底（{'、'.join(hits)}）已由宿主 BRIDGE_SCRIPT 统一注入，"
+                    f"且同源分支在 opaque origin 下是死代码，应删除")
+            break
 
     # 5) 深浅两套主题必须都定义。宿主通过 html[data-theme] 切换，插件只写
     #    :root（暗色）而不写 html[data-theme="light"] 的话，宿主切到浅色时

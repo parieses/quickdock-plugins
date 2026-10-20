@@ -91,6 +91,23 @@ jobs:
           # 避免「改了 A 顺手弄坏 B」这种情况落到发布包里。
           python3 tools/check_plugins.py
 
+      - name: Frontend script syntax
+        shell: bash
+        run: |
+          # 每个 frontend/index.html 里的 <script> 块逐个 node --check。HTML 里的内联脚本
+          # 不过编译期，语法错只在用户打开插件时才炸，而那时是「白屏+控制台报错」，
+          # 极难定位到是哪个插件。106 个块约 1 秒跑完。
+          node tools/check_frontend_js.mjs
+
+      - name: Shared code single-source check
+        shell: bash
+        run: |
+          # qd-theme.css / components.css / qdlog.go 是跨插件复用的共享代码，单一来源在
+          # templates/。改一处要手动同步几十份极易漏改，导致主题/日志不一致。本检查断言每个
+          # 副本与 templates/ 权威一致（photo-library 的 qd-theme.css 为登记 fork，仅核对
+          # :root 主题令牌）。漂移即失败，需要先跑 tools/sync_shared.py。
+          python3 tools/check_shared.py --stats
+
       - name: Build pdfcpu for pdf-toolkit
         if: contains(steps.changed.outputs.changed_plugins, 'pdf-toolkit')
         shell: bash

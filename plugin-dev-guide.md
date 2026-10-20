@@ -1150,7 +1150,33 @@ window.addEventListener('message', (e) => {
 | `templates/qdlog.go` | native 插件的日志模块：`qdLogStart/Exit`、`qdObserveLine`、`qdFinishRequest`、`qdLogPanic` |
 | `tools/apply_qdlog.py` | 把 `qdlog.go` 复制进插件并自动埋点（main 读循环 / respond / respondError / panic）；`--all` 全量、`--dry-run` 预览 |
 | `templates/qdlog_shim.js` | goja 插件末尾追加的包裹层：包住 `handleExecute` / `handleInitialize`，记录耗时与异常 |
-| `templates/qdlog_frontend.html` | 前端页面末尾的异常上报钩子（`window.error` + `unhandledrejection`） |
+| ~~`templates/qdlog_frontend.html`~~ | **已废弃**。原先是前端异常上报钩子，现已由宿主 `BRIDGE_SCRIPT` 统一注入，见下方「前端这两段不用你写」 |
+
+### 前端这两段不用你写（宿主已统一注入）
+
+`frontend/index.html` 里**不要**自己写这两段，宿主 `injectPluginBridge()` 会注入
+`BRIDGE_SCRIPT` 到每个插件 iframe 的 `<head>`：
+
+| 能力 | 宿主实现 | 插件侧要做的 |
+|---|---|---|
+| 主题跟随（`plugin:theme` / `plugin:init` → `<html data-theme>`） | 桥内监听 `message` 同步 | **什么都不用做** |
+| 前端异常上报（`window.error` + `unhandledrejection` → `log.error`） | 桥内带错误指纹、10s 去重、每指纹 5 次上限 | **什么都不用做** |
+
+**特别不要写「同源 / 系统偏好」主题兜底。** 两种都是反效果：
+
+- `window.parent.document` / `window.opener.document`：iframe 的 sandbox 是
+  `allow-scripts allow-modals allow-downloads`，**刻意不含 `allow-same-origin`**，
+  opaque origin 下读 parent.document 必抛 SecurityError，被 try/catch 吞掉 → 纯死代码。
+- `matchMedia('(prefers-color-scheme: light)')`：宿主主题若为「跟随系统」，
+  `currentThemeName()` 已经把系统偏好归一成 `light`/`dark` 再下发；
+  插件侧再多兜一层，会在 `plugin:theme` 抵达之前先用系统偏好打上 `data-theme`，
+  造成一次浅色闪变（FOUC）。
+
+`tools/check_plugins.py` 第 4 / 4b 项会把上述两种写法报成 **WARN**（不阻断 CI）。
+2026-10-20 起全仓 126 份内联副本已用 `tools/strip_inline_bridge.py` 清理完毕。
+
+> `locale` → `<html lang>` 同步宿主桥**不做**。需要的话插件自己处理
+> （参考 `database/frontend/index.html` 的 `applyTheme`）。
 
 native 侧的关键设计（改之前先看 `qdlog.go` 顶部注释）：
 

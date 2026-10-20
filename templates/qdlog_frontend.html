@@ -1,29 +1,19 @@
-<!-- 运行期异常上报：未捕获异常 / Promise 拒绝 -> 宿主 plugin-YYYYMMDD.log（E 级） -->
-<script>
-(function () {
-  if (window.__qdErrHook) return
-  window.__qdErrHook = true
-  var sent = 0, last = {}
-  function report(kind, msg, stack) {
-    try {
-      if (sent >= 20) return // 单页最多 20 条，防止循环报错刷屏
-      var key = kind + '|' + msg
-      var now = Date.now()
-      if (last[key] && now - last[key] < 10000) return // 同一错误 10s 内只报一次
-      last[key] = now
-      sent++
-      if (typeof window.qdHostCall !== 'function') return
-      window.qdHostCall('log.error', {
-        message: '前端' + kind + ': ' + msg + (stack ? ' | ' + String(stack).slice(0, 600) : '')
-      }).catch(function () {})
-    } catch (e) {}
-  }
-  window.addEventListener('error', function (e) {
-    report('未捕获异常', (e && e.message) || 'unknown', e && e.error && e.error.stack)
-  })
-  window.addEventListener('unhandledrejection', function (e) {
-    var r = e && e.reason
-    report('Promise 拒绝', (r && r.message) || String(r), r && r.stack)
-  })
-})()
-</script>
+<!-- 已废弃，请勿再复制到插件前端。 ===================================================================
+     原用途：给插件 frontend/index.html 注入「运行期异常上报」钩子
+             （window.error + unhandledrejection -> qdHostCall('log.error')）。
+
+     为什么废弃：
+       这段能力已经由宿主统一注入。宿主 frontend/src/utils/pluginBridge.ts 的
+       BRIDGE_SCRIPT 里本来就有这段逻辑，而且比这份模板更完善——
+       错误指纹归一化、每指纹 5 次上限、10s 去重窗、累计计数、超长消息截断。
+       injectPluginBridge() 会在每个插件 iframe 的 <head> 里注入它。
+
+     现状：
+       2026-10-20 起，77 个插件的 frontend/index.html 里的内联副本已全部删除
+       （见 tools/strip_inline_bridge.py），宿主侧另加了 57 条断言 + CI 门禁守护
+       （宿主 .workbuddy/design/plugin-inject-design.md 有完整方案与实测记录）。
+
+     假如你正在给插件加异常上报：什么都不用加。宿主已经管了。
+     自测方式：DevTools 里 Promise.reject()，宿主日志应出现
+             [E] [plugin:<plugin-id>] 前端 Promise 拒绝: ...
+     =================================================================== -->
