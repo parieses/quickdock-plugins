@@ -25,6 +25,7 @@
 
 > 以下日期取自真实提交记录。更早的变更见 [Releases](https://github.com/parieses/quickdock-plugins/releases) 与各插件 `plugin.json` 的 `changelog`。
 
+- **2026-10-21 · database 标签页右键菜单（参考 VS Code）**：顶部标签栏任意标签上右键即可「关闭 / 关闭其他 / 关闭左侧 / 关闭右侧 / 全部关闭」，一次开很多表和查询标签时不用再挨个点 ×；无可关闭的标签时对应项置灰，菜单靠近窗口边缘自动翻转，Esc 或点击空白处关闭。
 - **2026-10-21 · 修复 http-client 打开即报错白屏（`self.boot is not a function`）**：首屏加载入口 `boot` 误写在 `createApp` 顶层 option 上，不会挂到组件实例，`mounted` 的 1.5s 兜底计时器和宿主 `plugin:init` 回调都取不到它；已将 `boot` 挪入 `methods` 并给 `plugin:init` 回调补 `typeof` 防御。
 - **2026-10-21 · Ctrl+K 命令直达与死命令清理（database / git-workbench / http-client 等 12 个插件）**：命令面板选中的插件命令此前只会打开插件首页、跳不到对应页面。现在多标签插件的前端接管 `plugin:init` 下发的 `command` 做页面直达（database 连接列表/库表树/执行查询/保存连接、git-workbench 六个标签页、http-client 发送/历史/项目、cron 解释页、密码生成页等）；同时全仓核对 137 条命令声明，移除 10 条前后端均无监听、从面板点了没反应的真死命令（如「测试连接」「解析变量」「查看 WiFi 密码」），其余按「开门命令 / 首页即目标页」分类保留。
 - **2026-10-21 · 新增 `net-traffic`（实时流量监控）与 `app-manager`（应用管理）**：流量监控走 `iphlpapi` 每秒采样、自动合并同一网卡的多个 NDIS 绑定行避免重复计数，连接表按进程归集；应用管理枚举三处注册表卸载项（中文名经 Base64 回传避免代码页乱码），MSI 程序白名单内直接唤起、其余给复制命令/打开目录/跳转系统设置。
@@ -75,7 +76,7 @@
 | [包版本速查](./package-check/) | 1.1.3 | 输入包名，并发查询 npm / PyPI / Composer / Go 四个仓库的版本信息；并基于 OSV.dev 查询包版本的已知漏洞（CVE / 安全公告） |
 | [对比工具](./compare/) | 1.0.3 | 文件/图片对比（元数据 + 图片预览 + 文本内容差异）与文本块逐行 Diff 合二为一 |
 | [打字练习](./type-trainer/) | 1.0.4 | 开发者向打字训练器：英文 / 中文 / 代码 / 导入四种模式，支持导入 TXT 字库，实时统计 WPM 与准确率，本地记录历史与最佳成绩 |
-| [数据库客户端](./database/) | 1.7.0 | 轻量数据库连接与查询工具：MySQL / SQLite / Redis 连接管理、SQL 与 Redis 命令执行、库表浏览器（库→表/视图→字段、Redis 键树）、Redis 键类型感知详情与增删改（string/hash/list/set/zset）、TTL 与 DB 管理、结果网格内联行编辑、勾选批量删除（支持全选匹配筛选的行）。数据独立存储。 |
+| [数据库客户端](./database/) | 1.7.1 | 轻量数据库连接与查询工具：MySQL / SQLite / Redis 连接管理、SQL 与 Redis 命令执行、库表浏览器（库→表/视图→字段、Redis 键树）、Redis 键类型感知详情与增删改（string/hash/list/set/zset）、TTL 与 DB 管理、结果网格内联行编辑、勾选批量删除（支持全选匹配筛选的行）。数据独立存储。 |
 | [文件哈希](./hash-calc/) | 1.0.7 | 计算文件的 MD5/SHA1/SHA256/SHA512 摘要，结果一键复制 |
 | [文本工具箱](./text-encoder/) | 1.0.5 | Base64 / URL / HTML 编解码，MD5 / SHA1 / SHA256 / SHA512 哈希与 HMAC 签名，Base64 图片识别预览，2/8/10/16 进制互转与字节单位换算 |
 | [时间转换](./time-converter/) | 1.0.3 | Unix 时间戳 / ISO 8601 / 中文日期 / 相对时间互转，支持任意时区偏移输出 |

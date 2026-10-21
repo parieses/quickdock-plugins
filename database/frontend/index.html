@@ -256,6 +256,16 @@
     .toast { padding:8px 14px; border-radius:var(--radius); font-size:var(--fs-sm); box-shadow:var(--shadow-2); max-width:380px; }
     .toast.ok { background:var(--success); color:#fff; }
     .toast.err { background:var(--danger); color:#fff; }
+
+    /* ===== 标签页右键菜单（参考 VS Code） ===== */
+    .tab-menu-mask { position:fixed; inset:0; z-index:400; }
+    .tab-menu { position:fixed; z-index:500; min-width:150px; padding:4px 0; background:var(--bg-secondary); border:1px solid var(--border); border-radius:var(--radius-sm); box-shadow:var(--shadow-2); font-size:var(--fs-sm); user-select:none; }
+    .tab-menu .tm-i { display:flex; align-items:center; gap:9px; padding:5px 12px; color:var(--text-secondary); cursor:pointer; white-space:nowrap; }
+    .tab-menu .tm-i:hover { background:var(--accent-soft); color:var(--accent); }
+    .tab-menu .tm-i.dim { color:var(--text-disabled); cursor:default; }
+    .tab-menu .tm-i.dim:hover { background:transparent; color:var(--text-disabled); }
+    .tab-menu .tm-ico { width:12px; text-align:center; opacity:.9; }
+    .tab-menu .tm-sep { height:1px; margin:4px 0; background:var(--border); }
   </style>
 </head>
 <body>
@@ -321,7 +331,7 @@
       <!-- 右：标签页 -->
       <div class="main">
         <div class="tabs" v-if="tabs.length">
-          <div v-for="t in tabs" :key="t.id" class="tab" :class="{active: t.id===activeTabId}" @click="activate(t)" :title="t.title">
+          <div v-for="t in tabs" :key="t.id" class="tab" :class="{active: t.id===activeTabId}" @click="activate(t)" @contextmenu.prevent="openTabMenu($event, t)" :title="t.title">
             <span class="oico">{{ tabIcon(t) }}</span>
             <span class="tt">{{ t.title }}</span>
             <span class="tx" @click.stop="closeTab(t)">×</span>
@@ -916,6 +926,18 @@
       </div>
     </div>
 
+    <!-- 标签页右键菜单 -->
+    <div v-if="tabMenu.show" class="tab-menu-mask" @click="closeTabMenu" @contextmenu.prevent="closeTabMenu"></div>
+    <div v-if="tabMenu.show" ref="tabMenu" class="tab-menu" :style="{ left: tabMenu.x+'px', top: tabMenu.y+'px' }">
+      <div class="tm-i" :class="{dim: !tabs.length}" @click="tabMenuClose"><span class="tm-ico">×</span>关闭</div>
+      <div class="tm-i" :class="{dim: tabs.length<2}" @click="tabMenuCloseOthers"><span class="tm-ico">⊘</span>关闭其他</div>
+      <div class="tm-sep"></div>
+      <div class="tm-i" :class="{dim: !tabMenuFlags.hasLeft}" @click="tabMenuCloseLeft"><span class="tm-ico">◀</span>关闭左侧</div>
+      <div class="tm-i" :class="{dim: !tabMenuFlags.hasRight}" @click="tabMenuCloseRight"><span class="tm-ico">▶</span>关闭右侧</div>
+      <div class="tm-sep"></div>
+      <div class="tm-i" :class="{dim: !tabs.length}" @click="tabMenuCloseAll"><span class="tm-ico">⨯</span>全部关闭</div>
+    </div>
+
     <div class="toast-wrap">
       <div v-for="t in toasts" :key="t.id" class="toast" :class="t.kind">{{ t.msg }}</div>
     </div>
@@ -1074,14 +1096,22 @@
         settings: { pageSize:200, lastDb:{} },
         showSettings: false,
         _clickTimer: null,
+        // 标签页右键菜单
+        tabMenu: { show:false, x:0, y:0, tabId:'' },
         suggest: { open:false, tabId:'', items:[], index:0, start:0, token:'' }
       }
     },
-    computed: {
-      activeTab: function(){
-        var id = this.activeTabId
-        return this.tabs.find(function(t){ return t.id===id }) || null
-      },
+      computed: {
+        activeTab: function(){
+          var id = this.activeTabId
+          return this.tabs.find(function(t){ return t.id===id }) || null
+        },
+        // 右键菜单中各「关闭」项的可用状态：左/右侧是否还有 tab
+        tabMenuFlags: function(){
+          var self = this
+          var i = this.tabs.findIndex(function(t){ return t.id===self.tabMenu.tabId })
+          return { idx:i, hasLeft:i>0, hasRight:i>=0 && i<this.tabs.length-1 }
+        },
       filteredConns: function(){
         var f = (this.connFilter||'').trim().toLowerCase()
         if(!f) return this.conns
@@ -1343,6 +1373,63 @@
         if(i<0) return
         this.tabs.splice(i,1)
         if(this.activeTabId===t.id) this.activeTabId = this.tabs.length ? this.tabs[Math.min(i, this.tabs.length-1)].id : ''
+      },
+      /* ---------- 标签页右键菜单（参考 VS Code） ---------- */
+      openTabMenu: function(e, t){
+        var self = this
+        this.tabMenu = { show:true, x:e.clientX, y:e.clientY, tabId:t.id }
+        // 菜单渲染后按视口边缘翻转，避免超出窗口
+        this.$nextTick(function(){
+          var el = self.$refs.tabMenu
+          if(!el) return
+          var w = el.offsetWidth, h = el.offsetHeight
+          var x = Math.min(e.clientX, window.innerWidth - w - 6)
+          var y = Math.min(e.clientY, window.innerHeight - h - 6)
+          self.tabMenu.x = Math.max(4, x)
+          self.tabMenu.y = Math.max(4, y)
+        })
+      },
+      closeTabMenu: function(){
+        this.tabMenu.show = false
+        this.tabMenu.tabId = ''
+      },
+      tabMenuTab: function(){
+        var self = this
+        return this.tabs.find(function(t){ return t.id===self.tabMenu.tabId }) || null
+      },
+      tabMenuClose: function(){
+        var t = this.tabMenuTab()
+        this.closeTabMenu()
+        if(t) this.closeTab(t)
+      },
+      tabMenuCloseOthers: function(){
+        var id = this.tabMenu.tabId
+        if(!id || this.tabs.length<2) return
+        this.closeTabMenu()
+        this.tabs = this.tabs.filter(function(t){ return t.id===id })
+        this.activeTabId = id
+      },
+      tabMenuCloseLeft: function(){
+        var id = this.tabMenu.tabId
+        var i = this.tabMenuFlags.idx
+        this.closeTabMenu()
+        if(i<=0) return
+        this.tabs = this.tabs.slice(i)
+        this.activeTabId = id
+      },
+      tabMenuCloseRight: function(){
+        var id = this.tabMenu.tabId
+        var i = this.tabMenuFlags.idx
+        this.closeTabMenu()
+        if(i<0 || i>=this.tabs.length-1) return
+        this.tabs = this.tabs.slice(0, i+1)
+        this.activeTabId = id
+      },
+      tabMenuCloseAll: function(){
+        if(!this.tabs.length) return
+        this.closeTabMenu()
+        this.tabs = []
+        this.activeTabId = ''
       },
       tabIcon: function(t){
         if(t.kind==='objects') return '🗄'
@@ -2381,6 +2468,10 @@
       }
     },
     mounted: function(){
+      var self = this
+      document.addEventListener('keydown', function(e){
+        if(e.key==='Escape' && self.tabMenu.show) self.closeTabMenu()
+      })
       // 正常路径由 plugin:init 触发 bootNow；这里只是兜底
       setTimeout(function(){ bootNow({}) }, 1000)
     }
