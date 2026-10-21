@@ -693,6 +693,7 @@ window.addEventListener('message',function(e){
   if(e.data.type==='plugin:init'){
     var input=null;
     if(e.data.data&&e.data.data.text){try{input=JSON.parse(e.data.data.text)}catch(err){input=null}}
+    // disk-scan-root 命令（无输入）：直达 = 默认扫描根目录，与下方 else 分支同一行为
     if(input&&input.path){startScan(input.path)}
     else{scanRoot()}
   }else if(e.data.type==='plugin:theme'&&e.data.data&&e.data.data.theme){

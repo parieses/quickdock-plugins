@@ -710,7 +710,7 @@
       // 加载
       load: function(){
         var self = this
-        Promise.all([
+        return Promise.all([
           send('project.list'), send('folder.list', {}), send('req.list'), send('doc.list', {}), send('env.list', {})
         ]).then(function(r){
           self.projects = asArray(r[0]);
@@ -933,7 +933,49 @@
         if(this.booted) return
         this.booted = true
         if(this._initTimer){ clearTimeout(this._initTimer); this._initTimer = null }
-        this.load()
+        var self = this
+        this.load().then(function(){
+          // 命令直达：宿主经 plugin:init 下发 command，按命令跳到对应视图；
+          // 无 command（直接打开插件）时保持默认首页
+          if(payload && payload.command) self.gotoCommand(String(payload.command), String(payload.text||'').trim())
+        })
+      },
+      // 命令面板直达路由：只收录「页面 / 视图跳转」类命令。
+      // 需要输入参数的纯动作命令（如 env.resolve 解析哪个变量）不在此列，
+      // 已从 plugin.json 移除，避免搜得到却点了没反应。
+      gotoCommand: function(cmd, text){
+        var self = this
+        if(cmd === 'req.send'){
+          // 发送请求：带 URL 打开（/http https://…）时预填地址，
+          // 形如 "POST https://…" 的前缀同时选中对应方法；随后聚焦 URL 输入框
+          if(text){
+            var m = text.match(/^(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\s+(\S+)/i)
+            if(m){ this.method = m[1].toUpperCase(); this.url = m[2] }
+            else { this.url = text }
+          }
+          this.$nextTick(function(){
+            var el = document.querySelector('.hc-url')
+            if(el){ el.focus(); el.select() }
+          })
+          return true
+        }
+        if(cmd === 'history.list'){
+          // 请求历史：打开历史抽屉
+          if(!this.showHistory){ this.showHistory = true; this.refreshHistory() }
+          return true
+        }
+        if(cmd === 'project.list'){
+          // 项目列表：未展开任何项目时展开第一个，并滚动到项目树，便于接着选请求
+          if(this.projects.length && !this.expandedProjects.size){
+            this.expandedProjects.add(this.projects[0].id)
+          }
+          this.$nextTick(function(){
+            var el = document.querySelector('.hc-tree')
+            if(el) el.scrollIntoView({ block:'nearest' })
+          })
+          return true
+        }
+        return false
       }
     },
     mounted: function(){

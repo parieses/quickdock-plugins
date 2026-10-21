@@ -207,6 +207,7 @@ window.copyViaHost=function(t,cb){var id='cp_'+(++window.__cpSeq),done=false;fun
   }
 
   // ===== 命令面板带参打开：按命令选择 tab / 模式并自动处理 =====
+  // format-sql → SQL 页；code-prettify → 代码页+美化；code-minify → 代码页+压缩（else 分支覆盖）
   window.addEventListener('message',function(e){
     var d=e&&e.data
     if(!d||d.type!=='plugin:init'||!d.data)return

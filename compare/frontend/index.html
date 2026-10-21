@@ -372,6 +372,7 @@
   window.showCompareTab=showTab
 
   // 命令面板带参打开：按命令选择默认 tab
+  // open-diff → 文本 Diff 页；open-file-compare（及其它）→ 文件/图片对比页（打开即目标页）
   window.addEventListener('message',function(e){
     var d=e&&e.data
     if(!d||d.type!=='plugin:init'||!d.data)return

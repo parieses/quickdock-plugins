@@ -26,6 +26,7 @@
 > 以下日期取自真实提交记录。更早的变更见 [Releases](https://github.com/parieses/quickdock-plugins/releases) 与各插件 `plugin.json` 的 `changelog`。
 
 - **2026-10-21 · 修复 http-client 打开即报错白屏（`self.boot is not a function`）**：首屏加载入口 `boot` 误写在 `createApp` 顶层 option 上，不会挂到组件实例，`mounted` 的 1.5s 兜底计时器和宿主 `plugin:init` 回调都取不到它；已将 `boot` 挪入 `methods` 并给 `plugin:init` 回调补 `typeof` 防御。
+- **2026-10-21 · Ctrl+K 命令直达与死命令清理（database / git-workbench / http-client 等 12 个插件）**：命令面板选中的插件命令此前只会打开插件首页、跳不到对应页面。现在多标签插件的前端接管 `plugin:init` 下发的 `command` 做页面直达（database 连接列表/库表树/执行查询/保存连接、git-workbench 六个标签页、http-client 发送/历史/项目、cron 解释页、密码生成页等）；同时全仓核对 137 条命令声明，移除 10 条前后端均无监听、从面板点了没反应的真死命令（如「测试连接」「解析变量」「查看 WiFi 密码」），其余按「开门命令 / 首页即目标页」分类保留。
 - **2026-10-21 · 新增 `net-traffic`（实时流量监控）与 `app-manager`（应用管理）**：流量监控走 `iphlpapi` 每秒采样、自动合并同一网卡的多个 NDIS 绑定行避免重复计数，连接表按进程归集；应用管理枚举三处注册表卸载项（中文名经 Base64 回传避免代码页乱码），MSI 程序白名单内直接唤起、其余给复制命令/打开目录/跳转系统设置。
 - **2026-10-20 · 数据回显与持久化修复（http-client / calcsheet / database / control-receiver）**：修复 http-client「数据已在 plugin-data 里却不显示」（首屏目录列表传空项目 ID 只返回空集；以及库文件名字认错导致静默新建空库）、calcsheet「稿纸保存后重新打开是空白」（后端数据返回前就渲染、返回后又不再重渲染）；并为 database、control-receiver 补上「同目录异名库复用」与「配置损坏时回退历史有效配置」，四处均新增启动诊断日志便于定位。
 - **2026-10-20 · 统一前端桥接注入（全仓库 77 个插件）**：移除各插件内联桥接脚本副本（共 126 份），改由宿主统一注入（`qdHostCall` / 主题 / 异常上报 / `qdCrypto`）；插件体积减小、消除多份实现漂移，并即时获得主题跟随与 `host.crypto.*` 能力。
@@ -59,10 +60,10 @@
 | 插件 | 版本 | 说明 |
 |------|------|------|
 | [API Mock 服务](./api-mock/) | 1.0.5 | 本地 HTTP 接口 Mock 服务：可视化配置路由规则（方法/路径/状态码/响应体/延迟），一键启动本地服务，实时查看请求日志，联调前端与第三方对接无需真实后端 |
-| [Crontab 解释器](./cron-explainer/) | 1.0.3 | 解析 cron 表达式（含义/下次执行/小时分布），并可可视化生成表达式、实时预览下次执行时间 |
+| [Crontab 解释器](./cron-explainer/) | 1.0.4 | 解析 cron 表达式（含义/下次执行/小时分布），并可可视化生成表达式、实时预览下次执行时间 |
 | [Emoji 搜索](./emoji-search/) | 1.0.4 | 搜索 Emoji 并一键复制到剪贴板 |
-| [Git 工作台](./git-workbench/) | 1.0.4 | Git 仓库一体化工作台：仓库浏览、二分定位 bug 引入提交、三方合并冲突可视化解决、代码演化时间轴、历史改写（改作者/删敏感文件）、仓库体检与知识孤岛识别。 |
-| [HTTP 客户端](./http-client/) | 1.0.10 | 轻量 HTTP 请求调试客户端：项目管理请求、目录与文档树、环境变量与 {{var}} 替换、请求历史重放、Postman 集合导入。数据独立存储。 |
+| [Git 工作台](./git-workbench/) | 1.0.5 | Git 仓库一体化工作台：仓库浏览、二分定位 bug 引入提交、三方合并冲突可视化解决、代码演化时间轴、历史改写（改作者/删敏感文件）、仓库体检与知识孤岛识别。 |
+| [HTTP 客户端](./http-client/) | 1.1.0 | 轻量 HTTP 请求调试客户端：项目管理请求、目录与文档树、环境变量与 {{var}} 替换、请求历史重放、Postman 集合导入。数据独立存储。 |
 | [JSON 工具箱](./json-toolbox/) | 1.0.4 | JSON 编辑器（格式化/折叠/编辑）、JSON → TypeScript / Go、JSON ↔ YAML / TOML / XML 互转 |
 | [JWT 解码器](./jwt-decoder/) | 1.0.3 | 解码 JWT Token，查看 Header/Payload，验证过期时间 |
 | [Markdown 渲染](./markdown-preview/) | 1.0.3 | 实时渲染 Markdown（GFM：标题/列表/表格/任务列表/引用）+ 代码高亮，一键复制为 HTML |
@@ -74,7 +75,7 @@
 | [包版本速查](./package-check/) | 1.1.3 | 输入包名，并发查询 npm / PyPI / Composer / Go 四个仓库的版本信息；并基于 OSV.dev 查询包版本的已知漏洞（CVE / 安全公告） |
 | [对比工具](./compare/) | 1.0.3 | 文件/图片对比（元数据 + 图片预览 + 文本内容差异）与文本块逐行 Diff 合二为一 |
 | [打字练习](./type-trainer/) | 1.0.4 | 开发者向打字训练器：英文 / 中文 / 代码 / 导入四种模式，支持导入 TXT 字库，实时统计 WPM 与准确率，本地记录历史与最佳成绩 |
-| [数据库客户端](./database/) | 1.6.0 | 轻量数据库连接与查询工具：MySQL / SQLite / Redis 连接管理、SQL 与 Redis 命令执行、库表浏览器（库→表/视图→字段、Redis 键树）、Redis 键类型感知详情与增删改（string/hash/list/set/zset）、TTL 与 DB 管理、结果网格内联行编辑、勾选批量删除（支持全选匹配筛选的行）。数据独立存储。 |
+| [数据库客户端](./database/) | 1.7.0 | 轻量数据库连接与查询工具：MySQL / SQLite / Redis 连接管理、SQL 与 Redis 命令执行、库表浏览器（库→表/视图→字段、Redis 键树）、Redis 键类型感知详情与增删改（string/hash/list/set/zset）、TTL 与 DB 管理、结果网格内联行编辑、勾选批量删除（支持全选匹配筛选的行）。数据独立存储。 |
 | [文件哈希](./hash-calc/) | 1.0.7 | 计算文件的 MD5/SHA1/SHA256/SHA512 摘要，结果一键复制 |
 | [文本工具箱](./text-encoder/) | 1.0.5 | Base64 / URL / HTML 编解码，MD5 / SHA1 / SHA256 / SHA512 哈希与 HMAC 签名，Base64 图片识别预览，2/8/10/16 进制互转与字节单位换算 |
 | [时间转换](./time-converter/) | 1.0.3 | Unix 时间戳 / ISO 8601 / 中文日期 / 相对时间互转，支持任意时区偏移输出 |
@@ -125,7 +126,7 @@
 |------|------|------|
 | [IP 归属地](./geoip/) | 1.0.3 | 查询 IP 的地理位置、运营商、时区与坐标，支持指定 IP 或查询本机公网 IP。 |
 | [WebSocket 测试](./ws-tester/) | 1.0.4 | 连接 ws/wss 服务，发送消息并实时查看返回的帧，支持多连接与历史 |
-| [qpm接收端](./control-receiver/) | 1.0.13 | 手机屏幕镜像接收端 + 控制端：连接 QuestPhoneMirror 发送端实时显示画面，鼠标点击/拖拽反向操控真机（配套手机端发送端见 https://github.com/parieses/QuestPhoneMirror） |
+| [qpm接收端](./control-receiver/) | 1.0.14 | 手机屏幕镜像接收端 + 控制端：连接 QuestPhoneMirror 发送端实时显示画面，鼠标点击/拖拽反向操控真机（配套手机端发送端见 https://github.com/parieses/QuestPhoneMirror） |
 | [子域名枚举](./subdomain-enum/) | 1.0.2 | 被动收集域名子域名（证书透明日志 CertSpotter / crt.sh + HackerTarget + urlscan + rapiddns + AlienVault OTX），可选并发解析 A 记录筛选存活 |
 | [实时流量监控](./net-traffic/) | 1.0.0 | 每秒采样的本机流量监控：实时上下行速率与 5 分钟曲线、按网卡拆分（自动合并同一网卡的多个 NDIS 绑定，不重复计数）、本次会话累计与峰值，并列出 IPv4 连接对应的进程、本地/远端地址与状态。 |
 | [目录探测](./dir-buster/) | 1.0.2 | 对指定目标 URL 用内置常见路径字典进行轻量探测（自用）：并发受限、可配扩展名，采用异步会话模型实时返回命中的非 404 路径。仅探测你授权的目标，内置字典、不递归 |
@@ -138,10 +139,10 @@
 | 插件 | 版本 | 说明 |
 |------|------|------|
 | [OTP 验证器](./otp/) | 1.0.2 | 本地 TOTP 两步验证码生成器（兼容 Google Authenticator），密钥仅存本机，离线可用。 |
-| [密码与加密工具箱](./crypto-toolbox/) | 1.0.2 | 随机密码 / 口令生成（字符集可配、熵值与强度评估）＋ AES-GCM / AES-CBC 加解密 ＋ RSA-OAEP 密钥对与加解密 ＋ PBKDF2 密钥派生，全部在本机完成，不联网、不上传 |
+| [密码与加密工具箱](./crypto-toolbox/) | 1.0.3 | 随机密码 / 口令生成（字符集可配、熵值与强度评估）＋ AES-GCM / AES-CBC 加解密 ＋ RSA-OAEP 密钥对与加解密 ＋ PBKDF2 密钥派生，全部在本机完成，不联网、不上传 |
 | [密码库](./vault/) | 1.0.4 | 本地加密密码库：主密码解锁，AES-GCM 加密存储，支持导出/导入加密备份文件。数据不出本机。 |
 | [泄露查询](./breach-check/) | 1.0.3 | 基于 Have I Been Pwned 检查密码是否出现在泄露库中（k-匿名，密码不出本机）；邮箱泄露需自备 API Key。 |
-| [登录爆破测试器](./login-tester/) | 1.0.2 | 对自身网站登录接口进行密码库撞库/爆破安全自检，支持并发、限速与锁定检测。仅用于你拥有或已授权的站点。 |
+| [登录爆破测试器](./login-tester/) | 1.0.3 | 对自身网站登录接口进行密码库撞库/爆破安全自检，支持并发、限速与锁定检测。仅用于你拥有或已授权的站点。 |
 
 ## 系统工具（6）
 
@@ -151,17 +152,17 @@
 | [启动项管理](./startup-manager/) | 1.0.2 | 查看并启停本机开机启动项，覆盖注册表 Run 键与「启动」文件夹中的快捷方式。 |
 | [应用管理](./app-manager/) | 1.0.0 | 本机已安装应用一览：名称 / 版本 / 发布者 / 占用体积 / 安装日期 / 安装范围（所有用户 / 当前用户 / 32 位），支持搜索与按体积、安装日期排序。MSI 程序可直接唤起卸载，自带卸载器的程序提供命令复制、安装目录直达与系统卸载页入口。 |
 | [服务管理](./service-manager/) | 1.0.2 | 查看本机 Windows 服务列表，按名称筛选，并启动 / 停止 / 重启服务。 |
-| [磁盘分析器](./disk-analyzer/) | 1.0.4 | 可视化磁盘空间占用分析工具，类似 SpaceSniffer，支持树图展示目录结构 |
+| [磁盘分析器](./disk-analyzer/) | 1.0.5 | 可视化磁盘空间占用分析工具，类似 SpaceSniffer，支持树图展示目录结构 |
 | [系统信息](./system-info/) | 1.0.2 | neofetch 式一键采集本机操作系统、CPU、内存、显卡、磁盘与运行时长等信息。 |
 
 ## 效率工具（4）
 
 | 插件 | 版本 | 说明 |
 |------|------|------|
-| [Hosts 管理器](./hosts-manager/) | 1.0.4 | 管理系统 hosts 文件条目，一键启用/禁用/新增 |
+| [Hosts 管理器](./hosts-manager/) | 1.0.5 | 管理系统 hosts 文件条目，一键启用/禁用/新增 |
 | [OCR 文字识别](./ocr-tool/) | 2.0.5 | 基于 PaddleOCR (ONNX) 的离线文字识别，支持中英文，首次使用自动下载约 178MB 模型（ModelScope 镜像），之后完全离线运行，跨 Windows / macOS / Linux。 |
-| [WiFi 管理器](./wifi-manager/) | 1.0.3 | 查看网络列表、WiFi 密码、连接状态 |
-| [端口检查器](./port-scanner/) | 1.0.6 | 检查端口占用，显示进程名和 PID |
+| [WiFi 管理器](./wifi-manager/) | 1.0.4 | 查看网络列表、WiFi 密码、连接状态 |
+| [端口检查器](./port-scanner/) | 1.0.7 | 检查端口占用，显示进程名和 PID |
 
 ## 教育学习（2）
 

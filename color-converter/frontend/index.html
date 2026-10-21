@@ -320,6 +320,7 @@ window.addEventListener('message', function (e) {
     if (cmd === 'screen-pick' || cmd === 'screen-pick-start' || cmd === 'pick-color') {
       startPick()
     }
+    // 「颜色转换」命令：打开插件首页即转换器主界面，无需额外跳转（显式说明，避免被当成漏监听）
   }
 })
 

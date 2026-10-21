@@ -184,6 +184,8 @@ function applyStaticL10n() {
       var pd=d.data||{}
       // gen-cron 命令（无输入）直达生成页
       if(pd.command==='gen-cron'&&!pd.text){switchTo('gen');return}
+      // explain-cron 命令（无输入）直达解释页并聚焦输入框
+      if(pd.command==='explain-cron'&&!pd.text){switchTo('explain');input.focus();return}
       if(pd.text){switchTo('explain');input.value=pd.text;explain()}
     }
     if(d&&d.type==='plugin:theme'&&d.data&&d.data.locale){

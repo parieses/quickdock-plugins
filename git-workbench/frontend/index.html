@@ -387,11 +387,28 @@ function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;
   }
 
   /* ---------- Tabs ---------- */
-  $('tabs').addEventListener('click', function(e){
-    var btn=e.target.closest('.gw-tab'); if(!btn) return
-    var name=btn.dataset.tab
+  function switchTab(name){
+    var btn=document.querySelector('.gw-tab[data-tab="'+name+'"]')
+    if(!btn) return
     document.querySelectorAll('.gw-tab').forEach(function(b){ b.classList.toggle('active', b===btn) })
     document.querySelectorAll('.gw-pane').forEach(function(p){ p.classList.toggle('active', p.id==='pane-'+name) })
+  }
+  $('tabs').addEventListener('click', function(e){
+    var btn=e.target.closest('.gw-tab'); if(!btn) return
+    switchTab(btn.dataset.tab)
+  })
+
+  /* ---------- 命令面板直达 ---------- */
+  // 宿主经 plugin:init 下发 {text, command}，本插件为多标签结构，
+  // 命令即标签页：选中后直接切到对应页，而非只打开插件首页。
+  var GW_CMD_TAB={
+    'repo.open':'repo', 'bisect.start':'bisect', 'conflict.list':'conflict',
+    'timeline.file':'timeline', 'rewrite.preview':'rewrite', 'stats.start':'stats'
+  }
+  window.addEventListener('message', function(e){
+    var d=e.data; if(!d || d.type!=='plugin:init' || !d.data) return
+    var tab=GW_CMD_TAB[d.data.command]
+    if(tab) switchTab(tab)
   })
 
   /* ---------- 选目录 ---------- */

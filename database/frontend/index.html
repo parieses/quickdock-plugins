@@ -252,7 +252,8 @@
     .row2 > * { flex:1; min-width:0; }
     .abar { display:flex; align-items:center; gap:8px; margin-top:12px; }
     .abar .spacer { flex:1; }
-    .toast { position:fixed; top:12px; right:12px; padding:8px 14px; border-radius:var(--radius); font-size:var(--fs-sm); z-index:999; box-shadow:var(--shadow-2); max-width:380px; }
+    .toast-wrap { position:fixed; top:12px; right:12px; z-index:999; display:flex; flex-direction:column; align-items:flex-end; gap:8px; pointer-events:none; }
+    .toast { padding:8px 14px; border-radius:var(--radius); font-size:var(--fs-sm); box-shadow:var(--shadow-2); max-width:380px; }
     .toast.ok { background:var(--success); color:#fff; }
     .toast.err { background:var(--danger); color:#fff; }
   </style>
@@ -915,7 +916,9 @@
       </div>
     </div>
 
-    <div v-for="(t,ti) in toasts" :key="ti" class="toast" :class="t.kind">{{ t.msg }}</div>
+    <div class="toast-wrap">
+      <div v-for="t in toasts" :key="t.id" class="toast" :class="t.kind">{{ t.msg }}</div>
+    </div>
   </div>
 </div>
 
@@ -1094,8 +1097,10 @@
         this.loadSettings().then(function(){
           return self.loadConns()
         }).then(function(){
-          // 命令面板带文本打开：直接开一个查询标签页
-          if(payload && payload.text && String(payload.text).trim()){
+          var cmd = payload && payload.command ? String(payload.command) : ''
+          var text = payload && payload.text ? String(payload.text).trim() : ''
+          // 带文本（命令面板 /db SELECT …）：开查询标签页并执行
+          if(text){
             // 命令面板带文本打开（如 /db SELECT ...）：此时没有选中连接，
             // 退回第一个以保证命令仍然可用 —— 这是用户显式发起的查询，
             // 不同于「打开插件时的默认展开」，不属于自动替用户做选择
@@ -1108,8 +1113,57 @@
                 self.runQueryTab(t)
               })
             }
+            return
           }
+          // 无文本：按 command 直达对应页面（宿主只下发 command，跳转由前端负责）
+          if(cmd && self.gotoCommand(cmd)) return
         })
+      },
+      // 命令面板直达路由：host 经 plugin:init 下发 {text, command}，前端按命令跳到对应页面。
+      // 只收录「页面 / 标签跳转」类命令；需要连接上下文才能执行的纯动作命令
+      // （如 conn.test 测哪个连接）不进这里——已在 plugin.json 移除，避免搜得到却点了没反应。
+      gotoCommand: function(cmd){
+        var self = this
+        if(cmd === 'conn.save'){ this.openConnModal(); return true }
+        if(cmd === 'conn.list'){
+          // 连接列表常驻左侧栏：直达 = 聚焦连接搜索框，接着输入即可过滤
+          this.$nextTick(function(){
+            var el = document.querySelector('.side-filter input')
+            if(el) el.focus()
+          })
+          return true
+        }
+        if(cmd === 'tree.list'){
+          // 库表树：优先激活已打开的对象 / 键标签页；否则用当前连接打开（上次的库优先，没有则第一个库）
+          var t = null
+          for(var i=0;i<this.tabs.length;i++){ var x=this.tabs[i]; if(x.kind==='objects'||x.kind==='keys'){ t=x; break } }
+          if(t){ this.activeTabId = t.id; return true }
+          var c = this.selectedConn || this.conns[0]
+          if(!c){ toast('还没有连接，请先新建','err'); return true }
+          this.selectConn(c).then(function(){
+            var db = self.settings.lastDb[c.id]
+            var node = db ? ((c._dbs||[]).find(function(d){ return d.name===db }) || { name:db, label:db }) : (c._dbs||[])[0]
+            if(node) self.openNode(c, node)
+            else toast('该连接下没有可浏览的库','err')
+          })
+          return true
+        }
+        if(cmd === 'query.run'){
+          // 查询页：聚焦已有查询标签页；没有就新建（当前连接优先，未选中则用第一个连接）
+          var q = null
+          for(var i=this.tabs.length-1;i>=0;i--){ if(this.tabs[i].kind==='query'){ q=this.tabs[i]; break } }
+          if(q){ this.activeTabId = q.id; return true }
+          var c = this.selectedConn
+          if(c){ var nt = this.newQueryTab(); if(nt) this.activeTabId = nt.id; return true }
+          c = this.conns[0]
+          if(!c){ toast('还没有连接，请先新建','err'); return true }
+          this.selectConn(c).then(function(){
+            var t = self.newQueryTab()
+            if(t) self.activeTabId = t.id
+          })
+          return true
+        }
+        return false
       },
       loadSettings: function(){
         var self = this
@@ -1757,7 +1811,7 @@
             vals.forEach(function(v){ s[String(v)] = 1 })
             t._selAllDone = true
             toast('已勾选全部匹配的 ' + vals.length + ' 行' + (r && r.truncated ? '（超出 5 万上限，已截断）' : ''), 'ok')
-          }).catch(function(e){ t.selAllLoading = false; toast('收集匹配行失败: ' + (e.message||e), 'err') })
+          }).catch(function(e){ t.selAllLoading = false; toast('收集匹配行失败: ' + (e.message||e) + '（若为「未知命令」请重装插件以获取 row.pkList）', 'err') })
       },
       deleteSelected: function(t){
         var g = t.grid, self = this
@@ -1766,31 +1820,53 @@
         if(!pks.length){ toast('请先勾选要删除的行','err'); return }
         this.askConfirm('确认删除选中的 ' + pks.length + ' 行？此操作不可撤销。', function(){ self.doDeleteMany(t, pks) })
       },
-      // 每批 500 个主键调 row.deleteMany，顺序执行避免压垮连接；有失败也继续跑完再汇总
+      // 每批 500 个主键调 row.deleteMany，顺序执行避免压垮连接；有失败也继续跑完再汇总。
+      // 兜底：后端没有 row.deleteMany（旧二进制未重装）时，第一批就会失败——此时一个值都
+      // 还没执行过，安全降级为逐条 row.delete（该命令自早期版本就存在，任何已安装版本都能用），
+      // 避免「批量删除点了没反应 / 报未知命令」。
+      // 注意：删除过程中不逐批 / 逐条弹 toast——多条 toast 会叠在一起互相遮挡；失败只计数，
+      // （含降级提示）结束后统一用一条汇总 toast 汇报。
       doDeleteMany: function(t, pks){
         var g = t.grid, self = this
         var affected = 0, failed = 0
         var CH = 500
-        function next(i){
-          if(i >= pks.length){
-            if(failed){ toast('已删除 ' + affected + ' 行，' + failed + ' 批失败（请重试）', 'err') }
-            else { toast('已删除 ' + affected + ' 行', 'ok') }
-            self.clearSel(t)
-            self.reloadData(t, g.page)
-            return
-          }
+        var downgraded = false
+        function report(unit){
+          var parts = []
+          if(downgraded) parts.push('批量命令不可用，已自动逐条删除')
+          parts.push('已删除 ' + affected + ' 行')
+          if(failed) parts.push(failed + ' ' + unit + '失败（请重试）')
+          toast(parts.join('，'), failed ? 'err' : 'ok')
+          self.clearSel(t)
+          self.reloadData(t, g.page)
+        }
+        function batchNext(i){
+          if(i >= pks.length){ report('批'); return }
           var part = pks.slice(i, i + CH)
           send('row.deleteMany', { id:t.connId, database:t.db, tableName:g.tableName, pkColumn:g.primaryKey, pkValues:part })
             .then(function(r){
               affected += (r && r.affected) || 0
-              next(i + CH)
+              batchNext(i + CH)
             }).catch(function(e){
+              // 第一批就失败：命令不存在（旧二进制）或首批即错——降级逐条重试。
+              // 命令不存在时整批都未执行，从头逐条安全；确属 SQL 错误时逐条也能删完其余行。
+              if(i === 0){ downgraded = true; oneNext(0); return }
               failed++
-              toast('删除失败: ' + (e.message||e), 'err')
-              next(i + CH)
+              batchNext(i + CH)
             })
         }
-        next(0)
+        function oneNext(i){
+          if(i >= pks.length){ report('行'); return }
+          send('row.delete', { id:t.connId, database:t.db, tableName:g.tableName, pkColumn:g.primaryKey, pkValue:pks[i] })
+            .then(function(r){
+              affected += (r && r.affected) || 0
+              oneNext(i + 1)
+            }).catch(function(e){
+              failed++
+              oneNext(i + 1)
+            })
+        }
+        batchNext(0)
       },
       pageInfo: function(t){
         var g = t.grid
