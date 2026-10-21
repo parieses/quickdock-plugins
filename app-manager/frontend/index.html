@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>应用管理</title>
+<link rel="stylesheet" href="qd-theme.css">
+<link rel="stylesheet" href="components.css">
+<style>
+  .am-wrap { flex: 1; overflow: auto; }
+  .am-bar { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .am-bar .am-search { flex: 1; min-width: 0; }
+  .am-stat { font-size: var(--fs-xs); color: var(--text-muted); white-space: nowrap; }
+  .am-stat b { color: var(--text-secondary); font-weight: var(--fw-medium); font-family: var(--font-mono); }
+
+  table.am-tbl { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
+  table.am-tbl th { position: sticky; top: 0; z-index: 1; text-align: left; padding: 7px 10px; background: var(--bg-secondary); color: var(--text-muted); font-weight: var(--fw-medium); border-bottom: 1px solid var(--border); white-space: nowrap; font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.5px; }
+  table.am-tbl td { padding: 7px 10px; border-bottom: 1px solid var(--border); color: var(--text-secondary); vertical-align: middle; }
+  table.am-tbl tr:hover td { background: var(--bg-hover); }
+  table.am-tbl td.name { color: var(--text-primary); }
+  table.am-tbl td.name .sub { display: block; font-size: var(--fs-xs); color: var(--text-muted); margin-top: 2px; font-family: var(--font-mono); }
+  table.am-tbl td.num { font-family: var(--font-mono); white-space: nowrap; text-align: right; }
+  table.am-tbl td.ops { white-space: nowrap; text-align: right; }
+  table.am-tbl td.ops .p-btn { margin-left: 4px; }
+  .am-tag { display: inline-block; padding: 1px 7px; border-radius: var(--radius-pill); font-size: 10px; }
+  .am-tag.sys { background: var(--accent-soft); color: var(--accent); }
+  .am-tag.user { background: var(--bg-tertiary); color: var(--text-secondary); }
+  .am-tag.wow { background: var(--warning-soft); color: var(--warning); }
+  .am-center { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-3); height: 100%; padding: var(--sp-5); text-align: center; color: var(--text-muted); font-size: var(--fs-sm); }
+  .am-note { font-size: var(--fs-xs); color: var(--text-disabled); max-width: 420px; line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="p-app">
+  <div class="p-head">
+    <span class="p-head-title">应用管理</span>
+    <div class="p-head-actions">
+      <span class="p-muted" id="scannedAt"></span>
+      <button class="p-btn p-btn-sm" id="btnSys">系统卸载页</button>
+      <button class="p-btn p-btn-sm p-btn-primary" id="btnRefresh">重新扫描</button>
+    </div>
+  </div>
+
+  <div class="am-bar">
+    <input class="p-input am-search" id="search" placeholder="搜索名称 / 发布者 / 版本">
+    <select class="p-select" id="sort">
+      <option value="name">按名称</option>
+      <option value="size">按体积</option>
+      <option value="date">按安装日期</option>
+    </select>
+    <span class="am-stat" id="stat"></span>
+  </div>
+
+  <div class="am-wrap" id="wrap">
+    <div class="am-center">正在读取已安装应用…</div>
+  </div>
+
+  <div class="p-statusbar">
+    <span id="status">就绪</span>
+    <span class="p-spacer"></span>
+    <span class="am-note">MSI 程序可直接卸载；自带卸载器的程序提供命令复制与目录直达</span>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict'
+
+  /* ---------- 与宿主通信 ---------- */
+  var seq = 0, pend = {}
+  function send(command, input) {
+    return new Promise(function (res, rej) {
+      var id = 'am_' + (++seq)
+      pend[id] = { res: res, rej: rej }
+      parent.postMessage({ type: 'plugin:execute', id: id, command: command, input: input || {} }, '*')
+      setTimeout(function () {
+        var p = pend[id]
+        if (p) { delete pend[id]; p.rej(new Error('后端无响应')) }
+      }, 90000)
+    })
+  }
+  window.addEventListener('message', function (e) {
+    var d = e.data
+    if (!d || d.type !== 'plugin:result' || !d.id || !pend[d.id]) return
+    var p = pend[d.id]
+    delete pend[d.id]
+    if (d.error) p.rej(new Error(typeof d.error === 'string' ? d.error : (d.error.message || 'error')))
+    else p.res(d.data || {})
+  })
+
+  function copyText(t) {
+    if (window.qdHostCall) {
+      window.qdHostCall('host.clipboard.write', { text: t }).catch(function () {})
+      return
+    }
+    var ta = document.createElement('textarea')
+    ta.value = t
+    document.body.appendChild(ta)
+    ta.select()
+    try { document.execCommand('copy') } catch (e) {}
+    ta.remove()
+  }
+
+  function confirmBox(msg) {
+    if (window.qdConfirm) return window.qdConfirm(msg)
+    return Promise.resolve(window.confirm(msg))
+  }
+
+  /* ---------- 工具 ---------- */
+  var $ = function (id) { return document.getElementById(id) }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+  }
+  function size(KB) {
+    if (!KB) return '-'
+    var v = KB / 1024
+    if (v < 1024) return v.toFixed(v < 10 ? 1 : 0) + ' MB'
+    return (v / 1024).toFixed(2) + ' GB'
+  }
+  function totalSize(KB) {
+    if (!KB) return '0 MB'
+    return (KB / 1024 / 1024).toFixed(1) + ' GB'
+  }
+  function date(s) {
+    if (!s || s.length !== 8) return '-'
+    return s.slice(0, 4) + '-' + s.slice(4, 6) + '-' + s.slice(6, 8)
+  }
+  function scopeTag(scope) {
+    if (scope === '所有用户') return '<span class="am-tag sys">所有用户</span>'
+    if (scope === '系统(32位)') return '<span class="am-tag wow">32 位</span>'
+    if (scope === '当前用户') return '<span class="am-tag user">当前用户</span>'
+    return ''
+  }
+
+  var apps = [], keyword = ''
+
+  function render() {
+    var sortBy = $('sort').value
+    var kw = keyword.toLowerCase()
+    var rows = apps.filter(function (a) {
+      if (!kw) return true
+      return (a.name + ' ' + a.publisher + ' ' + a.version).toLowerCase().indexOf(kw) >= 0
+    })
+    rows.sort(function (a, b) {
+      if (sortBy === 'size') return b.sizeKB - a.sizeKB
+      if (sortBy === 'date') return String(b.installDate).localeCompare(String(a.installDate))
+      return String(a.name).toLowerCase() < String(b.name).toLowerCase() ? -1 : 1
+    })
+
+    $('stat').innerHTML = '共 <b>' + rows.length + '</b> 个' + (rows.length !== apps.length ? ' / ' + apps.length : '') +
+      ' · 占用 <b>' + totalSize(rows.reduce(function (s, a) { return s + (a.sizeKB || 0) }, 0)) + '</b>'
+
+    if (!rows.length) {
+      $('wrap').innerHTML = '<div class="am-center">' + (kw ? '没有匹配的应用' : '没有读取到已安装应用') + '</div>'
+      return
+    }
+    var html = '<table class="am-tbl"><thead><tr>' +
+      '<th>名称</th><th>发布者</th><th style="text-align:right">体积</th><th>安装日期</th><th>范围</th><th style="text-align:right">操作</th>' +
+      '</tr></thead><tbody>'
+    rows.forEach(function (a) {
+      var ops = ''
+      if (a.mode === 'msi') {
+        ops += '<button class="p-btn p-btn-sm p-btn-danger" data-act="uninstall" data-i="' + esc(a.id) + '">卸载</button>'
+      } else if (a.uninstall) {
+        ops += '<button class="p-btn p-btn-sm" data-act="copy" data-i="' + esc(a.id) + '">复制卸载命令</button>'
+      } else {
+        ops += '<span class="p-muted">无卸载入口</span>'
+      }
+      if (a.location) {
+        ops += '<button class="p-btn p-btn-sm" data-act="dir" data-i="' + esc(a.id) + '">目录</button>'
+      }
+      html += '<tr>' +
+        '<td class="name">' + esc(a.name) +
+          '<span class="sub">' + esc(a.version || '未标注版本') + '</span></td>' +
+        '<td>' + esc(a.publisher || '-') + '</td>' +
+        '<td class="num">' + size(a.sizeKB) + '</td>' +
+        '<td class="num">' + esc(date(a.installDate)) + '</td>' +
+        '<td>' + scopeTag(a.scope) + '</td>' +
+        '<td class="ops">' + ops + '</td>' +
+      '</tr>'
+    })
+    $('wrap').innerHTML = html + '</tbody></table>'
+  }
+
+  function findById(id) {
+    for (var i = 0; i < apps.length; i++) if (apps[i].id === id) return apps[i]
+    return null
+  }
+
+  function load(refresh) {
+    $('status').textContent = refresh ? '正在重新扫描…' : '正在读取…'
+    $('wrap').innerHTML = '<div class="am-center">正在读取已安装应用…</div>'
+    return send('apps.list', { refresh: !!refresh }).then(function (d) {
+      apps = (d && d.apps) || []
+      $('scannedAt').textContent = d && d.scannedAt ? '更新于 ' + d.scannedAt : ''
+      if (d && d.error) $('status').textContent = '部分读取失败：' + d.error
+      else $('status').textContent = '就绪'
+      render()
+    }).catch(function (e) {
+      $('wrap').innerHTML = '<div class="am-center">读取失败：' + esc(e.message || e) + '</div>'
+      $('status').textContent = '读取失败'
+    })
+  }
+
+  $('btnRefresh').onclick = function () { load(true) }
+  $('search').oninput = function () { keyword = this.value.trim(); render() }
+  $('sort').onchange = function () { render() }
+  $('btnSys').onclick = function () {
+    send('apps.openSettings', {}).then(function () {
+      $('status').textContent = '已打开系统「已安装的应用」'
+    }).catch(function (e) { $('status').textContent = '打开失败：' + (e.message || e) })
+  }
+
+  $('wrap').addEventListener('click', function (e) {
+    var btn = e.target
+    if (!btn || !btn.dataset || !btn.dataset.act) return
+    var app = findById(btn.dataset.i)
+    if (!app) return
+    var act = btn.dataset.act
+
+    if (act === 'copy') {
+      copyText(app.uninstall)
+      $('status').textContent = '已复制卸载命令：' + app.uninstall
+      return
+    }
+    if (act === 'dir') {
+      send('apps.openDir', { path: app.location }).then(function () {
+        $('status').textContent = '已打开 ' + app.location
+      }).catch(function (err) { $('status').textContent = '打开失败：' + (err.message || err) })
+      return
+    }
+    if (act === 'uninstall') {
+      confirmBox('确定卸载「' + app.name + '」？\n卸载窗口会单独弹出，按提示完成即可。').then(function (ok) {
+        if (!ok) return
+        $('status').textContent = '正在启动卸载程序…'
+        return send('apps.uninstall', { uninstall: app.uninstall }).then(function (r) {
+          $('status').textContent = '已启动卸载（' + (r && r.guid ? r.guid : 'MSI') + '），请在弹出的窗口中完成'
+        }).catch(function (err) {
+          $('status').textContent = '启动失败：' + (err.message || err)
+        })
+      }).catch(function () {})
+    }
+  })
+
+  load(false)
+})()
+</script>
+</body>
+</html>

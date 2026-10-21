@@ -1,0 +1,70 @@
+{
+  "id": "io.github.parieses.app-manager",
+  "name": "应用管理",
+  "name_i18n": {
+    "zh-CN": "应用管理",
+    "en-US": "App Manager"
+  },
+  "version": "1.0.0",
+  "description": "本机已安装应用一览：名称 / 版本 / 发布者 / 占用体积 / 安装日期 / 安装范围（所有用户 / 当前用户 / 32 位），支持搜索与按体积、安装日期排序。MSI 程序可直接唤起卸载，自带卸载器的程序提供命令复制、安装目录直达与系统卸载页入口。",
+  "description_i18n": {
+    "zh-CN": "本机已安装应用一览：版本、发布者、占用体积、安装日期与安装范围，支持搜索排序；MSI 程序可直接卸载，其它程序提供命令复制与目录直达。",
+    "en-US": "List installed apps with version, publisher, size, install date and scope; search and sort by size or date. MSI apps can be uninstalled directly, others offer command copy and folder shortcuts."
+  },
+  "author": "QuickDock",
+  "category": "系统工具",
+  "platforms": [
+    "windows"
+  ],
+  "icon": "icon.svg",
+  "backend": {
+    "runtime": "native",
+    "entry": "app-manager",
+    "args": [],
+    "timeout": 90
+  },
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 940,
+    "height": 640
+  },
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "permissions": {
+    "clipboard": true,
+    "process": [
+      "powershell",
+      "msiexec",
+      "explorer"
+    ]
+  },
+  "commands": [
+    {
+      "id": "app-manager",
+      "title": "应用管理",
+      "title_i18n": {
+        "zh-CN": "应用管理",
+        "en-US": "App Manager"
+      },
+      "keywords": [
+        "应用",
+        "卸载",
+        "软件",
+        "程序",
+        "已安装",
+        "app",
+        "uninstall",
+        "programs"
+      ],
+      "aliases": [
+        "已安装应用",
+        "卸载软件",
+        "软件管理"
+      ]
+    }
+  ],
+  "changelog": "## v1.0.0\n\n- 汇总 HKLM / HKCU / WOW6432Node 三处卸载项的已安装应用：名称、版本、发布者、占用体积、安装日期、安装范围（所有用户 / 当前用户 / 32 位）\n- 搜索（名称 / 发布者 / 版本）与按名称 / 体积 / 安装日期排序，底部给出筛选后的总体积\n- MSI 安装的程序（MsiExec /X{GUID}）可直接唤起卸载；自带卸载器的程序提供「复制卸载命令」「打开安装目录」「打开系统已安装的应用页面」\n- 卸载入口做了二次校验，只认 MsiExec /X|/I {GUID} 这一种形态，其它卸载串一律拒绝执行\n- 注册表数据经 Base64(UTF-8) 回传，中文软件名不再乱码（PowerShell 5.1 默认按本机代码页输出）\n- 仅 Windows"
+}

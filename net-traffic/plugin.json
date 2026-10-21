@@ -1,0 +1,64 @@
+{
+  "id": "io.github.parieses.net-traffic",
+  "name": "实时流量监控",
+  "name_i18n": {
+    "zh-CN": "实时流量监控",
+    "en-US": "Network Traffic"
+  },
+  "version": "1.0.0",
+  "description": "每秒采样的本机流量监控：实时上下行速率与 5 分钟曲线、按网卡拆分（自动合并同一网卡的多个 NDIS 绑定，不重复计数）、本次会话累计与峰值，并列出 IPv4 连接对应的进程、本地/远端地址与状态。",
+  "description_i18n": {
+    "zh-CN": "每秒采样的本机流量监控：实时上下行速率与 5 分钟曲线、按网卡拆分、会话累计与峰值，并列出 IPv4 连接对应的进程与远端地址。",
+    "en-US": "Live traffic monitor sampled every second: real-time up/down rates with a 5-minute chart, per-adapter breakdown, session totals and peaks, plus IPv4 connections mapped to processes."
+  },
+  "author": "QuickDock",
+  "category": "网络工具",
+  "platforms": [
+    "windows"
+  ],
+  "icon": "icon.svg",
+  "backend": {
+    "runtime": "native",
+    "entry": "net-traffic",
+    "args": [],
+    "timeout": 30
+  },
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 980,
+    "height": 660
+  },
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "permissions": {
+    "clipboard": true
+  },
+  "commands": [
+    {
+      "id": "net-traffic",
+      "title": "实时流量监控",
+      "title_i18n": {
+        "zh-CN": "实时流量监控",
+        "en-US": "Network Traffic"
+      },
+      "keywords": [
+        "流量",
+        "网速",
+        "带宽",
+        "监控",
+        "traffic",
+        "network",
+        "bandwidth"
+      ],
+      "aliases": [
+        "流量监控",
+        "实时网速",
+        "网络流量"
+      ]
+    }
+  ],
+  "changelog": "## v1.0.0\n\n- 每秒采样本机网卡流量：实时上下行速率、5 分钟曲线、本次会话累计与峰值\n- 网卡维度拆分，并自动合并同一块物理网卡的多条 NDIS 绑定记录（WFP / QoS / WiFi Filter 等），避免同一网卡被重复计数导致速率虚高\n- IPv4 连接表：进程名 / PID / 本地地址 / 远端地址 / TCP 状态，已建立连接优先展示，点击远端地址即复制\n- 连接搜索（进程 / IP / 端口 / 状态）、可切换是否显示空闲网卡、暂停与重置统计\n- 采样全部走 Windows iphlpapi 与 Toolhelp32 系统调用，不拉起任何子进程；网卡描述按系统代码页正确解码，中文设备名不乱码\n- 仅 Windows：非 Windows 平台插件会明确提示不支持，不假装在工作"
+}

@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>实时流量监控</title>
+<link rel="stylesheet" href="qd-theme.css">
+<link rel="stylesheet" href="components.css">
+<style>
+  .nt-wrap { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+  /* Hero：当前速率 + 历史曲线 */
+  .nt-hero { display: flex; flex-direction: column; gap: var(--sp-2); padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .nt-rates { display: flex; align-items: baseline; gap: var(--sp-5); flex-wrap: wrap; }
+  .nt-rate { display: flex; align-items: baseline; gap: 6px; }
+  .nt-rate .nt-arrow { font-size: var(--fs-xl); font-weight: var(--fw-semibold); }
+  .nt-rate .nt-arrow.down { color: var(--accent); }
+  .nt-rate .nt-arrow.up { color: var(--warning); }
+  .nt-rate .nt-val { font-size: var(--fs-2xl); font-weight: var(--fw-semibold); font-family: var(--font-mono); color: var(--text-primary); min-width: 72px; }
+  .nt-rate .nt-unit { font-size: var(--fs-xs); color: var(--text-muted); }
+  .nt-meta { display: flex; gap: var(--sp-4); font-size: var(--fs-xs); color: var(--text-muted); flex-wrap: wrap; }
+  .nt-meta b { color: var(--text-secondary); font-weight: var(--fw-medium); font-family: var(--font-mono); }
+
+  .nt-chart-box { position: relative; height: 108px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-secondary); overflow: hidden; }
+  .nt-chart { display: block; width: 100%; height: 100%; }
+  .nt-chart-max { position: absolute; top: 4px; left: 8px; font-size: 10px; color: var(--text-disabled); font-family: var(--font-mono); }
+  .nt-chart-legend { position: absolute; top: 4px; right: 8px; display: flex; gap: 10px; font-size: 10px; color: var(--text-muted); }
+  .nt-chart-legend i { display: inline-block; width: 14px; height: 2px; vertical-align: middle; margin-right: 4px; }
+  .nt-chart-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: var(--fs-xs); color: var(--text-disabled); }
+
+  /* 下半部分：接口 + 连接 */
+  .nt-body { flex: 1; display: flex; min-height: 0; }
+  .nt-col-left { width: 330px; flex-shrink: 0; display: flex; flex-direction: column; border-right: 1px solid var(--border); }
+  .nt-col-right { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .nt-sec-head { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .nt-sec-title { font-size: var(--fs-xs); font-weight: var(--fw-semibold); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .nt-scroll { flex: 1; overflow: auto; }
+
+  /* 接口卡 */
+  .nt-iface { padding: 9px 12px; border-bottom: 1px solid var(--border); cursor: default; }
+  .nt-iface:hover { background: var(--bg-hover); }
+  .nt-iface-top { display: flex; align-items: center; gap: 6px; }
+  .nt-iface-name { flex: 1; min-width: 0; font-size: var(--fs-sm); color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .nt-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .nt-dot.on { background: var(--success); }
+  .nt-dot.idle { background: var(--warning); }
+  .nt-dot.off { background: var(--text-disabled); }
+  .nt-iface-sub { display: flex; gap: 10px; margin-top: 4px; font-size: var(--fs-xs); color: var(--text-muted); font-family: var(--font-mono); }
+  .nt-iface-sub .d { color: var(--accent); }
+  .nt-iface-sub .u { color: var(--warning); }
+
+  /* 连接表 */
+  table.nt-tbl { width: 100%; border-collapse: collapse; font-size: var(--fs-xs); }
+  table.nt-tbl th { position: sticky; top: 0; z-index: 1; text-align: left; padding: 6px 10px; background: var(--bg-secondary); color: var(--text-muted); font-weight: var(--fw-medium); border-bottom: 1px solid var(--border); white-space: nowrap; }
+  table.nt-tbl td { padding: 5px 10px; border-bottom: 1px solid var(--border); color: var(--text-secondary); font-family: var(--font-mono); white-space: nowrap; }
+  table.nt-tbl tr:hover td { background: var(--bg-hover); }
+  table.nt-tbl td.proc { color: var(--text-primary); font-family: var(--font); max-width: 190px; overflow: hidden; text-overflow: ellipsis; }
+  table.nt-tbl td.remote { cursor: pointer; }
+  table.nt-tbl td.remote:hover { color: var(--accent); }
+  .nt-badge { display: inline-block; padding: 1px 6px; border-radius: var(--radius-pill); font-size: 10px; font-family: var(--font); }
+  .nt-badge.tcp { background: var(--accent-soft); color: var(--accent); }
+  .nt-badge.udp { background: var(--bg-tertiary); color: var(--text-secondary); }
+  .nt-badge.est { background: var(--success-soft); color: var(--success); }
+  .nt-badge.listen { background: var(--warning-soft); color: var(--warning); }
+
+  .nt-search { flex: 1; min-width: 0; }
+  .nt-hint { font-size: 10px; color: var(--text-disabled); }
+  .nt-switch { display: flex; align-items: center; gap: 4px; font-size: var(--fs-xs); color: var(--text-muted); cursor: pointer; }
+  .nt-switch input { accent-color: var(--accent); }
+  .nt-center { display: flex; align-items: center; justify-content: center; height: 100%; padding: var(--sp-5); text-align: center; color: var(--text-muted); font-size: var(--fs-sm); }
+</style>
+</head>
+<body>
+<div class="p-app">
+  <div class="p-head">
+    <span class="p-head-title">实时流量监控</span>
+    <div class="p-head-actions">
+      <span class="p-muted" id="clock">--:--:--</span>
+      <button class="p-btn p-btn-sm" id="btnPause">暂停</button>
+      <button class="p-btn p-btn-sm" id="btnReset">重置统计</button>
+    </div>
+  </div>
+
+  <div class="nt-wrap" id="main">
+    <div class="nt-hero">
+      <div class="nt-rates">
+        <div class="nt-rate">
+          <span class="nt-arrow down">↓</span>
+          <span class="nt-val" id="inVal">0</span><span class="nt-unit" id="inUnit">B/s</span>
+          <span class="nt-hint">下载</span>
+        </div>
+        <div class="nt-rate">
+          <span class="nt-arrow up">↑</span>
+          <span class="nt-val" id="outVal">0</span><span class="nt-unit" id="outUnit">B/s</span>
+          <span class="nt-hint">上传</span>
+        </div>
+      </div>
+      <div class="nt-meta">
+        <span>峰值 ↓ <b id="peakIn">-</b></span>
+        <span>峰值 ↑ <b id="peakOut">-</b></span>
+        <span>本次累计 ↓ <b id="sumIn">-</b></span>
+        <span>↑ <b id="sumOut">-</b></span>
+      </div>
+      <div class="nt-chart-box">
+        <svg class="nt-chart" id="chart" viewBox="0 0 300 100" preserveAspectRatio="none"></svg>
+        <span class="nt-chart-max" id="chartMax"></span>
+        <span class="nt-chart-legend"><span><i style="background:var(--accent)"></i>下载</span><span><i style="background:var(--warning)"></i>上传</span></span>
+        <span class="nt-chart-empty" id="chartEmpty" style="display:none">正在采集…</span>
+      </div>
+    </div>
+
+    <div class="nt-body">
+      <div class="nt-col-left">
+        <div class="nt-sec-head">
+          <span class="nt-sec-title">网卡</span>
+          <span class="p-spacer"></span>
+          <label class="nt-switch"><input type="checkbox" id="showIdle"> 显示空闲</label>
+        </div>
+        <div class="nt-scroll" id="ifaces"></div>
+      </div>
+      <div class="nt-col-right">
+        <div class="nt-sec-head">
+          <span class="nt-sec-title">连接</span>
+          <span class="nt-hint" id="connCount"></span>
+          <span class="p-spacer"></span>
+          <input class="p-input nt-search" id="search" placeholder="搜索进程 / IP / 端口 / 状态">
+        </div>
+        <div class="nt-scroll" id="connWrap"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="p-statusbar">
+    <span id="status">正在连接后端…</span>
+    <span class="p-spacer"></span>
+    <span class="nt-hint">仅统计 IPv4 · 速率按 1 秒采样计算</span>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict'
+
+  /* ---------- 与宿主通信 ---------- */
+  var seq = 0, pend = {}
+  function send(command, input) {
+    return new Promise(function (res, rej) {
+      var id = 'nt_' + (++seq)
+      pend[id] = { res: res, rej: rej }
+      parent.postMessage({ type: 'plugin:execute', id: id, command: command, input: input || {} }, '*')
+      setTimeout(function () {
+        var p = pend[id]
+        if (p) { delete pend[id]; p.rej(new Error('后端无响应')) }
+      }, 15000)
+    })
+  }
+  window.addEventListener('message', function (e) {
+    var d = e.data
+    if (!d || d.type !== 'plugin:result' || !d.id || !pend[d.id]) return
+    var p = pend[d.id]
+    delete pend[d.id]
+    if (d.error) p.rej(new Error(typeof d.error === 'string' ? d.error : (d.error.message || 'error')))
+    else p.res(d.data || {})
+  })
+
+  function copyText(t) {
+    if (window.qdHostCall) {
+      window.qdHostCall('host.clipboard.write', { text: t }).catch(function () {})
+      return
+    }
+    var ta = document.createElement('textarea')
+    ta.value = t
+    document.body.appendChild(ta)
+    ta.select()
+    try { document.execCommand('copy') } catch (e) {}
+    ta.remove()
+  }
+
+  /* ---------- 格式化 ---------- */
+  var UNITS = ['B/s', 'KB/s', 'MB/s', 'GB/s']
+  function rate(bps) {
+    var v = bps || 0, i = 0
+    while (v >= 1024 && i < UNITS.length - 1) { v /= 1024; i++ }
+    return { v: v.toFixed(v < 10 && i > 0 ? 1 : 0), u: UNITS[i] }
+  }
+  function rateText(bps) { var r = rate(bps); return r.v + ' ' + r.u }
+  var BUNITS = ['B', 'KB', 'MB', 'GB', 'TB']
+  function bytes(b) {
+    var v = b || 0, i = 0
+    while (v >= 1024 && i < BUNITS.length - 1) { v /= 1024; i++ }
+    return v.toFixed(v < 10 && i > 0 ? 1 : 0) + ' ' + BUNITS[i]
+  }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+  }
+
+  /* ---------- DOM ---------- */
+  var $ = function (id) { return document.getElementById(id) }
+  var paused = false, showIdle = false, keyword = '', lastConns = [], timer = null, failures = 0
+
+  function drawChart(hist) {
+    var svg = $('chart')
+    if (!hist || hist.length < 2) {
+      svg.innerHTML = ''
+      $('chartEmpty').style.display = 'flex'
+      $('chartMax').textContent = ''
+      return
+    }
+    $('chartEmpty').style.display = 'none'
+    var W = 300, H = 100, max = 1024
+    for (var i = 0; i < hist.length; i++) {
+      if (hist[i].in > max) max = hist[i].in
+      if (hist[i].out > max) max = hist[i].out
+    }
+    max *= 1.15
+    var n = hist.length, step = W / Math.max(n - 1, 1)
+    var ptsIn = '', ptsOut = '', area = ''
+    for (var j = 0; j < n; j++) {
+      var x = (j * step).toFixed(2)
+      var yIn = (H - (hist[j].in / max) * H).toFixed(2)
+      var yOut = (H - (hist[j].out / max) * H).toFixed(2)
+      ptsIn += (j ? ' ' : '') + x + ',' + yIn
+      ptsOut += (j ? ' ' : '') + x + ',' + yOut
+    }
+    area = 'M0,' + H + ' L' + ptsIn.split(' ').join(' L') + ' L' + W + ',' + H + ' Z'
+    svg.innerHTML =
+      '<polyline points="' + ptsIn + '" fill="none" stroke="var(--accent)" stroke-width="1.2" vector-effect="non-scaling-stroke"/>' +
+      '<polyline points="' + ptsOut + '" fill="none" stroke="var(--warning)" stroke-width="1.2" vector-effect="non-scaling-stroke"/>' +
+      '<path d="' + area + '" fill="var(--accent)" opacity="0.10"/>'
+    $('chartMax').textContent = rateText(max / 1.15)
+  }
+
+  function operText(oper) {
+    switch (oper) {
+      case 1: return { dot: 'on', txt: '已连接' }
+      case 2: return { dot: 'off', txt: '已禁用' }
+      case 5: return { dot: 'idle', txt: '未连接' }
+      default: return { dot: 'off', txt: '离线' }
+    }
+  }
+
+  function renderIfaces(list) {
+    var box = $('ifaces')
+    var rows = list.filter(function (i) { return showIdle || i.inRate > 0 || i.outRate > 0 || i.inTotal > 0 || i.outTotal > 0 })
+    if (!rows.length) {
+      box.innerHTML = '<div class="nt-center">没有正在传输的网卡</div>'
+      return
+    }
+    var html = ''
+    rows.forEach(function (i) {
+      var o = operText(i.oper)
+      html += '<div class="nt-iface">' +
+        '<div class="nt-iface-top">' +
+          '<span class="nt-dot ' + o.dot + '"></span>' +
+          '<span class="nt-iface-name" title="' + esc(i.name) + '">' + esc(i.name) + '</span>' +
+          '<span class="p-muted">' + esc(i.type) + '</span>' +
+        '</div>' +
+        '<div class="nt-iface-sub">' +
+          '<span class="d">↓ ' + rateText(i.inRate) + '</span>' +
+          '<span class="u">↑ ' + rateText(i.outRate) + '</span>' +
+          '<span>累计 ' + bytes(i.inTotal + i.outTotal) + '</span>' +
+          '<span>' + o.txt + '</span>' +
+        '</div>' +
+      '</div>'
+    })
+    box.innerHTML = html
+  }
+
+  function renderConns(list) {
+    var wrap = $('connWrap')
+    var kw = keyword.toLowerCase()
+    var rows = list.filter(function (c) {
+      if (!kw) return true
+      return (c.proc + ' ' + c.local + ' ' + c.remote + ' ' + c.state + ' ' + c.proto + ' ' + c.pid).toLowerCase().indexOf(kw) >= 0
+    })
+    if (!rows.length) {
+      wrap.innerHTML = '<div class="nt-center">' + (kw ? '没有匹配的连接' : '暂无连接') + '</div>'
+      $('connCount').textContent = list.length ? '0 / ' + list.length : ''
+      return
+    }
+    $('connCount').textContent = rows.length + ' / ' + list.length
+    var html = '<table class="nt-tbl"><thead><tr><th>协议</th><th>进程</th><th>PID</th><th>本地</th><th>远端</th><th>状态</th></tr></thead><tbody>'
+    rows.forEach(function (c) {
+      var cls = c.proto === 'TCP' ? 'tcp' : 'udp'
+      var stCls = c.state === 'ESTABLISHED' ? 'est' : (c.state === 'LISTEN' ? 'listen' : '')
+      html += '<tr>' +
+        '<td><span class="nt-badge ' + cls + '">' + esc(c.proto) + '</span></td>' +
+        '<td class="proc" title="' + esc(c.proc || '未知进程') + '">' + esc(c.proc || '系统') + '</td>' +
+        '<td>' + c.pid + '</td>' +
+        '<td>' + esc(c.local) + '</td>' +
+        '<td class="remote" title="点击复制">' + esc(c.remote) + '</td>' +
+        '<td><span class="nt-badge ' + stCls + '">' + esc(c.state) + '</span></td>' +
+      '</tr>'
+    })
+    wrap.innerHTML = html + '</tbody></table>'
+  }
+
+  function tick() {
+    return send('traffic.snapshot', {}).then(function (d) {
+      failures = 0
+      if (!d || d.supported === false) {
+        $('status').textContent = d && d.error ? d.error : '当前平台不支持'
+        $('main').innerHTML = '<div class="nt-center">' + esc((d && d.error) || '当前平台不支持流量采样') + '</div>'
+        stop()
+        return
+      }
+      var ri = rate(d.inRate), ro = rate(d.outRate)
+      $('inVal').textContent = ri.v; $('inUnit').textContent = ri.u
+      $('outVal').textContent = ro.v; $('outUnit').textContent = ro.u
+      $('peakIn').textContent = rateText(d.peakIn)
+      $('peakOut').textContent = rateText(d.peakOut)
+      $('sumIn').textContent = bytes(d.inTotal)
+      $('sumOut').textContent = bytes(d.outTotal)
+      $('clock').textContent = d.sampledAt || '--:--:--'
+      $('status').textContent = '连接表更新于 ' + (d.connAt || '-') + (d.error ? ' · ' + d.error : '')
+      drawChart(d.history)
+      renderIfaces(d.interfaces || [])
+      lastConns = d.conns || []
+      renderConns(lastConns)
+    }).catch(function (e) {
+      failures++
+      $('status').textContent = '采样失败：' + (e.message || e) + (failures > 3 ? '（已连续失败 ' + failures + ' 次）' : '')
+    })
+  }
+
+  function start() {
+    stop()
+    tick()
+    timer = setInterval(function () { if (!paused) tick() }, 1000)
+  }
+  function stop() {
+    if (timer) { clearInterval(timer); timer = null }
+  }
+
+  $('btnPause').onclick = function () {
+    paused = !paused
+    this.textContent = paused ? '继续' : '暂停'
+    this.className = paused ? 'p-btn p-btn-sm p-btn-primary' : 'p-btn p-btn-sm'
+    $('status').textContent = paused ? '已暂停（画面停在当前快照）' : '已恢复'
+  }
+  $('btnReset').onclick = function () {
+    send('traffic.reset', {}).then(function () {
+      $('status').textContent = '统计已重置'
+      tick()
+    }).catch(function (e) { $('status').textContent = '重置失败：' + (e.message || e) })
+  }
+  $('showIdle').onchange = function () {
+    showIdle = this.checked
+    send('traffic.snapshot', {}).then(function (d) { renderIfaces(d.interfaces || []) }).catch(function () {})
+  }
+  $('search').oninput = function () {
+    keyword = this.value.trim()
+    renderConns(lastConns)
+  }
+  $('connWrap').addEventListener('click', function (e) {
+    var td = e.target
+    if (td && td.className === 'remote' && td.textContent && td.textContent !== '-') {
+      copyText(td.textContent)
+      $('status').textContent = '已复制 ' + td.textContent
+    }
+  })
+
+  start()
+})()
+</script>
+</body>
+</html>
