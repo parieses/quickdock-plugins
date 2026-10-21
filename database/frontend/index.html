@@ -118,6 +118,16 @@
     table.grid.grid-resizable { table-layout:fixed; }
     /* 保持表头吸附（sticky 同样是定位上下文，列宽拖拽手柄不受影响） */
     table.grid.grid-resizable th { position:sticky; }
+    /* 刷新中不销毁表格：顶部进度条 + 数据行轻微变暗，表头保持不动（字段不变则不重建表头） */
+    .grid-refresh-bar { position:absolute; top:0; left:0; right:0; height:2px; z-index:6; overflow:hidden; pointer-events:none; }
+    .grid-refresh-bar::after { content:''; position:absolute; top:0; left:0; height:100%; width:35%; background:var(--accent); animation:grid-refresh-slide 1.1s ease-in-out infinite; }
+    @keyframes grid-refresh-slide { 0% { transform:translateX(-110%) } 100% { transform:translateX(320%) } }
+    table.grid.refreshing tbody { opacity:.55; transition:opacity .12s ease; }
+    /* 行勾选（批量删除）：选择条 + 勾选列 */
+    .selbar { display:flex; align-items:center; gap:8px; padding:5px 10px; background:var(--accent-soft); border-bottom:1px solid var(--border); font-size:var(--fs-xs); color:var(--text-primary); flex:none; }
+    .selbar b { color:var(--accent); }
+    table.grid th.grid-check, table.grid td.grid-check { width:30px; min-width:30px; text-align:center; padding:0 4px; }
+    table.grid .grid-check input { vertical-align:middle; cursor:pointer; }
     table.grid.grid-resizable td {
       white-space:nowrap; word-break:normal; overflow:hidden; text-overflow:ellipsis; max-width:none;
     }
@@ -425,6 +435,18 @@
               <button class="btn2" @click="reloadTableTab(t)">刷新</button>
             </div>
 
+            <!-- 行勾选操作条（批量删除，仅数据页） -->
+            <div class="selbar" v-if="t.sub==='data' && t.grid.editable && selCount(t)>0">
+              <span>已选 <b>{{ selCount(t) }}</b> 行</span>
+              <button class="btn2 xs" v-if="t.grid.total > t.grid.rows.length && !t._selAllDone" :disabled="t.selAllLoading" @click="selectAllMatching(t)">
+                {{ hasFilter(t) ? ('选择所有匹配筛选的 ' + fmtTotal(t) + ' 行') : ('选择全部 ' + fmtTotal(t) + ' 行') }}
+              </button>
+              <span class="muted" v-if="t.selAllLoading">正在收集…</span>
+              <span class="spacer"></span>
+              <button class="btn2 xs" @click="clearSel(t)">清除选择</button>
+              <button class="btn2 xs" style="background:var(--danger);border-color:var(--danger);color:#fff" @click="deleteSelected(t)">删除所选</button>
+            </div>
+
             <!-- 结构 -->
             <div class="struct-scroll pane-struct" v-show="t.sub==='struct'">
               <div v-if="!t.struct" class="empty"><div>{{ t.loading ? '加载结构…' : '暂无结构信息' }}</div></div>
@@ -492,16 +514,20 @@
             <!-- 数据 -->
             <div class="struct-scroll pane-data" v-show="t.sub==='data'" style="display:flex;flex-direction:column;">
               <div class="gridwrap" :data-gw-data="t.id">
-                <div v-if="t.grid.loading" class="empty"><div>加载数据…</div></div>
-                <div v-else-if="t.grid.error" class="err-box">{{ t.grid.error }}</div>
+                <!-- 刷新中不销毁表格：仅进度条 + 数据行变暗，表头保持不动；首次加载（还没有字段）才显示占位 -->
+                <div class="grid-refresh-bar" v-if="t.grid.loading && t.grid.columns.length"></div>
+                <div v-if="t.grid.error && !t.grid.loading" class="err-box">{{ t.grid.error }}</div>
                 <table class="grid grid-resizable" v-else-if="t.grid.columns.length"
+                       :class="{ refreshing: t.grid.loading }"
                        :style="{ width: 'max(100%, ' + gridWidth(t) + 'px)' }">
                   <colgroup>
+                    <col style="width:30px" />
                     <col style="width:44px" />
                     <col v-for="(col,ci) in t.grid.columns" :key="'c'+ci" :style="{ width: colWidth(t, col) }" />
                   </colgroup>
                   <thead>
                     <tr>
+                      <th style="width:30px" class="grid-check"><input type="checkbox" v-ind="pageSelPartial(t)" :checked="pageAllSelected(t)" @change="toggleSelectPage(t, $event)" :disabled="!canCrud(t)" title="全选 / 取消本页" /></th>
                       <th style="width:44px">#</th>
                       <th v-for="(col,ci) in t.grid.columns" :key="ci" class="sortable" @click="sortBy(t, col)">
                         {{ col }}<span class="arrow" v-if="t.grid.orderBy===col">{{ t.grid.orderDir==='desc' ? '▾' : '▴' }}</span>
@@ -511,6 +537,7 @@
                     </tr>
                     <tr class="filter-row">
                       <th class="corner"></th>
+                      <th class="corner"></th>
                       <th v-for="(col,ci) in t.grid.columns" :key="'f'+ci">
                         <input class="col-filter" v-model="t.filters[col]" @keyup.enter="applyFilter(t)" :placeholder="'筛选 ' + col" :title="'按 ' + col + ' 筛选（LIKE %值%）'" />
                       </th>
@@ -518,6 +545,7 @@
                   </thead>
                   <tbody>
                     <tr v-for="(row,ri) in t.grid.rows" :key="ri" :class="{sel: t.grid.selRow===ri}" @click="selectRow(t, ri)">
+                      <td class="grid-check"><input type="checkbox" :checked="isRowSelected(t,row)" :disabled="!canCrud(t)" @click.stop="onRowCheck(t, ri, $event)" title="勾选此行（Shift 点击可范围多选）" /></td>
                       <td class="dim">{{ (t.grid.page-1)*t.grid.pageSize + ri + 1 }}</td>
                       <td v-for="(cell,ci) in row" :key="ci"
                           :class="[ isPk(t,ci) ? 'pk' : '', isNull(t,ri,ci) ? 'dim' : '', canEdit(t) && !isPk(t,ci) ? 'editable' : '', isEditing(t,ri,ci) ? 'editing' : '' ]"
@@ -529,6 +557,7 @@
                     </tr>
                   </tbody>
                 </table>
+                <div v-else-if="t.grid.loading" class="empty"><div>加载数据…</div></div>
                 <div v-else class="empty"><div>{{ t.grid.message || '无数据' }}</div></div>
               </div>
               <div class="pager">
@@ -726,8 +755,10 @@
                 </div>
               </div>
               <div class="gridwrap" :data-gw-query="t.id">
+                <div class="grid-refresh-bar" v-if="t.grid.loading && t.grid.columns.length"></div>
                 <div v-if="t.grid.error" class="err-box">{{ t.grid.error }}</div>
                 <table class="grid grid-resizable" v-else-if="t.grid.columns.length"
+                       :class="{ refreshing: t.grid.loading }"
                        :style="{ width: 'max(100%, ' + gridWidth(t) + 'px)' }">
                   <colgroup>
                     <col v-for="(col,ci) in t.grid.columns" :key="'c'+ci" :style="{ width: colWidth(t, col) }" />
@@ -1242,7 +1273,7 @@
         var t = Object.assign({ id:id, filter:'', sel:'', loading:false, _stale:false,
           // 多结果（多条 SQL）、列宽、列名补全、数据页筛选、SQL 预览
           multiResults:null, activeResult:0, colWidths:{}, tableCols:{}, filters:{},
-          showSql:false, sqlOmitPage:false }, o)
+          showSql:false, sqlOmitPage:false, selSet:{}, _lastSelIdx:-1, _selAllDone:false }, o)
         if(t.kind==='table' || t.kind==='query'){
           if(!t.grid) t.grid = blankGrid()
           t.grid.pageSize = this.settings.pageSize // 用设置的默认每页行数
@@ -1456,6 +1487,12 @@
           n.orderBy = r.orderBy || ''
           n.orderDir = r.orderDir || 'asc'
           n.loading = false
+          // 表头按需刷新：字段（列名与顺序）完全一致时沿用旧 columns 引用，
+          // Vue diff 不会动表头——排序/筛选/翻页时表头保持不动；字段变了才换新列
+          var oldCols = g.columns || [], newCols = n.columns || []
+          if(oldCols.length && oldCols.length === newCols.length && oldCols.every(function(c,i){ return c === newCols[i] })){
+            n.columns = oldCols
+          }
           t.grid = n
           self.restoreGridScroll(t, cap)
         }).catch(function(e){
@@ -1535,7 +1572,7 @@
       },
       colWidth: function(t, col){ return this.colWidthPx(t, col) + 'px' },
       gridWidth: function(t){
-        var sum = (t.kind === 'table' ? 44 : 0)
+        var sum = (t.kind === 'table' ? 74 : 0) // 44(#) + 30(勾选列)
         var self = this
         ;(t.grid.columns || []).forEach(function(c){ sum += self.colWidthPx(t, c) })
         return sum
@@ -1646,9 +1683,114 @@
           send('row.delete', { id:t.connId, database:t.db, tableName:g.tableName, pkColumn:g.primaryKey, pkValue:pkVal })
             .then(function(r){
               toast(r.message || '已删除','ok')
+              delete self.selSetOf(t)[String(pkVal)]
               self.reloadData(t, g.page)
             }).catch(function(e){ toast('删除失败: '+(e.message||e),'err') })
         })
+      },
+      /* ---------- 行勾选与批量删除（数据页，支持「全选匹配筛选的行」） ---------- */
+      selSetOf: function(t){ if(!t.selSet) t.selSet = {}; return t.selSet },
+      rowPk: function(t, row){
+        var g = t.grid
+        if(!g || !g.primaryKey || !row) return ''
+        var i = g.columns.indexOf(g.primaryKey)
+        return i >= 0 ? String(row[i]) : ''
+      },
+      isRowSelected: function(t, row){ var pk = this.rowPk(t, row); return !!pk && !!this.selSetOf(t)[pk] },
+      setRowSel: function(t, row, on){
+        var pk = this.rowPk(t, row); if(!pk) return
+        var s = this.selSetOf(t)
+        if(on) s[pk] = 1; else delete s[pk]
+      },
+      onRowCheck: function(t, ri, e){
+        var g = t.grid; if(!g || !g.rows[ri]) return
+        var on = e.target.checked
+        if(e.shiftKey && t._lastSelIdx != null && t._lastSelIdx >= 0 && t._lastSelIdx !== ri){
+          // Shift 点击：从上次勾选行到当前行整段勾选/取消
+          var lo = Math.min(t._lastSelIdx, ri), hi = Math.max(t._lastSelIdx, ri)
+          for(var i = lo; i <= hi; i++){ if(g.rows[i]) this.setRowSel(t, g.rows[i], on) }
+        } else {
+          this.setRowSel(t, g.rows[ri], on)
+        }
+        t._lastSelIdx = ri
+      },
+      pageAllSelected: function(t){
+        var g = t.grid
+        if(!g || !g.rows.length) return false
+        var s = this.selSetOf(t)
+        for(var i = 0; i < g.rows.length; i++){
+          var pk = this.rowPk(t, g.rows[i])
+          if(!pk || !s[pk]) return false
+        }
+        return true
+      },
+      pageSelPartial: function(t){
+        var g = t.grid
+        if(!g || !g.rows.length) return false
+        var n = 0
+        for(var i = 0; i < g.rows.length; i++){ if(this.isRowSelected(t, g.rows[i])) n++ }
+        return n > 0 && n < g.rows.length
+      },
+      toggleSelectPage: function(t, e){
+        var g = t.grid; if(!g) return
+        var on = e.target.checked
+        var self = this
+        ;(g.rows || []).forEach(function(row){ self.setRowSel(t, row, on) })
+        t._lastSelIdx = -1
+      },
+      selCount: function(t){ return Object.keys(this.selSetOf(t)).length },
+      clearSel: function(t){ t.selSet = {}; t._selAllDone = false },
+      fmtTotal: function(t){ var g = t.grid; return (g && g.total >= 0) ? String(g.total) : '?' },
+      // 全选「匹配当前筛选」的全部行（可能跨页）：只把主键收集回来勾上，不拉整表数据
+      selectAllMatching: function(t){
+        var g = t.grid, self = this
+        if(!g || !g.editable || !g.primaryKey){ toast('当前结果不可编辑','err'); return }
+        var f = {}
+        var filters = t.filters || {}
+        for(var k in filters){ if(Object.prototype.hasOwnProperty.call(filters, k) && String(filters[k]).trim() !== '') f[k] = filters[k] }
+        t.selAllLoading = true
+        send('row.pkList', { id:t.connId, database:t.db, table:t.table, filters:f, orderBy:g.orderBy, orderDir:g.orderDir, limit:50000 })
+          .then(function(r){
+            t.selAllLoading = false
+            var vals = (r && r.values) || []
+            var s = self.selSetOf(t)
+            vals.forEach(function(v){ s[String(v)] = 1 })
+            t._selAllDone = true
+            toast('已勾选全部匹配的 ' + vals.length + ' 行' + (r && r.truncated ? '（超出 5 万上限，已截断）' : ''), 'ok')
+          }).catch(function(e){ t.selAllLoading = false; toast('收集匹配行失败: ' + (e.message||e), 'err') })
+      },
+      deleteSelected: function(t){
+        var g = t.grid, self = this
+        if(!g || !g.editable || !g.tableName || !g.primaryKey){ toast('当前结果不可编辑','err'); return }
+        var pks = Object.keys(this.selSetOf(t))
+        if(!pks.length){ toast('请先勾选要删除的行','err'); return }
+        this.askConfirm('确认删除选中的 ' + pks.length + ' 行？此操作不可撤销。', function(){ self.doDeleteMany(t, pks) })
+      },
+      // 每批 500 个主键调 row.deleteMany，顺序执行避免压垮连接；有失败也继续跑完再汇总
+      doDeleteMany: function(t, pks){
+        var g = t.grid, self = this
+        var affected = 0, failed = 0
+        var CH = 500
+        function next(i){
+          if(i >= pks.length){
+            if(failed){ toast('已删除 ' + affected + ' 行，' + failed + ' 批失败（请重试）', 'err') }
+            else { toast('已删除 ' + affected + ' 行', 'ok') }
+            self.clearSel(t)
+            self.reloadData(t, g.page)
+            return
+          }
+          var part = pks.slice(i, i + CH)
+          send('row.deleteMany', { id:t.connId, database:t.db, tableName:g.tableName, pkColumn:g.primaryKey, pkValues:part })
+            .then(function(r){
+              affected += (r && r.affected) || 0
+              next(i + CH)
+            }).catch(function(e){
+              failed++
+              toast('删除失败: ' + (e.message||e), 'err')
+              next(i + CH)
+            })
+        }
+        next(0)
       },
       pageInfo: function(t){
         var g = t.grid
@@ -1711,6 +1853,7 @@
           query = (t.multiResults[opts.statementIndex].statement || t.sql)
         }
         if(!String(query||'').trim()){ toast('查询内容为空','err'); return }
+        var prevCols = (t.grid && t.grid.columns) || [] // 执行前的字段：用于判断刷新后是否需重建表头
         t.grid = t.grid || blankGrid()
         t.grid.loading = true
         t.grid.error = ''
@@ -1722,6 +1865,12 @@
             var idx = opts.statementIndex
             var g = m.results[0]
             g.statement = (t.multiResults[idx].statement || g.statement)
+            // 表头按需刷新：字段（列名与顺序）一致则沿用旧 columns 引用，表头不动
+            var oldCols = (t.multiResults[idx] && t.multiResults[idx].columns) || []
+            var newCols = g.columns || []
+            if(oldCols.length && oldCols.length === newCols.length && oldCols.every(function(c,i){ return c === newCols[i] })){
+              g.columns = oldCols
+            }
             t.multiResults[idx] = g
             t.activeResult = idx
             t.grid = g
@@ -1730,7 +1879,12 @@
           } else {
             t.multiResults = m.results
             t.activeResult = 0
-            t.grid = m.results[0]
+            // 表头按需刷新：字段一致则沿用旧 columns 引用，表头不动
+            var first = m.results[0]
+            if(first && prevCols.length && first.columns && prevCols.length === first.columns.length && prevCols.every(function(c,i){ return c === first.columns[i] })){
+              first.columns = prevCols
+            }
+            t.grid = first
             self.restoreGridScroll(t, cap)
             var ok = m.results.filter(function(x){ return !x.error }).length
             if(ranSelection){
@@ -2171,6 +2325,12 @@
   }
   // 供 exportCsv 使用的无 this 版本（在 Vue 方法外，避免闭包 this 混乱）
   function self_isNull(g, ri, ci){ return !!(g.nulls[ri] && g.nulls[ri][ci]) }
+
+  // 勾选框半选态：浏览器原生 indeterminate 无法用属性绑定，用指令同步
+  app.directive('ind', {
+    mounted: function(el, b){ el.indeterminate = !!b.value },
+    updated: function(el, b){ el.indeterminate = !!b.value }
+  })
 
   var mounted = app.mount('#app')
   app._toasts = mounted.toasts

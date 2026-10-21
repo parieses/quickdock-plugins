@@ -475,7 +475,7 @@
     var d = e.data; if(!d) return
     // 宿主桥接就绪后下发 plugin:init：在此之前发的 plugin:execute 可能丢失，
     // 因此首屏加载延后到收到该信号再执行（详见 boot()）。
-    if(d.type==='plugin:init'){ if(vm) vm.boot(d.data || {}); return }
+    if(d.type==='plugin:init'){ if(vm && typeof vm.boot==='function') vm.boot(d.data || {}); return }
     if(d.type==='plugin:theme'){ return }
     if(d.type==='plugin:result' && d.id && pend[d.id]){
       var p = pend[d.id]; delete pend[d.id]
@@ -922,16 +922,19 @@
         if(!this.response) return
         var text = this.responseTab==='body' ? this.responseBodyText : Object.keys(this.response.headers).map(function(k){ return k+': '+this.response.headers[k] }.bind(this)).join('\n')
         if(navigator.clipboard) navigator.clipboard.writeText(text).then(function(){ toast('已复制','ok') }).catch(function(){})
+      },
+      // 首屏加载：必须在宿主桥接就绪后执行，否则最初一批 plugin:execute 会丢失，
+      // 表现为「重新打开看不到已保存的请求，第一次进来项目不显示；添加一次后才全部出现」。
+      // 优先等宿主下发的 plugin:init；个别宿主不发该信号时，1.5s 兜底触发，避免白屏。
+      // 注意：必须是 methods 成员（不能是 createApp 顶层 option）——顶层 option 不会
+      // 挂到实例上，vm.boot/self.boot 均为 undefined，mounted 兜底计时器会抛
+      // 「self.boot is not a function」导致整页报错白屏。
+      boot: function(payload){
+        if(this.booted) return
+        this.booted = true
+        if(this._initTimer){ clearTimeout(this._initTimer); this._initTimer = null }
+        this.load()
       }
-    },
-    // 首屏加载：必须在宿主桥接就绪后执行，否则最初一批 plugin:execute 会丢失，
-    // 表现为「重新打开看不到已保存的请求，第一次进来项目不显示；添加一次后才全部出现」。
-    // 优先等宿主下发的 plugin:init；个别宿主不发该信号时，1.5s 兜底触发，避免白屏。
-    boot: function(payload){
-      if(this.booted) return
-      this.booted = true
-      if(this._initTimer){ clearTimeout(this._initTimer); this._initTimer = null }
-      this.load()
     },
     mounted: function(){
       var self = this

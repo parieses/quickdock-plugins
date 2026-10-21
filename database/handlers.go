@@ -403,3 +403,214 @@ func handleRowDelete(id int64, input map[string]interface{}) {
 		"message":  fmt.Sprintf("OK, %d row(s) deleted", n),
 	})
 }
+
+// handleRowPkList 按数据页当前的筛选 / 排序收集「全部匹配行」的主键值，
+// 供前端「全选匹配筛选的行」使用（只取主键一列，避免把整表数据拉回来）。
+func handleRowPkList(id int64, input map[string]interface{}) {
+	cid := strFrom(input, "id")
+	dbName := strFrom(input, "database")
+	table := strFrom(input, "table")
+	if cid == "" || table == "" {
+		respondError(id, -32602, "缺少连接 id / 表名")
+		return
+	}
+	limit := intFrom(input, "limit", 50000)
+	if limit < 1 {
+		limit = 1
+	}
+	if limit > 100000 {
+		limit = 100000
+	}
+	orderBy := strFrom(input, "orderBy")
+	orderDir := strings.ToLower(strFrom(input, "orderDir"))
+	if orderDir != "desc" {
+		orderDir = "asc"
+	}
+
+	_, conn, err := openSavedWithDB(cid, dbName)
+	if err != nil {
+		respondError(id, -32000, err.Error())
+		return
+	}
+	defer conn.close()
+	if conn.kind == "redis" {
+		respondError(id, -32602, "Redis 不支持表数据")
+		return
+	}
+	effDB := dbName
+	if conn.kind == "mysql" && strings.TrimSpace(effDB) == "" {
+		if saved, e := getConnection(cid); e == nil {
+			effDB = saved.Database
+		}
+	}
+
+	// 与 table.rows 完全一致的列级筛选：col LIKE '%值%'，多列 AND
+	filters := strMapFrom(input, "filters")
+	var conds []string
+	var fargs []interface{}
+	for col, val := range filters {
+		if strings.TrimSpace(val) == "" {
+			continue
+		}
+		conds = append(conds, quoteIdent(conn.kind, col)+" LIKE ?")
+		fargs = append(fargs, "%"+val+"%")
+	}
+	where := ""
+	if len(conds) > 0 {
+		where = " WHERE " + strings.Join(conds, " AND ")
+	}
+	tbl := quoteIdent(conn.kind, table)
+
+	pk, pkReason := primaryKeyOf(conn.sqlDB, conn.kind, effDB, table)
+	if pk == "" {
+		respondError(id, -32000, "无法定位主键，不能全选删除: "+pkReason)
+		return
+	}
+
+	ordCol, ordDir := orderBy, strings.ToUpper(orderDir)
+	if ordCol == "" {
+		ordCol, ordDir = pk, "ASC"
+	}
+	// 多取一行用于判断是否触顶截断
+	q := "SELECT " + quoteIdent(conn.kind, pk) + " FROM " + tbl + where +
+		" ORDER BY " + quoteIdent(conn.kind, ordCol) + " " + ordDir +
+		fmt.Sprintf(" LIMIT %d", limit+1)
+
+	ctx, cancel := context.WithTimeout(context.Background(), dbQueryTimeout)
+	defer cancel()
+	rows, err := conn.sqlDB.QueryContext(ctx, q, fargs...)
+	if err != nil {
+		respondError(id, -32000, "查询失败: "+err.Error())
+		return
+	}
+	defer rows.Close()
+	values := make([]string, 0, 256)
+	for rows.Next() {
+		var v interface{}
+		if e := rows.Scan(&v); e != nil {
+			respondError(id, -32000, "读取失败: "+e.Error())
+			return
+		}
+		switch x := v.(type) {
+		case nil:
+			values = append(values, "")
+		case []byte:
+			values = append(values, string(x))
+		case string:
+			values = append(values, x)
+		default:
+			values = append(values, fmt.Sprintf("%v", x))
+		}
+	}
+	if e := rows.Err(); e != nil {
+		respondError(id, -32000, "读取失败: "+e.Error())
+		return
+	}
+	truncated := false
+	if len(values) > limit {
+		values = values[:limit]
+		truncated = true
+	}
+
+	// 匹配总数：单独短超时，慢表就放弃（前端显示「?」）
+	var total int64 = -1
+	cctx, ccancel := context.WithTimeout(context.Background(), 8*time.Second)
+	if e := conn.sqlDB.QueryRowContext(cctx, "SELECT COUNT(*) FROM "+tbl+where, fargs...).Scan(&total); e != nil {
+		total = -1
+	}
+	ccancel()
+
+	respond(id, map[string]interface{}{
+		"pkColumn":  pk,
+		"values":    values,
+		"total":     total,
+		"truncated": truncated,
+	})
+}
+
+// handleRowDeleteMany 按主键批量删除（分片 IN + 单事务），
+// 供前端「删除所选 / 全选匹配筛选的行」使用。
+func handleRowDeleteMany(id int64, input map[string]interface{}) {
+	cid := strFrom(input, "id")
+	table := strFrom(input, "tableName")
+	pkCol := strFrom(input, "pkColumn")
+	if cid == "" || table == "" || pkCol == "" {
+		respondError(id, -32602, "缺少连接 id / 表名 / 主键列")
+		return
+	}
+	raw, _ := input["pkValues"].([]interface{})
+	values := make([]string, 0, len(raw))
+	for _, v := range raw {
+		if v == nil {
+			continue
+		}
+		switch x := v.(type) {
+		case string:
+			values = append(values, x)
+		case []byte:
+			values = append(values, string(x))
+		default:
+			values = append(values, fmt.Sprintf("%v", x))
+		}
+	}
+	if len(values) == 0 {
+		respondError(id, -32602, "pkValues 为空")
+		return
+	}
+	if len(values) > 20000 {
+		respondError(id, -32602, "单次最多删除 20000 行，请分批")
+		return
+	}
+
+	_, conn, err := openSavedWithDB(cid, strFrom(input, "database"))
+	if err != nil {
+		respondError(id, -32000, err.Error())
+		return
+	}
+	defer conn.close()
+	if conn.kind == "redis" {
+		respondError(id, -32000, "Redis 不支持行编辑")
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	tx, err := conn.sqlDB.BeginTx(ctx, nil)
+	if err != nil {
+		respondError(id, -32000, "开启事务失败: "+err.Error())
+		return
+	}
+	var affected int64
+	const chunk = 500 // SQLite 默认变量上限 999，留足余量
+	for i := 0; i < len(values); i += chunk {
+		end := i + chunk
+		if end > len(values) {
+			end = len(values)
+		}
+		part := values[i:end]
+		ph := make([]string, len(part))
+		args := make([]interface{}, len(part))
+		for j, v := range part {
+			ph[j] = "?"
+			args[j] = v
+		}
+		q := "DELETE FROM " + quoteIdent(conn.kind, table) +
+			" WHERE " + quoteIdent(conn.kind, pkCol) + " IN (" + strings.Join(ph, ",") + ")"
+		r, err := tx.ExecContext(ctx, q, args...)
+		if err != nil {
+			tx.Rollback()
+			respondError(id, -32000, "删除失败: "+err.Error())
+			return
+		}
+		n, _ := r.RowsAffected()
+		affected += n
+	}
+	if err := tx.Commit(); err != nil {
+		respondError(id, -32000, "提交失败: "+err.Error())
+		return
+	}
+	respond(id, map[string]interface{}{
+		"affected": affected,
+		"message":  fmt.Sprintf("OK, %d row(s) deleted", affected),
+	})
+}

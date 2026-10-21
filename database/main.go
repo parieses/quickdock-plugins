@@ -14,6 +14,8 @@
 //   row.update     以主键定位单行提交 UPDATE（MySQL/SQLite）
 //   row.insert     整行插入（MySQL/SQLite，仅写入非空字段）
 //   row.delete     以主键定位单行删除（MySQL/SQLite）
+//   row.deleteMany 按主键列表批量删除（分片 IN + 单事务，供「删除所选/全选」）
+//   row.pkList     按数据页当前筛选/排序收集全部匹配行的主键值（供「全选匹配行」）
 //   kv.get/kv.set/kv.list  插件私有 KV（存设置、各连接上次打开的库等前端持久化数据）
 //
 // 库上下文（database 参数）：query.run / table.* / row.update 都接受可选的 database，
@@ -286,6 +288,10 @@ func handleCommand(id int64, p executeParams) {
 		handleRowInsert(id, p.Input)
 	case "row.delete":
 		handleRowDelete(id, p.Input)
+	case "row.deleteMany":
+		handleRowDeleteMany(id, p.Input)
+	case "row.pkList":
+		handleRowPkList(id, p.Input)
 	// 通用 KV（设置 / 上次打开的库 等前端持久化数据）
 	case "kv.get":
 		handleKVGet(id, p.Input)
