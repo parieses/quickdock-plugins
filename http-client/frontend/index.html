@@ -44,6 +44,7 @@
     .hc-urlbar { display:flex; align-items:center; gap:var(--sp-2); padding:var(--sp-2) var(--sp-3); }
     .hc-method { height:32px; border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-tertiary); color:var(--text-primary); font-size:var(--fs-sm); font-weight:var(--fw-semibold); padding:0 8px; }
     .hc-url { flex:1; height:32px; }
+    .hc-name { width:152px; flex-shrink:0; height:32px; }
     .hc-tabs { display:flex; gap:2px; padding:0 var(--sp-3); border-bottom:1px solid var(--border); }
     .hc-tab { border:none; background:transparent; color:var(--text-muted); font-size:var(--fs-sm); padding:7px 12px; cursor:pointer; border-bottom:2px solid transparent; }
     .hc-tab.active { color:var(--text-primary); border-bottom-color:var(--accent); font-weight:var(--fw-semibold); }
@@ -145,6 +146,19 @@
     .hc-status-3xx { background: var(--accent-soft); color: var(--accent); }
     .hc-status-4xx { background: rgba(217, 146, 10, 0.12); color: var(--warning); }
     .hc-status-5xx { background: var(--danger-soft); color: var(--danger); }
+
+    /* JSON 树形预览（可折叠） */
+    .jt { font-family:var(--font-mono); font-size:var(--fs-xs); line-height:1.7; color:var(--text-secondary); }
+    .jt-row { display:flex; align-items:flex-start; flex-wrap:wrap; }
+    .jt-toggle { cursor:pointer; user-select:none; width:14px; flex-shrink:0; color:var(--text-muted); }
+    .jt-key { color:var(--text-secondary); margin-right:2px; }
+    .jt-bracket { cursor:pointer; color:var(--text-muted); }
+    .jt-children { padding-left:16px; border-left:1px solid var(--border); margin-left:7px; }
+    .jt-string { color:var(--success); }
+    .jt-number { color:var(--warning); }
+    .jt-boolean { color:var(--accent); }
+    .jt-null { color:var(--text-disabled); }
+    .jt-comma { color:var(--text-disabled); }
 </style>
 <svg style="display:none" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><symbol id="icon-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></symbol><symbol id="icon-send" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></symbol><symbol id="icon-git-branch" viewBox="0 0 24 24"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></symbol><symbol id="icon-trash-2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></symbol><symbol id="icon-shield-alert" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></symbol><symbol id="icon-hard-drive" viewBox="0 0 24 24"><line x1="2" y1="12" x2="22" y2="12"></line><path d="M17 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></symbol><symbol id="icon-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></symbol><symbol id="icon-file-text" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></symbol><symbol id="icon-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></symbol><symbol id="icon-gauge" viewBox="0 0 24 24"><path d="M12 15l-2-2"></path><path d="M19.07 4.93a10 10 0 1 1-14.14 0"></path><path d="M12 2v4"></path></symbol><symbol id="icon-box" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></symbol></svg>
 </head>
@@ -228,6 +242,7 @@
               <select class="hc-method" v-model="method">
                 <option v-for="m in methods" :key="m">{{ m }}</option>
               </select>
+              <input class="p-input hc-name" v-model="name" placeholder="请求名称（可选）" title="给请求起个名字，方便在列表中区分">
               <input class="p-input hc-url" v-model="url" placeholder="https://api.example.com/v1/resource" @keyup.ctrl.enter="send" @keyup.meta.enter="send">
               <button class="p-btn p-btn-primary" :disabled="sending" @click="send">{{ sending ? '发送中…' : '发送' }}</button>
               <button class="p-btn" @click="save">保存</button>
@@ -306,6 +321,10 @@
               <span>{{ formatSize(response.size) }}</span>
               <span v-if="response.truncated" style="color:var(--warning)">（已截断）</span>
               <div class="hc-resp-tabs">
+                <template v-if="responseTab==='body' && parsedJson">
+                  <button class="hc-tab" :class="{active: jsonView==='tree'}" @click="jsonView='tree'">树形</button>
+                  <button class="hc-tab" :class="{active: jsonView==='raw'}" @click="jsonView='raw'">原始</button>
+                </template>
                 <button class="hc-tab" :class="{active: responseTab==='body'}" @click="responseTab='body'">Body</button>
                 <button class="hc-tab" :class="{active: responseTab==='headers'}" @click="responseTab='headers'">Headers</button>
                 <button class="ht-act" title="复制" @click="copyResponse">复制</button>
@@ -313,7 +332,10 @@
             </div>
             <div class="hc-resp-head" v-else><span class="ht-empty">发送请求后在此查看响应</span></div>
             <div class="hc-resp-body" v-if="response">
-              <pre v-if="responseTab==='body'">{{ responseBodyText }}</pre>
+              <template v-if="responseTab==='body'">
+                <div class="jt" v-if="jsonView==='tree' && parsedJson"><json-node :node="parsedJson" :depth="0" :is-last="true"></json-node></div>
+                <pre v-else>{{ responseBodyText }}</pre>
+              </template>
               <table class="hc-headers" v-else>
                 <tr v-for="(v,k) in response.headers" :key="k"><td class="k">{{ k }}</td><td>{{ v }}</td></tr>
               </table>
@@ -440,6 +462,7 @@
 
   /* ---------- RPC 桥接 ---------- */
   var seq = 0, pend = {}
+  var vm = null // 根组件实例，供 message 监听在宿主 plugin:init 时触发首屏加载
   function send(command, input){
     return new Promise(function(res, rej){
       var id = 'hc_' + (++seq)
@@ -450,6 +473,10 @@
   }
   window.addEventListener('message', function(e){
     var d = e.data; if(!d) return
+    // 宿主桥接就绪后下发 plugin:init：在此之前发的 plugin:execute 可能丢失，
+    // 因此首屏加载延后到收到该信号再执行（详见 boot()）。
+    if(d.type==='plugin:init'){ if(vm) vm.boot(d.data || {}); return }
+    if(d.type==='plugin:theme'){ return }
     if(d.type==='plugin:result' && d.id && pend[d.id]){
       var p = pend[d.id]; delete pend[d.id]
       if(d.error) p.rej(new Error(typeof d.error==='string' ? d.error : (d.error.message||'error')))
@@ -460,6 +487,16 @@
   /* ---------- 工具 ---------- */
   function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
   function $(sel){ return document.querySelector(sel) }
+  // 后端列表类命令在「无数据」时可能返回 null（而非 []），而 send() 会把 null 兜底成 {}。
+  // 此处把各种可能的返回形态（数组 / {result} / {data} / {list} / null / {}）统一规整为数组，
+  // 避免对 {} 调 .map 报错（如 openEnvModal 的「加载环境失败」）。
+  function asArray(x){
+    if(Array.isArray(x)) return x
+    if(x && Array.isArray(x.result)) return x.result
+    if(x && Array.isArray(x.data)) return x.data
+    if(x && Array.isArray(x.list)) return x.list
+    return []
+  }
   function toast(msg, kind){
     var t = document.createElement('div')
     t.className = 'hc-toast ' + (kind==='err' ? 'err' : 'ok')
@@ -544,18 +581,81 @@
     }
   }
 
+  /* ---------- JSON 树形预览（可折叠） ---------- */
+  // 递归组件：对象 / 数组可点击折叠，深层默认折叠，便于浏览超大 JSON。
+  var JsonNode = {
+    name: 'json-node',
+    props: {
+      node: { default: null },
+      keyName: { default: '' },
+      depth: { default: 0 },
+      isLast: { default: true }
+    },
+    data: function(){ return { open: this.depth < 1 } }, // 顶层展开，深层默认折叠
+    computed: {
+      type: function(){
+        var v = this.node
+        if(v === null) return 'null'
+        if(Array.isArray(v)) return 'array'
+        if(typeof v === 'object') return 'object'
+        return typeof v
+      },
+      isContainer: function(){ var t = this.type; return t === 'array' || t === 'object' },
+      entries: function(){
+        var v = this.node
+        if(Array.isArray(v)) return v.map(function(it){ return { k: '', v: it } })
+        return Object.keys(v).map(function(k){ return { k: k, v: v[k] } })
+      },
+      count: function(){
+        return this.isContainer ? (Array.isArray(this.node) ? this.node.length : Object.keys(this.node).length) : 0
+      },
+      preview: function(){
+        if(this.type === 'array') return '[' + this.count + ']'
+        if(this.type === 'object') return '{' + this.count + '}'
+        return ''
+      },
+      displayVal: function(){
+        var t = this.type
+        if(t === 'string') return '"' + this.node + '"'
+        if(t === 'null') return 'null'
+        return String(this.node)
+      }
+    },
+    template: [
+      '<div>',
+      '  <div class="jt-row" v-if="isContainer">',
+      '    <span class="jt-toggle" @click="open=!open">{{ open ? "▾" : "▸" }}</span>',
+      '    <span class="jt-key" v-if="keyName!==\'\'">{{ keyName }}:</span>',
+      '    <span class="jt-bracket" @click="open=!open">{{ open ? (type===\'array\' ? \'[\' : \'{\') : preview }}</span>',
+      '  </div>',
+      '  <div class="jt-children" v-if="open && isContainer">',
+      '    <json-node v-for="(e,i) in entries" :key="i" :node="e.v" :key-name="e.k" :depth="depth+1" :is-last="i===entries.length-1"></json-node>',
+      '  </div>',
+      '  <div class="jt-row" v-if="open && isContainer">',
+      '    <span class="jt-bracket">{{ type===\'array\' ? \']\' : \'}\' }}</span>',
+      '  </div>',
+      '  <div class="jt-row" v-if="!isContainer">',
+      '    <span class="jt-key" v-if="keyName!==\'\'">{{ keyName }}:</span>',
+      '    <span class="jt-val" :class="\'jt-\'+type">{{ displayVal }}</span>',
+      '    <span class="jt-comma" v-if="!isLast">,</span>',
+      '  </div>',
+      '</div>'
+    ].join('\n')
+  }
+
   var app = createApp({
-    components: { 'folder-node': FolderNode },
+    components: { 'folder-node': FolderNode, 'json-node': JsonNode },
     data: function(){
       return {
         projects: [], folders: [], requests: [], docs: [], environments: [],
         currentId: '', currentProjectId: '', currentFolderId: '',
         expandedProjects: new Set(), expandedFolders: new Set(), uncatExpanded: false,
+        booted: false, _initTimer: null,
         activeEnvs: {},
         // 表单
         name: '', method: 'GET', url: '', paramRows: [], headerRows: [{enabled:true,key:'Content-Type',value:'application/json'}],
         bodyType: 'none', body: '', formRows: [], authType: 'none', authToken: '', authUser: '', authPass: '',
-        activeTab: 'headers', responseTab: 'body', sending: false, response: null,
+        activeTab: 'headers', responseTab: 'body', jsonView: 'tree', sending: false, response: null,
         methods: ['GET','POST','PUT','DELETE','PATCH','HEAD','OPTIONS'],
         bodyTypes: ['none','json','form','text','xml'],
         authTypes: ['none','bearer','basic'],
@@ -580,6 +680,12 @@
           try { return JSON.stringify(JSON.parse(b), null, 2) } catch(e){}
         }
         return b
+      },
+      // 解析后的 JSON 对象（用于树形预览）。非 JSON 或解析失败返回 null，
+      // 此时界面回退到原始文本预览，且不显示「树形/原始」切换。
+      parsedJson: function(){
+        if(!this.response || !this.response.body) return null
+        try { return JSON.parse(this.response.body) } catch(e){ return null }
       },
       docPreview: function(){
         if(!this.editingDoc || !this.editingDoc.content) return ''
@@ -607,11 +713,11 @@
         Promise.all([
           send('project.list'), send('folder.list', {}), send('req.list'), send('doc.list', {}), send('env.list', {})
         ]).then(function(r){
-          self.projects = Array.isArray(r[0]) ? r[0] : [];
-          self.folders = Array.isArray(r[1]) ? r[1] : [];
-          self.requests = Array.isArray(r[2]) ? r[2] : [];
-          self.docs = Array.isArray(r[3]) ? r[3] : [];
-          self.environments = Array.isArray(r[4]) ? r[4] : []
+          self.projects = asArray(r[0]);
+          self.folders = asArray(r[1]);
+          self.requests = asArray(r[2]);
+          self.docs = asArray(r[3]);
+          self.environments = asArray(r[4])
         }).catch(function(e){ toast('加载失败: ' + (e.message||e), 'err') })
       },
       toggleProj: function(id){ var s=this.expandedProjects; if(s.has(id)) s.delete(id); else s.add(id) },
@@ -749,7 +855,7 @@
         this.envModalProjectName = p.name
         this.envEditList = []
         send('env.list', { projectId: p.id }).then(function(list){
-          self.envEditList = (list||[]).map(function(e){
+          self.envEditList = asArray(list).map(function(e){
             var vars = []
             try { vars = JSON.parse(e.variables||'[]') } catch(err){}
             return { id: e.id, name: e.name, variables: vars.length ? vars : [{enabled:true,key:'',value:''}] }
@@ -775,7 +881,7 @@
       },
       refreshHistory: function(){
         var self = this
-        send('history.list', { limit: 100 }).then(function(list){ self.history = list || [] }).catch(function(e){ toast('加载历史失败: '+(e.message||e),'err') })
+        send('history.list', { limit: 100 }).then(function(list){ self.history = asArray(list) }).catch(function(e){ toast('加载历史失败: '+(e.message||e),'err') })
       },
       clearHistory: function(){
         var self = this
@@ -818,7 +924,19 @@
         if(navigator.clipboard) navigator.clipboard.writeText(text).then(function(){ toast('已复制','ok') }).catch(function(){})
       }
     },
-    mounted: function(){ this.load() }
+    // 首屏加载：必须在宿主桥接就绪后执行，否则最初一批 plugin:execute 会丢失，
+    // 表现为「重新打开看不到已保存的请求，第一次进来项目不显示；添加一次后才全部出现」。
+    // 优先等宿主下发的 plugin:init；个别宿主不发该信号时，1.5s 兜底触发，避免白屏。
+    boot: function(payload){
+      if(this.booted) return
+      this.booted = true
+      if(this._initTimer){ clearTimeout(this._initTimer); this._initTimer = null }
+      this.load()
+    },
+    mounted: function(){
+      var self = this
+      this._initTimer = setTimeout(function(){ self.boot() }, 1500)
+    },
   })
 
   // 简单安全的 Markdown 渲染（转义后做轻量格式化）
@@ -865,7 +983,7 @@
   window.addEventListener('error', function(e){ showFatal(e.error || e.message, 'window') })
   window.addEventListener('unhandledrejection', function(e){ showFatal(e.reason, 'promise') })
 
-  app.mount('#app')
+  vm = app.mount('#app')
 })()
 </script>
 

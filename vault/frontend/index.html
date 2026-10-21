@@ -41,8 +41,40 @@ window.__cpSeq=0;
 window.copyViaHost=function(t,cb){var id='cp_'+(++window.__cpSeq),done=false;function onMsg(e){var d=e&&e.data;if(d&&d.type==='plugin:copy-result'&&d.id===id){done=true;window.removeEventListener('message',onMsg);cb&&cb(!!d.ok)}}window.addEventListener('message',onMsg);parent.postMessage({type:'plugin:copy',id:id,text:t},'*');setTimeout(function(){if(!done)window.removeEventListener('message',onMsg)},300)};
 var key=null,salt=null,entries=[],lastPw='',useSubtle=!!(window.crypto&&crypto.subtle);
 function setMsg(t){var m=document.getElementById('msg');if(m)m.textContent=t||''}
-function loadRaw(){try{return localStorage.getItem('vault_data')}catch(e){return null}}
-function saveRaw(s){try{localStorage.setItem('vault_data',s)}catch(e){}}
+// ---- 持久化：宿主 db.*（按 plugin_id 隔离，沙箱里 localStorage 不可用时也能可靠保存）----
+var _qdCall=(typeof window.qdHostCall==='function')?window.qdHostCall:null;
+var _lsOK=(function(){try{var t='__qd_probe__';window.localStorage.setItem(t,t);window.localStorage.removeItem(t);return true}catch(e){return false}})();
+var _qdCache={};
+function _qdSeed(k){if(_lsOK){try{var s=window.localStorage.getItem(k);if(s!=null)_qdCache[k]=s}catch(e){}}}
+function _qdSetLS(k,v){if(_lsOK){try{window.localStorage.setItem(k,v)}catch(e){}}}
+function _qdSetDB(k,v){
+  if(!_qdCall)return;
+  var MAX=200*1024;
+  if(v.length<=MAX){_qdCall('db.set',{key:k,value:v}).catch(function(){})}
+  else{var n=Math.ceil(v.length/MAX);_qdCall('db.delete',{key:k}).catch(function(){});for(var i=0;i<n;i++)_qdCall('db.set',{key:k+'__p'+i,value:v.slice(i*MAX,(i+1)*MAX)}).catch(function(){});_qdCall('db.set',{key:k+'__meta',value:JSON.stringify({n:n})}).catch(function(){})}
+}
+function _qdStoreSet(k,v){_qdCache[k]=v;_qdSetLS(k,v);return _qdSetDB(k,v)}
+function _qdStoreGet(k){return (k in _qdCache)?_qdCache[k]:null}
+function _qdHydrate(keys,cb){
+  keys.forEach(_qdSeed);
+  if(!_qdCall){if(cb)cb();return}
+  var chain=Promise.resolve();
+  keys.forEach(function(k){
+    chain=chain.then(function(){
+      return _qdCall('db.get',{key:k}).then(function(r){
+        var val=(r&&r.found&&typeof r.value==='string')?r.value:null;
+        if(val==null)return _qdCall('db.get',{key:k+'__meta'}).then(function(m){
+          if(m&&m.found){try{var info=JSON.parse(m.value);var ps=[];for(var i=0;i<info.n;i++)ps.push(_qdCall('db.get',{key:k+'__p'+i}).then(function(x){return (x&&x.found)?x.value:''}));return Promise.all(ps).then(function(arr){return arr.join('')})}catch(e){return null}}
+          return null
+        });
+        return val
+      }).then(function(val){if(val!=null){_qdCache[k]=val;_qdSetLS(k,val)}}).catch(function(){})
+    });
+  });
+  chain.then(function(){if(cb)cb()})
+}
+function loadRaw(){return _qdStoreGet('vault_data')}
+function saveRaw(s){return _qdStoreSet('vault_data',s)}
 // ---- 降级模式说明 ----
 // 沙箱为不透明源（opaque origin）时 window.crypto.subtle 不可用，WebCrypto 的 AES-GCM 拿不到。
 // 此时只能退回纯 JS 的异或混淆 —— 它【不是加密】，只能防「顺手看一眼」，挡不住拿到数据的人。
@@ -104,6 +136,7 @@ async function add(){var s=document.getElementById('site').value.trim(),u=docume
 function exportFile(){var raw=loadRaw();if(!raw){alert('还没有数据可导出：请先添加条目');return}var blob=new Blob([raw],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='vault-backup.json';a.click()}
 function importFile(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(){if(loadRaw()&&!confirm('导入会用「'+f.name+'」完全覆盖当前密码库，原有条目将无法恢复。确认导入？')){e.target.value='';return}saveRaw(r.result);alert('已导入，请用对应的主密码重新解锁');location.reload()};r.readAsText(f)}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+_qdHydrate(['vault_data']);
 document.getElementById('unlock').onclick=unlock;
 </script>
 

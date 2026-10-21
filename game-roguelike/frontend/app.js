@@ -1,28 +1,42 @@
 (function () {
   'use strict';
 
-  // localStorage 安全封装（沙箱不透明源会抛错）
-  var LS = (function () {
-    var ok = true;
-    try {
-      var k = '__rl_probe';
-      window.localStorage.setItem(k, '1');
-      window.localStorage.removeItem(k);
-    } catch (e) { ok = false; }
-    return {
-      get: function (k, d) {
-        if (!ok) return d;
-        try {
-          var v = window.localStorage.getItem(k);
-          return v === null ? d : v;
-        } catch (e) { return d; }
-      },
-      set: function (k, v) {
-        if (!ok) return;
-        try { window.localStorage.setItem(k, v); } catch (e) {}
-      }
-    };
-  })();
+  // 持久化：宿主 db.*（沙箱 iframe 无 allow-same-origin，localStorage 会抛错、写入从未成功）
+  var _qdCall = (typeof window.qdHostCall === 'function') ? window.qdHostCall : null;
+  var _lsOK = (function () { try { var t = '__qd_probe__'; window.localStorage.setItem(t, t); window.localStorage.removeItem(t); return true } catch (e) { return false } })();
+  var _qdCache = {};
+  function _qdSeed(k) { if (_lsOK) { try { var s = window.localStorage.getItem(k); if (s != null) _qdCache[k] = s } catch (e) {} } }
+  function _qdSetLS(k, v) { if (_lsOK) { try { window.localStorage.setItem(k, v) } catch (e) {} } }
+  function _qdSetDB(k, v) {
+    if (!_qdCall) return;
+    var MAX = 200 * 1024;
+    if (v.length <= MAX) { _qdCall('db.set', { key: k, value: v }).catch(function () {}) }
+    else { var n = Math.ceil(v.length / MAX); _qdCall('db.delete', { key: k }).catch(function () {}); for (var i = 0; i < n; i++) _qdCall('db.set', { key: k + '__p' + i, value: v.slice(i * MAX, (i + 1) * MAX) }).catch(function () {}); _qdCall('db.set', { key: k + '__meta', value: JSON.stringify({ n: n }) }).catch(function () {}) }
+  }
+  function _qdStoreSet(k, v) { _qdCache[k] = v; _qdSetLS(k, v); return _qdSetDB(k, v) }
+  function _qdStoreGet(k) { return (k in _qdCache) ? _qdCache[k] : null }
+  function _qdHydrate(keys, cb) {
+    keys.forEach(_qdSeed);
+    if (!_qdCall) { if (cb) cb(); return }
+    var chain = Promise.resolve();
+    keys.forEach(function (k) {
+      chain = chain.then(function () {
+        return _qdCall('db.get', { key: k }).then(function (r) {
+          var val = (r && r.found && typeof r.value === 'string') ? r.value : null;
+          if (val == null) return _qdCall('db.get', { key: k + '__meta' }).then(function (m) {
+            if (m && m.found) { try { var info = JSON.parse(m.value); var ps = []; for (var i = 0; i < info.n; i++) ps.push(_qdCall('db.get', { key: k + '__p' + i }).then(function (x) { return (x && x.found) ? x.value : '' })); return Promise.all(ps).then(function (arr) { return arr.join('') }) } catch (e) { return null } }
+            return null
+          });
+          return val
+        }).then(function (val) { if (val != null) { _qdCache[k] = val; _qdSetLS(k, val) } }).catch(function () {})
+      });
+    });
+    chain.then(function () { if (cb) cb() })
+  }
+  var LS = {
+    get: function (k, d) { var v = _qdStoreGet(k); return v == null ? d : v },
+    set: function (k, v) { return _qdStoreSet(k, v) }
+  };
 
   var W = 21, H = 13, MAX_DEPTH = 6;
 
@@ -393,9 +407,10 @@
     newGame();
   }
 
+  var _rlKeys = ['gameRogue.bestDepth', 'gameRogue.bestGold'];
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+    document.addEventListener('DOMContentLoaded', function () { _qdHydrate(_rlKeys, init); });
   } else {
-    init();
+    _qdHydrate(_rlKeys, init);
   }
 })();

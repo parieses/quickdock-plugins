@@ -116,7 +116,8 @@
 
     /* ===== 可拖拽列宽的结果网格 ===== */
     table.grid.grid-resizable { table-layout:fixed; }
-    table.grid.grid-resizable th { position:relative; }
+    /* 保持表头吸附（sticky 同样是定位上下文，列宽拖拽手柄不受影响） */
+    table.grid.grid-resizable th { position:sticky; }
     table.grid.grid-resizable td {
       white-space:nowrap; word-break:normal; overflow:hidden; text-overflow:ellipsis; max-width:none;
     }
@@ -490,7 +491,7 @@
 
             <!-- 数据 -->
             <div class="struct-scroll pane-data" v-show="t.sub==='data'" style="display:flex;flex-direction:column;">
-              <div class="gridwrap">
+              <div class="gridwrap" :data-gw-data="t.id">
                 <div v-if="t.grid.loading" class="empty"><div>加载数据…</div></div>
                 <div v-else-if="t.grid.error" class="err-box">{{ t.grid.error }}</div>
                 <table class="grid grid-resizable" v-else-if="t.grid.columns.length"
@@ -677,6 +678,7 @@
               </button>
               <button class="btn2" v-if="t.selText" @click="clearSqlSelection(t)" title="取消选区，恢复执行全部">取消选中</button>
               <button class="btn2" @click="t.sql=''">清空</button>
+              <button class="btn2" @click="formatSql(t)" title="把 SQL 重新排版：关键字大写、子句换行、AND/OR 缩进、SELECT 列分行">美化</button>
               <button class="btn2" @click="exportCsv(t)" :disabled="!t.grid.rows.length">导出 CSV</button>
               <button class="btn2" @click="openInsert(t)" :disabled="!canCrud(t)">＋ 新增</button>
               <button class="btn2" @click="deleteRow(t)" :disabled="!canCrud(t) || t.grid.selRow<0">删除行</button>
@@ -723,7 +725,7 @@
                   <button class="rtab-run" @click.stop="runQueryTab(t, {statementIndex:i})" title="只重新执行这条语句" :disabled="t.grid.loading">↻</button>
                 </div>
               </div>
-              <div class="gridwrap">
+              <div class="gridwrap" :data-gw-query="t.id">
                 <div v-if="t.grid.error" class="err-box">{{ t.grid.error }}</div>
                 <table class="grid grid-resizable" v-else-if="t.grid.columns.length"
                        :style="{ width: 'max(100%, ' + gridWidth(t) + 'px)' }">
@@ -1411,10 +1413,28 @@
         if(!t.colWidths || Object.keys(t.colWidths).length === 0) this.loadColWidths(t)
         if(!t.grid.ran) this.reloadData(t, 1)
       },
+      // 记录当前表格滚动容器（数据浏览 / 查询结果分别用不同选择器，避免同 tab 下撞车）的滚动位置
+      captureGridScroll: function(t){
+        var sel = (t.kind==='query') ? '[data-gw-query="'+t.id+'"]' : '[data-gw-data="'+t.id+'"]'
+        var gw = document.querySelector(sel)
+        return gw ? { top: gw.scrollTop, left: gw.scrollLeft } : null
+      },
+      // 表格重建（v-if 切换加载占位 → 新 table）后，在下个渲染周期还原滚动位置
+      restoreGridScroll: function(t, cap){
+        if(!cap) return
+        var self = this
+        var sel = (t.kind==='query') ? '[data-gw-query="'+t.id+'"]' : '[data-gw-data="'+t.id+'"]'
+        this.$nextTick(function(){
+          var gw = document.querySelector(sel)
+          if(gw){ gw.scrollTop = cap.top; gw.scrollLeft = cap.left }
+        })
+      },
       reloadData: function(t, page){
         var self = this
         t.grid = t.grid || blankGrid()
         var g = t.grid
+        // 在表格被「加载中」占位替换前，记录滚动位置（纵向 + 横向），避免排序/筛选后跳回顶部/左侧
+        var cap = self.captureGridScroll(t)
         if(page==='last') page = Math.max(1, totalPages(g))
         if(page >= 999999) page = Math.max(1, totalPages(g))
         if(page < 1) page = 1
@@ -1437,6 +1457,7 @@
           n.orderDir = r.orderDir || 'asc'
           n.loading = false
           t.grid = n
+          self.restoreGridScroll(t, cap)
         }).catch(function(e){
           g.loading = false; g.ran = true
           g.error = e.message || String(e)
@@ -1675,6 +1696,7 @@
         var self = this
         if(!t){ return }
         opts = opts || {}
+        var cap = self.captureGridScroll(t) // 执行前记录结果区滚动位置，重建后还原
         // 决定要执行的 SQL：
         // 1) 编辑器里有文本选区 → 只执行选区（满足「选中一条执行那一条」）
         // 2) 指定了某条结果索引（结果标签上的 ↻）→ 只执行那一条
@@ -1703,11 +1725,13 @@
             t.multiResults[idx] = g
             t.activeResult = idx
             t.grid = g
+            self.restoreGridScroll(t, cap)
             toast('已重新执行 结果 ' + (idx+1), g.error ? 'err' : 'ok')
           } else {
             t.multiResults = m.results
             t.activeResult = 0
             t.grid = m.results[0]
+            self.restoreGridScroll(t, cap)
             var ok = m.results.filter(function(x){ return !x.error }).length
             if(ranSelection){
               toast('已执行选中的 SQL（共 ' + m.results.length + ' 条语句）', ok === m.results.length ? 'ok' : 'warn')
@@ -1727,6 +1751,7 @@
             t.multiResults = [g]; t.activeResult = 0
           }
           t.grid = g
+          self.restoreGridScroll(t, cap)
         })
       },
       // 读取编辑器里当前文本选区（实时从 DOM 取，最可靠）
@@ -1740,6 +1765,39 @@
       clearSqlSelection: function(t){
         t.selText = ''
         if(t._sqlEl && t._sqlEl.blur) t._sqlEl.blur()
+      },
+      formatSql: function(t){
+        if(!t) return
+        t.sql = this.beautifySql(t.sql || '')
+      },
+      beautifySql: function(sql){
+        if(!sql) return sql
+        var ph = []
+        sql = sql.replace(/'(?:[^'\\]|\\.|'')*'/g, function(m){ ph.push(m); return '\u0001'+(ph.length-1)+'\u0001' })
+        sql = sql.replace(/--[^\n]*/g, function(m){ ph.push(m); return '\u0001'+(ph.length-1)+'\u0001' })
+        sql = sql.replace(/\/\*[\s\S]*?\*\//g, function(m){ ph.push(m); return '\u0001'+(ph.length-1)+'\u0001' })
+        sql = sql.replace(/\s+/g, ' ').trim()
+        var kws = ['select','from','where','group by','order by','having','limit','offset','inner join','left join','right join','full join','cross join','join','on','and','or','union all','union','insert into','values','update','set','delete from','as','distinct','case','when','then','else','end','between','in','is not null','is null','like','not','desc','asc']
+        kws.sort(function(a,b){ return b.length - a.length })
+        kws.forEach(function(k){
+          var re = new RegExp('\\b'+k.replace(/ /g,'\\s+')+'\\b','gi')
+          sql = sql.replace(re, function(mm){ return k.toUpperCase() })
+        })
+        var clauses = ['SELECT','FROM','WHERE','GROUP BY','ORDER BY','HAVING','LIMIT','OFFSET','UNION ALL','UNION','LEFT JOIN','RIGHT JOIN','INNER JOIN','FULL JOIN','CROSS JOIN','JOIN','INSERT INTO','VALUES','UPDATE','SET','DELETE FROM']
+        clauses.sort(function(a,b){ return b.length - a.length })
+        clauses.forEach(function(c){
+          var re = new RegExp('\\s+'+c.replace(/ /g,'\\s+')+'\\b','g')
+          sql = sql.replace(re, '\n'+c)
+        })
+        sql = sql.replace(/\nSELECT([\s\S]*?)\nFROM/, function(mm, cols){
+          if(/\bSELECT\b|\(/.test(cols)) return mm
+          var out = ''
+          for(var i=0;i<cols.length;i++){ var ch = cols[i]; out += (ch === ',') ? '\n  ' : ch }
+          return '\nSELECT'+out+'\nFROM'
+        })
+        sql = sql.replace(/\s+(AND|OR)\b/g, '\n  $1')
+        sql = sql.replace(/\u0001(\d+)\u0001/g, function(mm,i){ return ph[+i] })
+        return sql.replace(/\n{3,}/g, '\n\n').trim()
       },
       // 在多条 SQL 的结果之间切换
       switchResult: function(t, i){

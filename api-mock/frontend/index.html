@@ -109,10 +109,30 @@ window.copyViaHost=function(t,cb){var id="cp_"+(++window.__amSeq),done=false;fun
   }
   function genId(){return 'r'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
 
-  var saveTimer=null
+  // ---- 桥接就绪门控：避免在 plugin:init 下发前发出的首屏 RPC 被宿主静默丢弃 ----
+  var _ready=false, _readyWaiters=[]
+  function markReady(){ if(_ready)return; _ready=true; _readyWaiters.forEach(function(f){f()}); _readyWaiters=[] }
+  function whenReady(){ return _ready ? Promise.resolve() : new Promise(function(r){ _readyWaiters.push(r) }) }
+  window.addEventListener('message', function(e){ var d=e&&e.data; if(d&&d.type==='plugin:init') markReady() })
+  setTimeout(markReady, 1500) // 兜底：个别宿主可能不下发 plugin:init
+  // 带重试的发送：用于启动期加载，避免偶发首条消息被丢弃导致列表为空
+  function sendRetry(command, params, tries){
+    tries=tries||3
+    function attempt(n){
+      return send(command,params).then(function(r){return r},function(err){
+        if(n<=1) return Promise.reject(err)
+        return new Promise(function(res){setTimeout(res,200)}).then(function(){return attempt(n-1)})
+      })
+    }
+    return whenReady().then(function(){return attempt(tries)})
+  }
+
+  var saveTimer=null, _loaded=false, _loadDone=false, _dirty=false
   function saveRoutes(){
     if(saveTimer)clearTimeout(saveTimer)
     saveTimer=setTimeout(function(){
+      // 首屏加载未完成前不保存：防止用「加载失败得到的空数组」覆盖后端已存路由
+      if(!_loadDone){ _dirty=true; return }
       send('set-routes',{routes:routes}).catch(function(){})
     },250)
   }
@@ -204,11 +224,19 @@ window.copyViaHost=function(t,cb){var id="cp_"+(++window.__amSeq),done=false;fun
   }
 
   function init(){
-    send('get-routes',{}).then(function(res){
+    // 加载已保存的路由规则：等待桥接就绪 + 重试，避免重开时首屏 RPC 被丢弃导致列表为空
+    sendRetry('get-routes',{},3).then(function(res){
       if(res&&res.routes){routes=res.routes.map(function(r){return {id:r.id||genId(),method:r.method||'GET',path:r.path||'',status:r.status||200,contentType:r.contentType||'application/json',body:r.body||'',delay:r.delay||0,enabled:r.enabled!==false}})}
+      _loaded=true
+    }).catch(function(){
+      // 加载失败也不要覆盖后端；待用户在界面操作后由 _dirty 触发保存
+    }).then(function(){
+      _loadDone=true
       renderRoutes()
-    }).catch(function(){renderRoutes()})
-    send('status',{}).then(function(res){
+      if(_dirty){ _dirty=false; saveRoutes() } // 加载期间用户改过，现在补保存
+    })
+    // 查询服务运行状态（同样等桥接就绪）
+    whenReady().then(function(){ return send('status',{}) }).then(function(res){
       if(res&&res.running){setRunning(true,res.address);startPoll()}
     }).catch(function(){})
   }

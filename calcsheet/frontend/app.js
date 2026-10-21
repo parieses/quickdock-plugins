@@ -3,11 +3,48 @@ const $ = s => document.querySelector(s)
 
 // ---- postMessage 桥接（调用 goja 后端）----
 let _nextId = 1, _pending = {}
-function pluginExec(command, input) {
-  return new Promise((resolve, reject) => {
-    const id = _nextId++; _pending[id] = { resolve, reject }
-    window.parent.postMessage({ type: 'plugin:execute', id, command, input }, '*')
-  })
+// 桥接就绪门控：宿主在 iframe 真正打通桥接后才会下发 plugin:init。
+// 在此之前发出的 plugin:execute 会被丢弃，表现为「首屏 / 重开空白、数据丢」。
+// 因此所有 RPC 必须排队，等 plugin:init（或兜底超时）真正就绪后再发送。
+let _bridgeReady = false
+let _readyWaiters = []
+function _markBridgeReady() {
+  if (_bridgeReady) return
+  _bridgeReady = true
+  const ws = _readyWaiters; _readyWaiters = []
+  ws.forEach(fn => { try { fn() } catch (e) {} })
+}
+// 兜底：宿主若迟迟不发 plugin:init，1.5s 后强制认为桥接可用，避免白屏
+setTimeout(_markBridgeReady, 1500)
+
+/**
+ * 调用后端命令。支持 opts.tries 重试（默认 1）与 opts.timeout 单次超时（默认 8s）。
+ * 桥接未就绪时把发送动作压入队列，待 _markBridgeReady 后统一冲刷，
+ * 从根本上消除「启动期 RPC 被宿主丢弃」导致的空白 / 数据丢失。
+ */
+function pluginExec(command, input, opts) {
+  opts = opts || {}
+  const tries = opts.tries || 1
+  const timeout = opts.timeout || 8000
+  function attempt(n) {
+    return new Promise((resolve, reject) => {
+      const id = _nextId++
+      const timer = setTimeout(() => {
+        delete _pending[id]
+        if (n < tries) { attempt(n + 1).then(resolve, reject) }
+        else { reject(new Error('请求超时: ' + command)) }
+      }, timeout)
+      _pending[id] = {
+        resolve: (v) => { clearTimeout(timer); resolve(v) },
+        reject: (e) => { clearTimeout(timer); reject(e) }
+      }
+      const send = () => {
+        try { window.parent.postMessage({ type: 'plugin:execute', id, command, input }, '*') } catch (e) {}
+      }
+      if (_bridgeReady) send(); else _readyWaiters.push(send)
+    })
+  }
+  return attempt(1)
 }
 window.addEventListener('message', (e) => {
   const p = _pending[e.data?.id]
@@ -15,12 +52,15 @@ window.addEventListener('message', (e) => {
     if (e.data.error) p.reject(new Error(e.data.error)); else p.resolve(e.data.data)
     delete _pending[e.data.id]
   }
-  // 从命令面板传入的计算文本
-  if (e.data?.type === 'plugin:init' && e.data?.data?.text) {
-    if (typeof app !== 'undefined' && app && app.activeSheet) {
-      commitEdit()
-      const l = app._add(e.data.data.text)
-      if (l) startEdit(l.id)
+  // 宿主桥接就绪信号：标记就绪并冲刷排队中的 RPC；随后处理命令面板传入的文本
+  if (e.data?.type === 'plugin:init') {
+    _markBridgeReady()
+    if (e.data?.data?.text) {
+      if (typeof app !== 'undefined' && app && app.activeSheet) {
+        commitEdit()
+        const l = app._add(e.data.data.text)
+        if (l) startEdit(l.id)
+      }
     }
   }
 })
@@ -139,13 +179,13 @@ class CalcSheetApp {
    * 每会话清空/不可用）；localStorage 仅作「未同步到后端的本地草稿」兜底。
    */
   _load() {
-    return pluginExec('list-sheets', {})
+    return pluginExec('list-sheets', {}, { tries: 3, timeout: 6000 })
       .then(r => {
         const backend = (r && r.sheets) || []
         if (backend.length === 0) return this._loadLocalFallback()
         // 逐个拉取完整稿纸（含 lines / pinned）
         return Promise.all(backend.map(rs =>
-          pluginExec('load-sheet', { id: rs.id })
+          pluginExec('load-sheet', { id: rs.id }, { tries: 3, timeout: 6000 })
             .then(r2 => (r2 && r2.sheet) ? r2.sheet : null)
             .catch(() => null)
         )).then(sheets => {
@@ -195,13 +235,13 @@ class CalcSheetApp {
   _persistAll() {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ sheets: this.sheets, activeId: this.activeId })) } catch (e) {}
     for (const s of this.sheets) {
-      pluginExec('save-sheet', { sheet: { id: s.id, name: s.name, lines: s.lines, pinned: s.pinned } }).catch(() => {})
+      pluginExec('save-sheet', { sheet: { id: s.id, name: s.name, lines: s.lines, pinned: s.pinned } }, { tries: 2, timeout: 6000 }).catch(() => {})
     }
   }
 
   _syncBackend() {
     const s = this.activeSheet; if (!s) return
-    pluginExec('save-sheet', { sheet: { id: s.id, name: s.name, lines: s.lines, pinned: s.pinned } }).catch(() => {})
+    pluginExec('save-sheet', { sheet: { id: s.id, name: s.name, lines: s.lines, pinned: s.pinned } }, { tries: 2, timeout: 6000 }).catch(() => {})
   }
 
   get activeSheet() { return this.sheets.find(s=>s.id===this.activeId)||null }
@@ -218,7 +258,7 @@ class CalcSheetApp {
   _delete(id) {
     const i=this.sheets.findIndex(s=>s.id===id); if(i<0) return
     this.sheets.splice(i,1); if(this.activeId===id) this.activeId=this.sheets[0]?.id||null
-    this._save(); pluginExec('delete-sheet',{id}).catch(()=>{}); renderAll(this)
+    this._save(); pluginExec('delete-sheet',{id},{tries:2,timeout:6000}).catch(()=>{}); renderAll(this)
   }
   _select(id) {
     if(id===this.activeId) return

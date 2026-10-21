@@ -1,9 +1,41 @@
 (function () {
   'use strict'
 
+  /* ---------- 沙箱安全的持久化（宿主 db.*） ---------- */
+  var _qdCall = (typeof window.qdHostCall === 'function') ? window.qdHostCall : null;
+  var _lsOK = (function () { try { var t = '__qd_probe__'; window.localStorage.setItem(t, t); window.localStorage.removeItem(t); return true } catch (e) { return false } })();
+  var _qdCache = {};
+  function _qdSeed(k) { if (_lsOK) { try { var s = window.localStorage.getItem(k); if (s != null) _qdCache[k] = s } catch (e) {} } }
+  function _qdSetLS(k, v) { if (_lsOK) { try { window.localStorage.setItem(k, v) } catch (e) {} } }
+  function _qdSetDB(k, v) {
+    if (!_qdCall) return;
+    var MAX = 200 * 1024;
+    if (v.length <= MAX) { _qdCall('db.set', { key: k, value: v }).catch(function () {}) }
+    else { var n = Math.ceil(v.length / MAX); _qdCall('db.delete', { key: k }).catch(function () {}); for (var i = 0; i < n; i++) _qdCall('db.set', { key: k + '__p' + i, value: v.slice(i * MAX, (i + 1) * MAX) }).catch(function () {}); _qdCall('db.set', { key: k + '__meta', value: JSON.stringify({ n: n }) }).catch(function () {}) }
+  }
+  function _qdStoreSet(k, v) { _qdCache[k] = v; _qdSetLS(k, v); return _qdSetDB(k, v) }
+  function _qdStoreGet(k) { return (k in _qdCache) ? _qdCache[k] : null }
+  function _qdHydrate(keys, cb) {
+    keys.forEach(_qdSeed);
+    if (!_qdCall) { if (cb) cb(); return }
+    var chain = Promise.resolve();
+    keys.forEach(function (k) {
+      chain = chain.then(function () {
+        return _qdCall('db.get', { key: k }).then(function (r) {
+          var val = (r && r.found && typeof r.value === 'string') ? r.value : null;
+          if (val == null) return _qdCall('db.get', { key: k + '__meta' }).then(function (m) {
+            if (m && m.found) { try { var info = JSON.parse(m.value); var ps = []; for (var i = 0; i < info.n; i++) ps.push(_qdCall('db.get', { key: k + '__p' + i }).then(function (x) { return (x && x.found) ? x.value : '' })); return Promise.all(ps).then(function (arr) { return arr.join('') }) } catch (e) { return null } }
+            return null
+          });
+          return val
+        }).then(function (val) { if (val != null) { _qdCache[k] = val; _qdSetLS(k, val) } }).catch(function () {})
+      });
+    });
+    chain.then(function () { if (cb) cb() })
+  }
   var LS = {
-    get: function (k) { try { return window.localStorage.getItem(k) } catch (e) { return null } },
-    set: function (k, v) { try { window.localStorage.setItem(k, v) } catch (e) {} }
+    get: function (k) { return _qdStoreGet(k) },
+    set: function (k, v) { return _qdStoreSet(k, v) }
   }
 
   var THEMES = {
@@ -279,7 +311,11 @@
     }
   })
 
-  reset()
-  loop()
-  draw()
+  _qdHydrate(['codeSnake.best', 'codeSnake.bestSnips'], function () {
+    best = parseInt(LS.get('codeSnake.best') || '0', 10) || 0
+    bestSnips = parseInt(LS.get('codeSnake.bestSnips') || '0', 10) || 0
+    reset()
+    loop()
+    draw()
+  })
 })()
