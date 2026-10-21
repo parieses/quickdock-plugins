@@ -1172,7 +1172,7 @@ window.addEventListener('message', (e) => {
   造成一次浅色闪变（FOUC）。
 
 `tools/check_plugins.py` 第 4 / 4b 项会把上述两种写法报成 **WARN**（不阻断 CI）。
-2026-10-20 起全仓 126 份内联副本已用 `tools/strip_inline_bridge.py` 清理完毕。
+2026-10-20 起全仓 126 份内联副本已清理完毕（迁移脚本已退役）。
 
 > `locale` → `<html lang>` 同步宿主桥**不做**。需要的话插件自己处理
 > （参考 `database/frontend/index.html` 的 `applyTheme`）。

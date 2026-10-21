@@ -33,7 +33,3 @@ service-fingerprint/FEASIBILITY.md
 # Dist artifacts
 .workbuddy/
 
-# 一次性迁移/清理脚本（任务完成即弃，不入库；非 CI 也不复用）
-# strip_inline_bridge.py：清理全仓 126 份内联 bridge 副本，已于 2026-10-20 完成
-tools/strip_inline_bridge.py
-

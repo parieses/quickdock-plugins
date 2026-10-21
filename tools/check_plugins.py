@@ -127,7 +127,7 @@ def check_frontend(d, plugin_dir):
 
     # 4) 内联宿主行为脚本：宿主已统一注入（BRIDGE_SCRIPT / quickdock-runtime），
     #    插件再内联一份既是重复代码，也会随宿主能力演进而漂移。
-    #    2026-10-20 起全仓 126 份副本已清理（tools/strip_inline_bridge.py），
+    #    2026-10-20 起全仓 126 份副本已清理（迁移脚本已退役），
     #    这里保留为回归守卫。
     for marker, why in (("__qdErrHook", "前端异常上报钩子"),
                         ("qd-theme-follow", "主题跟随脚本"),
