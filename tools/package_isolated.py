@@ -12,7 +12,7 @@
 本脚本给每个插件一个独立暂存目录，做到插件级原子：
   1. `build.py <plugin> -d <stage>` 打包到暂存目录
   2. 校验 plugin.json 声明的每个平台都产出了 `<safe_id>-<platform>.zip`
-  3. 全部满足才用 os.replace 原子并入 dist/（同名覆盖）
+  3. 全部满足才原子落地到 dist/（同名覆盖；跨文件系统时先 copyfile 到 .part 再改名）
   4. 任一步失败 → 不动 dist/、返回非零，由 CI 记入 failed 列表
 
 用法（CI 调用）：
@@ -69,7 +69,18 @@ def main() -> int:
 
     dist.mkdir(parents=True, exist_ok=True)
     for f in expected:
-        os.replace(str(f), str(dist / f.name))
+        dst = dist / f.name
+        # 暂存目录常由 CI 的 mktemp 放在 /tmp，与工作区不在同一文件系统，
+        # 直接 os.replace 会抛 EXDEV（Invalid cross-device link）。
+        # 先 copyfile 到 dist/ 内的 .part，再在同目录原子改名：
+        # 既跨设备安全，又保证不会有"复制到一半"的 zip 被发布。
+        part = dist / (f.name + ".part")
+        try:
+            shutil.copyfile(str(f), str(part))
+            os.replace(str(part), str(dst))
+        finally:
+            if part.exists():
+                part.unlink()
     print(f"✓ 已并入 dist/: {plugin_dir.name} [{', '.join(platforms)}]")
     return 0
 
