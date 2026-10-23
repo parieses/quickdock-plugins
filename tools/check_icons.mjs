@@ -6,6 +6,8 @@
  *  2. 每个 .qi-* 类都指向一个已定义的 --qi-* 变量
  *  3. .qi 基类具备 mask 相关属性（否则图标不显示）
  *  4. SVG 内部不残留未编码的 #（会截断 data URI）
+ *  5. 注释闭合平衡——未闭合的 /* 会把 :root 和全部变量吞进注释，
+ *     图标退化为实心方块（2026-10-23 生产事故根因）
  */
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -87,6 +89,18 @@ if (!baseMatch) {
   for (const prop of ['mask-size', 'mask-repeat', 'background-color', 'display', 'width', 'height']) {
     if (!b.includes(prop)) err(`.qi 基类缺少 ${prop}`);
   }
+}
+
+// 5. 注释闭合平衡 + 去注释后 :root 必须仍可见
+//    （文本正则校验无法识别"变量被注释吞掉"，必须做注释感知检查）
+const opens = (css.match(/\/\*/g) || []).length;
+const closes = (css.match(/\*\//g) || []).length;
+if (opens !== closes) {
+  err(`注释不闭合：/* ${opens} 处 vs */ ${closes} 处（未闭合注释会吞掉后续所有规则）`);
+} else {
+  const stripped = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  if (!/:\s*root\s*\{/.test(stripped)) err('去除注释后找不到 :root 块（变量声明被注释吞掉）');
+  if (!/\.qi\s*\{/.test(stripped)) err('去除注释后找不到 .qi 基类');
 }
 
 // 4. 尺寸档
