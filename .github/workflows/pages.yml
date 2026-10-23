@@ -1,5 +1,11 @@
 # 插件主页部署（GitHub Pages）
-# push 到 main 时重新部署 docs/ 作为 Pages 站点。
+#
+# 触发时机（关键：索引必须"等打包完成后"再生成/部署）：
+#   1) push 到 main —— 覆盖首页模板 / 文档等非插件变更；
+#   2) Build Plugins 完成 —— index.json 由 build-plugins.yml 在「打包成功」后
+#      发布到 latest release，本工作流必须等它跑完再取，才能部署与真实 zip 一致的索引；
+#      否则会在打包尚未产出时先部署一次（旧索引），之后不再更新。
+#
 # 前置：仓库 Settings → Pages → Source 选 "GitHub Actions"（一次性配置）。
 
 name: Deploy Pages
@@ -7,6 +13,9 @@ name: Deploy Pages
 on:
   push:
     branches: [main]
+  workflow_run:
+    workflows: ["Build Plugins"]
+    types: [completed]
   workflow_dispatch: {}
 
 permissions:
@@ -20,6 +29,8 @@ concurrency:
 
 jobs:
   deploy:
+    # Build Plugins 失败时不要用旧索引覆盖已部署内容；仅在其成功后重部署
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -27,8 +38,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Generate plugin home page
-        run: python3 gen_site.py
+      - name: Ensure market index.json (build-consistent, from latest release)
+        run: |
+          # index.json 只能由 build-plugins.yml 在「打包成功」后发布，绝不在这里按
+          # plugin.json 重新生成——否则会重现「版本号前进、zip 没打出来」的旧问题。
+          mkdir -p site
+          url="https://github.com/parieses/quickdock-plugins/releases/latest/download/index.json"
+          for i in 1 2 3; do
+            if curl -fSL --retry 3 --retry-delay 2 -o site/index.json "$url"; then
+              echo "已获取 build-plugins 发布的 index.json"
+              exit 0
+            fi
+            echo "第 $i 次获取 index.json 失败，稍后重试…"
+            sleep 3
+          done
+          echo "::warning::latest release 中暂无 index.json，按当前 plugin.json 引导生成（仅首次部署过渡，成功打包后即不再触发）"
+          python3 gen_site.py --json-only
+
+      - name: Generate plugin home page (from build-gated index)
+        run: python3 gen_site.py --html-only --index-from site/index.json
 
       - name: Generate plugin doc tables
         run: python3 gen_tables.py

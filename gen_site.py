@@ -479,7 +479,14 @@ def collect_plugins(repo_root):
     return plugins
 
 
-def build_cards(plugins):
+def build_cards(plugins, gated=None):
+    """生成首页卡片。
+
+    gated: {plugin_id: entry}，来自 build-gated 的市场索引 index.json。
+    传入时，卡片的「版本号 + 下载直链」以索引为准 —— 索引只在插件真正打包
+    成功后才前进版本，因此页面展示的版本/链接必然与市场实际可安装的 zip 一致，
+    不会出现「plugin.json 已提版本、但 zip 还是旧的」导致用户下载到旧包。
+    """
     # 分类 chips（按插件数降序）
     cats = {}
     for p in plugins:
@@ -503,15 +510,24 @@ def build_cards(plugins):
         icon_url = f"{RAW_BASE}/{urllib.parse.quote(pdir)}/{urllib.parse.quote(icon)}" if icon else ICON_FALLBACK
 
         downloads = []
-        plats = plugin_platforms(mf)
-        for plat in plats:
+        g = (gated or {}).get(mf["id"])
+        version = (g or {}).get("version") or mf.get("version", "0.0.0")
+        # 下载直链：优先用 gated 索引里的真实发布链接（与 index.json 完全一致）；
+        # 无索引（本地/引导生成）时按 plugin.json 的 platforms 推导。
+        links = {}
+        if g and g.get("downloads"):
+            for k, _ in ALL_PLATFORMS:
+                if k in g["downloads"]:
+                    links[k] = g["downloads"][k]
+        else:
+            for plat in plugin_platforms(mf):
+                links[plat] = f"{REL_BASE}/{safe_id}-{plat}.zip"
+        for plat, href in links.items():
             label = next((l for k, l in ALL_PLATFORMS if k == plat), plat)
-            href = f"{REL_BASE}/{safe_id}-{plat}.zip"
             downloads.append(DOWNLOAD_TEMPLATE.replace("@HREF@", href).replace("@LABEL@", label))
         # 复制按钮只跟主平台（首个）直链走，避免多平台时重复出现
-        if plats:
-            downloads.append(COPY_TEMPLATE.replace(
-                "@HREF@", f"{REL_BASE}/{safe_id}-{plats[0]}.zip"))
+        if links:
+            downloads.append(COPY_TEMPLATE.replace("@HREF@", next(iter(links.values()))))
         downloads_html = "".join(downloads)
 
         hay = h(f"{name} {mf['id']} {desc}".lower(), quote=True)
@@ -522,7 +538,7 @@ def build_cards(plugins):
                 .replace("@HAY@", hay)
                 .replace("@ICON@", h(icon_url))
                 .replace("@NAME@", h(name))
-                .replace("@VERSION@", h(mf.get("version", "0.0.0")))
+                .replace("@VERSION@", h(version))
                 .replace("@PLUGIN_ID@", h(mf["id"]))
                 .replace("@DESC@", h(desc))
                 .replace("@DOWNLOADS@", downloads_html))
@@ -543,46 +559,51 @@ def build_cards(plugins):
     return html
 
 
+def build_plugin_entry(mf, pdir):
+    """构建单个插件的索引条目（字段对齐 plugin.json + 各平台下载直链）。
+
+    抽出来供 build_index（全量）与 gen_market_index（合并）复用，保证两条生成
+    路径产出的条目结构完全一致。
+    """
+    safe_id = mf["id"].replace(".", "-").lower()
+
+    # 图标：raw 链接（与主页一致）
+    icon = mf.get("icon", "")
+    icon_url = f"{RAW_BASE}/{urllib.parse.quote(pdir)}/{urllib.parse.quote(icon)}" if icon else ""
+
+    # 下载直链：按插件声明的 platforms（∩ ALL_PLATFORMS）生成对应平台直链
+    downloads = {}
+    for plat in plugin_platforms(mf):
+        downloads[plat] = f"{REL_BASE}/{safe_id}-{plat}.zip"
+
+    return {
+        "id": mf["id"],
+        "name": mf.get("name", mf["id"]),
+        "name_i18n": mf.get("name_i18n"),
+        "version": mf.get("version", "0.0.0"),
+        "description": mf.get("description", ""),
+        "description_i18n": mf.get("description_i18n"),
+        # 更新日志：插件 plugin.json 的 changelog（纯文本/Markdown）；
+        # changelog_i18n 提供多语言版本。未声明则缺省（前端详情页显示「暂无更新日志」）。
+        "changelog": mf.get("changelog", ""),
+        "changelog_i18n": mf.get("changelog_i18n"),
+        "author": mf.get("author", ""),
+        "category": mf.get("category", ""),
+        "icon": icon_url,
+        "platforms": mf.get("platforms", []),
+        "permissions": mf.get("permissions", {}),
+        "capabilities": mf.get("capabilities", []),
+        "downloads": downloads,
+    }
+
+
 def build_index(plugins):
     """构建机器可读的插件市场索引（供 QuickDock 应用内"在线安装"拉取）。
 
     字段对齐 plugin.json，并补充每个平台的下载直链（releases/latest/download）。
     downloads 按各插件 platforms 声明生成（未声明 = 全平台）；主程序据此取当前平台对应直链。
     """
-    items = []
-    for p in plugins:
-        mf, pdir = p["manifest"], p["dir"]
-        safe_id = mf["id"].replace(".", "-").lower()
-
-        # 图标：raw 链接（与主页一致）
-        icon = mf.get("icon", "")
-        icon_url = f"{RAW_BASE}/{urllib.parse.quote(pdir)}/{urllib.parse.quote(icon)}" if icon else ""
-
-        # 下载直链：按插件声明的 platforms（∩ ALL_PLATFORMS）生成对应平台直链
-        downloads = {}
-        for plat in plugin_platforms(mf):
-            downloads[plat] = f"{REL_BASE}/{safe_id}-{plat}.zip"
-
-        items.append({
-            "id": mf["id"],
-            "name": mf.get("name", mf["id"]),
-            "name_i18n": mf.get("name_i18n"),
-            "version": mf.get("version", "0.0.0"),
-            "description": mf.get("description", ""),
-            "description_i18n": mf.get("description_i18n"),
-            # 更新日志：插件 plugin.json 的 changelog（纯文本/Markdown）；
-            # changelog_i18n 提供多语言版本。未声明则缺省（前端详情页显示「暂无更新日志」）。
-            "changelog": mf.get("changelog", ""),
-            "changelog_i18n": mf.get("changelog_i18n"),
-            "author": mf.get("author", ""),
-            "category": mf.get("category", ""),
-            "icon": icon_url,
-            "platforms": mf.get("platforms", []),
-            "permissions": mf.get("permissions", {}),
-            "capabilities": mf.get("capabilities", []),
-            "downloads": downloads,
-        })
-
+    items = [build_plugin_entry(p["manifest"], p["dir"]) for p in plugins]
     return {
         "name": "QuickDock 插件中心",
         "updated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -594,6 +615,11 @@ def main():
     parser = argparse.ArgumentParser(description="QuickDock 插件中心主页生成器")
     parser.add_argument("-o", "--output", default="site/index.html", help="输出路径（默认 site/index.html）")
     parser.add_argument("-j", "--json-output", default="site/index.json", help="市场索引 JSON 输出路径（默认 site/index.json，供应用内在线安装拉取）")
+    parser.add_argument("--html-only", action="store_true", help="仅生成首页 index.html（不写 index.json）")
+    parser.add_argument("--json-only", action="store_true", help="仅生成市场索引 index.json（不写 index.html）")
+    parser.add_argument("--index-from", default=None,
+                        help="以指定的 index.json（build-gated 市场索引）作为页面版本/下载链接来源；"
+                             "不传则直接读 plugin.json")
     args = parser.parse_args()
 
     repo_root = Path(__file__).parent.resolve()
@@ -606,17 +632,37 @@ def main():
     for p in plugins:
         print(f"   • {p['manifest'].get('name', p['dir'])} ({p['manifest']['id']})")
 
-    out = Path(args.output).resolve()
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(build_cards(plugins), encoding="utf-8")
-    print(f"✅ 主页已生成: {out}")
+    # 可选：以 build-gated 的 index.json 作为页面版本/下载链接来源
+    gated = None
+    if args.index_from:
+        ip = Path(args.index_from)
+        if ip.exists():
+            try:
+                data = json.loads(ip.read_text(encoding="utf-8"))
+                gated = {it["id"]: it for it in data.get("plugins", []) if it.get("id")}
+                print(f"📦 页面版本来源: {ip}（{len(gated)} 条，build-gated）")
+            except Exception as e:
+                print(f"⚠️  读取 --index-from 失败: {e}，回退使用 plugin.json")
+        else:
+            print(f"⚠️  --index-from 文件不存在: {ip}，回退使用 plugin.json")
+
+    # 首页（营销页）。传入 gated 时版本/链接与市场索引保持一致；
+    # 未传时按 plugin.json 生成（本地预览 / 首次引导）。
+    if not args.json_only:
+        out = Path(args.output).resolve()
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(build_cards(plugins, gated), encoding="utf-8")
+        print(f"✅ 主页已生成: {out}")
 
     # 机器可读的市场索引（QuickDock 应用内"在线安装"拉取）
-    index_data = build_index(plugins)
-    index_out = Path(args.json_output).resolve()
-    index_out.parent.mkdir(parents=True, exist_ok=True)
-    index_out.write_text(json.dumps(index_data, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"✅ 市场索引已生成: {index_out}")
+    # 注意：CI 里 index.json 实际由 tools/gen_market_index.py 生成（build-gated，
+    # 仅在插件真正打包成功后前进版本），本路径仅用于本地/回退全量生成。
+    if not args.html_only:
+        index_data = build_index(plugins)
+        index_out = Path(args.json_output).resolve()
+        index_out.parent.mkdir(parents=True, exist_ok=True)
+        index_out.write_text(json.dumps(index_data, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(f"✅ 市场索引已生成: {index_out}")
 
 
 if __name__ == "__main__":

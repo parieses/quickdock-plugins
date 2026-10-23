@@ -9,6 +9,10 @@
 # 多平台交叉编译中间产物（build.py 输出目录）
 .build/
 
+# Python 缓存
+__pycache__/
+*.pyc
+
 # gen_icons.py 的临时工作目录（量盒 / 渲染校验的脚本与 payload）
 _pw/
 

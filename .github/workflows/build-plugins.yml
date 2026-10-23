@@ -117,23 +117,59 @@ jobs:
           GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -o "$GITHUB_WORKSPACE/pdf-toolkit/pdfcpu.exe" ./cmd/pdfcpu
           ls -lh "$GITHUB_WORKSPACE/pdf-toolkit/pdfcpu.exe"
 
-      - name: Package plugins (per platforms)
+      - name: Package plugins (per platforms, isolated per plugin)
+        id: package
         shell: bash
         run: |
+          # 插件级"原子"打包：tools/package_isolated.py 先把单个插件的所有声明平台
+          # 打到独立暂存目录，全部成功才并入 dist/。这样某个平台编译失败时，不会把
+          # "半成品 zip"（新版本、但只含部分平台）发布出去覆盖旧 asset，
+          # 也就不会出现 index.json 说旧版、用户却下载到新版的情况。
+          set -uo pipefail
           changed="${{ steps.changed.outputs.changed_plugins }}"
           echo "要打包的插件: [$changed]"
+          built=""
+          failed=""
+          mkdir -p dist
+          rm -f dist/*.zip 2>/dev/null || true
           if [ -z "$changed" ]; then
             echo "无插件变更，跳过打包"
-            exit 0
-          fi
-          for dir in $changed; do
-            if [ -f "$dir/plugin.json" ]; then
+          else
+            stage_root="$(mktemp -d)"
+            for dir in $changed; do
+              if [ ! -f "$dir/plugin.json" ]; then
+                echo "==> 跳过 $dir（plugin.json 不存在）"
+                continue
+              fi
               echo "==> 打包插件: $dir（按 plugin.json platforms 字段逐一打包）"
-              python3 build.py "$dir"
-            else
-              echo "==> 跳过 $dir（plugin.json 不存在）"
-            fi
-          done
+              if python3 tools/package_isolated.py "$dir" "$stage_root/$dir" dist; then
+                built="$built $dir"
+                echo "✓ 打包成功: $dir"
+              else
+                # 单个插件失败不阻断其它插件；该插件不进入 dist/，index.json 保持旧版本
+                echo "::warning::打包失败: $dir（不进入 dist/，index.json 不前进版本）"
+                failed="$failed $dir"
+              fi
+            done
+          fi
+          echo "built_plugins=$built" >> "$GITHUB_OUTPUT"
+          echo "failed_plugins=$failed" >> "$GITHUB_OUTPUT"
+
+          # 结果汇总到 Job Summary，便于在 Actions 页直接看到成功/失败清单
+          built_n=$(echo "$built" | wc -w | tr -d ' ')
+          failed_n=$(echo "$failed" | wc -w | tr -d ' ')
+          {
+            echo "### 打包结果"
+            echo ""
+            echo "- 成功 ${built_n} 个：\`${built:-无}\`"
+            echo "- 失败 ${failed_n} 个：\`${failed:-无}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          # 有变更但一个都没打包成功 → 让 CI 失败，避免静默带病发布
+          if [ -n "$changed" ] && [ -z "$built" ]; then
+            echo "::error::所有变更插件均打包失败，终止发布（index.json 与 release 不做任何变更）"
+            exit 1
+          fi
 
       - name: Show produced zips
         id: zips
@@ -146,7 +182,25 @@ jobs:
             echo "has_zip=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Publish zips to 'latest' release
+      - name: Generate market index.json (build-gated merge)
+        id: index
+        if: steps.zips.outputs.has_zip == 'true'
+        shell: bash
+        run: |
+          # 拉取上一版 index.json 作为合并基线（首次无则走全量）
+          prev=""
+          tmp=$(mktemp -d)
+          if curl -fSL -o "$tmp/prev.json" "https://github.com/parieses/quickdock-plugins/releases/latest/download/index.json" 2>/dev/null; then
+            echo "已拉取上一版 index.json 作为基线"
+            prev="--previous $tmp/prev.json"
+          else
+            echo "未找到历史 index.json → 引导生成（仅纳入本次真正打包成功/未失败的插件，避免死链）"
+          fi
+          python3 tools/gen_market_index.py $prev \
+            --built "${{ steps.package.outputs.built_plugins }}" \
+            --failed "${{ steps.package.outputs.failed_plugins }}"
+
+      - name: Publish zips + index.json to 'latest' release
         if: steps.zips.outputs.has_zip == 'true'
         uses: softprops/action-gh-release@v2
         with:
@@ -154,7 +208,9 @@ jobs:
           name: Latest Plugin Builds
           body: |
             Auto-built install packages for QuickDock plugins (platforms per each plugin.json).
-          files: dist/*.zip
+          files: |
+            dist/*.zip
+            site/index.json
           make_latest: true
           fail_on_unmatched_files: false
         env:
@@ -164,7 +220,9 @@ jobs:
         if: steps.zips.outputs.has_zip == 'true'
         with:
           name: plugin-zips
-          path: dist/*.zip
+          path: |
+            dist/*.zip
+            site/index.json
           if-no-files-found: warn
           retention-days: 30
 
