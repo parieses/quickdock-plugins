@@ -1399,7 +1399,7 @@ native 侧的关键设计（改之前先看 `qdlog.go` 顶部注释）：
 | text-encoder | Base64 / URL / HTML 编解码，MD5 / SHA1 / SHA256 / SHA512 哈希与 HMAC 签名，Base64 图片识别预览，2/8/10/16 进制互转与字节单位换算 |
 | time-converter | Unix 时间戳 / ISO 8601 / 中文日期 / 相对时间互转，支持任意时区偏移输出 |
 
-**Pure Frontend 插件（`runtime: none`，纯前端经宿主桥接调 Host API）** — 共 36 个
+**Pure Frontend 插件（`runtime: none`，纯前端经宿主桥接调 Host API）** — 共 37 个
 | 插件 ID | 功能 | 演示的宿主能力 |
 |---|---|---|
 | ascii-art | 图片转字符画（亮度映射到字符集），或输入文字生成 ASCII 艺术字（figlet 风格）。 | 纯前端 |
@@ -1430,6 +1430,7 @@ native 侧的关键设计（改之前先看 `qdlog.go` 顶部注释）：
 | mindmap | 把 Markdown 大纲 / 缩进列表实时渲染成思维导图，自动分层配色、可点击折叠分支、支持缩放与导出 PNG / SVG | 纯前端 |
 | minesweeper | 复刻 Windows 原生扫雷：经典灰色立体棋盘、笑脸重置、LED 雷数/计时器，支持初级/中级/高级与自定义 | 纯前端 |
 | otp | 本地 TOTP 两步验证码生成器（兼容 Google Authenticator），密钥仅存本机，离线可用。 | 纯前端 |
+| plugin-scaffold | 可视化生成 QuickDock 插件骨架：填表即产出 plugin.json / 前端 / 后端样板，并自动接入图标与索引流水线 | 纯前端 |
 | qrcode | 文本/URL 生成二维码，支持保存 PNG；从图片识别二维码内容 | 纯前端 |
 | rmb-upper | 数字金额转中文大写（壹贰叁…），财务报销、开票、合同的刚需小工具 | 纯前端 |
 | type-trainer | 开发者向打字训练器：英文 / 中文 / 代码 / 导入四种模式，支持导入 TXT 字库，实时统计 WPM 与准确率，本地记录历史与最佳成绩 | 纯前端 |
@@ -1448,7 +1449,7 @@ native 侧的关键设计（改之前先看 `qdlog.go` 顶部注释）：
 | breach-check | 基于 Have I Been Pwned 检查密码是否出现在泄露库中（k-匿名，密码不出本机）；邮箱泄露需自备 API Key。 |
 | color-converter | 颜色格式互转（HEX / RGB / HSL）+ 屏幕取色，支持常见英文色名识别 |
 | control-receiver | 手机屏幕镜像接收端 + 控制端：连接 QuestPhoneMirror 发送端实时显示画面，鼠标点击/拖拽反向操控真机（配套手机端发送端见 https://github.com/parieses/QuestPhoneMirror） |
-| database | 轻量数据库连接与查询工具：MySQL / SQLite / Redis 连接管理、SQL 与 Redis 命令执行、库表浏览器（库→表/视图→字段、Redis 键树）、Redis 键类型感知详情与增删改（string/hash/list/set/zset）、TTL 与 DB 管理、结果网格内联行编辑、智能列筛选（运算符/区间/多值/判空，停顿即滤）、勾选批量删除（支持全选匹配筛选的行）。数据独立存储。 |
+| database | 轻量数据库连接与查询工具：MySQL / SQLite / Redis 连接管理、SQL 与 Redis 命令执行、库表浏览器（库→表/视图→字段、Redis 键树）、Redis 键类型感知详情与增删改（string/hash/list/set/zset）、TTL 与 DB 管理、结果网格内联行编辑、智能列筛选（运算符/区间/多值/判空，回车即滤）、勾选批量删除（支持全选匹配筛选的行）。数据独立存储。 |
 | dir-buster | 对指定目标 URL 用内置常见路径字典进行轻量探测（自用）：并发受限、可配扩展名，采用异步会话模型实时返回命中的非 404 路径。仅探测你授权的目标，内置字典、不递归 |
 | disk-analyzer | 可视化磁盘空间占用分析工具，类似 SpaceSniffer，支持树图展示目录结构 |
 | exif-viewer | 选择图片（JPEG/PNG）查看拍摄时间、相机/镜头、参数与 GPS 经纬度等 EXIF 信息 |
@@ -1477,7 +1478,7 @@ native 侧的关键设计（改之前先看 `qdlog.go` 顶部注释）：
 | wifi-manager | 查看网络列表、WiFi 密码、连接状态 |
 | ws-tester | 连接 ws/wss 服务，发送消息并实时查看返回的帧，支持多连接与历史 |
 
-> 以上 79 个插件均在本仓库根目录各有独立子目录（ID 为 `io.github.parieses.*`），代码可直接复用。goja/none 插件演示「零宿主依赖、纯 JS 自包含」的外部化样板；native 插件演示「Go 源码 vendor + 自编译 entry exe」模式（`build.py` 直接在插件目录 `go build`）。完整 goja 模板见上文「完整示例」。
+> 以上 80 个插件均在本仓库根目录各有独立子目录（ID 为 `io.github.parieses.*`），代码可直接复用。goja/none 插件演示「零宿主依赖、纯 JS 自包含」的外部化样板；native 插件演示「Go 源码 vendor + 自编译 entry exe」模式（`build.py` 直接在插件目录 `go build`）。完整 goja 模板见上文「完整示例」。
 
 <!--DEVGUIDE_PLUGINS_END-->
 

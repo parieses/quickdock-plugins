@@ -2,7 +2,7 @@
 
 > 我开发的所有 QuickDock **非内置插件**的集中仓库。QuickDock 是 Windows 桌面效率工具（[主仓库](https://github.com/parieses/quickdock)），插件提供「命令面板命令」与「独立前端页面」两种形态，安装即生效、无需重启。
 
-[![插件数](https://img.shields.io/badge/插件-79-blue)](#插件分类总览)
+[![插件数](https://img.shields.io/badge/插件-80-blue)](#插件分类总览)
 [![分类](https://img.shields.io/badge/分类-11-9cf)](#插件分类总览)
 [![平台](https://img.shields.io/badge/平台-Windows-0078D6)](#安装方法)
 [![许可证](https://img.shields.io/badge/license-MIT-green)](#许可证)
@@ -12,7 +12,7 @@
 
 ## 项目简介
 
-这个仓库收集了我为 QuickDock 编写的 **79 个插件**，覆盖开发调试、办公效率、网络/安全、系统工具、内容创作与休闲游戏等场景。所有插件：
+这个仓库收集了我为 QuickDock 编写的 **80 个插件**，覆盖开发调试、办公效率、网络/安全、系统工具、内容创作与休闲游戏等场景。所有插件：
 
 - **本地优先**：数据处理默认在本机完成，需要联网的插件会在说明里标出（如 `breach-check` 查泄露库、`image-uploader` 传图床）。
 - **权限透明**：每个插件在 `plugin.json` 静态声明所需权限（`network` / `filesystem` / `clipboard` / `shell` / `process` / `processKill`），安装时展示、fail-closed。
@@ -25,6 +25,8 @@
 
 > 以下日期取自真实提交记录。更早的变更见 [Releases](https://github.com/parieses/quickdock-plugins/releases) 与各插件 `plugin.json` 的 `changelog`。
 
+- **2026-10-23 · 新增 `plugin-scaffold`（插件脚手架）**：可视化填表生成插件骨架——插件信息、runtime（native / goja / none）、分类、权限、命令一次填完，即产出合规的 `plugin.json` + 前端页面 + 后端样板（native 还会带上 `qdlog.go` 日志脚手架），并可选自动接入图标与索引流水线（`glyphs.py` / `gen_icons.py` / `gen_tables.py` / `gen_site.py`）。CLI（`tools/newplugin.py`）与插件 UI 共用同一份生成引擎 `tools/scaffold/engine.py`，两边产出 100% 一致。
+- **2026-10-23 · database 列筛选改为回车提交（1.7.5）**：不再监听输入事件、去掉 450ms 防抖自动过滤——输入过程中不改模型、不触发重渲染，中文输入法（拼音 / 候选词）不会再被打断或丢字；按 Enter 以输入框当前值为准应用筛选，Esc 清空本列。顺带修复上一版筛选「输入 / 回车都没反应」：筛选逻辑调用了 Vue 2 的 `$set`（宿主已是 Vue 3，该方法已移除），三个处理函数都在这行抛 `TypeError`，现改为直接赋值。
 - **2026-10-23 · 设计系统对齐（65 个插件批量）**：UI 图标迁移到共享 SVG 图标层（Lucide 描边图标，替代彩色 emoji，opaque origin 下用 mask-image + data URI 内联）；配色/字号收敛到设计令牌；顶栏统一 44px；文档标签栏改下划线式；emoji 图标门禁接入 check_plugins。
 - **2026-10-23 · 修复图标渲染为实心方块（24 个插件）**：图标层 `icons.css` 头部注释漏写闭合 `*/`，导致 `/*` 一路吞到下一处 `*/`，`:root` 与全部 `--qi-*` 变量被当作注释丢弃，所有图标（文件夹 / 数据库 / 表 / 按钮图标等）退化为实心方块；已补齐注释闭合，并在 `tools/check_icons.mjs` 增加「注释闭合平衡 + 去注释后 `:root` 仍可见」校验，杜绝同类回归。
 - **2026-10-21 · database 标签页右键菜单（参考 VS Code）**：顶部标签栏任意标签上右键即可「关闭 / 关闭其他 / 关闭左侧 / 关闭右侧 / 全部关闭」，一次开很多表和查询标签时不用再挨个点 ×；无可关闭的标签时对应项置灰，菜单靠近窗口边缘自动翻转，Esc 或点击空白处关闭。
@@ -42,9 +44,9 @@
 
 ## 插件分类总览
 
-本仓库共 **79** 个插件，分为 **11** 类。点击分类跳转：
+本仓库共 **80** 个插件，分为 **11** 类。点击分类跳转：
 
-- [开发者日常](#开发者日常)（24）— 数据库 / HTTP / JSON / JWT / Git / 正则 / 时间 ……
+- [开发者日常](#开发者日常)（25）— 数据库 / HTTP / JSON / JWT / Git / 正则 / 插件脚手架 ……
 - [开发工具](#开发工具)（2）— 接口压测 / cURL 转代码
 - [办公效率](#办公效率)（6）— PDF / 思维导图 / 表格转换 / 单位换算 / 字数 / 人民币大写
 - [内容创作](#内容创作)（3）— ASCII 艺术 / 图文卡片 / 视频转 GIF
@@ -58,7 +60,7 @@
 
 <!--PLUGINS_TABLE_START-->
 
-## 开发者日常（24）
+## 开发者日常（25）
 
 | 插件 | 版本 | 说明 |
 |------|------|------|
@@ -78,7 +80,8 @@
 | [包版本速查](./package-check/) | 1.1.5 | 输入包名，并发查询 npm / PyPI / Composer / Go 四个仓库的版本信息；并基于 OSV.dev 查询包版本的已知漏洞（CVE / 安全公告） |
 | [对比工具](./compare/) | 1.0.5 | 文件/图片对比（元数据 + 图片预览 + 文本内容差异）与文本块逐行 Diff 合二为一 |
 | [打字练习](./type-trainer/) | 1.0.5 | 开发者向打字训练器：英文 / 中文 / 代码 / 导入四种模式，支持导入 TXT 字库，实时统计 WPM 与准确率，本地记录历史与最佳成绩 |
-| [数据库客户端](./database/) | 1.7.3 | 轻量数据库连接与查询工具：MySQL / SQLite / Redis 连接管理、SQL 与 Redis 命令执行、库表浏览器（库→表/视图→字段、Redis 键树）、Redis 键类型感知详情与增删改（string/hash/list/set/zset）、TTL 与 DB 管理、结果网格内联行编辑、智能列筛选（运算符/区间/多值/判空，停顿即滤）、勾选批量删除（支持全选匹配筛选的行）。数据独立存储。 |
+| [插件脚手架](./plugin-scaffold/) | 0.1.0 | 可视化生成 QuickDock 插件骨架：填表即产出 plugin.json / 前端 / 后端样板，并自动接入图标与索引流水线 |
+| [数据库客户端](./database/) | 1.7.5 | 轻量数据库连接与查询工具：MySQL / SQLite / Redis 连接管理、SQL 与 Redis 命令执行、库表浏览器（库→表/视图→字段、Redis 键树）、Redis 键类型感知详情与增删改（string/hash/list/set/zset）、TTL 与 DB 管理、结果网格内联行编辑、智能列筛选（运算符/区间/多值/判空，回车即滤）、勾选批量删除（支持全选匹配筛选的行）。数据独立存储。 |
 | [文件哈希](./hash-calc/) | 1.0.8 | 计算文件的 MD5/SHA1/SHA256/SHA512 摘要，结果一键复制 |
 | [文本工具箱](./text-encoder/) | 1.0.7 | Base64 / URL / HTML 编解码，MD5 / SHA1 / SHA256 / SHA512 哈希与 HMAC 签名，Base64 图片识别预览，2/8/10/16 进制互转与字节单位换算 |
 | [时间转换](./time-converter/) | 1.0.4 | Unix 时间戳 / ISO 8601 / 中文日期 / 相对时间互转，支持任意时区偏移输出 |
@@ -234,6 +237,11 @@ python gen_site.py
 
 # 重新生成 README / 开发文档里的插件表格（扫描各插件 plugin.json）
 python gen_tables.py
+
+# 新建插件：脚手架生成 plugin.json / 前端 / 后端样板（与插件内「插件脚手架」共用同一引擎）
+python tools/newplugin.py --interactive                  # 交互式逐项填写
+python tools/newplugin.py --dir my-plugin --name-zh "我的插件" \
+       --runtime none --category 效率工具 --integrate    # --integrate 自动接入图标与索引流水线
 ```
 
 ## 目录结构
@@ -243,11 +251,16 @@ quickdock-plugins/
 ├── build.py            # 插件打包工具（默认 Windows，支持交叉编译）
 ├── gen_site.py         # 插件中心主页生成器
 ├── gen_tables.py       # README / 开发文档插件表格生成器
+├── glyphs.py           # 插件图标字形单一来源（改完跑 gen_icons.py --gen）
+├── gen_icons.py        # 由 glyphs.py 生成各插件 icon.svg / icon.light.svg
 ├── dist/               # 打包产物（windows zip，gitignore 不入库）
 ├── site/index.html     # GitHub Pages 主页（自动生成）
 ├── site/index.json     # 机器可读市场索引（自动生成，应用内在线市场拉取）
 ├── disk-analyzer/      # 示例插件（native Go + 前端页面）
-├── tools/              # 共享代码同步 / 检查 / 插件静态审计脚本
+├── plugin-scaffold/    # 插件脚手架（runtime=none，可视化调用 tools/newplugin.py）
+├── tools/              # 共享代码同步 / 检查 / 插件静态审计
+│   ├── newplugin.py    #   新插件脚手架 CLI（与插件内「插件脚手架」共用同一引擎）
+│   └── scaffold/       #   脚手架生成引擎（generate_plugin，单一逻辑来源）
 ├── templates/          # 共享前端样式单一来源（qd-theme.css / components.css）
 └── .github/workflows/
     ├── build-plugins.yml   # push 自动打包（diff 变更插件 → windows）
@@ -316,6 +329,7 @@ quickdock-plugins/
 ## 开发约定
 
 - 插件 ID 域名反写 `io.github.<账号>.<插件名>`，一个插件一个子目录
+- 新插件一律用脚手架生成（`python tools/newplugin.py` 或应用内「插件脚手架」），不要手写样板：生成即带合规清单、日志脚手架与图标占位，`--integrate` 还会接好 `glyphs.py` / `gen_icons.py` / `gen_tables.py` / `gen_site.py`
 - native 命令名用 **kebab-case**（manifest 声明与分发统一），兼容点号写法
 - 长任务（>2s）务必后台执行 + 立即返回 + 轮询，避开宿主 30s RPC 超时
 - 调试输出写 stderr，绝不污染 stdout 协议
