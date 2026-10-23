@@ -134,7 +134,7 @@
     .rtab-run:hover:not(:disabled) { background:var(--accent-soft); color:var(--accent); border-color:var(--accent); }
     .rtab-run:disabled { opacity:.5; cursor:default; }
 
-    /* ===== 数据页筛选（DataGrip / Navicat 式：智能运算符 + 防抖自动应用） ===== */
+    /* ===== 数据页筛选（DataGrip / Navicat 式：智能运算符 + 回车提交） ===== */
     table.grid.grid-resizable tr.filter-row th { position:sticky; top:27px; z-index:2; height:30px; padding:3px 4px; background:var(--bg-secondary); border-bottom:1px solid var(--border-strong); }
     table.grid.grid-resizable tr.filter-row th.corner { background:var(--bg-tertiary); }
     .col-filter { width:100%; height:24px; padding:0 7px; border:1px solid var(--border); border-radius:4px; background:var(--bg-primary); color:var(--text-primary); font-size: var(--fs-xs); font-family:var(--font-mono); outline:none; transition:border-color .12s ease, background .12s ease, box-shadow .12s ease; }
@@ -528,7 +528,7 @@
               </div>
               <!-- 筛选语法帮助 -->
               <div class="filt-help" v-if="t.filtHelp">
-                <div class="fh-tip">在表头下方的筛选框输入即自动过滤（停顿 0.5 秒生效，Enter 立即应用，Esc 清空本列）；多列之间为 AND。</div>
+                <div class="fh-tip">在表头下方的筛选框输入后按 Enter 应用（Esc 清空本列）；多列之间为 AND。</div>
                 <div class="fh-grid">
                   <span><code>abc</code> 包含 abc</span>
                   <span><code>=abc</code> 等于</span>
@@ -570,8 +570,8 @@
                       <th class="corner"></th>
                       <th v-for="(col,ci) in t.grid.columns" :key="'f'+ci" :class="{filtered: t.filters[col] && String(t.filters[col]).trim()}">
                         <input class="col-filter" :value="t.filters[col] || ''" :data-filt="col"
-                               @input="onFilterInput(t, col, $event)" @keydown="onFilterKey(t, col, $event)"
-                               :placeholder="'筛选 ' + col" :title="filterTitle(col)" />
+                               @keydown="onFilterKey(t, col, $event)"
+                               :placeholder="'筛选 ' + col + ' ⏎'" :title="filterTitle(col)" />
                       </th>
                     </tr>
                   </thead>
@@ -1662,7 +1662,7 @@
           g.error = e.message || String(e)
         })
       },
-      /* ---------- 数据页筛选（DataGrip / Navicat 式：智能运算符 + 防抖自动应用） ---------- */
+      /* ---------- 数据页筛选（DataGrip / Navicat 式：智能运算符 + 回车提交） ---------- */
       // 把筛选框里的原始文本解析成结构化条件，op 与后端 filter.go 白名单一一对应：
       //   isnull / notnull / like / nlike / eq / ne / gt / gte / lt / lte / between / in
       // 解析不了的形状一律按「包含匹配」（like），与旧版本行为一致。
@@ -1737,28 +1737,22 @@
         chips.sort(function(a, b){ return a.col < b.col ? -1 : (a.col > b.col ? 1 : 0) })
         return chips
       },
-      // 筛选框输入：空值立即应用（相当于清除该列）；非空防抖 450ms，停顿即自动过滤
-      onFilterInput: function(t, col, e){
-        var self = this
-        var v = e.target.value
-        this.$set(t.filters, col, v)
-        if(t._filtTimer){ clearTimeout(t._filtTimer); t._filtTimer = null }
-        if(String(v).trim() === ''){ self.applyFilter(t); return }
-        t._filtTimer = setTimeout(function(){ t._filtTimer = null; self.applyFilter(t) }, 450)
-      },
-      // Enter 立即应用；Esc 清空本列并立即应用
+      // 筛选框只在回车时提交（不监听输入事件）：输入过程不改模型、不重渲染，
+      // 受控 :value 不会打断中文输入法；Enter 以输入框当前可见值为准写入模型并筛选。
       onFilterKey: function(t, col, e){
         if(e.key === 'Enter'){
-          if(t._filtTimer){ clearTimeout(t._filtTimer); t._filtTimer = null }
+          // 合成中回车是「确认选词」，交给 IME；选完再按一次回车即筛选
+          if(e.isComposing || e.keyCode === 229) return
+          t.filters[col] = e.target.value
           this.applyFilter(t, true)
         } else if(e.key === 'Escape'){
-          if(t._filtTimer){ clearTimeout(t._filtTimer); t._filtTimer = null }
-          this.$set(t.filters, col, '')
+          t.filters[col] = ''
+          e.target.value = ''
           this.applyFilter(t)
         }
       },
       filterTitle: function(col){
-        return '按 ' + col + ' 筛选（停顿即自动应用）\n' +
+        return '按 ' + col + ' 筛选（输入后按 Enter 应用）\n' +
           '直接输入 = 包含匹配；=值 等于；!=值 不等于\n' +
           '>值 / >=值 / <值 / <=值 比较；值1..值2 区间；1,2,3 多值\n' +
           'null 为 NULL；!=null 非 NULL；~值 LIKE；!~值 NOT LIKE\n' +
@@ -1774,11 +1768,10 @@
         })
       },
       removeFilter: function(t, col){
-        if(t._filtTimer){ clearTimeout(t._filtTimer); t._filtTimer = null }
-        this.$set(t.filters, col, '')
+        t.filters[col] = ''
         this.applyFilter(t)
       },
-      // expandSql：仅用户显式触发（Enter）时才展开 SQL 预览，防抖自动应用不打扰
+      // expandSql：仅用户显式触发（Enter）时才展开 SQL 预览
       applyFilter: function(t, expandSql){
         if(!t || !t.grid) return
         if(expandSql) t.showSql = true // 方便核对/复制本次实际执行的语句
@@ -1786,7 +1779,6 @@
       },
       clearFilter: function(t){
         if(!t) return
-        if(t._filtTimer){ clearTimeout(t._filtTimer); t._filtTimer = null }
         t.filters = {}
         this.reloadData(t, 1)
       },
