@@ -258,6 +258,16 @@
     .tab-menu .tm-i.dim:hover { background:transparent; color:var(--text-disabled); }
     .tab-menu .tm-ico { width:12px; text-align:center; opacity:.9; }
     .tab-menu .tm-sep { height:1px; margin:4px 0; background:var(--border); }
+    /* AI 助手面板 */
+    .ai-panel{ border-bottom:1px solid var(--qi-border,#2a2f3a); background:var(--qi-bg-2,#161a22); padding:8px 10px; }
+    .ai-row{ display:flex; align-items:center; gap:8px; margin:6px 0; flex-wrap:wrap; }
+    .ai-head strong{ font-size:13px; }
+    .ai-prompt{ flex:1 1 100%; min-height:54px; resize:vertical; background:var(--qi-bg-1,#0f131a); color:var(--qi-fg,#e6e6e6);
+                border:1px solid var(--qi-border,#2a2f3a); border-radius:6px; padding:6px 8px; font-size:12px; font-family:inherit; }
+    .ai-out pre{ flex:1 1 100%; margin:0; white-space:pre-wrap; word-break:break-word; background:var(--qi-bg-1,#0f131a);
+                 border:1px solid var(--qi-border,#2a2f3a); border-radius:6px; padding:8px; font-size:12px; max-height:240px; overflow:auto; }
+    .ai-warn{ background:rgba(255,170,0,.08); border:1px solid rgba(255,170,0,.3); border-radius:6px; padding:6px 8px; color:var(--qi-fg,#e6e6e6); font-size:12px; }
+    .ai-err{ color:#ff7b72; font-size:12px; }
   </style>
 </head>
 <body>
@@ -739,11 +749,47 @@
               <button class="btn btn-xs" v-if="t.selText" @click="clearSqlSelection(t)" title="取消选区，恢复执行全部">取消选中</button>
               <button class="btn btn-xs" @click="t.sql=''">清空</button>
               <button class="btn btn-xs" @click="formatSql(t)" title="把 SQL 重新排版：关键字大写、子句换行、AND/OR 缩进、SELECT 列分行">美化</button>
+              <button class="btn btn-xs" @click="toggleAi(t)" :class="{active: ai.open && ai.tabId===t.id}" title="用宿主 AI 档案生成 / 解释 SQL">✦ AI</button>
               <button class="btn btn-xs" @click="exportCsv(t)" :disabled="!t.grid.rows.length">导出 CSV</button>
               <button class="btn btn-xs" @click="openInsert(t)" :disabled="!canCrud(t)">＋ 新增</button>
               <button class="btn btn-xs" @click="deleteRow(t)" :disabled="!canCrud(t) || t.grid.selRow<0">删除行</button>
               <span class="spacer"></span>
               <span class="muted">{{ t.connName }}</span>
+            </div>
+            <!-- AI 助手面板：调用前用 host.ai.available 预检宿主是否配置了 AI 档案 -->
+            <div class="ai-panel" v-if="ai.open && ai.tabId===t.id">
+              <div class="ai-row ai-head">
+                <strong>✦ AI 助手</strong>
+                <span class="muted" v-if="ai.available===true && ai.model">· {{ ai.model }}</span>
+                <span class="spacer"></span>
+                <button class="btn btn-xs" :class="{active: ai.mode==='gen'}" @click="ai.mode='gen'">生成 SQL</button>
+                <button class="btn btn-xs" :class="{active: ai.mode==='explain'}" @click="ai.mode='explain'">解释/优化</button>
+                <button class="btn btn-xs" @click="aiClose">✕</button>
+              </div>
+              <div class="ai-row ai-warn" v-if="ai.available===false">
+                <span>宿主未配置 AI 档案（{{ ai.reason }}）。请在 <b>设置 → AI</b> 中填写 API Key 后重试。</span>
+                <button class="btn btn-xs" @click="checkAi">重试</button>
+              </div>
+              <div class="ai-row muted" v-else-if="ai.checking">检查 AI 可用性…</div>
+              <template v-else>
+                <div class="ai-row" v-if="ai.mode==='gen'">
+                  <textarea class="ai-prompt" v-model="ai.prompt" placeholder="用自然语言描述你想查什么，例如：找出最近 7 天注册且下过单的用户，按注册时间倒序取前 50 个" @keydown.ctrl.enter="aiRun"></textarea>
+                </div>
+                <div class="ai-row ai-actions">
+                  <button class="btn btn-xs btn-primary" @click="aiRun" :disabled="ai.loading">
+                    <template v-if="ai.loading">生成中…</template>
+                    <template v-else>{{ ai.mode==='gen' ? '生成 SQL' : '解释 SQL' }}</template>
+                  </button>
+                  <span class="muted" v-if="ai.mode==='explain'">将解释编辑器中的 SQL（优先选区）</span>
+                  <span class="spacer"></span>
+                  <template v-if="ai.mode==='gen'">
+                    <button class="btn btn-xs" v-if="ai.sql" @click="aiInsert(true)" :disabled="ai.loading">替换编辑器</button>
+                    <button class="btn btn-xs" v-if="ai.sql" @click="aiInsert(false)" :disabled="ai.loading">追加到编辑器</button>
+                  </template>
+                </div>
+                <div class="ai-row ai-out" v-if="ai.output"><pre>{{ ai.output }}</pre></div>
+                <div class="ai-row ai-err" v-if="ai.error">{{ ai.error }}</div>
+              </template>
             </div>
             <div class="sqlwrap">
               <textarea class="sql" ref="sqlArea" :value="t.sql"
@@ -1118,7 +1164,10 @@
         _clickTimer: null,
         // 标签页右键菜单
         tabMenu: { show:false, x:0, y:0, tabId:'' },
-        suggest: { open:false, tabId:'', items:[], index:0, start:0, token:'' }
+        suggest: { open:false, tabId:'', items:[], index:0, start:0, token:'' },
+        // AI 助手：复用宿主 AI 档案（host.ai.ask），调用前用 host.ai.available 预检是否配置
+        ai: { open:false, tabId:'', mode:'gen', prompt:'', output:'', sql:'', loading:false,
+              checking:false, available:null, reason:'', profile:'', model:'', error:'' }
       }
     },
       computed: {
@@ -2102,6 +2151,126 @@
       },
 
       /* ---------- 查询标签页 ---------- */
+      /* ---------- AI 助手（复用宿主 AI 档案） ---------- */
+      // 切换面板：打开时先用 host.ai.available 预检宿主是否配置了 AI 档案，
+      // 避免「盲目调用 host.ai.ask → 拿到未配置/不可用的裸错」。
+      toggleAi: function(t){
+        this.ai.tabId = t.id
+        this.ai.open = !this.ai.open
+        if(this.ai.open) this.checkAi()
+      },
+      aiClose: function(){ this.ai.open = false },
+      // 预检 AI 可用性。老宿主若没有 host.ai.available，available 记为 null（降级为直接试，错误由 aiRun 兜底）。
+      checkAi: function(){
+        var self = this
+        this.ai.checking = true
+        this.ai.available = null
+        var call = window.qdHostCall ? window.qdHostCall('host.ai.available', {}) : Promise.reject(new Error('no bridge'))
+        return Promise.resolve(call).then(function(r){
+          self.ai.checking = false
+          if(r && r.available === true){
+            self.ai.available = true
+            self.ai.profile = r.profile || ''
+            self.ai.model = r.model || ''
+          } else if(r && r.available === false){
+            self.ai.available = false
+            self.ai.reason = r.reason || 'unavailable'
+          } else {
+            self.ai.available = null // 未知：交给 aiRun 试一次
+          }
+        }).catch(function(){
+          self.ai.checking = false
+          self.ai.available = null
+        })
+      },
+      // 从已加载的库表树抽取表/字段上下文，让 AI 生成更准确的 SQL。
+      aiSchema: function(t){
+        var c = this.conns.find(function(x){ return x.id === t.connId })
+        var dbType = c ? c.dbType : 'mysql'
+        var db = t.db || ''
+        var lines = []
+        var tables = (t.tables || [])
+        if(tables.length){
+          tables.slice(0, 60).forEach(function(name){
+            var cols = (t.tableCols && t.tableCols[name]) || []
+            var type = (t.tableTypes && t.tableTypes[name]) || ''
+            lines.push('- ' + name + (type === 'view' ? ' (视图)' : '') + (cols.length ? ': ' + cols.join(', ') : ''))
+          })
+        }
+        var header = '数据库类型: ' + dbType + (db ? '；当前库: ' + db : '') + '。'
+        if(lines.length){
+          header += '可用表与字段（最多 60 张）:\n' + lines.join('\n')
+        } else {
+          header += '（未选择库或尚未加载表结构，请基于常见命名合理推断；如无法确定请如实说明。）'
+        }
+        return header
+      },
+      stripSqlFence: function(s){
+        if(!s) return ''
+        var m = s.match(/```(?:sql)?\s*([\s\S]*?)```/i)
+        if(m) return m[1].trim()
+        return s.trim()
+      },
+      aiRun: function(){
+        var self = this
+        var t = this.tabs.find(function(x){ return x.id === self.ai.tabId })
+        if(!t){ toast('请先打开查询标签','err'); return }
+        if(this.ai.loading) return
+        this.ai.loading = true
+        this.ai.output = ''
+        this.ai.sql = ''
+        this.ai.error = ''
+
+        var question, system
+        if(this.ai.mode === 'gen'){
+          var prompt = (this.ai.prompt || '').trim()
+          if(!prompt){ this.ai.loading = false; toast('请描述你想查什么','err'); return }
+          system = '你是一个数据库 SQL 生成助手。根据用户用自然语言描述的查询需求，生成一条可直接执行的 SQL 语句。' +
+                   '只输出 SQL 本身，不要任何解释、不要 markdown 代码块、不要多余文字。' +
+                   '若上下文不足以确定表/字段，请基于常见命名合理推断并直接给出 SQL。\n\n' + this.aiSchema(t)
+          question = prompt
+        } else {
+          var sel = this.getEditorSelection ? this.getEditorSelection(t) : ''
+          var sql = (sel && sel.trim()) ? sel.trim() : (t.sql || '').trim()
+          if(!sql){ this.ai.loading = false; toast('编辑器为空，无法解释','err'); return }
+          system = '你是一个资深的数据库工程师。请用简明的语言解释下面这条 SQL 的含义，' +
+                   '并指出潜在的性能问题或可以改进的地方（用中文，分点，不要写代码）。'
+          question = '请解释并优化这条 SQL：\n' + sql
+        }
+
+        var onDelta = function(delta){ self.ai.output += delta }
+        var ask = window.qdAiAsk
+          ? window.qdAiAsk({ question: question, system: system, timeoutSec: 60 }, onDelta)
+          : Promise.reject(new Error('宿主未注入 AI 桥（qdAiAsk 不可用）'))
+        Promise.resolve(ask).then(function(res){
+          self.ai.loading = false
+          if(res && res.text) self.ai.output = res.text
+          if(self.ai.mode === 'gen') self.ai.sql = self.stripSqlFence(self.ai.output)
+        }).catch(function(err){
+          self.ai.loading = false
+          var msg = (err && err.message) ? err.message : 'AI 调用失败'
+          // 未配置/不可用：标记 available=false，让面板切到「去设置」提示
+          if(/未配置|不可用|no_profile|no_endpoint|AI 能力|qdAiAsk/.test(msg)){
+            self.ai.available = false
+            if(!self.ai.reason) self.ai.reason = 'no_profile'
+          }
+          self.ai.error = msg
+          toast('AI 调用失败：' + msg, 'err')
+        })
+      },
+      aiInsert: function(replace){
+        var self = this
+        var t = this.tabs.find(function(x){ return x.id === self.ai.tabId })
+        if(!t) return
+        var sql = this.stripSqlFence(this.ai.output)
+        if(!sql){ toast('没有可插入的 SQL','err'); return }
+        if(replace){
+          t.sql = sql
+        } else {
+          t.sql = (t.sql && t.sql.trim()) ? (t.sql.replace(/\s*$/, '') + '\n' + sql) : sql
+        }
+        toast('已插入 SQL','ok')
+      },
       newQueryTab: function(){
         var c = this.selectedConn
         if(!c){ toast('请先选择连接','err'); return null }

@@ -8,6 +8,19 @@
   <link rel="stylesheet" href="components.css">
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="icons.css">
+<style>
+.re-ai-block{background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius);padding:8px;display:flex;flex-direction:column;gap:6px;flex-shrink:0}
+.re-ai-title{font-size:var(--fs-sm);color:var(--text-secondary);font-weight:500}
+.re-ai-row-inline{display:flex;gap:8px;align-items:center}
+.re-ai-desc{flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-tertiary);color:var(--text-primary);font-size:var(--fs-sm);outline:none}
+.re-ai-desc:focus-visible{border-color:var(--accent)}
+.re-ai-use{font-size:var(--fs-xs);color:var(--text-muted);display:flex;align-items:center;gap:4px;white-space:nowrap}
+.re-ai-status{font-size:var(--fs-xs);line-height:1.5;padding:4px 6px;border-radius:6px;white-space:pre-wrap}
+.re-ai-status.loading{color:var(--text-secondary)}
+.re-ai-status.ok{color:var(--accent)}
+.re-ai-status.err{color:var(--danger);background:rgba(229,72,77,.10)}
+.re-ai-status.warn{color:#b8860b}
+</style>
 <script>
 /* QuickDock sandbox 剪贴板桥接：iframe 内 navigator.clipboard 被 Permissions-Policy 禁用 */
 window.__cpSeq=0;
@@ -17,6 +30,16 @@ window.copyViaHost=function(t,cb){var id='cp_'+(++window.__cpSeq),done=false;fun
 </head>
 <body>
 <div class="re-app">
+  <!-- AI 生成正则：自然语言 → 正则（复用宿主 AI 档案，调用前预检） -->
+  <div class="re-ai-block">
+    <div class="re-ai-head"><span class="re-ai-title">✦ AI 生成正则</span></div>
+    <div class="re-ai-row-inline">
+      <input type="text" id="aiDesc" class="re-input re-ai-desc" placeholder="描述你想提取什么，例如：提取所有邮箱地址" spellcheck="false">
+      <label class="re-ai-use"><input type="checkbox" id="aiUseText" checked> 用上方文本作示例</label>
+      <button class="re-btn re-btn-primary re-btn-sm" id="btnAiGen" type="button">✦ 生成</button>
+    </div>
+    <div class="re-ai-status" id="aiStatus" style="display:none"></div>
+  </div>
   <!-- 模式切换 -->
   <div class="re-mode">
     <button class="re-mode-btn active" id="modeExtract"><span class="qi qi-search"></span> 提取</button>

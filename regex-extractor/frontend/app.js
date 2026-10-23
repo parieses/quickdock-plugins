@@ -237,4 +237,60 @@
 
   // 聚焦入口
   patternInput.focus()
+
+  /* ---------- AI 生成正则（复用宿主 AI 档案，调用前用 host.ai.available 预检） ---------- */
+  var aiDesc = document.getElementById('aiDesc')
+  var aiStatus = document.getElementById('aiStatus')
+  var btnAiGen = document.getElementById('btnAiGen')
+  var aiUseText = document.getElementById('aiUseText')
+  function setAiStatus(msg, kind) {
+    aiStatus.style.display = 'block'; aiStatus.textContent = msg
+    aiStatus.className = 're-ai-status' + (kind ? ' ' + kind : '')
+  }
+  // 从 AI 返回文本里截取正则：优先 /pattern/flags，否则取首行
+  function extractRegex(text) {
+    if (!text) return null
+    var m = text.match(/\/((?:\\\/|[^\/\n])+)\/([gimsuy]*)/)
+    if (m) return { pattern: m[1], flags: m[2] || 'g' }
+    var line = text.split('\n').map(function(s){ return s.trim() }).filter(Boolean)[0] || ''
+    line = line.replace(/^`+|`+$/g, '').replace(/^```(?:regex|js)?\s*|\s*```$/g, '')
+    if (line) return { pattern: line, flags: 'g' }
+    return null
+  }
+  function aiGen() {
+    var desc = aiDesc.value.trim()
+    if (!desc) { setAiStatus('请输入要提取的内容描述', 'warn'); return }
+    setAiStatus('正在生成正则…', 'loading')
+    var pre = window.qdHostCall ? window.qdHostCall('host.ai.available', {}) : Promise.reject(new Error('no bridge'))
+    Promise.resolve(pre).then(function(r){
+      if (r && r.available === false) { setAiStatus('宿主未配置 AI 档案，请到「设置 → AI 配置」中填写后重试', 'err'); return }
+      doAsk()
+    }).catch(function(){ doAsk() })
+  }
+  function doAsk() {
+    var sample = (aiUseText && aiUseText.checked) ? textInput.value.trim() : ''
+    var system = '你是正则表达式专家。根据用户用自然语言描述的提取需求，生成一条 JavaScript 风格的正则表达式。' +
+      '优先以 /pattern/flags 格式返回（flags 常用 g）；若无法确定 flags 则只返回正则体。' +
+      '只返回正则本身，不要任何解释、不要 markdown、不要多余文字。'
+    var question = aiDesc.value.trim()
+    if (sample) question += '\n\n待匹配文本示例（仅供理解语境，不要写死具体内容）：\n' + sample.slice(0, 2000)
+    var onDelta = function(){}
+    var ask = window.qdAiAsk ? window.qdAiAsk({ question: question, system: system, timeoutSec: 60 }, onDelta)
+      : Promise.reject(new Error('宿主未注入 AI 桥（qdAiAsk 不可用）'))
+    Promise.resolve(ask).then(function(res){
+      var text = (res && res.text) ? res.text : ''
+      var r = extractRegex(text)
+      if (!r) { setAiStatus('AI 未返回有效正则，原始返回：' + text.slice(0, 200), 'err'); return }
+      patternInput.value = r.pattern
+      flagsInput.value = r.flags || 'g'
+      setAiStatus('已生成正则：/' + r.pattern + '/' + (r.flags || 'g') + '（已填入上方，自动执行）', 'ok')
+      if (textInput.value.trim()) doProcess()
+    }).catch(function(err){
+      var msg = (err && err.message) || 'AI 调用失败'
+      if (/未配置|不可用|no_profile|no_endpoint|AI 能力|qdAiAsk/.test(msg)) setAiStatus('宿主未配置 AI 档案，请到「设置 → AI 配置」中填写后重试', 'err')
+      else setAiStatus('AI 调用失败：' + msg, 'err')
+    })
+  }
+  btnAiGen.addEventListener('click', aiGen)
+  aiDesc.addEventListener('keydown', function(e){ if (e.key === 'Enter') aiGen() })
 })()

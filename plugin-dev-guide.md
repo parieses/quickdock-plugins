@@ -528,6 +528,7 @@ Host Method 是宿主注册的能力表。**三种运行时共用同一张表、
 | `host.crypto.encrypt` | AES-256-GCM 加密 → `{iv, data}`（均为 base64）；参数 `{password, salt, plaintext}`，明文上限 1 MiB，PBKDF2 100000 次 | 无需权限 |
 | `host.crypto.decrypt` | AES-256-GCM 解密 → `{plaintext}`（base64）；参数 `{password, salt, iv, data}`，与 `encrypt` 对称 | 无需权限 |
 | `host.ai.ask` | 用宿主 AI 档案做问答 → `{text, model}`；参数 `{question, system?, timeoutSec?, streamId?}`；带 `streamId` 时沿途下发 `host.ai.delta` 增量通知（详见「AI 能力」）；凭据留在后端 | 无需权限 |
+| `host.ai.available` | 预检宿主是否已配置可用 AI 档案 → `{available, reason, profile, model}`；调用 `host.ai.ask` 前先查，避免盲目调用拿到「未配置 / 不可用」裸错 | 无需权限 |
 
 > ⚠️ **`host.dialog.*` 有两条路径，权限要求不同——别搞混：**
 >
@@ -928,6 +929,25 @@ function handleExecute(params) {
 const todos = await qdHostCall('host.mcp.call', { tool: 'todo_list', args: {} })
 const r = await qdAiAsk({ question: '帮我按优先级整理这些待办：\n' + JSON.stringify(todos.result) })
 ```
+
+### 预检可用性（`host.ai.available`）
+
+调用 `host.ai.ask` 前，先用本方法判断宿主是否已配置可用的 AI 档案——**未配置时 `host.ai.ask` 会直接以 error 返回**（`reason=no_profile` / `no_endpoint`），插件若不做预检就只能拿到裸错。本方法无权限门，不触碰任何凭据。
+
+```js
+const a = await qdHostCall('host.ai.available', {})
+if (!a.available) {
+  alert('请在 设置 → AI 中配置 AI 档案（' + a.reason + '）')
+} else {
+  const r = await qdAiAsk({ question: '...' })   // 这时代价已知可控
+}
+```
+
+返回 `{ available, reason, profile, model }`：
+- `available=false` 时 `reason ∈ { no_profile, no_endpoint, unavailable }`；
+- `available=true` 时 `profile` / `model` 为实际使用的激活档案名与模型名，可在 UI 上展示。
+
+老宿主若没有此方法，`qdHostCall` 会以「未知方法」reject，插件应降级为「直接试一次 + 捕获错误提示」，不要把它当作致命失败。
 
 相关能力：`host.clipboard.read/write` 读写系统剪贴板（需 `permissions.clipboard`）。
 

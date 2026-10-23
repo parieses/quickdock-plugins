@@ -22,6 +22,16 @@
 .p-vis-active{background:var(--accent)}
 .p-vis-inactive{background:var(--bg-tertiary)}
 
+/* AI 生成 cron */
+.ai-block{background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius);padding:8px;display:flex;flex-direction:column;gap:6px}
+.p-btn-ai{background:var(--accent);color:#fff;border-color:var(--accent)}
+.p-btn-ai:hover{background:var(--accent-hover)}
+.ai-status{font-size:var(--fs-xs);line-height:1.5;padding:4px 6px;border-radius:6px;white-space:pre-wrap}
+.ai-status.loading{color:var(--text-secondary)}
+.ai-status.ok{color:var(--accent)}
+.ai-status.err{color:var(--danger);background:rgba(229,72,77,.10)}
+.ai-status.warn{color:#b8860b}
+
 /* 标签页 */
 .pane{display:flex;flex-direction:column;flex:1;min-height:0;gap:8px}
 
@@ -50,6 +60,16 @@ select.p-input{cursor:pointer}
 
   <!-- ============ 解释 ============ -->
   <div class="pane" id="pane-explain">
+    <!-- AI 生成：自然语言 → cron 表达式（复用宿主 AI 档案，调用前预检） -->
+    <div class="ai-block">
+      <div class="p-label">✦ AI 生成（用中文描述你想怎么定时）</div>
+      <div class="p-row">
+        <input type="text" id="aiPrompt" class="p-input" placeholder="例如：工作日每天早上 9 点执行一次" spellcheck="false">
+        <button class="p-btn p-btn-ai" id="btnAiGen" type="button">✦ AI 生成</button>
+      </div>
+      <div class="ai-status" id="aiStatus" style="display:none"></div>
+    </div>
+
     <div class="p-label">Cron 表达式</div>
     <div class="p-row">
       <input type="text" id="inputField" class="input" placeholder="*/5 * * * *" spellcheck="false" autofocus>
@@ -159,6 +179,44 @@ function applyStaticL10n() {
   function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
   btn.addEventListener('click',explain);input.addEventListener('keydown',function(e){if(e.key==='Enter')explain()})
   document.addEventListener('keydown',function(e){if(e.key==='Escape')input.focus()})
+
+  /* ---------- AI 生成 cron（复用宿主 AI 档案，调用前用 host.ai.available 预检） ---------- */
+  var aiPrompt=document.getElementById('aiPrompt'),aiStatus=document.getElementById('aiStatus'),btnAiGen=document.getElementById('btnAiGen')
+  function setAiStatus(msg,kind){aiStatus.style.display='block';aiStatus.textContent=msg;aiStatus.className='ai-status'+(kind?' '+kind:'')}
+  // 从 AI 返回文本里截取第一条合法 5 段 cron 表达式
+  function extractCron(text){
+    if(!text)return ''
+    var m=text.replace(/```/g,'').match(/([*/,\-0-9?LW#]+)\s+([*/,\-0-9?LW#]+)\s+([*/,\-0-9?LW#]+)\s+([*/,\-0-9?LW#]+)\s+([*/,\-0-9?LW#]+)/)
+    return m?m.slice(1,6).join(' '):''
+  }
+  function aiGen(){
+    var prompt=aiPrompt.value.trim()
+    if(!prompt){setAiStatus('请输入要生成的定时任务描述','warn');return}
+    setAiStatus('正在生成 cron 表达式…','loading')
+    var pre=window.qdHostCall?window.qdHostCall('host.ai.available',{}):Promise.reject(new Error('no bridge'))
+    Promise.resolve(pre).then(function(r){
+      if(r&&r.available===false){setAiStatus('宿主未配置 AI 档案，请到「设置 → AI 配置」中填写后重试','err');return}
+      doAsk()
+    }).catch(function(){doAsk()})
+  }
+  function doAsk(){
+    var system='你是 cron 表达式专家。根据用户用自然语言描述的定时任务需求，返回一条标准 5 段 cron 表达式（格式：分 时 日 月 周）。'+
+      '只返回表达式本身，不要任何解释、不要 markdown 代码块、不要多余文字。常见写法：* 任意，*/n 每 n，1-5 范围，1,3,5 列举，? 不指定某段。'
+    var onDelta=function(){}
+    var ask=window.qdAiAsk?window.qdAiAsk({question:aiPrompt.value.trim(),system:system,timeoutSec:60},onDelta):Promise.reject(new Error('宿主未注入 AI 桥（qdAiAsk 不可用）'))
+    Promise.resolve(ask).then(function(res){
+      var text=(res&&res.text)?res.text:''
+      var expr=extractCron(text)
+      if(!expr){setAiStatus('AI 未返回有效 cron 表达式，原始返回：'+text.slice(0,200),'err');return}
+      input.value=expr;setAiStatus('已生成：'+expr+'（已填入上方并解释）','ok');explain()
+    }).catch(function(err){
+      var msg=(err&&err.message)||'AI 调用失败'
+      if(/未配置|不可用|no_profile|no_endpoint|AI 能力|qdAiAsk/.test(msg))setAiStatus('宿主未配置 AI 档案，请到「设置 → AI 配置」中填写后重试','err')
+      else setAiStatus('AI 调用失败：'+msg,'err')
+    })
+  }
+  btnAiGen.addEventListener('click',aiGen)
+  aiPrompt.addEventListener('keydown',function(e){if(e.key==='Enter')aiGen()})
 
   /* ---------- 标签页切换 ---------- */
   document.querySelectorAll('.tab').forEach(function(t){
