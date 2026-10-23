@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <link rel="stylesheet" href="qd-theme.css">
   <link rel="stylesheet" href="components.css">
+<link rel="stylesheet" href="icons.css">
   <style>
     body { overflow:hidden; }
 
@@ -11,26 +12,14 @@
     .db { display:flex; flex-direction:column; height:100vh; background:var(--bg-primary); }
 
     /* 顶部工具条 */
-    .tb { display:flex; align-items:center; gap:6px; height:40px; padding:0 10px; background:var(--bg-secondary); border-bottom:1px solid var(--border); flex-shrink:0; }
+    .tb { display:flex; align-items:center; gap:6px; height:44px; padding:0 10px; background:var(--bg-secondary); border-bottom:1px solid var(--border); flex-shrink:0; }
     .tb-brand { display:flex; align-items:center; gap:6px; font-size:var(--fs-md); font-weight:var(--fw-semibold); color:var(--text-primary); margin-right:4px; }
     .tb-sep { width:1px; height:18px; background:var(--border); margin:0 2px; }
     .tb .spacer { flex:1; }
     .tb-meta { font-size:var(--fs-xs); color:var(--text-muted); }
 
-    .btn2 { display:inline-flex; align-items:center; gap:4px; height:26px; padding:0 9px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg-tertiary); color:var(--text-secondary); font-size:var(--fs-xs); cursor:pointer; white-space:nowrap; transition:background var(--transition), color var(--transition), border-color var(--transition); }
-    .btn2:hover { background:var(--bg-hover); color:var(--text-primary); border-color:var(--border-strong); }
-    .btn2:active { background:var(--bg-active); }
-    .btn2.on { background:var(--accent-soft); border-color:var(--accent); color:var(--accent); }
-    .btn2:disabled { opacity:.45; cursor:not-allowed; }
-    .btn2.solid { background:var(--accent); border-color:var(--accent); color:#fff; }
-    .btn2.solid:hover { background:var(--accent-hover); color:#fff; }
-    .btn2.ico { padding:0 6px; }
-    .btn2.xs { height:22px; padding:0 7px; font-size:10.5px; }
-
-    .inp2 { height:26px; padding:0 8px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg-primary); color:var(--text-primary); font-size:var(--fs-xs); outline:none; }
-    .inp2:focus { border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-soft); }
-    .inp2::placeholder { color:var(--text-placeholder); }
-    select.inp2 { padding-right:4px; }
+    /* 工具条按钮 / 输入框统一走共享组件层（components.css）：
+       .btn-xs(26px) / .btn-xxs(22px) / .input-sm(26px)，此处不再本地重定义。 */
 
     /* 主体两栏 */
     .body { flex:1; display:flex; overflow:hidden; }
@@ -45,40 +34,36 @@
     .conn:hover { background:var(--bg-hover); }
     .conn.active { background:var(--accent-soft); color:var(--text-primary); }
     .conn .nm { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:var(--fw-medium); }
-    .conn .tp { font-size:9.5px; color:var(--text-disabled); flex-shrink:0; }
+    .conn .tp { font-size: var(--fs-xs); color:var(--text-disabled); flex-shrink:0; }
     .conn .acts { display:none; gap:1px; flex-shrink:0; }
     .conn:hover .acts { display:flex; }
     .cdot { width:8px; height:8px; border-radius:50%; flex-shrink:0; box-shadow:0 0 0 1px var(--border); }
     .side-filter { padding:5px 8px; border-bottom:1px solid var(--border); }
-    .side-filter .inp2 { width:100%; height:24px; }
+    .side-filter .input { width:100%; height:24px; }
 
     .dbnode { display:flex; align-items:center; gap:5px; height:24px; padding:0 6px 0 22px; cursor:pointer; color:var(--text-secondary); font-size:var(--fs-sm); }
     .dbnode:hover { background:var(--bg-hover); }
     .dbnode.active { background:var(--accent-soft); color:var(--text-primary); }
     .dbnode .nm { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .dbnode .dt { font-size:9.5px; color:var(--text-disabled); font-family:var(--font-mono); flex-shrink:0; }
+    .dbnode .dt { font-size: var(--fs-xs); color:var(--text-disabled); font-family:var(--font-mono); flex-shrink:0; }
 
-    .caret { width:14px; flex-shrink:0; text-align:center; font-size:9px; color:var(--text-muted); }
+    .caret { width:14px; flex-shrink:0; text-align:center; font-size: var(--fs-xs); color:var(--text-muted); }
     .caret.blank { visibility:hidden; }
-    .oico { flex-shrink:0; font-size:11px; opacity:.85; }
+    .oico { flex-shrink:0; font-size: var(--fs-xs); opacity:.85; }
+    /* .oico 兼作图标盒：给出固定尺寸，避免 .qi 的 1em 跟随 --fs-xs 缩到 11px */
+    .oico.qi { width:14px; height:14px; font-size:14px; }
     .side-empty { padding:18px 14px; text-align:center; color:var(--text-disabled); font-size:var(--fs-xs); line-height:1.9; }
     .side-load { padding:5px 8px 5px 22px; color:var(--text-muted); font-size:var(--fs-xs); }
-    .act { border:none; background:none; color:var(--text-muted); cursor:pointer; font-size:11px; line-height:1; padding:3px 4px; border-radius:4px; }
+    .act { border:none; background:none; color:var(--text-muted); cursor:pointer; font-size: var(--fs-xs); line-height:1; padding:3px 4px; border-radius:4px; }
     .act:hover { background:var(--bg-active); color:var(--accent); }
     .act.del:hover { color:var(--danger); }
+    /* 图标按钮：伪元素图标按 1em 缩放，需给固定尺寸避免只有 11px */
+    .act.qi-ico::before { width:13px; height:13px; }
+    .act.qi-ico { gap:4px; }
 
     /* ===== 右：标签页 ===== */
     .main { flex:1; min-width:0; display:flex; flex-direction:column; overflow:hidden; }
-    .tabs { display:flex; align-items:stretch; height:33px; background:var(--bg-secondary); border-bottom:1px solid var(--border); overflow-x:auto; overflow-y:hidden; flex-shrink:0; }
-    .tabs::-webkit-scrollbar { height:4px; }
-    .tab { display:flex; align-items:center; gap:5px; padding:0 8px 0 10px; border-right:1px solid var(--border); border-top:2px solid transparent; font-size:var(--fs-sm); color:var(--text-muted); cursor:pointer; max-width:210px; flex-shrink:0; }
-    .tab:hover { background:var(--bg-hover); color:var(--text-secondary); }
-    .tab.active { background:var(--bg-primary); color:var(--text-primary); border-top-color:var(--accent); }
-    .tab .tt { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .tab .tx { font-size:13px; line-height:1; padding:1px 3px; border-radius:3px; color:var(--text-disabled); opacity:0; }
-    .tab:hover .tx, .tab.active .tx { opacity:1; }
-    .tab .tx:hover { background:var(--bg-active); color:var(--danger); }
-    .tab-fill { flex:1; border-right:none; }
+    .tab-fill { flex:1; }
     .pane { flex:1; min-height:0; display:flex; flex-direction:column; overflow:hidden; }
 
     /* 子工具条 */
@@ -90,12 +75,6 @@
     .muted { color:var(--text-muted); font-size:var(--fs-xs); }
     .mono { font-family:var(--font-mono); }
     .num { text-align:right; font-family:var(--font-mono); }
-
-    .seg { display:inline-flex; border:1px solid var(--border); border-radius:var(--radius-sm); overflow:hidden; }
-    .seg button { height:24px; padding:0 11px; border:none; background:var(--bg-tertiary); color:var(--text-muted); font-size:var(--fs-xs); cursor:pointer; }
-    .seg button + button { border-left:1px solid var(--border); }
-    .seg button:hover { color:var(--text-primary); background:var(--bg-hover); }
-    .seg button.on { background:var(--accent-soft); color:var(--accent); font-weight:var(--fw-semibold); }
 
     /* ===== 网格 ===== */
     .gridwrap { flex:1; overflow:auto; min-height:0; position:relative; }
@@ -147,30 +126,52 @@
     .rtab:hover { background:var(--bg-hover); color:var(--text-primary); }
     .rtab.active { background:var(--bg-primary); color:var(--text-primary); box-shadow: inset 0 -2px 0 var(--accent); }
     .rtab-no { font-weight:var(--fw-medium); }
-    .rtab-badge { font-size:10px; padding:1px 6px; border-radius:8px; background:var(--bg-tertiary); color:var(--text-muted); }
+    .rtab-badge { font-size: var(--fs-xs); padding:1px 6px; border-radius:8px; background:var(--bg-tertiary); color:var(--text-muted); }
     .rtab-badge.bad-ok { background:var(--success-soft); color:var(--success); }
     .rtab-badge.bad-err { background:var(--danger-soft); color:var(--danger); }
     .rtab-badge.bad-aff { background:var(--warning-soft); color:var(--warning); }
-    .rtab-run { margin-left:2px; padding:1px 6px; border:1px solid var(--border); border-radius:5px; background:var(--bg-tertiary); color:var(--text-muted); font-size:11px; line-height:1.4; cursor:pointer; }
+    .rtab-run { margin-left:2px; padding:1px 6px; border:1px solid var(--border); border-radius:5px; background:var(--bg-tertiary); color:var(--text-muted); font-size: var(--fs-xs); line-height:1.4; cursor:pointer; }
     .rtab-run:hover:not(:disabled) { background:var(--accent-soft); color:var(--accent); border-color:var(--accent); }
     .rtab-run:disabled { opacity:.5; cursor:default; }
 
-    /* ===== 数据页筛选行（Navicat 式） ===== */
-    table.grid.grid-resizable tr.filter-row th { position:sticky; top:27px; z-index:2; height:26px; padding:2px 4px; background:var(--bg-secondary); border-bottom:1px solid var(--border); }
+    /* ===== 数据页筛选（DataGrip / Navicat 式：智能运算符 + 防抖自动应用） ===== */
+    table.grid.grid-resizable tr.filter-row th { position:sticky; top:27px; z-index:2; height:30px; padding:3px 4px; background:var(--bg-secondary); border-bottom:1px solid var(--border-strong); }
     table.grid.grid-resizable tr.filter-row th.corner { background:var(--bg-tertiary); }
-    .col-filter { width:100%; height:20px; padding:0 5px; border:1px solid var(--border); border-radius:3px; background:var(--bg-primary); color:var(--text-primary); font-size:11px; outline:none; }
-    .col-filter:focus { border-color:var(--accent); }
-    .pill.filt { background:var(--accent-soft); color:var(--accent); }
+    .col-filter { width:100%; height:24px; padding:0 7px; border:1px solid var(--border); border-radius:4px; background:var(--bg-primary); color:var(--text-primary); font-size: var(--fs-xs); font-family:var(--font-mono); outline:none; transition:border-color .12s ease, background .12s ease, box-shadow .12s ease; }
+    .col-filter::placeholder { color:var(--text-placeholder); font-size: var(--fs-xs); }
+    .col-filter:hover { border-color:var(--border-strong); }
+    .col-filter:focus-visible { border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-soft); }
+    /* 已生效的列：输入框高亮，一眼看出哪几列在筛选 */
+    tr.filter-row th.filtered .col-filter { border-color:var(--accent); background:var(--accent-soft); color:var(--accent); font-weight:var(--fw-semibold); }
+    /* 表头「筛」角标：标记该列当前有筛选条件 */
+    .filt-mark { display:inline-flex; align-items:center; margin-left:5px; padding:0 4px; border-radius:3px; background:var(--accent); color:#fff; font-size: var(--fs-xs); line-height:14px; font-weight:var(--fw-semibold); vertical-align:middle; }
+    /* 筛选行左上角「?」：开关语法帮助 */
+    .filt-help-btn { width:16px; height:16px; padding:0; border:1px solid var(--border); border-radius:50%; background:var(--bg-primary); color:var(--text-muted); font-size: var(--fs-xs); line-height:1; cursor:pointer; transition:border-color .12s, color .12s, background .12s; }
+    .filt-help-btn:hover { border-color:var(--accent); color:var(--accent); }
+    .filt-help-btn.on { border-color:var(--accent); color:#fff; background:var(--accent); }
+
+    /* 筛选条件 chips 条：集中展示 / 定位 / 移除各列条件 */
+    .filtbar { display:flex; align-items:center; gap:6px; flex-wrap:wrap; padding:5px 9px; background:var(--bg-secondary); border-bottom:1px solid var(--border); flex-shrink:0; font-size:var(--fs-xs); }
+    .filtbar-lb { color:var(--text-muted); font-weight:var(--fw-semibold); flex-shrink:0; }
+    .filtbar .spacer { flex:1; }
+    .fchip { display:inline-flex; align-items:center; gap:5px; max-width:360px; padding:2px 3px 2px 8px; border:1px solid var(--accent); border-radius:var(--radius-pill); background:var(--accent-soft); color:var(--accent); cursor:pointer; transition:background .12s, color .12s; }
+    .fchip:hover { background:var(--accent); color:#fff; }
+    .fchip b { font-family:var(--font-mono); font-weight:var(--fw-semibold); flex-shrink:0; }
+    .fchip i { font-style:normal; font-family:var(--font-mono); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .fchip-x { flex-shrink:0; border:none; background:none; color:inherit; cursor:pointer; font-size: var(--fs-xs); line-height:1; padding:2px 4px; border-radius:50%; opacity:.7; }
+    .fchip-x:hover { opacity:1; background:rgba(0,0,0,.18); }
+
+    /* 筛选语法帮助条 */
+    .filt-help { flex-shrink:0; padding:7px 11px 8px; background:var(--bg-tertiary); border-bottom:1px solid var(--border); font-size:var(--fs-xs); color:var(--text-secondary); }
+    .filt-help .fh-tip { color:var(--text-muted); margin-bottom:4px; }
+    .filt-help .fh-grid { display:flex; flex-wrap:wrap; gap:1px 20px; line-height:1.9; }
+    .filt-help .fh-grid > span { white-space:nowrap; }
+    .filt-help code { font-family:var(--font-mono); background:var(--bg-active); border-radius:3px; padding:0 4px; color:var(--accent); }
     /* 大字段单元格：限制高度，超出滚动，避免单行被撑得很高 */
     table.grid td .cell { max-height:140px; overflow:auto; white-space:pre-wrap; word-break:break-all; font-family:var(--font-mono); font-size:var(--fs-xs); line-height:1.5; }
     tr.no-hover:hover td { background:transparent !important; }
     .tname { color:var(--text-primary); display:flex; align-items:center; gap:7px; }
-    .tag2 { display:inline-flex; align-items:center; padding:1px 6px; border-radius:3px; font-size:10px; line-height:15px; flex-shrink:0; }
-    .tag2.t-view { background:var(--warning-soft); color:var(--warning); }
-    .tag2.t-table { background:var(--bg-active); color:var(--text-muted); }
-    .tag2.t-pri { background:var(--accent-soft); color:var(--accent); font-family:var(--font-mono); }
-    .tag2.t-uni { background:var(--success-soft); color:var(--success); font-family:var(--font-mono); }
-    .tag2.t-mul { background:var(--bg-active); color:var(--text-muted); font-family:var(--font-mono); }
+    /* 表/视图/主键标记统一走共享层 .badge.badge-square（+ badge-mono / 语义色变体） */
 
     /* 分页条 */
     .pager { display:flex; align-items:center; gap:5px; height:31px; padding:0 9px; border-top:1px solid var(--border); background:var(--bg-secondary); flex-shrink:0; font-size:var(--fs-xs); }
@@ -199,26 +200,21 @@
     .suggest { position:absolute; top:158px; left:0; right:0; z-index:50; background:var(--bg-secondary); border:1px solid var(--border-strong); border-radius:var(--radius-sm); box-shadow:var(--shadow-2); max-height:224px; overflow:auto; }
     .suggest .sg-item { display:flex; align-items:center; gap:8px; padding:5px 10px; cursor:pointer; font-size:var(--fs-sm); }
     .suggest .sg-item.active, .suggest .sg-item:hover { background:var(--accent-soft); }
-    .suggest .sg-kind { font-size:9.5px; padding:1px 6px; border-radius:3px; color:#fff; flex-shrink:0; }
+    .suggest .sg-kind { font-size: var(--fs-xs); padding:1px 6px; border-radius:3px; color:#fff; flex-shrink:0; }
     .suggest .sg-kind.kw { background:var(--accent); }
     .suggest .sg-kind.tbl { background:var(--success); }
     .suggest .sg-kind.col { background:var(--warning); }
     .suggest .sg-name { font-family:var(--font-mono); color:var(--text-primary); }
-    .suggest .sg-tail { margin-left:auto; font-size:10px; color:var(--text-muted); }
+    .suggest .sg-tail { margin-left:auto; font-size: var(--fs-xs); color:var(--text-muted); }
     /* 表名紧凑视图（简名）：干净表格，只列名称，多列紧凑排布 */
     .namelist-wrap { flex:1; overflow:auto; min-height:0; padding:6px 8px; }
     table.namelist { width:100%; border-collapse:collapse; table-layout:fixed; }
     table.namelist td.ncell { height:30px; padding:0 10px; border:1px solid var(--border); cursor:pointer; vertical-align:middle; color:var(--text-secondary); font-size:var(--fs-sm); }
     table.namelist td.ncell:hover { background:var(--bg-hover); color:var(--text-primary); }
     table.namelist td.ncell.sel { background:var(--accent-soft); color:var(--accent); }
-    table.namelist td.ncell .oico { font-size:11px; opacity:.8; margin-right:6px; }
+    table.namelist td.ncell .oico { font-size: var(--fs-xs); opacity:.8; margin-right:6px; }
     table.namelist td.ncell .nnm { display:inline-block; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; vertical-align:middle; }
     .statusbar { display:flex; align-items:center; gap:8px; min-height:30px; padding:0 10px; border-bottom:1px solid var(--border); background:var(--bg-secondary); font-size:var(--fs-xs); flex-shrink:0; flex-wrap:wrap; }
-    .pill { padding:1px 8px; border-radius:var(--radius-pill); font-weight:var(--fw-semibold); font-size:10.5px; }
-    .pill.ok { background:var(--success-soft); color:var(--success); }
-    .pill.err { background:var(--danger-soft); color:var(--danger); }
-    .pill.info { background:var(--accent-soft); color:var(--accent); }
-    .pill.warn { background:var(--warning-soft); color:var(--warning); }
 
     .empty { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; flex:1; color:var(--text-disabled); font-size:var(--fs-sm); padding:28px; text-align:center; line-height:1.9; }
     .empty .big { font-size:30px; opacity:.5; }
@@ -239,15 +235,11 @@
     .kd-idx { color:var(--text-disabled); min-width:28px; text-align:right; }
     .kd-val { flex:1; word-break:break-all; }
     .textarea2 { width:100%; min-height:170px; padding:9px 11px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg-primary); color:var(--text-primary); font-family:var(--font-mono); font-size:var(--fs-xs); line-height:1.6; resize:vertical; outline:none; }
-    .textarea2:focus { border-color:var(--accent); }
+    .textarea2:focus-visible { border-color:var(--accent); }
 
     /* ===== 弹窗 / 提示 ===== */
-    .mask { position:fixed; inset:0; background:rgba(0,0,0,.5); display:flex; align-items:center; justify-content:center; z-index:300; }
-    .modal { width:500px; max-width:92vw; max-height:88vh; overflow:auto; background:var(--bg-secondary); border:1px solid var(--border); border-radius:var(--radius-lg); padding:16px; display:flex; flex-direction:column; box-shadow:var(--shadow-2); }
-    .modal-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; font-size:var(--fs-lg); font-weight:var(--fw-semibold); }
-    .field { display:flex; flex-direction:column; gap:5px; margin-bottom:9px; }
-    .field label { font-size:var(--fs-sm); color:var(--text-muted); }
-    .field .p-input, .field select, .field input { width:100%; }
+    .field-row > label { font-size:var(--fs-sm); color:var(--text-muted); }
+    .field-row .p-input, .field-row select, .field-row input { width:100%; }
     .row2 { display:flex; gap:8px; }
     .row2 > * { flex:1; min-width:0; }
     .abar { display:flex; align-items:center; gap:8px; margin-top:12px; }
@@ -273,12 +265,12 @@
   <div class="db">
     <!-- 顶部工具条 -->
     <div class="tb">
-      <span class="tb-brand">🗄 数据库客户端</span>
-      <button class="btn2" @click="openConnModal()">＋ 新建连接</button>
-      <button class="btn2" @click="reloadAll">刷新</button>
+      <span class="tb-brand">数据库客户端</span>
+      <button class="btn btn-xs" @click="openConnModal()">＋ 新建连接</button>
+      <button class="btn btn-xs" @click="reloadAll">刷新</button>
       <span class="tb-sep"></span>
-      <button class="btn2" :disabled="!selectedConn" @click="newQueryTab()">＋ 新建查询</button>
-      <button class="btn2" @click="showSettings=true">⚙ 设置</button>
+      <button class="btn btn-xs" :disabled="!selectedConn" @click="newQueryTab()">＋ 新建查询</button>
+      <button class="btn btn-xs qi-ico qi-ico-settings" @click="showSettings=true">设置</button>
       <div class="spacer"></div>
       <span class="tb-meta" v-if="selectedConn">{{ selectedConn.name }} · {{ dbTypeLabel(selectedConn.dbType) }}</span>
       <span class="tb-meta" v-else>未选择连接</span>
@@ -295,7 +287,7 @@
         </div>
         <div class="side-body">
           <div class="side-filter">
-            <input class="inp2" v-model="connFilter" placeholder="搜索连接…" />
+            <input class="input input-sm input-auto" v-model="connFilter" placeholder="搜索连接…" />
           </div>
           <div v-if="!conns.length" class="side-empty">还没有连接<br>点「新建连接」添加 MySQL / SQLite / Redis</div>
           <div v-else-if="!filteredConns.length" class="side-empty">没有匹配「{{ connFilter }}」的连接</div>
@@ -303,13 +295,13 @@
           <template v-for="c in filteredConns" :key="c.id">
             <div class="conn" :class="{active: selectedConn && selectedConn.id===c.id}" @click="selectConn(c)">
               <span class="caret" :class="{blank: !c._open}" @click.stop="toggleConn(c)">{{ c._open ? '▾' : '▸' }}</span>
-              <span class="oico">{{ c.dbType==='redis' ? '⚡' : (c.dbType==='sqlite' ? '📄' : '🖥') }}</span>
+              <span class="oico" :class="connIconClass(c)"></span>
               <span class="cdot" :style="{background: connColor(c)}"></span>
               <span class="nm">{{ c.name }}</span>
               <span class="tp">{{ c.dbType }}</span>
               <span class="acts">
-                <button class="act" title="编辑连接" @click.stop="openConnModal(c)">✎</button>
-                <button class="act del" title="删除连接" @click.stop="delConn(c)">🗑</button>
+                <button class="act qi-ico qi-ico-pencil" title="编辑连接" @click.stop="openConnModal(c)"></button>
+                <button class="act del qi-ico qi-ico-trash-2" title="删除连接" @click.stop="delConn(c)"></button>
               </span>
             </div>
             <template v-if="c._open">
@@ -318,7 +310,7 @@
               <div v-else-if="!c._dbs.length" class="side-load">没有可访问的库</div>
               <div v-for="d in c._dbs" :key="d.name" class="dbnode"
                    :class="{active: isActiveNode(c,d)}" @click.stop="openNode(c,d)" :title="d.title || d.name">
-                <span class="oico">{{ c.dbType==='redis' ? '#' : '🗄' }}</span>
+                <span class="oico" :class="c.dbType==='redis' ? 'qi qi-hash' : 'qi qi-database'"></span>
                 <span class="nm">{{ d.label || d.name }}</span>
                 <span class="dt" v-if="d.detail">{{ d.detail }}</span>
               </div>
@@ -330,17 +322,17 @@
 
       <!-- 右：标签页 -->
       <div class="main">
-        <div class="tabs" v-if="tabs.length">
-          <div v-for="t in tabs" :key="t.id" class="tab" :class="{active: t.id===activeTabId}" @click="activate(t)" @contextmenu.prevent="openTabMenu($event, t)" :title="t.title">
-            <span class="oico">{{ tabIcon(t) }}</span>
-            <span class="tt">{{ t.title }}</span>
-            <span class="tx" @click.stop="closeTab(t)">×</span>
+        <div class="tabs-work" v-if="tabs.length">
+          <div v-for="t in tabs" :key="t.id" class="tab-work" :class="{active: t.id===activeTabId}" @click="activate(t)" @contextmenu.prevent="openTabMenu($event, t)" :title="t.title">
+            <span class="oico" :class="tabIcon(t)"></span>
+            <span class="tab-work-title">{{ t.title }}</span>
+            <span class="tab-work-close" @click.stop="closeTab(t)">×</span>
           </div>
           <div class="tab-fill"></div>
         </div>
 
         <div class="empty" v-if="!tabs.length">
-          <div class="big">🗄</div>
+          <div class="big qi qi-database"></div>
           <div>点击左侧的库，右侧会列出该库的全部表<br>再点表名即可查看建表信息与数据</div>
           <div class="muted">也可以点工具条上的「＋ 新建查询」直接写 SQL</div>
         </div>
@@ -349,16 +341,16 @@
         <div class="pane" v-for="t in tabs" :key="t.id" v-show="t.id===activeTabId">
           <template v-if="t.kind==='objects' || t.kind==='keys'">
             <div class="subbar">
-              <span class="crumb"><span class="oico">🗄</span><span class="strong">{{ t.dbLabel }}</span></span>
+              <span class="crumb"><span class="oico qi qi-database"></span><span class="strong">{{ t.dbLabel }}</span></span>
               <span class="muted">· {{ t.kind==='keys' ? (t.keys.length + ' 个键') : (t.objects.length + ' 个对象') }}</span>
               <span class="spacer"></span>
               <div class="seg" v-if="t.kind==='objects'">
-                <button :class="{on: t.view!=='names'}" @click="t.view='list'">列表</button>
-                <button :class="{on: t.view==='names'}" @click="t.view='names'">简名</button>
+                <button class="seg-btn" :class="{active: t.view!=='names'}" @click="t.view='list'">列表</button>
+                <button class="seg-btn" :class="{active: t.view==='names'}" @click="t.view='names'">简名</button>
               </div>
-              <button class="btn2" v-if="t.kind==='keys'" @click="openNewKeyModal(t)">＋ 新建 Key</button>
-              <input class="inp2" style="width:170px" v-model="t.filter" :placeholder="t.kind==='keys' ? '过滤 key（* 通配）' : '按名称过滤…'" />
-              <button class="btn2" @click="reloadObjects(t)">刷新</button>
+              <button class="btn btn-xs" v-if="t.kind==='keys'" @click="openNewKeyModal(t)">＋ 新建 Key</button>
+              <input class="input input-sm input-auto" style="width:170px" v-model="t.filter" :placeholder="t.kind==='keys' ? '过滤 key（* 通配）' : '按名称过滤…'" />
+              <button class="btn btn-xs" @click="reloadObjects(t)">刷新</button>
             </div>
 
             <div class="gridwrap" v-if="t.view!=='names'">
@@ -375,11 +367,11 @@
                 <tbody>
                   <tr v-for="o in filteredObjects(t)" :key="o.name" :class="{sel: t.sel===o.name}"
                       @click="onObjRowClick(t, o)" @dblclick="onObjRowDblClick(t, o)">
-                    <td><span class="tname"><span class="oico">{{ o.type==='view' ? '👁' : '▦' }}</span>{{ o.name }}</span></td>
-                    <td><span class="tag2" :class="o.type==='view' ? 't-view' : 't-table'">{{ o.type==='view' ? '视图' : '表' }}</span></td>
+                    <td><span class="tname"><span class="oico" :class="o.type==='view' ? 'qi qi-eye' : 'qi qi-table-2'"></span>{{ o.name }}</span></td>
+                    <td><span class="badge badge-square badge-muted" :class="o.type==='view' ? 'badge-warning' : 'badge-muted'">{{ o.type==='view' ? '视图' : '表' }}</span></td>
                     <td>{{ o.engine || '—' }}</td>
                     <td class="num">{{ o.rows == null || o.rows < 0 ? '—' : o.rows }}</td>
-                    <td style="font-size:10.5px">{{ o.collation || '—' }}</td>
+                    <td style="font-size: var(--fs-xs)">{{ o.collation || '—' }}</td>
                     <td>{{ o.comment }}</td>
                   </tr>
                 </tbody>
@@ -396,7 +388,7 @@
                   <tr v-for="k in filteredKeys(t)" :key="k.key" :class="{sel: t.sel===k.key}"
                       @click="t.sel=k.key; openKeyTab(t,k)">
                     <td class="mono">{{ k.key }}</td>
-                    <td><span class="tag2 t-table">{{ k.type }}</span></td>
+                    <td><span class="badge badge-square badge-muted">{{ k.type }}</span></td>
                     <td class="muted">{{ k.truncated ? '' : '' }}</td>
                   </tr>
                 </tbody>
@@ -412,7 +404,7 @@
                   <td v-for="o in row" :key="o.name" class="ncell" :class="{sel: t.sel===o.name}"
                       :title="o.name + '（' + (o.type==='view' ? '视图' : '表') + '）'"
                       @click="onObjRowClick(t, o)" @dblclick="onObjRowDblClick(t, o)">
-                    <span class="oico">{{ o.type==='view' ? '👁' : '▦' }}</span><span class="nnm">{{ o.name }}</span>
+                    <span class="oico" :class="o.type==='view' ? 'qi qi-eye' : 'qi qi-table-2'"></span><span class="nnm">{{ o.name }}</span>
                   </td>
                 </tr>
               </table>
@@ -428,34 +420,34 @@
           <template v-else-if="t.kind==='table'">
             <div class="subbar">
               <span class="crumb">
-                <span class="oico">📁</span><span>{{ t.dbLabel }}</span>
+                <span class="oico qi qi-folder"></span><span>{{ t.dbLabel }}</span>
                 <span class="sep">/</span>
-                <span class="oico">{{ t.isView ? '👁' : '▦' }}</span><span class="strong">{{ t.table }}</span>
-                <span class="tag2" :class="t.isView ? 't-view' : 't-table'">{{ t.isView ? '视图' : '表' }}</span>
+                <span class="oico" :class="t.isView ? 'qi qi-eye' : 'qi qi-table-2'"></span><span class="strong">{{ t.table }}</span>
+                <span class="badge badge-square badge-muted" :class="t.isView ? 'badge-warning' : 'badge-muted'">{{ t.isView ? '视图' : '表' }}</span>
               </span>
               <div class="seg">
-                <button :class="{on: t.sub==='struct'}" @click="t.sub='struct'">结构</button>
-                <button :class="{on: t.sub==='data'}" @click="t.sub='data'; ensureData(t)">数据</button>
-                <button :class="{on: t.sub==='ddl'}" @click="t.sub='ddl'">建表语句</button>
+                <button class="seg-btn" :class="{active: t.sub==='struct'}" @click="t.sub='struct'">结构</button>
+                <button class="seg-btn" :class="{active: t.sub==='data'}" @click="t.sub='data'; ensureData(t)">数据</button>
+                <button class="seg-btn" :class="{active: t.sub==='ddl'}" @click="t.sub='ddl'">建表语句</button>
               </div>
               <span class="muted" v-if="t.struct && t.struct.engine">{{ t.struct.engine }}<template v-if="t.struct.collation"> · {{ t.struct.collation }}</template></span>
               <span class="spacer"></span>
-              <button class="btn2" @click="openInsert(t)" :disabled="!canCrud(t)">＋ 新增</button>
-              <button class="btn2" @click="deleteRow(t)" :disabled="!canCrud(t) || t.grid.selRow<0">删除行</button>
-              <button class="btn2" @click="exportCsv(t)" :disabled="!t.grid.rows.length">导出 CSV</button>
-              <button class="btn2" @click="reloadTableTab(t)">刷新</button>
+              <button class="btn btn-xs" @click="openInsert(t)" :disabled="!canCrud(t)">＋ 新增</button>
+              <button class="btn btn-xs" @click="deleteRow(t)" :disabled="!canCrud(t) || t.grid.selRow<0">删除行</button>
+              <button class="btn btn-xs" @click="exportCsv(t)" :disabled="!t.grid.rows.length">导出 CSV</button>
+              <button class="btn btn-xs" @click="reloadTableTab(t)">刷新</button>
             </div>
 
             <!-- 行勾选操作条（批量删除，仅数据页） -->
             <div class="selbar" v-if="t.sub==='data' && t.grid.editable && selCount(t)>0">
               <span>已选 <b>{{ selCount(t) }}</b> 行</span>
-              <button class="btn2 xs" v-if="t.grid.total > t.grid.rows.length && !t._selAllDone" :disabled="t.selAllLoading" @click="selectAllMatching(t)">
+              <button class="btn btn-xxs" v-if="t.grid.total > t.grid.rows.length && !t._selAllDone" :disabled="t.selAllLoading" @click="selectAllMatching(t)">
                 {{ hasFilter(t) ? ('选择所有匹配筛选的 ' + fmtTotal(t) + ' 行') : ('选择全部 ' + fmtTotal(t) + ' 行') }}
               </button>
               <span class="muted" v-if="t.selAllLoading">正在收集…</span>
               <span class="spacer"></span>
-              <button class="btn2 xs" @click="clearSel(t)">清除选择</button>
-              <button class="btn2 xs" style="background:var(--danger);border-color:var(--danger);color:#fff" @click="deleteSelected(t)">删除所选</button>
+              <button class="btn btn-xxs" @click="clearSel(t)">清除选择</button>
+              <button class="btn btn-xxs" style="background:var(--danger);border-color:var(--danger);color:#fff" @click="deleteSelected(t)">删除所选</button>
             </div>
 
             <!-- 结构 -->
@@ -480,7 +472,7 @@
                         <td style="color:var(--text-primary)">{{ c.name }}</td>
                         <td>{{ c.type }}</td>
                         <td>{{ c.nullable ? 'YES' : 'NO' }}</td>
-                        <td><span v-if="c.key" class="tag2" :class="keyClass(c.key)">{{ c.key }}</span><span v-else class="dim">—</span></td>
+                        <td><span v-if="c.key" class="badge badge-square badge-muted" :class="keyClass(c.key)">{{ c.key }}</span><span v-else class="dim">—</span></td>
                         <td><span v-if="c.hasDefault">{{ c.default === '' ? "''" : c.default }}</span><span v-else class="dim">NULL</span></td>
                         <td>{{ c.extra }}</td>
                         <td>{{ c.comment }}</td>
@@ -524,6 +516,32 @@
 
             <!-- 数据 -->
             <div class="struct-scroll pane-data" v-show="t.sub==='data'" style="display:flex;flex-direction:column;">
+              <!-- 筛选条件 chips：点击定位到列，✕ 移除该条件 -->
+              <div class="filtbar" v-if="filterChips(t).length">
+                <span class="filtbar-lb">筛选</span>
+                <span class="fchip" v-for="c in filterChips(t)" :key="c.col" @click="focusFilterInput(t, c.col)" :title="'点击定位到「' + c.col + '」列的筛选框'">
+                  <b>{{ c.col }}</b><i>{{ c.label }}</i>
+                  <button class="fchip-x" @click.stop="removeFilter(t, c.col)" title="移除该筛选条件">✕</button>
+                </span>
+                <span class="spacer"></span>
+                <button class="btn btn-xxs" @click="clearFilter(t)">全部清除</button>
+              </div>
+              <!-- 筛选语法帮助 -->
+              <div class="filt-help" v-if="t.filtHelp">
+                <div class="fh-tip">在表头下方的筛选框输入即自动过滤（停顿 0.5 秒生效，Enter 立即应用，Esc 清空本列）；多列之间为 AND。</div>
+                <div class="fh-grid">
+                  <span><code>abc</code> 包含 abc</span>
+                  <span><code>=abc</code> 等于</span>
+                  <span><code>!=abc</code> 不等于</span>
+                  <span><code>&gt;10</code> / <code>&gt;=10</code> 大于 / 不小于</span>
+                  <span><code>&lt;10</code> / <code>&lt;=10</code> 小于 / 不大于</span>
+                  <span><code>1..99</code> 区间 BETWEEN</span>
+                  <span><code>1,2,3</code> 多值 IN</span>
+                  <span><code>null</code> IS NULL</span>
+                  <span><code>!=null</code> IS NOT NULL</span>
+                  <span><code>~abc</code> LIKE · <code>!~abc</code> NOT LIKE</span>
+                </div>
+              </div>
               <div class="gridwrap" :data-gw-data="t.id">
                 <!-- 刷新中不销毁表格：仅进度条 + 数据行变暗，表头保持不动；首次加载（还没有字段）才显示占位 -->
                 <div class="grid-refresh-bar" v-if="t.grid.loading && t.grid.columns.length"></div>
@@ -542,15 +560,18 @@
                       <th style="width:44px">#</th>
                       <th v-for="(col,ci) in t.grid.columns" :key="ci" class="sortable" @click="sortBy(t, col)">
                         {{ col }}<span class="arrow" v-if="t.grid.orderBy===col">{{ t.grid.orderDir==='desc' ? '▾' : '▴' }}</span>
-                        <span v-if="isPk(t,ci)" class="arrow">🔑</span>
+                        <span v-if="isPk(t,ci)" class="arrow qi qi-key"></span>
+                        <span class="filt-mark" v-if="t.filters[col] && String(t.filters[col]).trim()" title="该列有筛选条件">筛</span>
                         <span class="col-resizer" @mousedown.stop="startResize(t, col, $event)" @click.stop></span>
                       </th>
                     </tr>
                     <tr class="filter-row">
+                      <th class="corner"><button class="filt-help-btn" :class="{on: t.filtHelp}" @click="t.filtHelp = !t.filtHelp" title="筛选语法帮助">?</button></th>
                       <th class="corner"></th>
-                      <th class="corner"></th>
-                      <th v-for="(col,ci) in t.grid.columns" :key="'f'+ci">
-                        <input class="col-filter" v-model="t.filters[col]" @keyup.enter="applyFilter(t)" :placeholder="'筛选 ' + col" :title="'按 ' + col + ' 筛选（LIKE %值%）'" />
+                      <th v-for="(col,ci) in t.grid.columns" :key="'f'+ci" :class="{filtered: t.filters[col] && String(t.filters[col]).trim()}">
+                        <input class="col-filter" :value="t.filters[col] || ''" :data-filt="col"
+                               @input="onFilterInput(t, col, $event)" @keydown="onFilterKey(t, col, $event)"
+                               :placeholder="'筛选 ' + col" :title="filterTitle(col)" />
                       </th>
                     </tr>
                   </thead>
@@ -573,40 +594,38 @@
               </div>
               <div class="pager">
                 <span class="muted">{{ pageInfo(t) }}</span>
-                <span class="pill info" v-if="canEdit(t)">可编辑（双击单元格）</span>
-                <span class="pill warn" v-else-if="t.grid.editReason" :title="t.grid.editReason">只读</span>
-                <span class="pill filt" v-if="hasFilter(t)">已筛选（{{ filterCount(t) }} 列）</span>
-                <button class="btn2 xs" v-if="hasFilter(t)" @click="clearFilter(t)">✕ 清除筛选</button>
+                <span class="badge badge-accent" v-if="canEdit(t)">可编辑（双击单元格）</span>
+                <span class="badge badge-warning" v-else-if="t.grid.editReason" :title="t.grid.editReason">只读</span>
                 <div class="spacer"></div>
-                <select class="inp2" v-model.number="t.grid.pageSize" @change="reloadData(t,1)">
+                <select class="input input-sm input-auto" v-model.number="t.grid.pageSize" @change="reloadData(t,1)">
                   <option :value="50">50 条/页</option>
                   <option :value="100">100 条/页</option>
                   <option :value="200">200 条/页</option>
                   <option :value="500">500 条/页</option>
                 </select>
-                <button class="btn2 xs" :disabled="t.grid.page<=1" @click="reloadData(t,1)">«</button>
-                <button class="btn2 xs" :disabled="t.grid.page<=1" @click="reloadData(t,t.grid.page-1)">‹</button>
+                <button class="btn btn-xxs" :disabled="t.grid.page<=1" @click="reloadData(t,1)">«</button>
+                <button class="btn btn-xxs" :disabled="t.grid.page<=1" @click="reloadData(t,t.grid.page-1)">‹</button>
                 <span class="muted">第 {{ t.grid.page }} 页</span>
-                <button class="btn2 xs" :disabled="!hasNext(t)" @click="reloadData(t,t.grid.page+1)">›</button>
-                <button class="btn2 xs" :disabled="!hasNext(t)" @click="reloadData(t, 999999)">»</button>
+                <button class="btn btn-xxs" :disabled="!hasNext(t)" @click="reloadData(t,t.grid.page+1)">›</button>
+                <button class="btn btn-xxs" :disabled="!hasNext(t)" @click="reloadData(t, 999999)">»</button>
               </div>
 
               <!-- SQL 预览：展示本次实际执行的语句（筛选/排序/分页已体现），可直接复制 -->
               <div class="sqlprev" v-if="t.grid.sql">
                 <div class="sqlprev-head">
-                  <button class="btn2 xs" @click="t.showSql = !t.showSql" :title="t.showSql ? '收起 SQL 预览' : '展开 SQL 预览'">
+                  <button class="btn btn-xxs" @click="t.showSql = !t.showSql" :title="t.showSql ? '收起 SQL 预览' : '展开 SQL 预览'">
                     {{ t.showSql ? '▾' : '▸' }} SQL 预览
                   </button>
                   <template v-if="t.showSql">
-                    <button class="btn2 xs" @click="t.sqlOmitPage = !t.sqlOmitPage"
+                    <button class="btn btn-xxs" @click="t.sqlOmitPage = !t.sqlOmitPage"
                             :title="t.sqlOmitPage ? '当前不含分页，点击切换为含 LIMIT/OFFSET' : '当前含分页，点击切换为不含 LIMIT/OFFSET'">
                       {{ t.sqlOmitPage ? '不含分页' : '含分页' }}
                     </button>
-                    <button class="btn2 xs" @click="copyText(t.sqlOmitPage ? t.grid.sqlFull : t.grid.sql)">⧉ 复制</button>
-                    <button class="btn2 xs" @click="openSqlInQuery(t)" title="把这段 SQL 复制到新的查询页继续编辑">↗ 查询页</button>
+                    <button class="btn btn-xxs" @click="copyText(t.sqlOmitPage ? t.grid.sqlFull : t.grid.sql)">⧉ 复制</button>
+                    <button class="btn btn-xxs" @click="openSqlInQuery(t)" title="把这段 SQL 复制到新的查询页继续编辑">↗ 查询页</button>
                   </template>
                   <div class="spacer"></div>
-                  <span class="pill filt" v-if="hasFilter(t)">筛选条件已并入 WHERE</span>
+                  <span class="badge badge-accent" v-if="hasFilter(t)">筛选条件已并入 WHERE</span>
                 </div>
                 <pre class="sqlprev-body" v-if="t.showSql">{{ t.sqlOmitPage ? (t.grid.sqlFull || t.grid.sql) : t.grid.sql }}</pre>
               </div>
@@ -617,7 +636,7 @@
               <div class="subbar" style="border-bottom:1px solid var(--border);background:transparent;">
                 <span class="muted">CREATE 语句</span>
                 <div class="spacer"></div>
-                <button class="btn2" @click="copyText(t.struct && t.struct.ddl)">复制</button>
+                <button class="btn btn-xs" @click="copyText(t.struct && t.struct.ddl)">复制</button>
               </div>
               <pre class="ddl">{{ t.struct && t.struct.ddl ? t.struct.ddl : '（无 DDL）' }}</pre>
             </div>
@@ -626,13 +645,13 @@
           <!-- ===== Redis key 详情 ===== -->
           <template v-else-if="t.kind==='key'">
             <div class="subbar">
-              <span class="crumb"><span class="oico">🔑</span><span class="strong mono">{{ t.key }}</span></span>
+              <span class="crumb"><span class="oico qi qi-key"></span><span class="strong mono">{{ t.key }}</span></span>
               <span class="spacer"></span>
-              <button class="btn2" @click="copyText(t.key)">复制名</button>
-              <button class="btn2" @click="renameKey(t)">重命名</button>
-              <button class="btn2" @click="editTTL(t)">设 TTL</button>
-              <button class="btn2" @click="deleteKey(t)">删除</button>
-              <button class="btn2" @click="reloadKey(t)">刷新</button>
+              <button class="btn btn-xs" @click="copyText(t.key)">复制名</button>
+              <button class="btn btn-xs" @click="renameKey(t)">重命名</button>
+              <button class="btn btn-xs" @click="editTTL(t)">设 TTL</button>
+              <button class="btn btn-xs" @click="deleteKey(t)">删除</button>
+              <button class="btn btn-xs" @click="reloadKey(t)">刷新</button>
             </div>
             <div class="kd" v-if="t.detail">
               <div class="kd-actions">
@@ -641,7 +660,7 @@
               </div>
               <div v-if="t.detail.type==='string'">
                 <textarea class="textarea2" v-model="t.detail.Value"></textarea>
-                <div style="margin-top:8px"><button class="btn2 solid" @click="saveString(t)">保存值</button></div>
+                <div style="margin-top:8px"><button class="btn btn-xs btn-primary" @click="saveString(t)">保存值</button></div>
               </div>
               <div v-else-if="t.detail.type==='hash'">
                 <table class="grid">
@@ -649,36 +668,36 @@
                   <tbody>
                     <tr v-for="(it,idx) in t.detail.Items" :key="idx">
                       <td class="pk">{{ it.field }}</td>
-                      <td><input class="inp2" style="width:100%" v-model="it.value" @change="hashFieldSet(t,it)" /></td>
-                      <td><button class="act del" @click="hashFieldDel(t,it.field)">🗑</button></td>
+                      <td><input class="input input-sm" style="width:100%" v-model="it.value" @change="hashFieldSet(t,it)" /></td>
+                      <td><button class="act del qi-ico qi-ico-trash-2" @click="hashFieldDel(t,it.field)"></button></td>
                     </tr>
                   </tbody>
                 </table>
                 <div class="row2" style="margin-top:8px">
-                  <input class="inp2" v-model="t.newF" placeholder="新字段名" />
-                  <input class="inp2" v-model="t.newV" placeholder="值" />
-                  <button class="btn2" @click="hashFieldAdd(t)">＋ 字段</button>
+                  <input class="input input-sm input-auto" v-model="t.newF" placeholder="新字段名" />
+                  <input class="input input-sm input-auto" v-model="t.newV" placeholder="值" />
+                  <button class="btn btn-xs" @click="hashFieldAdd(t)">＋ 字段</button>
                 </div>
               </div>
               <div v-else-if="t.detail.type==='list'">
                 <div v-for="(it,idx) in t.detail.Items" :key="idx" class="kd-item">
                   <span class="kd-idx">{{ idx }}</span><span class="kd-val">{{ it }}</span>
-                  <button class="act del" @click="listElemDel(t,it)">🗑</button>
+                  <button class="act del qi-ico qi-ico-trash-2" @click="listElemDel(t,it)"></button>
                 </div>
                 <div class="row2" style="margin-top:8px">
-                  <input class="inp2" v-model="t.newItem" placeholder="新元素" />
-                  <button class="btn2" @click="listPush(t,'head')">头部插入</button>
-                  <button class="btn2" @click="listPush(t,'tail')">尾部追加</button>
+                  <input class="input input-sm input-auto" v-model="t.newItem" placeholder="新元素" />
+                  <button class="btn btn-xs" @click="listPush(t,'head')">头部插入</button>
+                  <button class="btn btn-xs" @click="listPush(t,'tail')">尾部追加</button>
                 </div>
               </div>
               <div v-else-if="t.detail.type==='set'">
                 <div v-for="(it,idx) in t.detail.Items" :key="idx" class="kd-item">
                   <span class="kd-val">{{ it }}</span>
-                  <button class="act del" @click="setMemberDel(t,it)">🗑</button>
+                  <button class="act del qi-ico qi-ico-trash-2" @click="setMemberDel(t,it)"></button>
                 </div>
                 <div class="row2" style="margin-top:8px">
-                  <input class="inp2" v-model="t.newMember" placeholder="新成员" />
-                  <button class="btn2" @click="setMemberAdd(t)">＋ 成员</button>
+                  <input class="input input-sm input-auto" v-model="t.newMember" placeholder="新成员" />
+                  <button class="btn btn-xs" @click="setMemberAdd(t)">＋ 成员</button>
                 </div>
               </div>
               <div v-else-if="t.detail.type==='zset'">
@@ -687,15 +706,15 @@
                   <tbody>
                     <tr v-for="(it,idx) in t.detail.Items" :key="idx">
                       <td class="pk">{{ it.member }}</td>
-                      <td><input class="inp2" style="width:100%" v-model="it.score" @change="zsetMemberSet(t,it)" /></td>
-                      <td><button class="act del" @click="zsetMemberDel(t,it.member)">🗑</button></td>
+                      <td><input class="input input-sm" style="width:100%" v-model="it.score" @change="zsetMemberSet(t,it)" /></td>
+                      <td><button class="act del qi-ico qi-ico-trash-2" @click="zsetMemberDel(t,it.member)"></button></td>
                     </tr>
                   </tbody>
                 </table>
                 <div class="row2" style="margin-top:8px">
-                  <input class="inp2" v-model="t.newM" placeholder="成员" />
-                  <input class="inp2" v-model="t.newS" placeholder="分数" />
-                  <button class="btn2" @click="zsetMemberAdd(t)">＋ 成员</button>
+                  <input class="input input-sm input-auto" v-model="t.newM" placeholder="成员" />
+                  <input class="input input-sm input-auto" v-model="t.newS" placeholder="分数" />
+                  <button class="btn btn-xs" @click="zsetMemberAdd(t)">＋ 成员</button>
                 </div>
               </div>
               <div v-else class="muted">暂不支持的类型：{{ t.detail.type }}</div>
@@ -707,21 +726,21 @@
           <template v-else-if="t.kind==='query'">
             <div class="subbar">
               <span class="muted">{{ connTypeOf(t)==='redis' ? 'DB 索引' : '库上下文' }}</span>
-              <select class="inp2" style="min-width:150px" v-model="t.db" @change="onQueryDbChange(t)">
+              <select class="input input-sm input-auto" style="min-width:150px" v-model="t.db" @change="onQueryDbChange(t)">
                 <option value="">{{ connTypeOf(t)==='redis' ? '（用连接里的默认库）' : '（未选择）' }}</option>
                 <option v-for="d in dbOptionsOf(t)" :key="d" :value="d">{{ d }}</option>
               </select>
-              <button class="btn2 solid" @click="runQueryTab(t)" :disabled="t.grid.loading">
+              <button class="btn btn-xs btn-primary" @click="runQueryTab(t)" :disabled="t.grid.loading">
                 <template v-if="t.selText">▶ 执行选中</template>
                 <template v-else>▶ 执行</template>
                 <span class="muted" style="color:inherit;opacity:.7">⌃↵</span>
               </button>
-              <button class="btn2" v-if="t.selText" @click="clearSqlSelection(t)" title="取消选区，恢复执行全部">取消选中</button>
-              <button class="btn2" @click="t.sql=''">清空</button>
-              <button class="btn2" @click="formatSql(t)" title="把 SQL 重新排版：关键字大写、子句换行、AND/OR 缩进、SELECT 列分行">美化</button>
-              <button class="btn2" @click="exportCsv(t)" :disabled="!t.grid.rows.length">导出 CSV</button>
-              <button class="btn2" @click="openInsert(t)" :disabled="!canCrud(t)">＋ 新增</button>
-              <button class="btn2" @click="deleteRow(t)" :disabled="!canCrud(t) || t.grid.selRow<0">删除行</button>
+              <button class="btn btn-xs" v-if="t.selText" @click="clearSqlSelection(t)" title="取消选区，恢复执行全部">取消选中</button>
+              <button class="btn btn-xs" @click="t.sql=''">清空</button>
+              <button class="btn btn-xs" @click="formatSql(t)" title="把 SQL 重新排版：关键字大写、子句换行、AND/OR 缩进、SELECT 列分行">美化</button>
+              <button class="btn btn-xs" @click="exportCsv(t)" :disabled="!t.grid.rows.length">导出 CSV</button>
+              <button class="btn btn-xs" @click="openInsert(t)" :disabled="!canCrud(t)">＋ 新增</button>
+              <button class="btn btn-xs" @click="deleteRow(t)" :disabled="!canCrud(t) || t.grid.selRow<0">删除行</button>
               <span class="spacer"></span>
               <span class="muted">{{ t.connName }}</span>
             </div>
@@ -745,13 +764,13 @@
               <div class="statusbar">
                 <span v-if="t.grid.loading" class="muted">执行中…</span>
                 <template v-else-if="t.grid.ran">
-                  <span class="pill" :class="t.grid.error ? 'err' : 'ok'">{{ t.grid.error ? '失败' : '成功' }}</span>
+                  <span class="badge" :class="t.grid.error ? 'badge-danger' : 'badge-success'">{{ t.grid.error ? '失败' : '成功' }}</span>
                   <span class="muted" v-if="!t.grid.error && t.grid.columns.length">{{ t.grid.rows.length }} 行</span>
                   <span class="muted" v-if="!t.grid.error && !t.grid.columns.length && t.grid.affected >= 0">{{ t.grid.affected }} 行受影响</span>
                   <span class="muted" v-if="t.grid.durationMs >= 0">{{ t.grid.durationMs }} ms</span>
-                  <span class="pill warn" v-if="!t.grid.error && t.grid.truncated"
+                  <span class="badge badge-warning" v-if="!t.grid.error && t.grid.truncated"
                         title="单次最多返回 1000 行；请加 LIMIT 或 WHERE 缩小范围">仅显示前 1000 行</span>
-                  <span class="pill info" v-if="canEdit(t)">可编辑（双击单元格）</span>
+                  <span class="badge badge-accent" v-if="canEdit(t)">可编辑（双击单元格）</span>
                   <span class="muted" v-else-if="t.grid.editReason">{{ t.grid.editReason }}</span>
                 </template>
                 <span class="muted" v-else>尚未执行</span>
@@ -775,7 +794,7 @@
                     <col v-for="(col,ci) in t.grid.columns" :key="'c'+ci" :style="{ width: colWidth(t, col) }" />
                   </colgroup>
                   <thead><tr>
-                    <th v-for="(col,ci) in t.grid.columns" :key="ci">{{ col }}<span v-if="isPk(t,ci)" class="arrow">🔑</span><span class="col-resizer" @mousedown.stop="startResize(t, col, $event)" @click.stop></span></th>
+                    <th v-for="(col,ci) in t.grid.columns" :key="ci">{{ col }}<span v-if="isPk(t,ci)" class="arrow qi qi-key"></span><span class="col-resizer" @mousedown.stop="startResize(t, col, $event)" @click.stop></span></th>
                   </tr></thead>
                   <tbody>
                     <tr v-for="(row,ri) in t.grid.rows" :key="ri" :class="{sel: t.grid.selRow===ri}" @click="selectRow(t, ri)">
@@ -799,14 +818,14 @@
     </div>
 
     <!-- 连接弹窗 -->
-    <div v-if="showConnModal" class="mask" @click.self="showConnModal=false">
-      <div class="modal">
-        <div class="modal-head">
+    <div v-if="showConnModal" class="modal-mask" @click.self="showConnModal=false">
+      <div class="modal modal-compact">
+        <div class="modal-compact-head">
           <span>{{ connForm.id ? '编辑连接' : '新建连接' }}</span>
-          <button class="btn2" @click="showConnModal=false">✕</button>
+          <button class="btn btn-xs" @click="showConnModal=false">✕</button>
         </div>
-        <div class="field"><label>名称</label><input class="p-input" v-model="connForm.name" placeholder="连接名称" /></div>
-        <div class="field"><label>类型</label>
+        <div class="field-row"><label>名称</label><input class="p-input" v-model="connForm.name" placeholder="连接名称" /></div>
+        <div class="field-row"><label>类型</label>
           <select class="p-input" v-model="connForm.dbType">
             <option value="mysql">MySQL</option>
             <option value="sqlite">SQLite（文件）</option>
@@ -815,70 +834,70 @@
         </div>
         <template v-if="connForm.dbType!=='sqlite'">
           <div class="row2">
-            <div class="field"><label>主机</label><input class="p-input" v-model="connForm.host" placeholder="127.0.0.1" /></div>
-            <div class="field" style="max-width:120px;"><label>端口</label>
+            <div class="field-row"><label>主机</label><input class="p-input" v-model="connForm.host" placeholder="127.0.0.1" /></div>
+            <div class="field-row" style="max-width:120px;"><label>端口</label>
               <input class="p-input" v-model="connForm.port" :placeholder="connForm.dbType==='redis' ? '6379' : '3306'" />
             </div>
           </div>
-          <div class="field" v-if="connForm.dbType==='redis'">
+          <div class="field-row" v-if="connForm.dbType==='redis'">
             <label>密码（可为空）</label>
             <input class="p-input" v-model="connForm.password" type="password" placeholder="auth 密码" />
           </div>
-          <div class="field" v-if="connForm.dbType!=='redis'"><label>用户名</label><input class="p-input" v-model="connForm.username" placeholder="root" /></div>
-          <div class="field" v-if="connForm.dbType!=='redis'">
+          <div class="field-row" v-if="connForm.dbType!=='redis'"><label>用户名</label><input class="p-input" v-model="connForm.username" placeholder="root" /></div>
+          <div class="field-row" v-if="connForm.dbType!=='redis'">
             <label>密码</label>
             <input class="p-input" v-model="connForm.password" type="password" placeholder="留空 = 不修改（编辑时）" />
           </div>
-          <div class="field" v-if="connForm.dbType==='mysql'">
+          <div class="field-row" v-if="connForm.dbType==='mysql'">
             <label>默认数据库（可空）</label>
             <input class="p-input" v-model="connForm.database" placeholder="可空，之后点左侧库切换" />
           </div>
         </template>
         <template v-else>
-          <div class="field"><label>SQLite 文件</label>
+          <div class="field-row"><label>SQLite 文件</label>
             <div class="row2">
               <input class="p-input" v-model="connForm.filePath" placeholder="选择 .db / .sqlite 文件" readonly style="cursor:pointer;" @click="pickSqlite" />
-              <button class="btn2" @click="pickSqlite">浏览</button>
+              <button class="btn btn-xs" @click="pickSqlite">浏览</button>
             </div>
           </div>
         </template>
         <div class="abar">
-          <button class="btn2" @click="testConn" :disabled="testing">{{ testing ? '测试中…' : '测试连接' }}</button>
+          <button class="btn btn-xs" @click="testConn" :disabled="testing">{{ testing ? '测试中…' : '测试连接' }}</button>
           <div class="spacer"></div>
-          <button class="btn2" @click="showConnModal=false">取消</button>
-          <button class="btn2 solid" @click="saveConn">保存</button>
+          <button class="btn btn-xs" @click="showConnModal=false">取消</button>
+          <button class="btn btn-xs btn-primary" @click="saveConn">保存</button>
         </div>
       </div>
     </div>
 
     <!-- 新建 Key 弹窗 -->
-    <div v-if="showNewKey" class="mask" @click.self="showNewKey=false">
-      <div class="modal">
-        <div class="modal-head"><span>新建 Key</span><button class="btn2" @click="showNewKey=false">✕</button></div>
-        <div class="field"><label>类型</label>
+    <div v-if="showNewKey" class="modal-mask" @click.self="showNewKey=false">
+      <div class="modal modal-compact">
+        <div class="modal-compact-head"><span>新建 Key</span><button class="btn btn-xs" @click="showNewKey=false">✕</button></div>
+        <div class="field-row"><label>类型</label>
           <select class="p-input" v-model="newKeyForm.type">
             <option value="string">String</option><option value="hash">Hash</option>
             <option value="list">List</option><option value="set">Set</option><option value="zset">ZSet</option>
           </select>
         </div>
-        <div class="field"><label>Key 名称</label><input class="p-input" v-model="newKeyForm.key" placeholder="如 user:1:name" /></div>
-        <div class="field"><label>值 / 内容</label>
+        <div class="field-row"><label>Key 名称</label><input class="p-input" v-model="newKeyForm.key" placeholder="如 user:1:name" /></div>
+        <div class="field-row"><label>值 / 内容</label>
           <textarea class="textarea2" v-model="newKeyForm.value" placeholder="string 填值；hash/list/set/zset 每行一个元素（zset 每行 member:score）" style="min-height:90px"></textarea>
         </div>
-        <div class="field"><label>TTL（秒，-1 永久）</label><input class="p-input" v-model="newKeyForm.ttl" placeholder="-1" /></div>
+        <div class="field-row"><label>TTL（秒，-1 永久）</label><input class="p-input" v-model="newKeyForm.ttl" placeholder="-1" /></div>
         <div class="abar">
           <div class="spacer"></div>
-          <button class="btn2" @click="showNewKey=false">取消</button>
-          <button class="btn2 solid" @click="saveNewKey">创建</button>
+          <button class="btn btn-xs" @click="showNewKey=false">取消</button>
+          <button class="btn btn-xs btn-primary" @click="saveNewKey">创建</button>
         </div>
       </div>
     </div>
 
     <!-- 设置弹窗 -->
-    <div v-if="showSettings" class="mask" @click.self="showSettings=false">
-      <div class="modal">
-        <div class="modal-head"><span>设置</span><button class="btn2" @click="showSettings=false">✕</button></div>
-        <div class="field">
+    <div v-if="showSettings" class="modal-mask" @click.self="showSettings=false">
+      <div class="modal modal-compact">
+        <div class="modal-compact-head"><span>设置</span><button class="btn btn-xs" @click="showSettings=false">✕</button></div>
+        <div class="field-row">
           <label>默认每页行数（表数据 / 查询结果）</label>
           <select class="p-input" v-model.number="settings.pageSize">
             <option :value="50">50 条/页</option>
@@ -890,38 +909,38 @@
         </div>
         <div class="abar">
           <div class="spacer"></div>
-          <button class="btn2" @click="showSettings=false">取消</button>
-          <button class="btn2 solid" @click="saveSettings">保存</button>
+          <button class="btn btn-xs" @click="showSettings=false">取消</button>
+          <button class="btn btn-xs btn-primary" @click="saveSettings">保存</button>
         </div>
       </div>
     </div>
 
     <!-- 新增行弹窗 -->
-    <div v-if="showInsertModal" class="mask" @click.self="showInsertModal=false">
-      <div class="modal">
-        <div class="modal-head"><span>新增一行 · {{ insertTab && insertTab.table }}</span><button class="btn2" @click="showInsertModal=false">✕</button></div>
+    <div v-if="showInsertModal" class="modal-mask" @click.self="showInsertModal=false">
+      <div class="modal modal-compact">
+        <div class="modal-compact-head"><span>新增一行 · {{ insertTab && insertTab.table }}</span><button class="btn btn-xs" @click="showInsertModal=false">✕</button></div>
         <div class="msg-box muted" style="padding-top:0">留空的字段将使用数据库默认值 / 自增；必填且无默认值的列请务必填写。</div>
-        <div class="field" v-for="(c,ci) in insertForm.cols" :key="ci">
+        <div class="field-row" v-for="(c,ci) in insertForm.cols" :key="ci">
           <label>{{ c.name }}</label>
           <input class="p-input" v-model="c.value" :placeholder="c.name" />
         </div>
         <div class="abar">
           <div class="spacer"></div>
-          <button class="btn2" @click="showInsertModal=false">取消</button>
-          <button class="btn2 solid" @click="saveInsert">插入</button>
+          <button class="btn btn-xs" @click="showInsertModal=false">取消</button>
+          <button class="btn btn-xs btn-primary" @click="saveInsert">插入</button>
         </div>
       </div>
     </div>
 
     <!-- 通用确认 -->
-    <div v-if="confirmDialog.visible" class="mask" @click.self="confirmCancel">
-      <div class="modal" style="width:380px">
-        <div class="modal-head"><span>确认操作</span><button class="btn2" @click="confirmCancel">✕</button></div>
+    <div v-if="confirmDialog.visible" class="modal-mask" @click.self="confirmCancel">
+      <div class="modal modal-compact" style="width:380px">
+        <div class="modal-compact-head"><span>确认操作</span><button class="btn btn-xs" @click="confirmCancel">✕</button></div>
         <div style="padding:6px 2px 2px;line-height:1.7">{{ confirmDialog.message }}</div>
         <div class="abar">
           <div class="spacer"></div>
-          <button class="btn2" @click="confirmCancel">取消</button>
-          <button class="btn2" style="background:var(--danger);border-color:var(--danger);color:#fff" @click="confirmOk">确认删除</button>
+          <button class="btn btn-xs" @click="confirmCancel">取消</button>
+          <button class="btn btn-xs" style="background:var(--danger);border-color:var(--danger);color:#fff" @click="confirmOk">确认删除</button>
         </div>
       </div>
     </div>
@@ -1356,7 +1375,7 @@
         if(exist){ this.activeTabId = exist.id; return exist }
         var t = Object.assign({ id:id, filter:'', sel:'', loading:false, _stale:false,
           // 多结果（多条 SQL）、列宽、列名补全、数据页筛选、SQL 预览
-          multiResults:null, activeResult:0, colWidths:{}, tableCols:{}, filters:{},
+          multiResults:null, activeResult:0, colWidths:{}, tableCols:{}, filters:{}, filtHelp:false,
           showSql:false, sqlOmitPage:false, selSet:{}, _lastSelIdx:-1, _selAllDone:false }, o)
         if(t.kind==='table' || t.kind==='query'){
           if(!t.grid) t.grid = blankGrid()
@@ -1432,11 +1451,16 @@
         this.activeTabId = ''
       },
       tabIcon: function(t){
-        if(t.kind==='objects') return '🗄'
-        if(t.kind==='keys') return '#'
-        if(t.kind==='key') return '🔑'
-        if(t.kind==='query') return '▷'
-        return t.isView ? '👁' : '▦'
+        if(t.kind==='objects') return 'qi qi-database'
+        if(t.kind==='keys') return 'qi qi-hash'
+        if(t.kind==='key') return 'qi qi-key'
+        if(t.kind==='query') return 'qi qi-terminal'
+        return t.isView ? 'qi qi-eye' : 'qi qi-table-2'
+      },
+      connIconClass: function(c){
+        if(c.dbType==='redis') return 'qi qi-zap'
+        if(c.dbType==='sqlite') return 'qi qi-file-text'
+        return 'qi qi-server'
       },
       connTypeOf: function(t){
         var c = this.conns.find(function(x){ return x.id===t.connId })
@@ -1612,14 +1636,11 @@
         if(page < 1) page = 1
         g.loading = true
         g.page = page
-        // 仅透传非空的筛选条件（Navicat 式列筛选）
-        var f = {}
-        var filters = t.filters || {}
-        for(var k in filters){ if(Object.prototype.hasOwnProperty.call(filters, k) && String(filters[k]).trim() !== '') f[k] = filters[k] }
+        // 仅透传生效的筛选条件（智能解析后的结构化条件，后端做参数化拼接）
         return send('table.rows', {
           id:t.connId, database:t.db, table:t.table,
           page:page, pageSize:g.pageSize, orderBy:g.orderBy, orderDir:g.orderDir,
-          filters: f
+          filters: self.activeFilters(t)
         }).then(function(r){
           var n = normResult(r)
           n.page = r.page || page
@@ -1641,24 +1662,131 @@
           g.error = e.message || String(e)
         })
       },
-      /* ---------- 数据页筛选（Navicat 式） ---------- */
+      /* ---------- 数据页筛选（DataGrip / Navicat 式：智能运算符 + 防抖自动应用） ---------- */
+      // 把筛选框里的原始文本解析成结构化条件，op 与后端 filter.go 白名单一一对应：
+      //   isnull / notnull / like / nlike / eq / ne / gt / gte / lt / lte / between / in
+      // 解析不了的形状一律按「包含匹配」（like），与旧版本行为一致。
+      parseFilterExpr: function(s){
+        s = String(s == null ? '' : s).trim()
+        if(!s) return null
+        var low = s.toLowerCase()
+        // IS NULL / IS NOT NULL（含 !=null / !null / not null 等写法）
+        if(low === 'null' || low === 'is null') return { op:'isnull', v:'', v2:'' }
+        if(low === '!null' || low === 'not null' || low === 'is not null' || low === '!=null' || low === '<>null') return { op:'notnull', v:'', v2:'' }
+        // LIKE / NOT LIKE：~值 / !~值
+        if(s.charAt(0) === '!' && s.charAt(1) === '~') return { op:'nlike', v:s.slice(2).trim(), v2:'' }
+        if(s.charAt(0) === '~') return { op:'like', v:s.slice(1).trim(), v2:'' }
+        // BETWEEN：值1..值2
+        var dot = s.indexOf('..')
+        if(dot > 0){
+          var a = s.slice(0, dot).trim(), b = s.slice(dot + 2).trim()
+          if(a && b) return { op:'between', v:a, v2:b }
+        }
+        // 比较运算符：>= <= <> != > <（长的放前面，避免被单字符抢先匹配；
+        // 值以另一个运算符字符开头时视为误输入，落下层按包含匹配处理）
+        var m = /^(>=|<=|<>|!=|>|<)\s*(.+)$/.exec(s)
+        if(m && !/^[=<>!~,]/.test(m[2].trim())){
+          var op2 = m[1]
+          return { op: op2==='>=' ? 'gte' : op2==='<=' ? 'lte' : (op2==='<>' || op2==='!=') ? 'ne' : op2==='>' ? 'gt' : 'lt', v:m[2].trim(), v2:'' }
+        }
+        // 等于：=值
+        if(s.charAt(0) === '=' && s.length > 1) return { op:'eq', v:s.slice(1).trim(), v2:'' }
+        // IN：逗号分隔多值
+        if(s.indexOf(',') >= 0) return { op:'in', v:s, v2:'' }
+        // 默认：包含匹配
+        return { op:'like', v:s, v2:'' }
+      },
+      // 当前生效的筛选条件：{ 列名: {op,v,v2} }，直接作为 filters 载荷下发后端
+      activeFilters: function(t){
+        var out = {}, filters = t.filters || {}
+        for(var col in filters){
+          if(!Object.prototype.hasOwnProperty.call(filters, col)) continue
+          var c = this.parseFilterExpr(filters[col])
+          if(c) out[col] = c
+        }
+        return out
+      },
       hasFilter: function(t){
-        var filters = t.filters || {}
-        for(var k in filters){ if(Object.prototype.hasOwnProperty.call(filters, k) && String(filters[k]).trim() !== '') return true }
-        return false
+        return Object.keys(this.activeFilters(t)).length > 0
       },
-      filterCount: function(t){
-        var n = 0, filters = t.filters || {}
-        for(var k in filters){ if(Object.prototype.hasOwnProperty.call(filters, k) && String(filters[k]).trim() !== '') n++ }
-        return n
+      // 条件的人类可读描述（chips 上用）
+      filterCondLabel: function(c){
+        switch(c.op){
+          case 'isnull': return '为 NULL'
+          case 'notnull': return '非 NULL'
+          case 'like': return '包含 ' + c.v
+          case 'nlike': return '不含 ' + c.v
+          case 'eq': return '= ' + c.v
+          case 'ne': return '≠ ' + c.v
+          case 'gt': return '> ' + c.v
+          case 'gte': return '≥ ' + c.v
+          case 'lt': return '< ' + c.v
+          case 'lte': return '≤ ' + c.v
+          case 'between': return c.v + ' ~ ' + c.v2
+          case 'in': return '∈ [ ' + c.v + ' ]'
+        }
+        return ''
       },
-      applyFilter: function(t){
+      // chips 条数据（按列名排序，渲染稳定）
+      filterChips: function(t){
+        var af = this.activeFilters(t), chips = []
+        for(var col in af){
+          if(!Object.prototype.hasOwnProperty.call(af, col)) continue
+          chips.push({ col: col, label: this.filterCondLabel(af[col]) })
+        }
+        chips.sort(function(a, b){ return a.col < b.col ? -1 : (a.col > b.col ? 1 : 0) })
+        return chips
+      },
+      // 筛选框输入：空值立即应用（相当于清除该列）；非空防抖 450ms，停顿即自动过滤
+      onFilterInput: function(t, col, e){
+        var self = this
+        var v = e.target.value
+        this.$set(t.filters, col, v)
+        if(t._filtTimer){ clearTimeout(t._filtTimer); t._filtTimer = null }
+        if(String(v).trim() === ''){ self.applyFilter(t); return }
+        t._filtTimer = setTimeout(function(){ t._filtTimer = null; self.applyFilter(t) }, 450)
+      },
+      // Enter 立即应用；Esc 清空本列并立即应用
+      onFilterKey: function(t, col, e){
+        if(e.key === 'Enter'){
+          if(t._filtTimer){ clearTimeout(t._filtTimer); t._filtTimer = null }
+          this.applyFilter(t, true)
+        } else if(e.key === 'Escape'){
+          if(t._filtTimer){ clearTimeout(t._filtTimer); t._filtTimer = null }
+          this.$set(t.filters, col, '')
+          this.applyFilter(t)
+        }
+      },
+      filterTitle: function(col){
+        return '按 ' + col + ' 筛选（停顿即自动应用）\n' +
+          '直接输入 = 包含匹配；=值 等于；!=值 不等于\n' +
+          '>值 / >=值 / <值 / <=值 比较；值1..值2 区间；1,2,3 多值\n' +
+          'null 为 NULL；!=null 非 NULL；~值 LIKE；!~值 NOT LIKE\n' +
+          'Enter 立即应用，Esc 清空本列'
+      },
+      // 点击 chips 定位到对应列的筛选框
+      focusFilterInput: function(t, col){
+        this.$nextTick(function(){
+          var inputs = document.querySelectorAll('[data-gw-data="' + t.id + '"] .col-filter')
+          for(var i = 0; i < inputs.length; i++){
+            if(inputs[i].getAttribute('data-filt') === col){ inputs[i].focus(); inputs[i].select(); break }
+          }
+        })
+      },
+      removeFilter: function(t, col){
+        if(t._filtTimer){ clearTimeout(t._filtTimer); t._filtTimer = null }
+        this.$set(t.filters, col, '')
+        this.applyFilter(t)
+      },
+      // expandSql：仅用户显式触发（Enter）时才展开 SQL 预览，防抖自动应用不打扰
+      applyFilter: function(t, expandSql){
         if(!t || !t.grid) return
-        t.showSql = true // 筛选后自动展开 SQL 预览，方便核对/复制
+        if(expandSql) t.showSql = true // 方便核对/复制本次实际执行的语句
         this.reloadData(t, 1)
       },
       clearFilter: function(t){
         if(!t) return
+        if(t._filtTimer){ clearTimeout(t._filtTimer); t._filtTimer = null }
         t.filters = {}
         this.reloadData(t, 1)
       },
@@ -1686,9 +1814,9 @@
       },
       keyClass: function(k){
         k = String(k).toUpperCase()
-        if(k==='PRI') return 't-pri'
-        if(k==='UNI') return 't-uni'
-        return 't-mul'
+        if(k==='PRI') return 'badge-accent badge-mono'
+        if(k==='UNI') return 'badge-success badge-mono'
+        return 'badge-muted'
       },
 
       /* ---------- 结果网格（查询 / 数据共用） ---------- */
@@ -1886,11 +2014,8 @@
       selectAllMatching: function(t){
         var g = t.grid, self = this
         if(!g || !g.editable || !g.primaryKey){ toast('当前结果不可编辑','err'); return }
-        var f = {}
-        var filters = t.filters || {}
-        for(var k in filters){ if(Object.prototype.hasOwnProperty.call(filters, k) && String(filters[k]).trim() !== '') f[k] = filters[k] }
         t.selAllLoading = true
-        send('row.pkList', { id:t.connId, database:t.db, table:t.table, filters:f, orderBy:g.orderBy, orderDir:g.orderDir, limit:50000 })
+        send('row.pkList', { id:t.connId, database:t.db, table:t.table, filters: self.activeFilters(t), orderBy:g.orderBy, orderDir:g.orderDir, limit:50000 })
           .then(function(r){
             t.selAllLoading = false
             var vals = (r && r.values) || []

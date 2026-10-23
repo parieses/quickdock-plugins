@@ -17,6 +17,9 @@ import os
 import re
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import check_design  # noqa: E402  设计系统门禁（共享类影子重定义）
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # 少数类名不用于样式、只作为 JS 的事件钩子（点击后 closest('.p-kill') 之类），不算缺失
@@ -215,6 +218,29 @@ def check_process_decl(d, plugin_dir, manifest):
                 "（执行程序需显式授权，否则授权契约与实现不符）")
 
 
+def check_design_gate(dirs):
+    """设计系统门禁：插件不得在本地内联样式里顶层重定义共享组件类，
+    且字号必须走排版刻度内的令牌值。
+
+    单独跑 tools/check_design.py 可看完整明细与存量台账。
+    """
+    tier1_new, tier1_known, tier2, _ = check_design.scan([d for d, _ in dirs])
+    for line in tier1_new:
+        err("design", line.replace("顶层重定义", "顶层重定义共享组件类"))
+    for line in tier1_known:
+        warn("design", line + "  ← 迁移后可从 tools/design_baseline.json 移除")
+    font_new, font_known = check_design.check_font_sizes(dirs)
+    for line in font_new:
+        err("design", line)
+    for line in font_known:
+        warn("design", line + "  ← 确认是语义尺寸后可忽略")
+    emoji_new, emoji_known = check_design.check_emoji_icons(dirs)
+    for line in emoji_new:
+        err("design", line)
+    for line in emoji_known:
+        warn("design", line)
+
+
 def main():
     only = sys.argv[1] if len(sys.argv) > 1 else None
     dirs = []
@@ -235,6 +261,8 @@ def main():
         check_frontend(d, p)
         check_stale_binaries(d, p, m)
         check_process_decl(d, p, m)
+
+    check_design_gate(dirs)
 
     for line in errors + warnings:
         print(line)

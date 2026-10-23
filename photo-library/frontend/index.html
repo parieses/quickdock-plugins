@@ -2,6 +2,7 @@
 <html lang="zh-CN">
 <head>
   <link rel="stylesheet" href="qd-theme.css">
+<link rel="stylesheet" href="icons.css">
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>照片库浏览</title>
 <style>
@@ -11,7 +12,7 @@
 <body>
 <div class="p-app">
   <div class="p-head">
-    <span style="font-size:16px">🖼️</span>
+    <span class="qi qi-image qi-20"></span>
     <span class="p-head-title" data-i18n="照片库浏览">照片库浏览</span>
     <div class="p-head-actions">
       <span class="p-head-path" id="path-label"></span>
@@ -60,7 +61,7 @@
   <div class="p-body">
     <div class="p-scroll">
       <div class="p-empty" id="empty">
-        <div class="icon">📂</div>
+        <div class="icon qi qi-folder-open"></div>
         <div data-i18n="选择一个文件夹开始浏览本地照片">选择一个文件夹开始浏览本地照片</div>
       </div>
       <div class="thumb-grid" id="grid" style="display:none"></div>
@@ -85,7 +86,7 @@
         <button class="iconbtn" id="zoom-in" title="放大 (+)">＋</button>
         <span class="pt-sep"></span>
         <button class="iconbtn" id="slide-btn" title="幻灯片 (空格)">▶</button>
-        <button class="iconbtn" id="edit-btn" title="编辑">🖌</button>
+        <button class="iconbtn qi-ico qi-ico-brush" id="edit-btn" title="编辑"></button>
         <button class="iconbtn" id="fav-btn" title="收藏 (F)">☆</button>
       </div>
     </div>
@@ -523,10 +524,10 @@ class PhotoLibrary{
     const roots=this.libraryMode?this.folders:null;
     if(this.libraryMode){
       bar.style.display='flex';
-      const lib=document.createElement('span');lib.className='p-chip active';lib.textContent='📚 '+L('资料库');
+      const lib=document.createElement('span');lib.className='p-chip active qi qi-book-open';lib.textContent=L('资料库');
       box.appendChild(lib);
       this.folders.forEach(f=>{
-        const c=document.createElement('span');c.className='p-chip';c.textContent='📁 '+f.name;
+        const c=document.createElement('span');c.className='p-chip qi qi-folder';c.textContent=f.name;
         c.addEventListener('click',()=>{this.libraryMode=false;this.scan(f.path);});
         box.appendChild(c);
       });
@@ -542,7 +543,7 @@ class PhotoLibrary{
       box.appendChild(up);
     }
     this.folders.forEach(f=>{
-      const c=document.createElement('span');c.className='p-chip';c.textContent='📁 '+f.name;
+      const c=document.createElement('span');c.className='p-chip qi qi-folder';c.textContent=f.name;
       c.addEventListener('click',()=>this.scan(f.path));
       box.appendChild(c);
     });
@@ -593,7 +594,7 @@ class PhotoLibrary{
     if(t&&t.ok){
       inner='<img class="thumb-img" src="'+t.dataUrl+'" alt="'+escapeHtml(f.name)+'">';
     }else if(t&&!t.ok){
-      inner='<div class="thumb-ph"><span class="ext">'+escapeHtml((f.ext||'').replace('.',''))+'</span><span style="font-size:10px">'+L('无预览')+'</span></div>';
+      inner='<div class="thumb-ph"><span class="ext">'+escapeHtml((f.ext||'').replace('.',''))+'</span><span style="font-size: var(--fs-xs)">'+L('无预览')+'</span></div>';
     }else{
       inner='<div class="thumb-ph"><div class="spin"></div></div>';
     }
@@ -655,7 +656,7 @@ class PhotoLibrary{
               const t=this.thumbs[it.path];
               const ph=card.querySelector('.thumb-ph');
               if(t.ok){const img=document.createElement('img');img.className='thumb-img';img.src=t.dataUrl;img.alt='';ph.replaceWith(img);}
-              else if(ph){ph.querySelector('.spin')&&ph.querySelector('.spin').remove();let ext=card.querySelector('.ext');if(!ext){ext=document.createElement('span');ext.className='ext';const m=it.path.match(/\.([^.\\/]+)$/);ext.textContent=m?m[1].toUpperCase():'';ph.appendChild(ext);}ph.insertAdjacentHTML('beforeend','<span style="font-size:10px">'+L('无预览')+'</span>');}
+              else if(ph){ph.querySelector('.spin')&&ph.querySelector('.spin').remove();let ext=card.querySelector('.ext');if(!ext){ext=document.createElement('span');ext.className='ext';const m=it.path.match(/\.([^.\\/]+)$/);ext.textContent=m?m[1].toUpperCase():'';ph.appendChild(ext);}ph.insertAdjacentHTML('beforeend','<span style="font-size: var(--fs-xs)">'+L('无预览')+'</span>');}
             }
           });
         }catch(err){/* 单个批次失败不影响其它 */}
@@ -805,7 +806,7 @@ class PhotoLibrary{
       inner.appendChild(img);
     }
     const marker=document.createElement('div');
-    marker.className='gps-marker';marker.style.left=mx+'px';marker.style.top=my+'px';marker.textContent='📍';
+    marker.className='gps-marker qi qi-map-pin';marker.style.left=mx+'px';marker.style.top=my+'px';
     inner.appendChild(marker);
     el.innerHTML='';el.appendChild(inner);
   }

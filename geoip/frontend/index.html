@@ -9,18 +9,18 @@
 body{margin:0}
 .app{display:flex;flex-direction:column;height:100vh;padding:12px;gap:10px;box-sizing:border-box}
 .row{display:flex;gap:8px;align-items:center}
-.inp{height:34px;padding:0 12px;flex:1;background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius);font-size:14px;font-family:inherit}
-.btn{height:34px;padding:0 16px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:inherit}
+.inp{height:34px;padding:0 12px;flex:1;background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius);font-size: var(--fs-lg);font-family:inherit}
+.btn{height:34px;padding:0 16px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;color:var(--text-secondary);font-size: var(--fs-md);cursor:pointer;font-family:inherit}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 .list{flex:1;overflow:auto;display:flex;flex-direction:column;gap:8px}
 .item{display:flex;justify-content:space-between;gap:12px;padding:10px 12px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius)}
-.item .k{font-size:13px;color:var(--text-muted)}
-.item .v{font-size:13px;color:var(--text-primary);text-align:right;max-width:60%;word-break:break-all}
-#msg{font-size:12px;color:#e24b4a;min-height:14px;display:flex;align-items:center;gap:6px}
+.item .k{font-size: var(--fs-md);color:var(--text-muted)}
+.item .v{font-size: var(--fs-md);color:var(--text-primary);text-align:right;max-width:60%;word-break:break-all}
+#msg{font-size: var(--fs-sm);color:var(--danger);min-height:14px;display:flex;align-items:center;gap:6px}
 #msg.loading{color:var(--text-muted)}
 #msg.loading::before{content:'';width:12px;height:12px;border:2px solid var(--text-muted);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-.hint{font-size:11px;color:var(--text-muted)}
+.hint{font-size: var(--fs-xs);color:var(--text-muted)}
 </style>
 </head>
 <body>

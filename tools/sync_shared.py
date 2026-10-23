@@ -57,6 +57,10 @@ def process(plugin: Path, dry: bool) -> bool:
     comp = fe / "components.css"
     if comp.exists():
         changed |= sync_file(comp, TPL / "components.css", dry)
+    # icons.css：同 components.css 规则——只有已存在副本的插件才同步
+    icons = fe / "icons.css"
+    if icons.exists():
+        changed |= sync_file(icons, TPL / "icons.css", dry)
     # qd-theme.css：只同步已存在且非 fork 的副本
     theme = fe / "qd-theme.css"
     if plugin.name in QTHEME_FORKS:

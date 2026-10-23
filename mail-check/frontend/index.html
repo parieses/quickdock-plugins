@@ -6,54 +6,53 @@
 <title>邮箱足迹查询</title>
 <link rel="stylesheet" href="qd-theme.css">
   <link rel="stylesheet" href="components.css">
+<link rel="stylesheet" href="icons.css">
 <style>
 .mc-app{display:flex;flex-direction:column;height:100vh;gap:8px;padding:10px}
 .mc-top{display:flex;align-items:center;gap:8px}
-.mc-title{font-size:13px;font-weight:600;color:var(--text-primary)}
+.mc-title{font-size: var(--fs-md);font-weight:600;color:var(--text-primary)}
 .mc-spacer{flex:1}
-.mc-btn{height:30px;padding:0 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-tertiary);color:var(--text-primary);font-size:12px;cursor:pointer;font-family:inherit;white-space:nowrap}
+.mc-btn{height:30px;padding:0 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-tertiary);color:var(--text-primary);font-size: var(--fs-sm);cursor:pointer;font-family:inherit;white-space:nowrap}
 .mc-btn:hover{background:var(--bg-hover)}
 .mc-btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
 .mc-btn-primary:hover{background:var(--accent-hover)}
 .mc-btn:disabled{opacity:.5;cursor:not-allowed}
 .mc-input-row{display:flex;gap:8px}
-.mc-input{flex:1;height:34px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-tertiary);color:var(--text-primary);font-family:var(--font-mono);font-size:13px;outline:none}
-.mc-input:focus{border-color:var(--accent)}
-.mc-hint{font-size:11px;color:var(--text-muted);min-height:16px}
+.mc-input{flex:1;height:34px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-tertiary);color:var(--text-primary);font-family:var(--font-mono);font-size: var(--fs-md);outline:none}
+.mc-input:focus-visible{border-color:var(--accent)}
+.mc-hint{font-size: var(--fs-xs);color:var(--text-muted);min-height:16px}
 .mc-hint.err{color:var(--danger)}
 .mc-body{flex:1;overflow:auto;display:flex;flex-direction:column;gap:8px;min-height:0}
 .mc-card{border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-secondary);overflow:hidden}
-.mc-card-head{display:flex;align-items:center;gap:6px;padding:6px 10px;font-size:12px;font-weight:500;color:var(--text-secondary);background:var(--bg-tertiary);border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.3px}
-.mc-card-body{padding:8px 10px;font-size:12px;color:var(--text-primary);display:flex;flex-direction:column;gap:6px}
+.mc-card-head{display:flex;align-items:center;gap:6px;padding:6px 10px;font-size: var(--fs-sm);font-weight:500;color:var(--text-secondary);background:var(--bg-tertiary);border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.3px}
+.mc-card-body{padding:8px 10px;font-size: var(--fs-sm);color:var(--text-primary);display:flex;flex-direction:column;gap:6px}
 .mc-vrows{display:flex;flex-wrap:wrap;gap:8px}
-.mc-vitem{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:4px 10px;background:var(--bg-tertiary);font-size:12px}
-.mc-vitem .k{color:var(--text-muted);font-size:11px}
-.mc-vitem .v{font-family:var(--font-mono);font-size:12px;color:var(--text-primary)}
+.mc-vitem{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:4px 10px;background:var(--bg-tertiary);font-size: var(--fs-sm)}
+.mc-vitem .k{color:var(--text-muted);font-size: var(--fs-xs)}
+.mc-vitem .v{font-family:var(--font-mono);font-size: var(--fs-sm);color:var(--text-primary)}
 .mc-probe{display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid var(--border)}
 .mc-probe:last-child{border-bottom:none}
-.mc-probe .name{font-size:13px;color:var(--text-primary);min-width:120px}
-.mc-probe .cat{font-size:11px;color:var(--text-muted);min-width:64px}
-.mc-probe .detail{flex:1;font-size:12px;color:var(--text-secondary);word-break:break-all}
-.mc-probe a{font-size:11px;color:var(--accent);text-decoration:none}
-.mc-badge{font-size:11px;padding:2px 8px;border-radius:var(--radius-pill);white-space:nowrap;font-weight:500}
-.b-found{background:rgba(226,75,74,.16);color:var(--danger)}
+.mc-probe .name{font-size: var(--fs-md);color:var(--text-primary);min-width:120px}
+.mc-probe .cat{font-size: var(--fs-xs);color:var(--text-muted);min-width:64px}
+.mc-probe .detail{flex:1;font-size: var(--fs-sm);color:var(--text-secondary);word-break:break-all}
+.mc-probe a{font-size: var(--fs-xs);color:var(--accent);text-decoration:none}
+.mc-badge{font-size: var(--fs-xs);padding:2px 8px;border-radius:var(--radius-pill);white-space:nowrap;font-weight:500}
+.b-found{background:var(--danger-soft);color:var(--danger)}
 .b-not_found{background:rgba(52,211,153,.16);color:var(--success,#34d399)}
 .b-unknown{background:rgba(239,159,39,.16);color:var(--warning,#ef9f27)}
 .b-error{background:rgba(136,135,128,.18);color:var(--text-muted)}
 .b-ok{background:rgba(52,211,153,.16);color:var(--success,#34d399)}
 .b-skip{background:rgba(136,135,128,.18);color:var(--text-muted)}
-.mc-empty{display:flex;align-items:center;justify-content:center;flex:1;color:var(--text-muted);font-size:13px}
+.mc-empty{display:flex;align-items:center;justify-content:center;flex:1;color:var(--text-muted);font-size: var(--fs-md)}
 .hidden{display:none!important}
 </style>
-<svg style="display:none" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><symbol id="icon-box" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></symbol></svg>
-<svg style="display:none" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><symbol id="icon-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></symbol><symbol id="icon-send" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></symbol><symbol id="icon-git-branch" viewBox="0 0 24 24"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></symbol><symbol id="icon-trash-2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></symbol><symbol id="icon-shield-alert" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></symbol><symbol id="icon-hard-drive" viewBox="0 0 24 24"><line x1="2" y1="12" x2="22" y2="12"></line><path d="M17 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></symbol><symbol id="icon-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></symbol><symbol id="icon-file-text" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></symbol><symbol id="icon-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></symbol><symbol id="icon-gauge" viewBox="0 0 24 24"><path d="M12 15l-2-2"></path><path d="M19.07 4.93a10 10 0 1 1-14.14 0"></path><path d="M12 2v4"></path></symbol><symbol id="icon-box" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></symbol></svg>
 </head>
 <body>
 <div class="mc-app">
   <div class="mc-top">
     <span class="mc-title">邮箱足迹查询</span>
     <span class="mc-spacer"></span>
-    <button class="mc-btn" id="btnCopy">📋 复制摘要</button>
+    <button class="mc-btn" id="btnCopy"><span class="qi qi-clipboard"></span> <span id="copyLabel">复制摘要</span></button>
     <button class="mc-btn" id="btnClear">✕ 清空</button>
   </div>
   <div class="mc-input-row">
@@ -72,7 +71,7 @@
     <div class="mc-card hidden" id="probeCard">
       <div class="mc-card-head">平台足迹 <span id="probeStat" style="text-transform:none;letter-spacing:0;color:var(--text-muted);font-weight:400"></span>
       <span class="mc-spacer"></span>
-      <button class="mc-btn" id="probeToggle" style="height:24px;padding:0 10px;font-size:11px">展开全部</button>
+      <button class="mc-btn" id="probeToggle" style="height:24px;padding:0 10px;font-size: var(--fs-xs)">展开全部</button>
       </div></div>
       <div class="mc-card-body" id="probes"></div>
     </div>
@@ -282,11 +281,12 @@ function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;
   document.getElementById('btnCopy').addEventListener('click',function(){
     if(!lastSummary){ hint.textContent='暂无结果可复制'; return }
     var bc=document.getElementById('btnCopy')
+    var cl=document.getElementById('copyLabel')
     bc.disabled=true
     copyViaHost(lastSummary, function(ok){
-      bc.textContent=ok?'✓ 已复制':'请按 Ctrl+C 复制'
+      cl.textContent=ok?'已复制':'请按 Ctrl+C 复制'
       hint.textContent=ok?'已复制查询摘要':'宿主剪贴板不可用，已弹出复制面板（Ctrl+C）'
-      setTimeout(function(){ if(!lastSummary)return; bc.disabled=false; bc.textContent='📋 复制摘要' },1500)
+      setTimeout(function(){ if(!lastSummary)return; bc.disabled=false; cl.textContent='复制摘要' },1500)
     })
   })
   document.getElementById('btnClear').addEventListener('click',function(){
@@ -313,7 +313,7 @@ function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;
 /* 手动复制面板：宿主剪贴板桥不可用时兜底，任何环境都能用 Ctrl+C 复制 */
 .mc-modal{position:fixed;inset:0;z-index:999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55)}
 .mc-modal-box{width:min(560px,90vw);max-height:80vh;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow-2);padding:16px;display:flex;flex-direction:column;gap:12px}
-.mc-modal-title{font-size:13px;font-weight:600}
+.mc-modal-title{font-size: var(--fs-md);font-weight:600}
 .mc-modal-text{width:100%;min-height:140px;max-height:50vh;resize:vertical;background:var(--bg-primary);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;padding:10px;font:12px/1.6 ui-monospace,Consolas,monospace;outline:none}
 .mc-modal-actions{display:flex;justify-content:flex-end}
 </style>

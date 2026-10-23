@@ -9,22 +9,22 @@
 body{margin:0}
 .app{display:flex;flex-direction:column;height:100vh;padding:12px;gap:10px;box-sizing:border-box}
 .bar{display:flex;gap:8px}
-.inp{height:34px;padding:0 12px;flex:1;background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius);font-size:14px;font-family:inherit}
-.btn{height:34px;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:inherit}
+.inp{height:34px;padding:0 12px;flex:1;background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius);font-size: var(--fs-lg);font-family:inherit}
+.btn{height:34px;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;color:var(--text-secondary);font-size: var(--fs-md);cursor:pointer;font-family:inherit}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
-.btn.sm{height:26px;padding:0 10px;font-size:12px}
+.btn.sm{height:26px;padding:0 10px;font-size: var(--fs-sm)}
 .list{flex:1;overflow:auto;display:flex;flex-direction:column;gap:4px}
 .row{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius)}
 .row .meta{flex:1;min-width:0}
-.row .name{font-size:13px;color:var(--text-primary);font-weight:600}
-.row .sub{font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .name{font-size: var(--fs-md);color:var(--text-primary);font-weight:600}
+.row .sub{font-size: var(--fs-xs);color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .row .acts{display:flex;gap:6px;flex-shrink:0}
-.badge{font-size:11px;padding:2px 8px;border-radius:10px;flex-shrink:0}
+.badge{font-size: var(--fs-xs);padding:2px 8px;border-radius:10px;flex-shrink:0}
 .b-run{background:rgba(52,153,62,.18);color:#35c268}
-.b-stop{background:rgba(226,75,74,.18);color:#e24b4a}
+.b-stop{background:var(--danger-soft);color:var(--danger)}
 .b-pen{background:rgba(212,102,21,.18);color:#d46615}
-#msg{font-size:12px;color:#e24b4a;min-height:14px}
-.hint{font-size:11px;color:var(--text-muted)}
+#msg{font-size: var(--fs-sm);color:var(--danger);min-height:14px}
+.hint{font-size: var(--fs-xs);color:var(--text-muted)}
 </style>
 </head>
 <body>

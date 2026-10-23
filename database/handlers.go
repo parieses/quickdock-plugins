@@ -444,21 +444,9 @@ func handleRowPkList(id int64, input map[string]interface{}) {
 		}
 	}
 
-	// 与 table.rows 完全一致的列级筛选：col LIKE '%值%'，多列 AND
-	filters := strMapFrom(input, "filters")
-	var conds []string
-	var fargs []interface{}
-	for col, val := range filters {
-		if strings.TrimSpace(val) == "" {
-			continue
-		}
-		conds = append(conds, quoteIdent(conn.kind, col)+" LIKE ?")
-		fargs = append(fargs, "%"+val+"%")
-	}
-	where := ""
-	if len(conds) > 0 {
-		where = " WHERE " + strings.Join(conds, " AND ")
-	}
+	// 与 table.rows 完全一致的列级筛选：结构化条件 AND 拼接，全部参数化
+	filters := parseFilters(input)
+	where, fargs := buildWhere(conn.kind, filters)
 	tbl := quoteIdent(conn.kind, table)
 
 	pk, pkReason := primaryKeyOf(conn.sqlDB, conn.kind, effDB, table)

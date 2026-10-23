@@ -4,11 +4,8 @@
   <meta charset="UTF-8">
   <link rel="stylesheet" href="qd-theme.css">
   <link rel="stylesheet" href="components.css">
+<link rel="stylesheet" href="icons.css">
   <style>
-    .gw-tabs { display:flex; gap:2px; padding:0 var(--sp-3); height:38px; background:var(--bg-secondary); border-bottom:1px solid var(--border); flex-shrink:0; overflow-x:auto; }
-    .gw-tab { display:inline-flex; align-items:center; gap:6px; height:38px; padding:0 14px; border:none; background:transparent; color:var(--text-muted); font-size:var(--fs-sm); cursor:pointer; border-bottom:2px solid transparent; white-space:nowrap; }
-    .gw-tab:hover { color:var(--text-secondary); }
-    .gw-tab.active { color:var(--text-primary); border-bottom-color:var(--accent); font-weight:var(--fw-semibold); }
     .gw-pane { display:none; flex:1; overflow-y:auto; padding:var(--sp-4); }
     .gw-pane.active { display:flex; flex-direction:column; gap:var(--sp-4); }
 
@@ -51,13 +48,13 @@
     table.gw-blame td.tx { white-space:pre-wrap; word-break:break-all; font-family:var(--font-mono); font-size:var(--fs-xs); color:var(--text-secondary); }
     .gw-au-chip { display:inline-block; padding:1px 7px; border-radius:var(--radius-pill); font-size:var(--fs-xs); color:#fff; }
 
-    .gw-heat { display:grid; grid-template-columns:32px repeat(24,1fr); gap:2px; font-size:9px; }
+    .gw-heat { display:grid; grid-template-columns:32px repeat(24,1fr); gap:2px; font-size: var(--fs-xs); }
     .gw-heat .hl { color:var(--text-muted); }
     .gw-heat .hc { border-radius:2px; min-height:14px; }
     .gw-bars { display:flex; align-items:flex-end; gap:2px; overflow-x:auto; height:150px; padding-bottom:18px; position:relative; }
     .gw-bar { flex:0 0 5px; background:var(--accent); border-radius:2px 2px 0 0; min-height:2px; position:relative; }
     .gw-bar.empty { background:var(--bg-tertiary); }
-    .gw-bar span { position:absolute; bottom:-16px; left:50%; transform:translateX(-50%); font-size:8px; color:var(--text-muted); white-space:nowrap; }
+    .gw-bar span { position:absolute; bottom:-16px; left:50%; transform:translateX(-50%); font-size: var(--fs-xs); color:var(--text-muted); white-space:nowrap; }
 
     .gw-empty { display:flex; align-items:center; justify-content:center; flex:1; color:var(--text-muted); font-size:var(--fs-md); flex-direction:column; gap:8px; }
     .gw-warn { display:flex; gap:8px; align-items:flex-start; padding:10px 12px; border-radius:var(--radius); background:var(--warning-soft); color:var(--warning); font-size:var(--fs-sm); line-height:1.5; }
@@ -105,8 +102,8 @@
       margin-bottom: 8px;
     }
     .commit-card:hover { border-color: var(--border-strong); }
-    .commit-hash { font-family: var(--font-mono); font-size: 12px; color: var(--accent); }
-    .commit-author { font-size: 12px; color: var(--text-muted); }
+    .commit-hash { font-family: var(--font-mono); font-size: var(--fs-sm); color: var(--accent); }
+    .commit-author { font-size: var(--fs-sm); color: var(--text-muted); }
     
     /* 热力图 */
     .heatmap-cell {
@@ -120,12 +117,11 @@
     .heatmap-cell.level-3 { background: rgba(74, 158, 255, 0.5); }
     .heatmap-cell.level-4 { background: var(--accent); }
 </style>
-<svg style="display:none" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><symbol id="icon-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></symbol><symbol id="icon-send" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></symbol><symbol id="icon-git-branch" viewBox="0 0 24 24"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></symbol><symbol id="icon-trash-2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></symbol><symbol id="icon-shield-alert" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></symbol><symbol id="icon-hard-drive" viewBox="0 0 24 24"><line x1="2" y1="12" x2="22" y2="12"></line><path d="M17 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></symbol><symbol id="icon-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></symbol><symbol id="icon-file-text" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></symbol><symbol id="icon-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></symbol><symbol id="icon-gauge" viewBox="0 0 24 24"><path d="M12 15l-2-2"></path><path d="M19.07 4.93a10 10 0 1 1-14.14 0"></path><path d="M12 2v4"></path></symbol><symbol id="icon-box" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></symbol></svg>
 </head>
 <body>
 <div class="p-app">
   <div class="p-head">
-    <span class="p-head-title">🌿 Git 工作台</span>
+    <span class="p-head-title">Git 工作台</span>
     <div class="gw-repo" style="margin-left:12px; flex:1; max-width:560px;">
       <input class="p-input" id="repo-path" placeholder="仓库目录（点击右侧选择）" spellcheck="false">
       <button class="p-btn p-btn-sm" id="btn-pick">选择目录</button>
@@ -136,13 +132,13 @@
     </div>
   </div>
 
-  <div class="gw-tabs" id="tabs">
-    <button class="gw-tab active" data-tab="repo">📁 仓库</button>
-    <button class="gw-tab" data-tab="bisect">🔍 二分定位</button>
-    <button class="gw-tab" data-tab="conflict">🧩 冲突解决</button>
-    <button class="gw-tab" data-tab="timeline">📜 演化时间轴</button>
-    <button class="gw-tab" data-tab="stats">🩺 仓库体检</button>
-    <button class="gw-tab" data-tab="rewrite">✏️ 历史改写</button>
+  <div class="tabs" id="tabs">
+    <button class="tab qi-ico qi-ico-folder active" data-tab="repo">仓库</button>
+    <button class="tab qi-ico qi-ico-search" data-tab="bisect">二分定位</button>
+    <button class="tab qi-ico qi-ico-puzzle" data-tab="conflict">冲突解决</button>
+    <button class="tab qi-ico qi-ico-scroll-text" data-tab="timeline">演化时间轴</button>
+    <button class="tab qi-ico qi-ico-activity" data-tab="stats">仓库体检</button>
+    <button class="tab" data-tab="rewrite">✏️ 历史改写</button>
   </div>
 
   <!-- ===== 仓库 ===== -->
@@ -388,13 +384,13 @@ function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;
 
   /* ---------- Tabs ---------- */
   function switchTab(name){
-    var btn=document.querySelector('.gw-tab[data-tab="'+name+'"]')
+    var btn=document.querySelector('.tab[data-tab="'+name+'"]')
     if(!btn) return
-    document.querySelectorAll('.gw-tab').forEach(function(b){ b.classList.toggle('active', b===btn) })
+    document.querySelectorAll('.tab').forEach(function(b){ b.classList.toggle('active', b===btn) })
     document.querySelectorAll('.gw-pane').forEach(function(p){ p.classList.toggle('active', p.id==='pane-'+name) })
   }
   $('tabs').addEventListener('click', function(e){
-    var btn=e.target.closest('.gw-tab'); if(!btn) return
+    var btn=e.target.closest('.tab'); if(!btn) return
     switchTab(btn.dataset.tab)
   })
 
@@ -498,7 +494,7 @@ function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;
     $('bs-stats').textContent='步骤 '+r.steps+' · 区间剩 '+(r.remain||0)+' · 共 '+r.total
     var cur=$('bs-current')
     if(r.done && r.culprit){
-      cur.innerHTML = '<div class="gw-warn" style="color:var(--danger)">🎯 首次引入问题的提交：<b class="gw-mono">'+esc(r.culprit.hash)+'</b> '+esc(r.culprit.message)+'<div class="gw-sub">作者 '+esc(r.culprit.author)+' · '+esc(r.culprit.time)+'</div></div>'
+      cur.innerHTML = '<div class="gw-warn" style="color:var(--danger)"><span class="qi qi-target"></span> 首次引入问题的提交：<b class="gw-mono">'+esc(r.culprit.hash)+'</b> '+esc(r.culprit.message)+'<div class="gw-sub">作者 '+esc(r.culprit.author)+' · '+esc(r.culprit.time)+'</div></div>'
     } else if(r.current){
       cur.innerHTML='<div class="gw-card"><div class="v gw-mono">'+esc(r.current.hash)+'</div><div class="k">'+esc(r.current.message)+'</div><div class="gw-sub">作者 '+esc(r.current.author)+' · '+esc(r.current.time)+'</div></div>'+
         '<div class="gw-hint" style="margin-top:6px">请测试当前版本，然后标记它是否正常。</div>'

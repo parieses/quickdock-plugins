@@ -11,7 +11,7 @@
 .p-app{display:flex;flex-direction:column;height:100vh}
 .p-toolbar{padding:0 10px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0}
 .ct-tabs{display:flex;gap:2px;overflow-x:auto}
-.ct-tab{padding:9px 13px;border:none;background:none;color:var(--text-secondary);font-size:12.5px;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap}
+.ct-tab{padding:9px 13px;border:none;background:none;color:var(--text-secondary);font-size: var(--fs-sm);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap}
 .ct-tab:hover{color:var(--text-primary)}
 .ct-tab.ct-active{color:var(--accent);border-bottom-color:var(--accent)}
 .ct-body{flex:1;min-height:0;overflow:auto;padding:12px}
@@ -19,28 +19,28 @@
 .ct-pane.ct-show{display:block}
 .ct-form{display:flex;flex-direction:column;gap:10px}
 .ct-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.ct-lbl{font-size:12px;color:var(--text-secondary);min-width:56px}
-.ct-num{width:80px;height:28px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-primary);color:var(--text-primary);font-size:12.5px;outline:none}
-.ct-num:focus{border-color:var(--accent)}
-select.ct-sel,.ct-inp{height:30px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-primary);color:var(--text-primary);font-size:12.5px;outline:none}
-select.ct-sel:focus,.ct-inp:focus{border-color:var(--accent)}
+.ct-lbl{font-size: var(--fs-sm);color:var(--text-secondary);min-width:56px}
+.ct-num{width:80px;height:28px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-primary);color:var(--text-primary);font-size: var(--fs-sm);outline:none}
+.ct-num:focus-visible{border-color:var(--accent)}
+select.ct-sel,.ct-inp{height:30px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-primary);color:var(--text-primary);font-size: var(--fs-sm);outline:none}
+select.ct-sel:focus-visible,.ct-inp:focus-visible{border-color:var(--accent)}
 .ct-inp{flex:1;min-width:0}
 .ct-checks{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px 12px}
-.ct-checks label{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-secondary);cursor:pointer}
+.ct-checks label{display:flex;align-items:center;gap:6px;font-size: var(--fs-sm);color:var(--text-secondary);cursor:pointer}
 .ct-checks input{width:14px;height:14px;accent-color:var(--accent);cursor:pointer}
-.ct-meta{font-size:11.5px;color:var(--text-muted);min-height:16px}
+.ct-meta{font-size: var(--fs-xs);color:var(--text-muted);min-height:16px}
 .ct-out{display:flex;flex-direction:column;gap:3px;margin-top:2px}
 .ct-out-item{display:flex;align-items:center;gap:8px;padding:6px 9px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-primary);cursor:pointer}
 .ct-out-item:hover{background:var(--bg-hover);border-color:var(--border-strong)}
 .ct-out-item code{flex:1;min-width:0;font:12.5px var(--font-mono);color:var(--text-primary);word-break:break-all}
-.ct-out-item .ct-cp{font-size:11px;color:var(--text-muted);flex-shrink:0}
+.ct-out-item .ct-cp{font-size: var(--fs-xs);color:var(--text-muted);flex-shrink:0}
 .ct-sec{border-top:1px solid var(--border);padding-top:10px;margin-top:2px}
-.ct-sec-t{font-size:11.5px;color:var(--text-muted);margin-bottom:6px}
-.ct-status{flex-shrink:0;padding:5px 12px;font-size:11.5px;color:var(--text-muted);border-top:1px solid var(--border);background:var(--bg-secondary);min-height:26px}
+.ct-sec-t{font-size: var(--fs-xs);color:var(--text-muted);margin-bottom:6px}
+.ct-status{flex-shrink:0;padding:5px 12px;font-size: var(--fs-xs);color:var(--text-muted);border-top:1px solid var(--border);background:var(--bg-secondary);min-height:26px}
 .ct-status.err{color:var(--danger)}
 .ct-status.ok{color:var(--success)}
-.ct-warn{padding:9px 11px;border-radius:var(--radius);background:var(--danger-soft);color:var(--danger);font-size:12px;border:1px solid var(--danger)}
-.ct-note{font-size:11.5px;color:var(--text-muted);line-height:1.5}
+.ct-warn{padding:9px 11px;border-radius:var(--radius);background:var(--danger-soft);color:var(--danger);font-size: var(--fs-sm);border:1px solid var(--danger)}
+.ct-note{font-size: var(--fs-xs);color:var(--text-muted);line-height:1.5}
 </style>
 <script>
 /* QuickDock sandbox 剪贴板桥接：iframe 内 navigator.clipboard 被 Permissions-Policy 禁用 */
@@ -69,7 +69,7 @@ window.execCopyFallback=function(t){try{var a=document.createElement('textarea')
             <option value="v4">UUID v4（随机）</option>
             <option value="v7">UUID v7（时间有序）</option>
           </select>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-secondary);cursor:pointer">
+          <label style="display:flex;align-items:center;gap:6px;font-size: var(--fs-sm);color:var(--text-secondary);cursor:pointer">
             <input type="checkbox" id="uUpper" style="width:14px;height:14px;accent-color:var(--accent)"> <span id="lblUpper">大写</span>
           </label>
         </div>

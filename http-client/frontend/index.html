@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <link rel="stylesheet" href="qd-theme.css">
   <link rel="stylesheet" href="components.css">
+<link rel="stylesheet" href="icons.css">
   <style>
     body { overflow: hidden; }
     .hc { display:flex; flex-direction:column; height:100vh; }
@@ -23,19 +24,29 @@
     .ht-row { display:flex; align-items:center; gap:5px; padding:5px 6px; border-radius:var(--radius-sm); cursor:pointer; color:var(--text-secondary); font-size:var(--fs-sm); }
     .ht-row:hover { background:var(--bg-hover); }
     .ht-folder.active, .ht-req.active, .ht-doc.active { background:var(--accent-soft); color:var(--text-primary); }
-    .ht-caret { color:var(--text-muted); width:12px; flex-shrink:0; font-size:10px; }
+    .ht-caret { color:var(--text-muted); width:12px; flex-shrink:0; font-size: var(--fs-xs); }
     .ht-ico { flex-shrink:0; }
+    /* 图标槽固定尺寸，避免 .qi 的 1em 继承到 --fs-xs(11px) 后过小 */
+    .ht-ico.qi { width:14px; height:14px; }
     .ht-name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .ht-children { padding:2px 0 4px 14px; }
-    .ht-method { font-size:9px; font-weight:700; flex-shrink:0; padding:1px 4px; border-radius:3px; color:#fff; }
-    .m-get{background:#2e9e5b}.m-post{background:#3a8ae0}.m-put{background:#d9920a}.m-delete{background:#e8584c}.m-patch{background:#9b6ddb}.m-head{background:#6b7785}.m-options{background:#5a8f9e}
+    .ht-method { font-size: var(--fs-xs); font-weight:700; flex-shrink:0; padding:1px 4px; border-radius:3px; color:#fff; }
+    /* HTTP 方法徽章：收敛到语义令牌四色 + 中性。
+       GET→success / POST→accent / PUT→warning / DELETE→danger /
+       PATCH·HEAD·OPTIONS→中性（bg-active 配深色文字，浅色主题下也清晰）。 */
+    .m-get{background:var(--success)}
+    .m-post{background:var(--accent)}
+    .m-put{background:var(--warning)}
+    .m-delete{background:var(--danger)}
+    .m-patch,.m-head,.m-options{background:var(--bg-active);color:var(--text-secondary)}
     .ht-actions { display:none; align-items:center; gap:2px; flex-shrink:0; }
     .ht-row:hover .ht-actions { display:flex; }
-    .ht-act { border:none; background:none; color:var(--text-muted); cursor:pointer; font-size:10px; padding:1px 4px; border-radius:4px; }
+    .ht-act { border:none; background:none; color:var(--text-muted); cursor:pointer; font-size: var(--fs-xs); padding:1px 4px; border-radius:4px; }
+    .ht-act.qi-ico::before { width:13px; height:13px; }
     .ht-act:hover { background:var(--bg-hover); color:var(--accent); }
     .ht-act.ht-del:hover { color:var(--danger); }
     .ht-env { display:flex; align-items:center; gap:5px; padding:4px 6px; }
-    .ht-env label { font-size:10px; color:var(--text-muted); flex-shrink:0; }
+    .ht-env label { font-size: var(--fs-xs); color:var(--text-muted); flex-shrink:0; }
     .ht-env select { flex:1; min-width:0; padding:4px 6px; border-radius:var(--radius-sm); font-size:var(--fs-xs); border:1px solid var(--border); background:var(--bg-tertiary); color:var(--text-primary); }
     .ht-empty { padding:8px; text-align:center; color:var(--text-disabled); font-size:var(--fs-xs); }
 
@@ -45,17 +56,15 @@
     .hc-method { height:32px; border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-tertiary); color:var(--text-primary); font-size:var(--fs-sm); font-weight:var(--fw-semibold); padding:0 8px; }
     .hc-url { flex:1; height:32px; }
     .hc-name { width:152px; flex-shrink:0; height:32px; }
-    .hc-tabs { display:flex; gap:2px; padding:0 var(--sp-3); border-bottom:1px solid var(--border); }
-    .hc-tab { border:none; background:transparent; color:var(--text-muted); font-size:var(--fs-sm); padding:7px 12px; cursor:pointer; border-bottom:2px solid transparent; }
-    .hc-tab.active { color:var(--text-primary); border-bottom-color:var(--accent); font-weight:var(--fw-semibold); }
     .hc-pane { padding:var(--sp-3); display:none; overflow:auto; max-height:230px; }
     .hc-pane.active { display:block; }
 
     .kv-row { display:flex; align-items:center; gap:6px; margin-bottom:5px; }
     .kv-check { width:15px; height:15px; accent-color:var(--accent); }
     .kv-key, .kv-val { flex:1; min-width:0; padding:5px 8px; border-radius:var(--radius-sm); border:1px solid var(--border); background:var(--bg-tertiary); color:var(--text-primary); font-size:var(--fs-sm); font-family:var(--font-mono); }
-    .kv-key:focus, .kv-val:focus { border-color:var(--accent); outline:none; }
+    .kv-key:focus-visible, .kv-val:focus-visible { border-color:var(--accent); outline:none; }
     .kv-del { border:none; background:none; color:var(--text-disabled); cursor:pointer; }
+    .kv-del.qi-ico::before { width:13px; height:13px; }
     .kv-del:hover { color:var(--danger); }
     .kv-add { display:inline-flex; align-items:center; gap:4px; padding:4px 6px; border:1px dashed var(--border); border-radius:var(--radius-sm); background:none; color:var(--text-muted); font-size:var(--fs-xs); cursor:pointer; }
     .kv-add:hover { color:var(--accent); border-color:var(--accent); }
@@ -81,7 +90,7 @@
     .hc-doc-input { flex:1; min-width:0; resize:none; padding:12px; border:none; border-right:1px solid var(--border); background:var(--bg-secondary); color:var(--text-primary); font-size:var(--fs-sm); font-family:var(--font-mono); line-height:1.6; outline:none; }
     .hc-doc-preview { flex:1; min-width:0; overflow:auto; padding:12px 16px; background:var(--bg-primary); }
     .md h1,.md h2,.md h3 { margin:12px 0 8px; line-height:1.3; }
-    .md h1 { font-size:20px; border-bottom:1px solid var(--border); padding-bottom:6px; }
+    .md h1 { font-size: var(--fs-2xl); border-bottom:1px solid var(--border); padding-bottom:6px; }
     .md h2 { font-size:17px; border-bottom:1px solid var(--border); padding-bottom:4px; }
     .md p { margin:8px 0; }
     .md code { background:var(--bg-tertiary); padding:1px 5px; border-radius:4px; font-family:var(--font-mono); font-size:var(--fs-sm); }
@@ -126,7 +135,7 @@
     .hc-method-badge {
       padding: 2px 8px;
       border-radius: 4px;
-      font-size: 11px;
+      font-size: var(--fs-xs);
       font-weight: 700;
       flex-shrink: 0;
     }
@@ -139,7 +148,7 @@
     .hc-status-badge {
       padding: 2px 8px;
       border-radius: var(--radius-pill);
-      font-size: 11px;
+      font-size: var(--fs-xs);
       font-weight: 600;
     }
     .hc-status-2xx { background: var(--success-soft); color: var(--success); }
@@ -160,13 +169,12 @@
     .jt-null { color:var(--text-disabled); }
     .jt-comma { color:var(--text-disabled); }
 </style>
-<svg style="display:none" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><symbol id="icon-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></symbol><symbol id="icon-send" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></symbol><symbol id="icon-git-branch" viewBox="0 0 24 24"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></symbol><symbol id="icon-trash-2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></symbol><symbol id="icon-shield-alert" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></symbol><symbol id="icon-hard-drive" viewBox="0 0 24 24"><line x1="2" y1="12" x2="22" y2="12"></line><path d="M17 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></symbol><symbol id="icon-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></symbol><symbol id="icon-file-text" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></symbol><symbol id="icon-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></symbol><symbol id="icon-gauge" viewBox="0 0 24 24"><path d="M12 15l-2-2"></path><path d="M19.07 4.93a10 10 0 1 1-14.14 0"></path><path d="M12 2v4"></path></symbol><symbol id="icon-box" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></symbol></svg>
 </head>
 <body>
 <div id="app">
   <div class="hc">
     <div class="hc-head">
-      <span class="hc-title">🌐 HTTP 客户端</span>
+      <span class="hc-title">HTTP 客户端</span>
       <button class="p-btn p-btn-sm" @click="newProject">新建项目</button>
       <button class="p-btn p-btn-sm" @click="importPostman">Postman 导入</button>
       <div class="spacer"></div>
@@ -181,26 +189,26 @@
           <div class="ht-node" v-for="p in projects" :key="p.id">
             <div class="ht-row ht-folder" :class="{active: expandedProjects.has(p.id)}" @click="toggleProj(p.id)">
               <span class="ht-caret">{{ expandedProjects.has(p.id) ? '▾' : '▸' }}</span>
-              <span class="ht-ico">📁</span>
+              <span class="ht-ico qi qi-folder"></span>
               <span class="ht-name" :title="p.name">{{ p.name }}</span>
               <span class="ht-actions">
                 <button class="ht-act" title="新建请求" @click.stop="newRequest(p.id,'')">＋R</button>
                 <button class="ht-act" title="新建目录" @click.stop="openNewFolder(p.id,'')">＋F</button>
                 <button class="ht-act" title="新建文档" @click.stop="newDoc(p.id,'')">＋D</button>
-                <button class="ht-act" title="环境" @click.stop="openEnvModal(p)">⚙</button>
-                <button class="ht-act" title="项目设置" @click.stop="openProjSettings(p)">✎</button>
-                <button class="ht-act ht-del" title="删除项目" @click.stop="deleteProject(p)">🗑</button>
+                <button class="ht-act qi-ico qi-ico-settings" title="环境" @click.stop="openEnvModal(p)"></button>
+                <button class="ht-act qi-ico qi-ico-pencil" title="项目设置" @click.stop="openProjSettings(p)"></button>
+                <button class="ht-act ht-del qi-ico qi-ico-trash-2" title="删除项目" @click.stop="deleteProject(p)"></button>
               </span>
             </div>
             <div class="ht-children" v-if="expandedProjects.has(p.id)">
               <div class="ht-row ht-req" v-for="r in topRequests(p.id)" :key="r.id" :class="{active: r.id===currentId}" @click="loadRequest(r)">
                 <span class="ht-method" :class="'m-'+methodClass(r.method)">{{ r.method || 'GET' }}</span>
                 <span class="ht-name" :title="r.name||r.url">{{ r.name || r.url }}</span>
-                <span class="ht-actions"><button class="ht-act ht-del" @click.stop="deleteRequest(r)">🗑</button></span>
+                <span class="ht-actions"><button class="ht-act ht-del qi-ico qi-ico-trash-2" @click.stop="deleteRequest(r)"></button></span>
               </div>
               <div class="ht-row ht-doc" v-for="d in topDocs(p.id)" :key="d.id" :class="{active: d.id===currentDocId}" @click="openDoc(d)">
-                <span class="ht-ico">📄</span><span class="ht-name">{{ d.name }}</span>
-                <span class="ht-actions"><button class="ht-act ht-del" @click.stop="deleteDoc(d)">🗑</button></span>
+                <span class="ht-ico qi qi-file-text"></span><span class="ht-name">{{ d.name }}</span>
+                <span class="ht-actions"><button class="ht-act ht-del qi-ico qi-ico-trash-2" @click.stop="deleteDoc(d)"></button></span>
               </div>
               <folder-node v-for="f in topFolders(p.id)" :key="f.id" :folder="f" :folders="folders" :requests="requests" :docs="docs" :expanded-folders="expandedFolders" :current-id="currentId" :current-doc-id="currentDocId"
                 @add-req="id=>newRequest(currentProjectId,id)" @add-folder="id=>openNewFolder(currentProjectId,id)"
@@ -225,7 +233,7 @@
               <div class="ht-row ht-req" v-for="r in uncategorized" :key="r.id" :class="{active: r.id===currentId}" @click="loadRequest(r)">
                 <span class="ht-method" :class="'m-'+methodClass(r.method)">{{ r.method || 'GET' }}</span>
                 <span class="ht-name" :title="r.name||r.url">{{ r.name || r.url }}</span>
-                <span class="ht-actions"><button class="ht-act ht-del" @click.stop="deleteRequest(r)">🗑</button></span>
+                <span class="ht-actions"><button class="ht-act ht-del qi-ico qi-ico-trash-2" @click.stop="deleteRequest(r)"></button></span>
               </div>
               <div v-if="!uncategorized.length" class="ht-empty">暂无请求</div>
             </div>
@@ -248,11 +256,11 @@
               <button class="p-btn" @click="save">保存</button>
               <button class="p-btn" @click="copyCurl" title="复制为 curl">curl</button>
             </div>
-            <div class="hc-tabs">
-              <button class="hc-tab" :class="{active: activeTab==='params'}" @click="activeTab='params'">Params</button>
-              <button class="hc-tab" :class="{active: activeTab==='headers'}" @click="activeTab='headers'">Headers</button>
-              <button class="hc-tab" :class="{active: activeTab==='body'}" @click="activeTab='body'">Body</button>
-              <button class="hc-tab" :class="{active: activeTab==='auth'}" @click="activeTab='auth'">Auth</button>
+            <div class="tabs">
+              <button class="tab" :class="{active: activeTab==='params'}" @click="activeTab='params'">Params</button>
+              <button class="tab" :class="{active: activeTab==='headers'}" @click="activeTab='headers'">Headers</button>
+              <button class="tab" :class="{active: activeTab==='body'}" @click="activeTab='body'">Body</button>
+              <button class="tab" :class="{active: activeTab==='auth'}" @click="activeTab='auth'">Auth</button>
             </div>
 
             <div class="hc-pane" :class="{active: activeTab==='params'}">
@@ -320,13 +328,13 @@
               <span>{{ response.durationMs }} ms</span>
               <span>{{ formatSize(response.size) }}</span>
               <span v-if="response.truncated" style="color:var(--warning)">（已截断）</span>
-              <div class="hc-resp-tabs">
+              <div class="tabs-sm">
                 <template v-if="responseTab==='body' && parsedJson">
-                  <button class="hc-tab" :class="{active: jsonView==='tree'}" @click="jsonView='tree'">树形</button>
-                  <button class="hc-tab" :class="{active: jsonView==='raw'}" @click="jsonView='raw'">原始</button>
+                  <button class="tab-sm" :class="{active: jsonView==='tree'}" @click="jsonView='tree'">树形</button>
+                  <button class="tab-sm" :class="{active: jsonView==='raw'}" @click="jsonView='raw'">原始</button>
                 </template>
-                <button class="hc-tab" :class="{active: responseTab==='body'}" @click="responseTab='body'">Body</button>
-                <button class="hc-tab" :class="{active: responseTab==='headers'}" @click="responseTab='headers'">Headers</button>
+                <button class="tab-sm" :class="{active: responseTab==='body'}" @click="responseTab='body'">Body</button>
+                <button class="tab-sm" :class="{active: responseTab==='headers'}" @click="responseTab='headers'">Headers</button>
                 <button class="ht-act" title="复制" @click="copyResponse">复制</button>
               </div>
             </div>
@@ -407,7 +415,7 @@
         <div class="hc-modal-head"><span>环境管理：{{ envModalProjectName }}</span><button class="p-btn p-btn-sm" @click="showEnvModal=false">✕</button></div>
         <div class="hc-modal-body">
           <div class="p-section" v-for="(env,i) in envEditList" :key="'e'+i" style="margin-bottom:10px;">
-            <div style="display:flex; gap:6px; margin-bottom:6px;"><input class="p-input" style="flex:1" v-model="env.name" placeholder="环境名"><button class="kv-del" @click="deleteEnv(i)">🗑</button></div>
+            <div style="display:flex; gap:6px; margin-bottom:6px;"><input class="p-input" style="flex:1" v-model="env.name" placeholder="环境名"><button class="kv-del qi-ico qi-ico-trash-2" @click="deleteEnv(i)"></button></div>
             <div class="kv-row" v-for="(v,j) in env.variables" :key="'v'+i+'_'+j">
               <input type="checkbox" class="kv-check" v-model="v.enabled">
               <input class="kv-key" v-model="v.key" placeholder="变量名">
@@ -549,24 +557,24 @@
       '<div class="ht-node">',
       '  <div class="ht-row ht-folder" :class="{active: expandedFolders.has(folder.id)}" @click="toggle">',
       '    <span class="ht-caret">{{ expandedFolders.has(folder.id) ? "▾" : "▸" }}</span>',
-      '    <span class="ht-ico">📁</span>',
+      '    <span class="ht-ico qi qi-folder"></span>',
       '    <span class="ht-name" :title="folder.name">{{ folder.name }}</span>',
       '    <span class="ht-actions">',
       '      <button class="ht-act" title="新建请求" @click.stop="$emit(\'add-req\', folder.id)">＋R</button>',
       '      <button class="ht-act" title="新建子目录" @click.stop="$emit(\'add-folder\', folder.id)">＋F</button>',
       '      <button class="ht-act" title="新建文档" @click.stop="$emit(\'add-doc\', folder.id)">＋D</button>',
-      '      <button class="ht-act ht-del" title="删除目录" @click.stop="$emit(\'del-folder\', folder)">🗑</button>',
+      '      <button class="ht-act ht-del qi-ico qi-ico-trash-2" title="删除目录" @click.stop="$emit(\'del-folder\', folder)"></button>',
       '    </span>',
       '  </div>',
       '  <div class="ht-children" v-if="expandedFolders.has(folder.id)">',
       '    <div class="ht-row ht-req" v-for="r in reqs" :key="r.id" :class="{active: r.id===currentId}" @click="$emit(\'select-req\', r)">',
       '      <span class="ht-method" :class="\'m-\'+methodCls(r.method)">{{ r.method || \'GET\' }}</span>',
       '      <span class="ht-name" :title="r.name||r.url">{{ r.name || r.url }}</span>',
-      '      <span class="ht-actions"><button class="ht-act ht-del" @click.stop="$emit(\'del-req\', r)">🗑</button></span>',
+      '      <span class="ht-actions"><button class="ht-act ht-del qi-ico qi-ico-trash-2" @click.stop="$emit(\'del-req\', r)"></button></span>',
       '    </div>',
       '    <div class="ht-row ht-doc" v-for="d in docsInFolder" :key="d.id" :class="{active: d.id===currentDocId}" @click="$emit(\'select-doc\', d)">',
-      '      <span class="ht-ico">📄</span><span class="ht-name">{{ d.name }}</span>',
-      '      <span class="ht-actions"><button class="ht-act ht-del" @click.stop="$emit(\'del-doc\', d)">🗑</button></span>',
+      '      <span class="ht-ico qi qi-file-text"></span><span class="ht-name">{{ d.name }}</span>',
+      '      <span class="ht-actions"><button class="ht-act ht-del qi-ico qi-ico-trash-2" @click.stop="$emit(\'del-doc\', d)"></button></span>',
       '    </div>',
       '    <folder-node v-for="f in subfolders" :key="f.id" :folder="f" :folders="folders" :requests="requests" :docs="docs" :expanded-folders="expandedFolders" :current-id="currentId" :current-doc-id="currentDocId"',
       '      @add-req="$emit(\'add-req\', $event)" @add-folder="$emit(\'add-folder\', $event)" @add-doc="$emit(\'add-doc\', $event)"',

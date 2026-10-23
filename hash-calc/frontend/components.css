@@ -86,10 +86,43 @@
   color: var(--text-primary);
 }
 
+/* 激活/选中态按钮：用于「分段切换」「模式切换」等可切换按钮。
+ * 语义是「当前选中」，不是「强调主操作」——主操作用 .btn-primary。 */
+.btn-toggle {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.btn-toggle:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 /* 尺寸变体 */
 .btn-sm {
   padding: 4px 10px;
   font-size: 12px;
+  border-radius: var(--radius-xs);
+}
+
+/* 高密度变体：数据工具条 / 网格工具栏等纵向空间紧张处使用。
+ * 规格与 .btn-sm 同族但更紧凑（26px 高），供 data-dense 类界面使用。 */
+.btn-xs {
+  height: 26px;
+  padding: 0 9px;
+  gap: 4px;
+  font-size: 11px;
+  border-radius: var(--radius-sm);
+}
+
+/* 极高密度：分页条 / 筛选 chips 条等 22px 高场景。 */
+.btn-xxs {
+  height: 22px;
+  padding: 0 7px;
+  gap: 4px;
+  font-size: 11px;
   border-radius: var(--radius-xs);
 }
 
@@ -109,6 +142,16 @@
 .btn-icon.btn-sm {
   min-width: 26px;
   padding: 4px;
+}
+
+.btn-icon.btn-xs {
+  min-width: 26px;
+  padding: 0 6px;
+}
+
+.btn-icon.btn-xxs {
+  min-width: 22px;
+  padding: 0 5px;
 }
 
 .btn:disabled, .btn.disabled {
@@ -133,6 +176,19 @@
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+
+/* 表单行（label + 控件），带行间距。用于弹窗里的连续表单。 */
+.field-row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 9px;
+}
+
+.field-row > label {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
 }
 
 .input,
@@ -168,6 +224,18 @@
   color: var(--text-placeholder);
 }
 
+/* 键盘焦点环：仅 :focus-visible（鼠标点击不显示，Tab 导航才显示）。
+   工具套件的重度用户是键盘用户，焦点环缺失会让 Tab 导航"失明"。 */
+.input:focus-visible,
+.select:focus-visible,
+.textarea:focus-visible,
+.input:focus-visible,
+.select:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
 .input.error,
 .select.error,
 .textarea.error {
@@ -192,6 +260,41 @@
 .textarea:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* 高密度变体：数据工具条 / 网格工具栏等纵向空间紧张处使用（26px 高）。 */
+.input-sm,
+.select-sm,
+.textarea-sm {
+  height: 26px;
+  padding: 0 8px;
+  font-size: 11px;
+  border-radius: var(--radius-sm);
+}
+
+/* 极高密度：分页条 / 筛选条内的输入（22px 高）。 */
+.input-xxs,
+.select-xxs,
+.textarea-xxs {
+  height: 22px;
+  padding: 0 7px;
+  font-size: 11px;
+  border-radius: var(--radius-xs);
+}
+
+/* 自适应宽度：.input 默认 width:100%（表单铺满），工具条里的紧凑输入框
+ * 需要按内容收缩，用 .input-auto 覆盖。 */
+.input-auto {
+  width: auto;
+}
+
+.input-sm:focus,
+.select-sm:focus,
+.textarea-sm:focus,
+.input-xxs:focus,
+.select-xxs:focus,
+.textarea-xxs:focus {
+  box-shadow: 0 0 0 2px var(--accent-soft);
 }
 
 .textarea {
@@ -483,10 +586,165 @@
   font-weight: 600;
 }
 
+/* 紧凑标签：嵌在面板头部 / 工具条里的次级标签栏（响应区、视图切换等）。 */
+.tabs-sm {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tab-sm {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  font-family: inherit;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  transition: color var(--transition), background var(--transition);
+}
+
+.tab-sm:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.tab-sm.active {
+  color: var(--text-primary);
+  border-bottom-color: var(--accent);
+  font-weight: var(--fw-semibold);
+}
+
+/* ============================================================
+ *  分段控件
+ *  用于「同组互斥切换」（如 结构/数据/DDL 视图切换），
+ *  与 .tabs 的「跨文档切换」是两种语义，不要混用。
+ * ============================================================ */
+
+.seg {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.seg-btn {
+  height: 24px;
+  padding: 0 11px;
+  border: none;
+  background: var(--bg-tertiary);
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--transition), color var(--transition);
+}
+
+.seg-btn + .seg-btn {
+  border-left: 1px solid var(--border);
+}
+
+.seg-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.seg-btn.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: var(--fw-semibold);
+}
+
 .tab-icon {
   width: 14px;
   height: 14px;
   opacity: 0.8;
+}
+
+/* ============================================================
+ *  工作区标签（可关闭的文档标签）
+ *  与 .tabs 的区别：.tabs 是「同一文档内的视图切换」，
+ *  .tabs-work 是「打开的文档集合」，标签可关闭、标题可省略。
+ *  激活态用顶部 2px accent 边线（VS Code 心智）。
+ * ============================================================ */
+
+.tabs-work {
+  display: flex;
+  align-items: stretch;
+  height: 33px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  overflow-y: hidden;
+  flex-shrink: 0;
+}
+
+.tabs-work::-webkit-scrollbar {
+  height: 4px;
+}
+
+.tab-work {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 8px 0 10px;
+  border: none;
+  border-right: 1px solid var(--border);
+  border-top: 2px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  font-family: inherit;
+  cursor: pointer;
+  max-width: 210px;
+  flex-shrink: 0;
+  transition: background var(--transition), color var(--transition);
+}
+
+.tab-work:hover {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+.tab-work.active {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  border-top-color: var(--accent);
+}
+
+/* 标签标题（过长省略） */
+.tab-work-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 标签关闭按钮：默认隐藏，hover / 激活时显现 */
+.tab-work-close {
+  font-size: 13px;
+  line-height: 1;
+  padding: 1px 3px;
+  border-radius: var(--radius-xs);
+  color: var(--text-disabled);
+  opacity: 0;
+  flex-shrink: 0;
+}
+
+.tab-work:hover .tab-work-close,
+.tab-work.active .tab-work-close {
+  opacity: 1;
+}
+
+.tab-work-close:hover {
+  background: var(--bg-active);
+  color: var(--danger);
 }
 
 /* ============================================================
@@ -566,6 +824,41 @@
 .badge-danger {
   background: var(--danger-soft);
   color: var(--danger);
+}
+
+/* 方角徽章：用于表格单元格内的类型标记（表/视图/主键/唯一键）。
+ * 形状为圆角小方块而非胶囊，与胶囊徽章区分「行内类型标」与「状态标」。 */
+.badge-square {
+  padding: 1px 6px;
+  font-size: 10px;
+  line-height: 15px;
+  border-radius: var(--radius-xs);
+  font-weight: 400;
+}
+
+.badge-square.badge-muted {
+  background: var(--bg-active);
+  color: var(--text-muted);
+}
+
+.badge-square.badge-warning {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.badge-square.badge-accent {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.badge-square.badge-success {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+/* 等宽徽章：主键 / 唯一键这类需要与字段名对齐的标记。 */
+.badge-mono {
+  font-family: var(--font-mono);
 }
 
 /* ============================================================
@@ -673,6 +966,17 @@
   animation: fadeIn 150ms ease;
 }
 
+/* 遮罩层：与 .modal-compact 配套使用（表单类弹窗）。 */
+.modal-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 300;
+}
+
 .modal {
   width: 480px;
   max-width: 92vw;
@@ -683,6 +987,26 @@
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-2);
   animation: slideUp 200ms ease;
+}
+
+/* 紧凑弹窗：表单类弹窗（新建连接 / 设置 / 确认）内容不多时用，
+ * 把内边距收到容器自身，省掉 header/body/footer 三段结构。 */
+.modal-compact {
+  width: 500px;
+  border-radius: var(--radius-lg);
+  border-color: var(--border);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-compact .modal-compact-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
 }
 
 .modal-header {
@@ -787,4 +1111,30 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* ============================================================
+ *  动效礼节 — prefers-reduced-motion
+ *  系统开启「减少动态效果」时，关掉非必要动画与过渡：
+ *  加载指示器保留旋转（它是状态反馈，不是装饰），
+ *  但所有 transition / 入场动画一律降为 0。
+ * ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* 加载指示器保留（状态反馈），但去掉缩放/位移类动画 */
+  .spinner {
+    animation: spin 0.8s linear infinite !important;
+    animation-iteration-count: infinite !important;
+  }
 }

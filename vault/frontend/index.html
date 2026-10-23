@@ -9,22 +9,22 @@
 body{margin:0}
 .app{display:flex;flex-direction:column;height:100vh;padding:12px;gap:10px;box-sizing:border-box}
 .lock{display:flex;flex-direction:column;gap:10px;align-items:center;justify-content:center;flex:1}
-.inp{height:34px;padding:0 12px;background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius);font-size:14px;font-family:inherit;width:280px}
-.btn{height:34px;padding:0 16px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:inherit}
+.inp{height:34px;padding:0 12px;background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius);font-size: var(--fs-lg);font-family:inherit;width:280px}
+.btn{height:34px;padding:0 16px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;color:var(--text-secondary);font-size: var(--fs-md);cursor:pointer;font-family:inherit}
 .btn:hover{color:var(--text-primary)}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .list{flex:1;overflow:auto;display:flex;flex-direction:column;gap:8px}
 .item{display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius)}
 .item .m{flex:1;min-width:0}
-.item .m .t{font-size:14px;color:var(--text-primary)}
-.item .m .u{font-size:11px;color:var(--text-muted)}
-.item .p{font-family:var(--font-mono);font-size:13px;color:var(--text-secondary)}
-.item .act{color:var(--accent);cursor:pointer;font-size:12px}
-.item .del{color:#e24b4a;cursor:pointer;font-size:12px}
-.empty{display:flex;align-items:center;justify-content:center;flex:1;color:var(--text-muted);font-size:13px}
-#msg{font-size:12px;color:#e24b4a;min-height:14px}
-.warn{padding:8px 10px;border:1px solid #c07d00;border-radius:var(--radius);background:rgba(245,176,37,.12);color:#c07d00;font-size:12px;line-height:1.5}
+.item .m .t{font-size: var(--fs-lg);color:var(--text-primary)}
+.item .m .u{font-size: var(--fs-xs);color:var(--text-muted)}
+.item .p{font-family:var(--font-mono);font-size: var(--fs-md);color:var(--text-secondary)}
+.item .act{color:var(--accent);cursor:pointer;font-size: var(--fs-sm)}
+.item .del{color:var(--danger);cursor:pointer;font-size: var(--fs-sm)}
+.empty{display:flex;align-items:center;justify-content:center;flex:1;color:var(--text-muted);font-size: var(--fs-md)}
+#msg{font-size: var(--fs-sm);color:var(--danger);min-height:14px}
+.warn{padding:8px 10px;border:1px solid #c07d00;border-radius:var(--radius);background:rgba(245,176,37,.12);color:#c07d00;font-size: var(--fs-sm);line-height:1.5}
 </style>
 </head>
 <body>
@@ -33,7 +33,7 @@ body{margin:0}
     <div id="msg"></div>
     <input class="inp" id="mp" type="password" placeholder="主密码（首次使用即创建）">
     <button class="btn primary" id="unlock">解锁 / 创建</button>
-    <span style="font-size:11px;color:var(--text-muted)">密钥仅本机，忘记无法找回</span>
+    <span style="font-size: var(--fs-xs);color:var(--text-muted)">密钥仅本机，忘记无法找回</span>
   </div>
 </div>
 <script>

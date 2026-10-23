@@ -9,19 +9,19 @@
 body{margin:0}
 .app{display:flex;flex-direction:column;height:100vh;padding:12px;gap:10px;box-sizing:border-box}
 .row{display:flex;gap:8px;align-items:center}
-.inp{height:32px;padding:0 10px;background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit}
-.btn{height:32px;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:inherit}
+.inp{height:32px;padding:0 10px;background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius);font-size: var(--fs-md);font-family:inherit}
+.btn{height:32px;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;color:var(--text-secondary);font-size: var(--fs-md);cursor:pointer;font-family:inherit}
 .btn:hover{color:var(--text-primary)}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 .list{flex:1;overflow:auto;display:flex;flex-direction:column;gap:8px}
 .item{display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius)}
 .item .lab{flex:1;min-width:0}
-.item .lab .n{font-size:14px;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.item .lab .s{font-size:11px;color:var(--text-muted);word-break:break-all}
+.item .lab .n{font-size: var(--fs-lg);color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .lab .s{font-size: var(--fs-xs);color:var(--text-muted);word-break:break-all}
 .item .code{font-size:22px;font-weight:600;font-family:var(--font-mono);color:var(--accent);letter-spacing:2px}
-.item .cd{font-size:11px;color:var(--text-muted);width:34px;text-align:center}
-.item .del{color:#e24b4a;cursor:pointer;font-size:13px;padding:0 4px}
-.empty{display:flex;align-items:center;justify-content:center;flex:1;color:var(--text-muted);font-size:13px}
+.item .cd{font-size: var(--fs-xs);color:var(--text-muted);width:34px;text-align:center}
+.item .del{color:var(--danger);cursor:pointer;font-size: var(--fs-md);padding:0 4px}
+.empty{display:flex;align-items:center;justify-content:center;flex:1;color:var(--text-muted);font-size: var(--fs-md)}
 #bar{height:3px;background:var(--accent);border-radius:2px;transition:width .9s linear}
 </style>
 </head>

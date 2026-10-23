@@ -475,21 +475,9 @@ func handleTableRows(id int64, input map[string]interface{}) {
 		}
 	}
 
-	// 列级筛选（Navicat 式）：每列一个值，拼接为 AND col LIKE ?（%值%）
-	filters := strMapFrom(input, "filters")
-	var conds []string
-	var fargs []interface{}
-	for col, val := range filters {
-		if strings.TrimSpace(val) == "" {
-			continue
-		}
-		conds = append(conds, quoteIdent(conn.kind, col)+" LIKE ?")
-		fargs = append(fargs, "%"+val+"%")
-	}
-	where := ""
-	if len(conds) > 0 {
-		where = " WHERE " + strings.Join(conds, " AND ")
-	}
+	// 列级筛选（Navicat / DataGrip 式）：结构化条件 AND 拼接，全部参数化
+	filters := parseFilters(input)
+	where, fargs := buildWhere(conn.kind, filters)
 
 	tbl := quoteIdent(conn.kind, table)
 

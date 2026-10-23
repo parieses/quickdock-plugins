@@ -23,8 +23,8 @@
 
   .nt-chart-box { position: relative; height: 108px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-secondary); overflow: hidden; }
   .nt-chart { display: block; width: 100%; height: 100%; }
-  .nt-chart-max { position: absolute; top: 4px; left: 8px; font-size: 10px; color: var(--text-disabled); font-family: var(--font-mono); }
-  .nt-chart-legend { position: absolute; top: 4px; right: 8px; display: flex; gap: 10px; font-size: 10px; color: var(--text-muted); }
+  .nt-chart-max { position: absolute; top: 4px; left: 8px; font-size: var(--fs-xs); color: var(--text-disabled); font-family: var(--font-mono); }
+  .nt-chart-legend { position: absolute; top: 4px; right: 8px; display: flex; gap: 10px; font-size: var(--fs-xs); color: var(--text-muted); }
   .nt-chart-legend i { display: inline-block; width: 14px; height: 2px; vertical-align: middle; margin-right: 4px; }
   .nt-chart-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: var(--fs-xs); color: var(--text-disabled); }
 
@@ -57,14 +57,14 @@
   table.nt-tbl td.proc { color: var(--text-primary); font-family: var(--font); max-width: 190px; overflow: hidden; text-overflow: ellipsis; }
   table.nt-tbl td.remote { cursor: pointer; }
   table.nt-tbl td.remote:hover { color: var(--accent); }
-  .nt-badge { display: inline-block; padding: 1px 6px; border-radius: var(--radius-pill); font-size: 10px; font-family: var(--font); }
+  .nt-badge { display: inline-block; padding: 1px 6px; border-radius: var(--radius-pill); font-size: var(--fs-xs); font-family: var(--font); }
   .nt-badge.tcp { background: var(--accent-soft); color: var(--accent); }
   .nt-badge.udp { background: var(--bg-tertiary); color: var(--text-secondary); }
   .nt-badge.est { background: var(--success-soft); color: var(--success); }
   .nt-badge.listen { background: var(--warning-soft); color: var(--warning); }
 
   .nt-search { flex: 1; min-width: 0; }
-  .nt-hint { font-size: 10px; color: var(--text-disabled); }
+  .nt-hint { font-size: var(--fs-xs); color: var(--text-disabled); }
   .nt-switch { display: flex; align-items: center; gap: 4px; font-size: var(--fs-xs); color: var(--text-muted); cursor: pointer; }
   .nt-switch input { accent-color: var(--accent); }
   .nt-center { display: flex; align-items: center; justify-content: center; height: 100%; padding: var(--sp-5); text-align: center; color: var(--text-muted); font-size: var(--fs-sm); }

@@ -5,46 +5,41 @@
 <title>Crontab 解释器</title>
 <link rel="stylesheet" href="qd-theme.css">
   <link rel="stylesheet" href="components.css">
+<link rel="stylesheet" href="icons.css">
 <style>
 .p-app{display:flex;flex-direction:column;height:100vh;padding:10px;gap:8px}
-.p-label{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px}
+.p-label{font-size: var(--fs-xs);color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px}
 .p-row{display:flex;gap:8px;align-items:center}
-.p-input{flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-tertiary);color:var(--text-primary);font-family:var(--font-mono);font-size:14px;outline:none}
-.p-input:focus{border-color:var(--accent)}.p-input::placeholder{color:var(--text-placeholder)}
-.p-btn{height:32px;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-tertiary);color:var(--text-primary);font-size:12px;cursor:pointer;white-space:nowrap}
+.p-input{flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-tertiary);color:var(--text-primary);font-family:var(--font-mono);font-size: var(--fs-lg);outline:none}
+.p-input:focus-visible{border-color:var(--accent)}.p-input::placeholder{color:var(--text-placeholder)}
+.p-btn{height:32px;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-tertiary);color:var(--text-primary);font-size: var(--fs-sm);cursor:pointer;white-space:nowrap}
 .p-btn:hover{background:var(--bg-hover)}
 .p-btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
 .p-btn-primary:hover{background:var(--accent-hover)}
-.p-output{flex:1;overflow:auto;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius);padding:10px;font-family:var(--font-mono);font-size:12px;line-height:1.6;white-space:pre-wrap;color:var(--text-primary)}
-.p-vis-bar{display:flex;align-items:center;gap:2px;font-size:11px;font-family:var(--font-mono);padding:1px 0}
+.p-output{flex:1;overflow:auto;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius);padding:10px;font-family:var(--font-mono);font-size: var(--fs-sm);line-height:1.6;white-space:pre-wrap;color:var(--text-primary)}
+.p-vis-bar{display:flex;align-items:center;gap:2px;font-size: var(--fs-xs);font-family:var(--font-mono);padding:1px 0}
 .p-vis-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
 .p-vis-active{background:var(--accent)}
 .p-vis-inactive{background:var(--bg-tertiary)}
 
 /* 标签页 */
-.tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);padding-bottom:6px;flex-shrink:0}
-.tab{padding:6px 14px;border:1px solid transparent;border-radius:var(--radius);background:transparent;color:var(--text-secondary);font-size:12px;cursor:pointer}
-.tab:hover{color:var(--text-primary);background:var(--bg-hover)}
-.tab.active{background:var(--accent);color:#fff;font-weight:600}
 .pane{display:flex;flex-direction:column;flex:1;min-height:0;gap:8px}
 
 /* 生成页 */
 .g-fields{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
-.g-field{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text-secondary)}
-.g-field input[type=number]{width:64px;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-tertiary);color:var(--text-primary);font-family:var(--font-mono);font-size:13px;outline:none}
-.g-field input[type=text]{width:88px;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-tertiary);color:var(--text-primary);font-family:var(--font-mono);font-size:13px;outline:none}
-.g-field input:focus{border-color:var(--accent)}
+.g-field{display:flex;align-items:center;gap:4px;font-size: var(--fs-sm);color:var(--text-secondary)}
+.g-field input[type=number]{width:64px;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-tertiary);color:var(--text-primary);font-family:var(--font-mono);font-size: var(--fs-md);outline:none}
+.g-field input[type=text]{width:88px;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-tertiary);color:var(--text-primary);font-family:var(--font-mono);font-size: var(--fs-md);outline:none}
+.g-field input:focus-visible{border-color:var(--accent)}
 .g-week{display:flex;gap:4px;flex-wrap:wrap}
-.g-day{padding:5px 9px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-tertiary);color:var(--text-secondary);font-size:12px;cursor:pointer;user-select:none}
+.g-day{padding:5px 9px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-tertiary);color:var(--text-secondary);font-size: var(--fs-sm);cursor:pointer;user-select:none}
 .g-day.on{background:var(--accent);color:#fff;border-color:var(--accent)}
 .g-presets{display:flex;flex-wrap:wrap;gap:6px}
-.g-preset{padding:5px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-tertiary);color:var(--text-secondary);font-size:11px;cursor:pointer;font-family:var(--font-mono)}
+.g-preset{padding:5px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-tertiary);color:var(--text-secondary);font-size: var(--fs-xs);cursor:pointer;font-family:var(--font-mono)}
 .g-preset:hover{border-color:var(--accent);color:var(--accent)}
 .g-expr{font-family:var(--font-mono);font-size:15px;color:var(--accent);font-weight:600}
 select.p-input{cursor:pointer}
 </style>
-<svg style="display:none" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><symbol id="icon-box" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></symbol></svg>
-<svg style="display:none" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><symbol id="icon-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></symbol><symbol id="icon-send" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></symbol><symbol id="icon-git-branch" viewBox="0 0 24 24"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></symbol><symbol id="icon-trash-2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></symbol><symbol id="icon-shield-alert" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></symbol><symbol id="icon-hard-drive" viewBox="0 0 24 24"><line x1="2" y1="12" x2="22" y2="12"></line><path d="M17 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></symbol><symbol id="icon-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></symbol><symbol id="icon-file-text" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></symbol><symbol id="icon-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></symbol><symbol id="icon-gauge" viewBox="0 0 24 24"><path d="M12 15l-2-2"></path><path d="M19.07 4.93a10 10 0 1 1-14.14 0"></path><path d="M12 2v4"></path></symbol><symbol id="icon-box" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></symbol></svg>
 </head>
 <body>
 <div class="p-app">
@@ -112,7 +107,7 @@ var L10N = {
     '月 (1-12): ': 'Month (1-12): ',
     '周 (0-7): ': 'Weekday (0-7): ',
     '⏰ 下次执行:': '⏰ Next runs:',
-    '📊 小时分布:': '📊 Hour distribution:',
+    '小时分布:': 'Hour distribution:',
     '无法计算（请检查表达式）': 'Cannot compute (check the expression)',
     '每分钟执行一次': 'Runs every minute',
     // —— 生成页 ——
@@ -216,7 +211,7 @@ function applyStaticL10n() {
     var nextRuns=computeNext(fields,5)
     var hours=expandField(fields.hour,0,23)
     var html=''
-    html+='<div style="color:var(--accent);font-weight:500;margin-bottom:6px">📋 '+escapeHtml(desc)+'</div>'
+    html+='<div style="color:var(--accent);font-weight:500;margin-bottom:6px"><span class="qi qi-clipboard"></span> '+escapeHtml(desc)+'</div>'
     html+='<div style="color:var(--text-muted);margin-bottom:4px">'+L('字段分解:')+'</div>'
     html+='<div>'+L('分 (0-59): ')+'<span style="color:var(--text-primary)">'+escapeHtml(fields.minute)+'</span></div>'
     html+='<div>'+L('时 (0-23): ')+'<span style="color:var(--text-primary)">'+escapeHtml(fields.hour)+'</span></div>'
@@ -226,7 +221,7 @@ function applyStaticL10n() {
     html+='<div style="color:var(--text-muted);margin:6px 0 4px">'+L('⏰ 下次执行:')+'</div>'
     for(var i=0;i<nextRuns.length;i++)html+='<div style="color:var(--text-primary)">  '+(i+1)+'. '+escapeHtml(nextRuns[i])+'</div>'
     if(hours&&hours.length<12){
-      html+='<div style="color:var(--text-muted);margin:6px 0 4px">'+L('📊 小时分布:')+'</div>'
+      html+='<div style="color:var(--text-muted);margin:6px 0 4px">'+L('小时分布:')+'</div>'
       for(var h=0;h<24;h++){
         var active=hours.indexOf(h)>=0
         html+='<div class="p-vis-bar"><span style="color:var(--text-muted);min-width:24px;text-align:right">'+(h<10?'0':'')+h+'</span>'+
@@ -427,7 +422,7 @@ function applyStaticL10n() {
     var fields={minute:parts[0],hour:parts[1],dom:parts[2],month:parts[3],dow:parts[4]}
     var desc=isEn()?describeEn(fields):describe(fields)
     var next=computeNext(fields,5)
-    var html='<div style="color:var(--accent);font-weight:500;margin-bottom:6px">📋 '+escapeHtml(desc)+'</div>'
+    var html='<div style="color:var(--accent);font-weight:500;margin-bottom:6px"><span class="qi qi-clipboard"></span> '+escapeHtml(desc)+'</div>'
     html+='<div style="color:var(--text-muted);margin:4px 0">'+L('⏰ 下次执行:')+'</div>'
     for(var i=0;i<next.length;i++)html+='<div>  '+(i+1)+'. '+escapeHtml(next[i])+'</div>'
     pv.innerHTML = html

@@ -283,7 +283,7 @@ COLOR_SPEC = {
 
 | 字段 | 说明 |
 |---|---|
-| `id` | 唯一标识，格式 `com.quickdock.xxx`（至少一个点号）|
+| `id` | 唯一标识，格式为**字母开头、仅含字母数字 / 点号 / 连字符 / 下划线**，如 `com.quickdock.xxx`、`hosts-manager`、`disk-analyzer`（**不强制要求点号**）|
 | `name` | 插件显示名称 |
 | `version` | 语义化版本号 |
 | `category` | 分类，展示在插件市场（如 `开发者日常` / `网络工具` / `办公效率`）|
@@ -294,6 +294,15 @@ COLOR_SPEC = {
 | `permissions` | 权限声明，影响插件能调用的 Host API |
 | `commands` | 注册到命令面板的命令列表 |
 | `commands[].keywords` | 搜索别名数组，用户输入这些词也能匹配到该命令 |
+| `name_i18n` | 多语言显示名 `{"zh-CN": "...", "en-US": "..."}`，可选 |
+| `description` | 插件简介（纯文本/Markdown），展示在市场详情页；可选 `description_i18n` 提供多语言版本 |
+| `author` | 作者名 / 联系方式，可选 |
+| `platforms` | 支持的平台数组，取值 `windows` / `darwin` / `linux`；**留空或不声明 = 全平台支持**。当前平台不在列表内时插件不会安装/启用 |
+| `backend.args` | 传递给 native 入口进程的启动参数数组（`none` / `goja` 不需要） |
+| `backend.timeout` | native 子进程相关超时（秒），默认 20 |
+| `frontend` | 前端配置块：`{enabled, entry, width, height}`（`enabled` 是否加载前端窗口、`entry` 入口 HTML 路径、`width`/`height` 窗口尺寸） |
+| `capabilities` | 能力声明数组，如 `["command"]`；声明插件对外暴露的能力类型 |
+| `commands[].title_i18n` | 命令多语言显示名 `{"zh-CN": "...", "en-US": "..."}`，可选 |
 
 ### commands 字段
 
@@ -425,7 +434,7 @@ function handleExecute(params) {
 - 无需安装 Node.js，内嵌 Goja 引擎（纯 Go，无 CGO）
 - 支持 ES5.1 + 大部分 ES6 特性
 - 通过 `api.log()`（INFO）/ `api.warn()`（WARN）/ `api.error()`（ERROR）输出日志
-- 无宿主 `api.crypto`：md5/sha/base64/url/html 等需在插件内纯 JS 自实现（参考 text-encoder 的 main.js 自带 crypto 库）
+- 加密能力：宿主提供 `host.crypto.encrypt` / `host.crypto.decrypt` / `host.crypto.random`（AES-256-GCM + PBKDF2 + 密码学随机数，无需权限，详见「Host Methods」）。goja **没有** `api.crypto` 快捷对象，但可用 `api.host('host.crypto.*', …)` 调用。md5 / sha / base64 / url / html 等散列与编码宿主无实现，仍需插件内纯 JS 自实现（参考 text-encoder 的 main.js 自带 crypto 库）
 - 导出 `handleInitialize()` 和 `handleExecute()` 函数供主程序调用
 
 **调用宿主能力（`api.host`）：**
@@ -439,6 +448,7 @@ function handleExecute(params) {
 - `api.host(method, params)` 转发到**与 native 完全相同的 Host Method 注册表**，权限校验一致，因此 `http.get` / `http.post`、`host.notify`、`host.dialog.*`、`host.clipboard.*`、`db.*`、`host.mcp.call` 都可以直接调用；方法不存在会抛错，权限不足会抛错，调用方按需 try/catch
 - 想复用宿主的检索/待办/环境等能力，用 `api.host('host.mcp.call', { tool: 'todo_list', args: {} })`，无需自己实现（工具清单见「Host Methods」）
 - `api.db.exec(sql, args)` / `api.db.query(sql, args)` 是插件私有 SQLite（`<dataDir>/data.db`）的**裸 SQL**。注意它与 native 的 `db.*` **不是同一套存储**——后者是宿主库中按 plugin_id 隔离的 KV
+- `api.aiStream(params, onDelta)` 是 goja 专属的**流式 AI 问答**（借宿主 AI 档案）：增量经 `onDelta(text)` 同步回调逐段送达，返回 `{text, model}`。详见「AI 能力（`host.ai.ask`）」
 - ⚠️ `api.host` 是**同步阻塞**调用，受 `handleExecute` 的 20s 超时约束。`host.dialog.*` 这类需要用户操作的方法，在用户完成选择前就可能被打断，不宜依赖；长耗时任务请走 taskId + 轮询的异步范式
 
 ---
@@ -471,7 +481,7 @@ function handleExecute(params) {
 // 主程序发送
 {"jsonrpc":"2.0","id":2,"method":"plugin.execute","params":{"command":"hello","input":{"name":"World"}}}
 
-// 插件响应（10 秒内）
+// 插件响应（20 秒内，超时同「超时与通信约束」表）
 {"jsonrpc":"2.0","id":2,"result":{"message":"Hello, World!"}}
 ```
 
@@ -514,6 +524,10 @@ Host Method 是宿主注册的能力表。**三种运行时共用同一张表、
 | `host.window.hide` / `host.window.show` | 临时隐藏 / 恢复宿主窗口：同时管主窗口、命令面板窗口与**本插件的独立窗口**，隐藏前各自记录原可见性，恢复时只还原原本可见的（供屏幕取色等场景避免遮挡取样区域） | 无需权限 |
 | `host.mcp.call` | 调用宿主内置 MCP 工具 → `{tool, result}` | 无需权限（等级门见下） |
 | `db.get` / `db.set` / `db.delete` / `db.list` | 插件私有 KV，按 `plugin_id` 强隔离，单值 ≤256 KiB | 无需权限 |
+| `host.crypto.random` | 生成密码学安全随机字节 → `{base64}`；参数 `{bytes}`（默认 16，即 128-bit） | 无需权限 |
+| `host.crypto.encrypt` | AES-256-GCM 加密 → `{iv, data}`（均为 base64）；参数 `{password, salt, plaintext}`，明文上限 1 MiB，PBKDF2 100000 次 | 无需权限 |
+| `host.crypto.decrypt` | AES-256-GCM 解密 → `{plaintext}`（base64）；参数 `{password, salt, iv, data}`，与 `encrypt` 对称 | 无需权限 |
+| `host.ai.ask` | 用宿主 AI 档案做问答 → `{text, model}`；参数 `{question, system?, timeoutSec?, streamId?}`；带 `streamId` 时沿途下发 `host.ai.delta` 增量通知（详见「AI 能力」）；凭据留在后端 | 无需权限 |
 
 > ⚠️ **`host.dialog.*` 有两条路径，权限要求不同——别搞混：**
 >
@@ -685,7 +699,7 @@ hostLog("error", "处理失败: %v", err) // → E 级
 | 默认 Call | 30s |
 | `plugin.execute`（命令执行） | 20s |
 | `initialize`（插件启动握手） | 15s |
-| `health.ping`（健康检查） | 5s |
+| `host.ping`（存活探测） | 随默认 Call 30s；插件侧应即时响应（宿主另有 30s 周期健康检查 ticker，异常即重启） |
 
 - **耗时操作（大文件、外部 CLI 调用）务必预估时长**；若可能超过 20s，应在后端拆成「先返回受理、后台异步处理」或提示用户。
 - 响应单行 JSON，主程序用 **1MB buffer** 读取，超过会截断；不要通过 stdout 返回超大文本。
@@ -813,6 +827,112 @@ func ensureDataFile(name string) string {
 
 ---
 
+## AI 能力（`host.ai.ask`）
+
+插件可以借用**宿主已配置好的 AI 档案**做一次性问答：翻译、摘要、分类、抽取、生成文案等。
+凭据始终留在 Go 后端（DPAPI 加密存储），插件只拿到模型返回的文本，**不接触 API Key**。
+
+**为什么不自己带 Key**：不重复实现流式解析 / 重试 / 超时；插件不新增任何权限申请；
+用户在设置里关掉 AI 档案后插件立即失效。
+
+### 三种运行时的调用通道
+
+`host.ai.ask` 是 Host Method，三种运行时**语义相同**，只是增量投递方式不同：
+
+| 运行时 | 一次性调用 | 流式增量如何到达 |
+|---|---|---|
+| none（前端 iframe） | `qdHostCall('host.ai.ask', params)` | `qdAiAsk(params, onDelta)`，桥按 `streamId` 回调 `onDelta(deltaText)` |
+| goja | `api.host('host.ai.ask', params)` | `api.aiStream(params, onDelta)`，同步回调（同一 goroutine） |
+| native | JSON-RPC `host.ai.ask` | 请求带 `streamId`，宿主下发 `host.ai.delta` **通知**（无 `id`，不需回复） |
+
+返回统一是 `{text, model}`——`text` 是模型正文，`model` 是实际使用的模型名。
+
+### 前端插件：`qdAiAsk(params, onDelta)`
+
+`onDelta` 是可选回调；桥会自己生成 `streamId`，并在生成过程中把增量逐段交给它：
+
+```js
+const r = await window.qdAiAsk(
+  { question: '详细解释 QUIC 握手过程', system: '你是网络工程师' },
+  (delta) => { out.textContent += delta }   // 逐段到达
+)
+console.log(r.text)   // 与 onDelta 拼起来的内容一致
+```
+
+### goja 插件：`api.aiStream(params, onDelta)`
+
+goja 既没有 stdin 也没有前端，只能用同步回调拿增量：
+
+```js
+function handleExecute(params) {
+    var r = api.aiStream(
+        { question: '总结这段日志', system: '你是运维' },
+        function (delta) { api.log(delta) }    // 同步回调，同一 goroutine
+    )
+    return { text: r.text }
+}
+```
+
+`api.aiStream` 会**阻塞到生成结束**（受 `plugin.execute` 的 20s 超时约束）；
+回调只是让插件在生成期间能做点事（刷新缓冲、写日志、推给自绘 UI）。
+
+### native 插件：`streamId` + `host.ai.delta` 通知
+
+请求里带 `streamId` 即开启流式；宿主途中下发**通知**（没有 `id`，不需要回复）：
+
+```json
+// 请求
+{"jsonrpc":"2.0","id":2,"method":"host.ai.ask",
+ "params":{"question":"详细解释 QUIC 握手","streamId":"abc-1"}}
+
+// 宿主沿途下发（通知，无 id）
+{"jsonrpc":"2.0","method":"host.ai.delta","params":{"streamId":"abc-1","delta":"QUIC 的"}}
+
+// 最终响应（完整文本仍随响应返回）
+{"jsonrpc":"2.0","id":2,"result":{"text":"……","model":"gpt-4o-mini"}}
+```
+
+> ⚠️ **要在生成过程中实时更新 UI，必须另起一个 goroutine 读 stdin**。
+> 单线程循环（模板就是这种）会在 `plugin.execute` 返回后才读到这些通知，
+> 等于最后还是「一次性」。分发时按 `streamId` 匹配到对应请求。
+
+### 参数
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `question` | string | 是 | 要问的内容。上限 **4000 字符** |
+| `system` | string | 否 | 系统提示词。上限 **4000 字符**；留空则用档案里配置的 SystemPrompt |
+| `timeoutSec` | number | 否 | 超时秒数，内部收敛到 120s，默认 30s |
+| `streamId` | string | 否 | 非空即开启流式；前端用 `qdAiAsk` 时由桥自动生成 |
+
+### 约束与注意事项
+
+1. **一次性，不落库。** 不建会话、不写消息表，不会出现在用户的 AI 对话历史里。插件需要多轮上下文，要自己维护历史并拼进 `question`。
+2. **不返回结构化结果。** 返回的是模型自由文本。需要结构化时，在 `system` 里要求模型输出 JSON 并**自行校验**，解析失败要有兜底——别假设模型一定听话。
+3. **没有权限门，但有长度闸门。** `question` / `system` 各 4000 字符，超长**直接拒绝（不是静默截断）**，且拒绝发生在调用前、不消耗 token。插件应自行裁剪。
+4. **不与流式对话抢通道。** 这条路径不占用 convId，不会打断用户正在进行的 AI 流式对话。
+5. **失败即返回 error。** 未配置 AI 档案、AI 服务不可用、超时都会以 error 返回（前端桥表现为 Promise reject）。插件应捕获并给出可读提示，而不是静默失败。
+6. **增量是尽力而为。** 宿主按 ~40 字节合批（不是逐 token）；单次流式的增量总量上限 **24 KiB**，超限后只停发增量、**最终文本照常返回**；某次增量送不到不影响本次调用的成败，别把它当业务信号。
+
+### 什么时候不该用它
+
+- **需要精确结构化数据**：让模型做抽取有幻觉风险，关键路径应走确定性逻辑。
+- **高频批量调用**：每次调用都是一次真实模型请求，注意 token 成本。
+- **替代确定性逻辑**：能用正则、排序、查库解决的，不要用大模型。
+
+### 组合用法
+
+`host.mcp.call`（查业务数据）+ `host.ai.ask`（让 AI 总结/分析）可以拼出复合场景：
+
+```js
+const todos = await qdHostCall('host.mcp.call', { tool: 'todo_list', args: {} })
+const r = await qdAiAsk({ question: '帮我按优先级整理这些待办：\n' + JSON.stringify(todos.result) })
+```
+
+相关能力：`host.clipboard.read/write` 读写系统剪贴板（需 `permissions.clipboard`）。
+
+---
+
 ## 权限声明
 
 插件在 `plugin.json` 中声明所需权限：
@@ -825,6 +945,8 @@ func ensureDataFile(name string) string {
   "shell": false,                               // false=无；true=全放行；数组=目标前缀白名单
   "process": false,                             // false=无；true=全放行；数组=可执行程序名白名单
   "processKill": false                          // 是否允许结束进程（高危，默认关）
+  "selfAudit": "audit",                         // native 插件安装期权限自证："audit"（默认，执行静态审计）/ "skip"（跳过）
+  "skipReason": ""                              // selfAudit="skip" 时必填，至少 4 个字符，说明为何跳过权限自证
 }
 ```
 
@@ -858,6 +980,8 @@ func ensureDataFile(name string) string {
 > 否则授权契约与实现不符（用户在市场页看到的权限列表就不含「执行程序」）。
 > 宿主会在安装期做静态审计核对声明与实现，不一致时告警。
 > 若希望**运行期真正强制**，请改用 `host.process.exec`（由宿主代执行，白名单可拦）。
+
+> ⚠️ **native 插件的安装期静态审计（`selfAudit` / `skipReason`）**：宿主在安装时对 native 插件的源码做 AST 扫描，核对 `exec.Command` 等调用与 `permissions.process` 等声明是否一致。默认 `selfAudit: "audit"` 会执行该审计；对「路径动态拼接」「程序名来自配置」这类必然漏判的写法，可设 `selfAudit: "skip"`，**但必须同时填 `skipReason`（≥4 字符，且不能是占位糊弄文字）**，否则 `plugin.json` 校验直接失败、装不上。非空的其他值（含大小写变体）一律按「执行审计」处理，不会悄悄关掉检查；安装日志会明确记录「本插件跳过了权限自证」。
 
 ### 安全边界
 
@@ -923,6 +1047,7 @@ await qdHostCall('db.set', { key: 'lastQuery', value: 'abc' })
 - `qdHttp` 返回 `{status, ok, headers, body, truncated}`，`ok` 表示 2xx；响应体上限 2 MiB，超限 `truncated=true`
 - 权限不足 / 插件未声明对应能力 / 宿主执行失败都会 **reject**，务必 `try/catch`
 - **新增宿主能力时前端桥不需要改**——直接用 `qdHostCall('新方法名', {...})` 即可
+- 流式 AI 问答用 `qdAiAsk(params, onDelta)`（桥自动生成 `streamId`），比 `qdHostCall('host.ai.ask')` 多一个增量回调；详见「AI 能力（`host.ai.ask`）」
 
 > ⚠️ 插件身份（`pluginID`）由**宿主侧状态**决定，不是插件自报的。你用 `qdHostCall`
 > 只能以「当前这个插件」的身份调用宿主能力，无法冒充其它插件读写其数据。
@@ -1323,7 +1448,7 @@ native 侧的关键设计（改之前先看 `qdlog.go` 顶部注释）：
 | breach-check | 基于 Have I Been Pwned 检查密码是否出现在泄露库中（k-匿名，密码不出本机）；邮箱泄露需自备 API Key。 |
 | color-converter | 颜色格式互转（HEX / RGB / HSL）+ 屏幕取色，支持常见英文色名识别 |
 | control-receiver | 手机屏幕镜像接收端 + 控制端：连接 QuestPhoneMirror 发送端实时显示画面，鼠标点击/拖拽反向操控真机（配套手机端发送端见 https://github.com/parieses/QuestPhoneMirror） |
-| database | 轻量数据库连接与查询工具：MySQL / SQLite / Redis 连接管理、SQL 与 Redis 命令执行、库表浏览器（库→表/视图→字段、Redis 键树）、Redis 键类型感知详情与增删改（string/hash/list/set/zset）、TTL 与 DB 管理、结果网格内联行编辑、勾选批量删除（支持全选匹配筛选的行）。数据独立存储。 |
+| database | 轻量数据库连接与查询工具：MySQL / SQLite / Redis 连接管理、SQL 与 Redis 命令执行、库表浏览器（库→表/视图→字段、Redis 键树）、Redis 键类型感知详情与增删改（string/hash/list/set/zset）、TTL 与 DB 管理、结果网格内联行编辑、智能列筛选（运算符/区间/多值/判空，停顿即滤）、勾选批量删除（支持全选匹配筛选的行）。数据独立存储。 |
 | dir-buster | 对指定目标 URL 用内置常见路径字典进行轻量探测（自用）：并发受限、可配扩展名，采用异步会话模型实时返回命中的非 404 路径。仅探测你授权的目标，内置字典、不递归 |
 | disk-analyzer | 可视化磁盘空间占用分析工具，类似 SpaceSniffer，支持树图展示目录结构 |
 | exif-viewer | 选择图片（JPEG/PNG）查看拍摄时间、相机/镜头、参数与 GPS 经纬度等 EXIF 信息 |

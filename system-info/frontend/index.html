@@ -9,17 +9,17 @@
 body{margin:0}
 .app{display:flex;flex-direction:column;height:100vh;padding:12px;gap:10px;box-sizing:border-box}
 .bar{display:flex;gap:8px}
-.btn{height:34px;padding:0 16px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:inherit}
+.btn{height:34px;padding:0 16px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;color:var(--text-secondary);font-size: var(--fs-md);cursor:pointer;font-family:inherit}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 .list{flex:1;overflow:auto;display:flex;flex-direction:column;gap:6px}
 .item{display:flex;justify-content:space-between;gap:12px;padding:9px 12px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius)}
-.item .k{font-size:13px;color:var(--text-muted);white-space:nowrap}
-.item .v{font-size:13px;color:var(--text-primary);text-align:right;max-width:62%;word-break:break-all}
+.item .k{font-size: var(--fs-md);color:var(--text-muted);white-space:nowrap}
+.item .v{font-size: var(--fs-md);color:var(--text-primary);text-align:right;max-width:62%;word-break:break-all}
 .disk{margin-top:4px;padding:8px 12px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius)}
-.disk .top{display:flex;justify-content:space-between;font-size:13px;color:var(--text-primary)}
+.disk .top{display:flex;justify-content:space-between;font-size: var(--fs-md);color:var(--text-primary)}
 .disk .meter{height:6px;background:var(--border);border-radius:3px;margin-top:6px;overflow:hidden}
 .disk .fill{height:100%;background:var(--accent)}
-#msg{font-size:12px;color:#e24b4a;min-height:14px}
+#msg{font-size: var(--fs-sm);color:var(--danger);min-height:14px}
 </style>
 </head>
 <body>
@@ -28,7 +28,7 @@ body{margin:0}
     <button class="btn primary" id="go">采集</button>
   </div>
   <div id="msg"></div>
-  <div class="list" id="list"><div style="font-size:11px;color:var(--text-muted)">点击「采集」查看本机概览</div></div>
+  <div class="list" id="list"><div style="font-size: var(--fs-xs);color:var(--text-muted)">点击「采集」查看本机概览</div></div>
 </div>
 <script>
 window.__cpSeq=0;
@@ -42,7 +42,7 @@ function render(d){var l=document.getElementById('list');l.innerHTML='';
     var el=document.createElement('div');el.className='item';el.innerHTML='<span class="k">'+MAP[k]+'</span><span class="v" data-copy="1">'+String(v)+'</span>';l.appendChild(el)}
   if(d.disks&&d.disks.length){var dh=document.createElement('div');dh.className='item';dh.innerHTML='<span class="k">磁盘</span><span class="v">'+d.disks.length+' 个</span>';l.appendChild(dh);
     d.disks.forEach(function(x){var used=(x.size||0)-(x.free||0);var pct=x.size?Math.round(used/x.size*100):0;var el=document.createElement('div');el.className='disk';el.innerHTML='<div class="top"><span>'+x.device+'</span><span>'+fmtSize(x.free)+' 可用 / '+fmtSize(x.size)+'</span></div><div class="meter"><div class="fill" style="width:'+pct+'%"></div></div>';l.appendChild(el)})}
-  if(!l.children.length)l.innerHTML='<div style="font-size:11px;color:var(--text-muted)">无数据</div>'}
+  if(!l.children.length)l.innerHTML='<div style="font-size: var(--fs-xs);color:var(--text-muted)">无数据</div>'}
 document.getElementById('list').addEventListener('click',function(e){if(e.target.dataset.copy)window.copyViaHost(e.target.textContent)});
 function go(){document.getElementById('msg').textContent='采集中…';pluginExec('system-info-collect',{}).then(function(data){var d=typeof data==='string'?JSON.parse(data):data;if(d.error){document.getElementById('msg').textContent=d.error.message||'采集失败';return}document.getElementById('msg').textContent='';render(d)}).catch(function(e){document.getElementById('msg').textContent='采集失败: '+(e.message||e)})}
 document.getElementById('go').onclick=go;

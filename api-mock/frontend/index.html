@@ -6,6 +6,7 @@
 <title>API Mock 服务</title>
 <link rel="stylesheet" href="qd-theme.css">
 <link rel="stylesheet" href="components.css">
+<link rel="stylesheet" href="icons.css">
 <script>
 function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
 </script>
@@ -17,48 +18,48 @@ window.copyViaHost=function(t,cb){var id="cp_"+(++window.__amSeq),done=false;fun
 <style>
 .am-app{display:flex;flex-direction:column;height:100%;padding:var(--sp-4);gap:var(--sp-3);box-sizing:border-box;overflow:auto}
 .am-card{background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-lg);padding:var(--sp-3);display:flex;flex-direction:column;gap:8px}
-.am-card-head{display:flex;align-items:center;font-weight:700;font-size:14px;gap:8px}
+.am-card-head{display:flex;align-items:center;font-weight:700;font-size: var(--fs-lg);gap:8px}
 .am-card-head .am-btn-sm{margin-left:auto}
 .am-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.am-label{font-size:12px;color:var(--text-muted);min-width:auto}
-.am-input,.am-select,.am-path,.am-status,.am-delay,.am-ct{height:30px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--bg-primary);color:var(--text-primary);font-size:13px;outline:none}
-.am-input:focus,.am-path:focus,.am-status:focus,.am-delay:focus,.am-ct:focus{border-color:var(--accent,#4a9eff)}
-.am-btn{padding:8px 16px;background:var(--accent,#4a9eff);color:#fff;border:none;border-radius:var(--radius-md);cursor:pointer;font-size:13px;font-weight:600}
+.am-label{font-size: var(--fs-sm);color:var(--text-muted);min-width:auto}
+.am-input,.am-select,.am-path,.am-status,.am-delay,.am-ct{height:30px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--bg-primary);color:var(--text-primary);font-size: var(--fs-md);outline:none}
+.am-input:focus-visible,.am-path:focus-visible,.am-status:focus-visible,.am-delay:focus-visible,.am-ct:focus-visible{border-color:var(--accent,#4a9eff)}
+.am-btn{padding:8px 16px;background:var(--accent,#4a9eff);color:#fff;border:none;border-radius:var(--radius-md);cursor:pointer;font-size: var(--fs-md);font-weight:600}
 .am-btn:hover{filter:brightness(1.08)}
-.am-btn-sm{padding:3px 10px;background:var(--bg-tertiary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius-md);cursor:pointer;font-size:12px}
+.am-btn-sm{padding:3px 10px;background:var(--bg-tertiary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius-md);cursor:pointer;font-size: var(--fs-sm)}
 .am-btn-sm:hover{background:var(--bg-hover)}
-.am-pill{font-size:11px;padding:3px 10px;border-radius:var(--radius-pill);font-weight:600}
+.am-pill{font-size: var(--fs-xs);padding:3px 10px;border-radius:var(--radius-pill);font-weight:600}
 .am-pill.on{background:var(--success-soft,#1c2b24);color:var(--success,#34d399)}
 .am-pill.off{background:var(--danger-soft,#2b1c1c);color:var(--danger,#e24b4a)}
-.am-addr{font-family:ui-monospace,Consolas,monospace;font-size:13px;color:var(--accent,#4a9eff);background:var(--bg-primary);padding:4px 8px;border-radius:var(--radius-md);border:1px solid var(--border)}
-.am-hint{font-size:11px;color:var(--text-muted)}
+.am-addr{font-family:ui-monospace,Consolas,monospace;font-size: var(--fs-md);color:var(--accent,#4a9eff);background:var(--bg-primary);padding:4px 8px;border-radius:var(--radius-md);border:1px solid var(--border)}
+.am-hint{font-size: var(--fs-xs);color:var(--text-muted)}
 .am-routes{display:flex;flex-direction:column;gap:8px}
 .am-route{background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius-md);padding:8px;display:flex;flex-direction:column;gap:6px}
 .am-route-top{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.am-method{height:30px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--bg-tertiary);color:var(--text-primary);font-size:12px;outline:none;cursor:pointer}
+.am-method{height:30px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--bg-tertiary);color:var(--text-primary);font-size: var(--fs-sm);outline:none;cursor:pointer}
 .am-path{flex:1;min-width:120px}
-.am-chk{font-size:12px;color:var(--text-secondary);display:flex;align-items:center;gap:3px;cursor:pointer;white-space:nowrap}
-.am-del{margin-left:auto;background:none;border:none;color:var(--danger,#e24b4a);cursor:pointer;font-size:14px;padding:0 4px}
+.am-chk{font-size: var(--fs-sm);color:var(--text-secondary);display:flex;align-items:center;gap:3px;cursor:pointer;white-space:nowrap}
+.am-del{margin-left:auto;background:none;border:none;color:var(--danger,#e24b4a);cursor:pointer;font-size: var(--fs-lg);padding:0 4px}
 .am-route-meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.am-route-meta label{font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:4px}
+.am-route-meta label{font-size: var(--fs-xs);color:var(--text-muted);display:flex;align-items:center;gap:4px}
 .am-status,.am-delay{width:64px}
 .am-ct{flex:1;min-width:120px}
-.am-body{width:100%;min-height:54px;resize:vertical;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--bg-tertiary);color:var(--text-primary);font-family:ui-monospace,Consolas,monospace;font-size:12px;outline:none;box-sizing:border-box}
-.am-body:focus{border-color:var(--accent,#4a9eff)}
+.am-body{width:100%;min-height:54px;resize:vertical;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--bg-tertiary);color:var(--text-primary);font-family:ui-monospace,Consolas,monospace;font-size: var(--fs-sm);outline:none;box-sizing:border-box}
+.am-body:focus-visible{border-color:var(--accent,#4a9eff)}
 .am-logs{display:flex;flex-direction:column;gap:4px;max-height:200px;overflow:auto}
-.am-log{display:flex;align-items:center;gap:8px;font-size:12px;font-family:ui-monospace,Consolas,monospace;padding:4px 6px;border-radius:var(--radius-sm);background:var(--bg-primary)}
+.am-log{display:flex;align-items:center;gap:8px;font-size: var(--fs-sm);font-family:ui-monospace,Consolas,monospace;padding:4px 6px;border-radius:var(--radius-sm);background:var(--bg-primary)}
 .am-log .m{font-weight:700;color:var(--accent,#4a9eff);min-width:52px}
 .am-log .p{flex:1;color:var(--text-secondary);word-break:break-all}
 .am-log .s{font-weight:700}
-.s2xx{color:var(--success,#34d399)}.s3xx{color:var(--accent,#4a9eff)}.s4xx{color:var(--danger,#e24b4a)}.s5xx{color:#e24b4b}
+.s2xx{color:var(--success,#34d399)}.s3xx{color:var(--accent,#4a9eff)}.s4xx{color:var(--danger,#e24b4a)}.s5xx{color:var(--danger)}
 .am-log .mt{color:var(--text-muted);min-width:48px;text-align:right}
-.am-empty{color:var(--text-muted);font-size:12px;padding:6px 0}
+.am-empty{color:var(--text-muted);font-size: var(--fs-sm);padding:6px 0}
 </style>
 </head>
 <body>
 <div class="am-app">
   <div class="am-card">
-    <div class="am-card-head">🚀 Mock 服务</div>
+    <div class="am-card-head"><span class="qi qi-rocket"></span> Mock 服务</div>
     <div class="am-row">
       <span class="am-label">端口</span>
       <input id="port" class="am-input" value="8787" style="width:84px" spellcheck="false">
@@ -74,12 +75,12 @@ window.copyViaHost=function(t,cb){var id="cp_"+(++window.__amSeq),done=false;fun
   </div>
 
   <div class="am-card">
-    <div class="am-card-head">📋 路由规则 <button id="btnAdd" class="am-btn-sm">+ 新增</button></div>
+    <div class="am-card-head"><span class="qi qi-clipboard"></span> 路由规则 <button id="btnAdd" class="am-btn-sm">+ 新增</button></div>
     <div id="routes" class="am-routes"></div>
   </div>
 
   <div class="am-card">
-    <div class="am-card-head">📥 请求日志 <span id="logCount" class="am-hint"></span></div>
+    <div class="am-card-head"><span class="qi qi-download"></span> 请求日志 <span id="logCount" class="am-hint"></span></div>
     <div id="logs" class="am-logs"><div class="am-empty">启动服务后，访问上面的地址即可看到请求记录</div></div>
   </div>
 </div>

@@ -5,58 +5,57 @@
 <title>文本工具箱</title>
 <link rel="stylesheet" href="qd-theme.css">
   <link rel="stylesheet" href="components.css">
+<link rel="stylesheet" href="icons.css">
 <style>
 .cmp-app{display:flex;flex-direction:column;height:100vh}
 .cmp-tabs{display:flex;gap:4px;padding:6px 10px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0}
-.cmp-tab{height:30px;padding:0 16px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-tertiary);color:var(--text-primary);font-size:13px;cursor:pointer;font-family:inherit}
+.cmp-tab{height:30px;padding:0 16px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-tertiary);color:var(--text-primary);font-size: var(--fs-md);cursor:pointer;font-family:inherit}
 .cmp-tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
 .cmp-pane{flex:1;min-height:0;display:flex;flex-direction:column;overflow:auto}
 .cmp-pane[hidden]{display:none}
 /* 编解码/哈希（原 text-encoder） */
 .p-app{display:flex;flex-direction:column;height:100%}
 .p-toolbar{display:flex;align-items:center;gap:6px;padding:8px 10px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap}
-.p-btn{height:28px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-tertiary);color:var(--text-primary);font-size:12px;cursor:pointer;font-family:inherit;white-space:nowrap}
+.p-btn{height:28px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-tertiary);color:var(--text-primary);font-size: var(--fs-sm);cursor:pointer;font-family:inherit;white-space:nowrap}
 .p-btn:hover{background:var(--bg-hover)}
 .p-btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
 .p-btn-primary:hover{background:var(--accent-hover)}
-.p-select{height:28px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-tertiary);color:var(--text-primary);font-size:12px;outline:none;cursor:pointer;min-width:130px}
+.p-select{height:28px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-tertiary);color:var(--text-primary);font-size: var(--fs-sm);outline:none;cursor:pointer;min-width:130px}
 .p-spacer{flex:1}
 .p-body{display:flex;flex:1;min-height:0;gap:1px}
 .p-pane{display:flex;flex-direction:column;flex:1;min-width:0;background:var(--bg-secondary)}
-.p-pane-header{padding:6px 10px;flex-shrink:0;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;background:var(--bg-secondary);border-bottom:1px solid var(--border)}
-.p-textarea{flex:1;resize:none;padding:10px;border:none;outline:none;background:var(--bg-primary);color:var(--text-primary);font-family:var(--font-mono);font-size:13px;line-height:1.5;tab-size:2}
-.p-textarea::placeholder{color:var(--text-placeholder)}.p-textarea-input:focus{background:var(--bg-tertiary)}.p-textarea-output{background:var(--bg-tertiary)}
-.p-statusbar{padding:4px 10px;font-size:11px;color:var(--text-muted);background:var(--bg-secondary);border-top:1px solid var(--border);flex-shrink:0;min-height:24px}
+.p-pane-header{padding:6px 10px;flex-shrink:0;font-size: var(--fs-xs);color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;background:var(--bg-secondary);border-bottom:1px solid var(--border)}
+.p-textarea{flex:1;resize:none;padding:10px;border:none;outline:none;background:var(--bg-primary);color:var(--text-primary);font-family:var(--font-mono);font-size: var(--fs-md);line-height:1.5;tab-size:2}
+.p-textarea::placeholder{color:var(--text-placeholder)}.p-textarea-input:focus-visible{background:var(--bg-tertiary)}.p-textarea-output{background:var(--bg-tertiary)}
+.p-statusbar{padding:4px 10px;font-size: var(--fs-xs);color:var(--text-muted);background:var(--bg-secondary);border-top:1px solid var(--border);flex-shrink:0;min-height:24px}
 .p-image-preview{flex:1;display:none;flex-direction:column;min-height:0;background:var(--bg-tertiary)}
-.p-image-info{padding:6px 12px;font-size:11px;color:var(--text-muted);background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0;display:flex;flex-wrap:wrap;gap:14px}
+.p-image-info{padding:6px 12px;font-size: var(--fs-xs);color:var(--text-muted);background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0;display:flex;flex-wrap:wrap;gap:14px}
 .p-image-info b{color:var(--accent);font-weight:500}
 .p-image-wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:16px;min-height:0;overflow:auto;background:var(--bg-tertiary)}
 .p-image-wrap img{max-width:100%;max-height:100%;object-fit:contain;border-radius:4px;box-shadow:0 2px 12px rgba(0,0,0,.4)}
 .p-image-actions{display:flex;gap:6px;padding:8px 10px;background:var(--bg-secondary);border-top:1px solid var(--border);flex-shrink:0}
 /* 命名转换（原 case-converter，.cc- 前缀避免与 .p- 冲突） */
 .cc-app{display:flex;flex-direction:column;height:100%;padding:10px;gap:8px}
-.cc-label{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px}
-.cc-input{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-tertiary);color:var(--text-primary);font-family:var(--font-mono);font-size:14px;outline:none;transition:border-color .15s}
-.cc-input:focus{border-color:var(--accent)}.cc-input::placeholder{color:var(--text-placeholder)}
+.cc-label{font-size: var(--fs-xs);color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px}
+.cc-input{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-tertiary);color:var(--text-primary);font-family:var(--font-mono);font-size: var(--fs-lg);outline:none;transition:border-color .15s}
+.cc-input:focus-visible{border-color:var(--accent)}.cc-input::placeholder{color:var(--text-placeholder)}
 .cc-results{flex:1;overflow:auto;display:flex;flex-direction:column;gap:4px;padding:4px 0}
 .cc-row{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:var(--radius-sm);background:var(--bg-secondary);min-height:32px;transition:background .1s}
 .cc-row:hover{background:var(--bg-hover)}
-.cc-row-label{font-size:12px;color:var(--text-muted,#888);min-width:100px;flex-shrink:0;font-family:var(--font-mono)}
-.cc-row-value{font-size:13px;color:var(--text-primary);font-family:var(--font-mono);word-break:break-all}
+.cc-row-label{font-size: var(--fs-sm);color:var(--text-muted,#888);min-width:100px;flex-shrink:0;font-family:var(--font-mono)}
+.cc-row-value{font-size: var(--fs-md);color:var(--text-primary);font-family:var(--font-mono);word-break:break-all}
 .cc-row-active .cc-row-label{color:var(--accent)}
 .cc-row-active .cc-row-value{color:#fff;font-weight:500}
-.cc-badge{font-size:10px;padding:1px 5px;border-radius:3px;background:var(--accent);color:#fff;margin-left:auto;flex-shrink:0}
-.cc-empty{display:flex;align-items:center;justify-content:center;flex:1;color:var(--text-muted,#888);font-size:13px}
+.cc-badge{font-size: var(--fs-xs);padding:1px 5px;border-radius:3px;background:var(--accent);color:#fff;margin-left:auto;flex-shrink:0}
+.cc-empty{display:flex;align-items:center;justify-content:center;flex:1;color:var(--text-muted,#888);font-size: var(--fs-md)}
 </style>
-<svg style="display:none" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><symbol id="icon-box" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></symbol></svg>
-<svg style="display:none" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><symbol id="icon-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></symbol><symbol id="icon-send" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></symbol><symbol id="icon-git-branch" viewBox="0 0 24 24"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></symbol><symbol id="icon-trash-2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></symbol><symbol id="icon-shield-alert" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></symbol><symbol id="icon-hard-drive" viewBox="0 0 24 24"><line x1="2" y1="12" x2="22" y2="12"></line><path d="M17 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></symbol><symbol id="icon-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></symbol><symbol id="icon-file-text" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></symbol><symbol id="icon-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></symbol><symbol id="icon-gauge" viewBox="0 0 24 24"><path d="M12 15l-2-2"></path><path d="M19.07 4.93a10 10 0 1 1-14.14 0"></path><path d="M12 2v4"></path></symbol><symbol id="icon-box" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></symbol></svg>
 </head>
 <body>
 <div class="cmp-app">
   <div class="cmp-tabs">
-    <button class="cmp-tab" data-tab="codec" id="tabCodec">🔤 编解码 / 哈希</button>
-    <button class="cmp-tab" data-tab="case" id="tabCase">🔡 命名转换</button>
-    <button class="cmp-tab" data-tab="base" id="tabBase">🔢 进制 / 单位</button>
+    <button class="cmp-tab qi-ico qi-ico-binary" data-tab="codec" id="tabCodec">编解码 / 哈希</button>
+    <button class="cmp-tab qi-ico qi-ico-case-sensitive" data-tab="case" id="tabCase">命名转换</button>
+    <button class="cmp-tab qi-ico qi-ico-hash" data-tab="base" id="tabBase">进制 / 单位</button>
   </div>
 
   <!-- 编解码 / 哈希 -->
@@ -83,7 +82,7 @@
         <input id="keyInput" class="input" placeholder="HMAC 密钥" style="width:110px;height:28px;padding:0 8px" spellcheck="false">
       </span>
       <button class="btn p-btn-primary" id="btnProcess">▶ 执行</button>
-      <button class="btn" id="btnCopy">📋 复制</button>
+      <button class="btn qi-ico qi-ico-copy" id="btnCopy">复制</button>
       <span class="p-spacer"></span>
       <button class="btn" id="btnClear">✕ 清空</button>
     </div>
@@ -99,8 +98,8 @@
           <div class="p-image-info" id="imageInfo"></div>
           <div class="p-image-wrap"><img id="previewImg" alt="预览" /></div>
           <div class="p-image-actions">
-            <button class="btn" id="btnDownload">💾 下载图片</button>
-            <button class="btn" id="btnCopyDataUri">📋 复制 Data URI</button>
+            <button class="btn qi-ico qi-ico-download" id="btnDownload">下载图片</button>
+            <button class="btn qi-ico qi-ico-copy" id="btnCopyDataUri">复制 Data URI</button>
           </div>
         </div>
       </div>
@@ -124,23 +123,23 @@
   <style>
   .bc-app{display:flex;flex-direction:column;height:100%;padding:10px;gap:14px;overflow:auto}
   .bc-sub{display:flex;gap:4px;margin-bottom:2px}
-  .bc-sub button{height:26px;padding:0 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-tertiary);color:var(--text-primary);font-size:12px;cursor:pointer;font-family:inherit}
+  .bc-sub button{height:26px;padding:0 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-tertiary);color:var(--text-primary);font-size: var(--fs-sm);cursor:pointer;font-family:inherit}
   .bc-sub button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
   .bc-section{display:none;flex-direction:column;gap:8px}
   .bc-section.active{display:flex}
   .bc-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-  .bc-label{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;min-width:64px}
-  .bc-input,.bc-select{height:28px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-tertiary);color:var(--text-primary);font-size:13px;outline:none;font-family:var(--font-mono)}
-  .bc-input:focus,.bc-select:focus{border-color:var(--accent)}
+  .bc-label{font-size: var(--fs-xs);color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;min-width:64px}
+  .bc-input,.bc-select{height:28px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-tertiary);color:var(--text-primary);font-size: var(--fs-md);outline:none;font-family:var(--font-mono)}
+  .bc-input:focus-visible,.bc-select:focus-visible{border-color:var(--accent)}
   .bc-input{flex:1;min-width:120px}
   .bc-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
   .bc-cell{background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius);padding:6px 8px;display:flex;flex-direction:column;gap:2px}
-  .bc-cell .k{font-size:10px;color:var(--text-muted);text-transform:uppercase}
-  .bc-cell .v{font-size:13px;color:var(--text-primary);font-family:var(--font-mono);word-break:break-all}
-  .bc-cell .c{font-size:10px;color:var(--accent);cursor:pointer;align-self:flex-end;background:none;border:none;padding:0}
+  .bc-cell .k{font-size: var(--fs-xs);color:var(--text-muted);text-transform:uppercase}
+  .bc-cell .v{font-size: var(--fs-md);color:var(--text-primary);font-family:var(--font-mono);word-break:break-all}
+  .bc-cell .c{font-size: var(--fs-xs);color:var(--accent);cursor:pointer;align-self:flex-end;background:none;border:none;padding:0}
   .bc-cell .c:hover{text-decoration:underline}
-  .bc-out{font-size:14px;color:var(--accent);font-family:var(--font-mono);word-break:break-all;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius);padding:8px 10px}
-  .bc-status{font-size:11px;color:var(--text-muted)}
+  .bc-out{font-size: var(--fs-lg);color:var(--accent);font-family:var(--font-mono);word-break:break-all;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius);padding:8px 10px}
+  .bc-status{font-size: var(--fs-xs);color:var(--text-muted)}
   @media(max-width:520px){.bc-grid{grid-template-columns:1fr}}
   </style>
   <div class="bc-app">
@@ -286,7 +285,7 @@ function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;
     var sizeBytes=Math.floor(base64Str.length*3/4)-pad
     imageInfo.innerHTML='<span>类型: <b>'+mime+'</b></span><span>大小: <b>'+formatSize(sizeBytes)+'</b></span><span id="dimInfo">尺寸: <b>加载中…</b></span>'
     currentMime=mime;currentDataUri=dataUri
-    statusText.textContent='🖼️ 检测到 Base64 图片 | '+mime+' | '+formatSize(sizeBytes)
+    statusText.innerHTML='<span class="qi qi-image"></span> 检测到 Base64 图片 | '+mime+' | '+formatSize(sizeBytes)
   }
 
   function hideImagePreview(){
@@ -308,12 +307,12 @@ function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;
     a.href=currentDataUri
     a.download='image_'+Date.now()+'.'+mimeToExt(currentMime)
     document.body.appendChild(a);a.click();a.remove()
-    statusText.textContent='💾 已触发下载'
+    statusText.innerHTML='<span class="qi qi-download"></span> 已触发下载'
   })
 
   btnCopyDataUri.addEventListener('click',function(){
     if(!currentDataUri)return
-    pluginCopy(currentDataUri).then(function(ok){statusText.textContent=ok?'📋 已复制 Data URI！':'❌ 复制失败'})
+    pluginCopy(currentDataUri).then(function(ok){statusText.innerHTML=ok?'<span class="qi qi-copy"></span> 已复制 Data URI！':'❌ 复制失败'})
   })
 
   function pluginExec(command, input){

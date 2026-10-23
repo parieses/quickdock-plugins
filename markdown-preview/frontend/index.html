@@ -6,23 +6,24 @@
 <link rel="stylesheet" href="qd-theme.css">
   <link rel="stylesheet" href="components.css">
 <link rel="stylesheet" href="highlight-theme.css">
+<link rel="stylesheet" href="icons.css">
 <style>
 .md-body{display:flex;flex:1;min-height:0;gap:1px}
 .md-pane{display:flex;flex-direction:column;flex:1;min-width:0;background:var(--bg-secondary)}
-.md-pane-header{padding:5px 10px;flex-shrink:0;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;background:var(--bg-secondary);border-bottom:1px solid var(--border)}
-.md-preview{flex:1;overflow:auto;padding:12px 16px;background:var(--bg-primary);line-height:1.7;font-size:14px}
-.md-preview h1{font-size:20px;font-weight:600;margin:0 0 10px;color:var(--text-primary);border-bottom:1px solid var(--border);padding-bottom:6px}
+.md-pane-header{padding:5px 10px;flex-shrink:0;font-size: var(--fs-xs);color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;background:var(--bg-secondary);border-bottom:1px solid var(--border)}
+.md-preview{flex:1;overflow:auto;padding:12px 16px;background:var(--bg-primary);line-height:1.7;font-size: var(--fs-lg)}
+.md-preview h1{font-size: var(--fs-2xl);font-weight:600;margin:0 0 10px;color:var(--text-primary);border-bottom:1px solid var(--border);padding-bottom:6px}
 .md-preview h2{font-size:17px;font-weight:600;margin:16px 0 8px;color:var(--text-primary)}
 .md-preview h3{font-size:15px;font-weight:600;margin:14px 0 6px;color:var(--text-secondary)}
 .md-preview p{margin:6px 0}
-.md-preview code{background:var(--bg-tertiary);padding:2px 5px;border-radius:3px;font-family:var(--font-mono);font-size:12px;color:var(--accent)}
+.md-preview code{background:var(--bg-tertiary);padding:2px 5px;border-radius:3px;font-family:var(--font-mono);font-size: var(--fs-sm);color:var(--accent)}
 .md-preview pre{background:var(--bg-tertiary);padding:10px 12px;border-radius:6px;overflow-x:auto;margin:8px 0;border:1px solid var(--border)}
 .md-preview pre code{background:none;padding:0;color:var(--text-primary)}
 .md-preview blockquote{border-left:3px solid var(--accent);padding:4px 12px;margin:8px 0;color:var(--text-secondary);background:var(--bg-tertiary);border-radius:0 6px 6px 0}
 .md-preview ul,.md-preview ol{padding-left:20px;margin:6px 0}
 .md-preview li{margin:2px 0}
 .md-preview table{border-collapse:collapse;margin:8px 0;width:100%}
-.md-preview th,.md-preview td{border:1px solid var(--border);padding:6px 10px;text-align:left;font-size:12px}
+.md-preview th,.md-preview td{border:1px solid var(--border);padding:6px 10px;text-align:left;font-size: var(--fs-sm)}
 .md-preview th{background:var(--bg-tertiary);color:var(--text-secondary);font-weight:500}
 .md-preview a{color:var(--accent);text-decoration:none}
 .md-preview a:hover{text-decoration:underline}
@@ -35,15 +36,13 @@ window.__cpSeq=0;
 window.execCopyFallback=function(t){try{var a=document.createElement('textarea');a.value=t;a.style.position='fixed';a.style.opacity='0';a.style.top='0';document.body.appendChild(a);a.select();var ok=document.execCommand('copy');document.body.removeChild(a);return ok}catch(e){return false}};
 window.copyViaHost=function(t,cb){var id='cp_'+(++window.__cpSeq),done=false;function onMsg(e){var d=e&&e.data;if(d&&d.type==='plugin:copy-result'&&d.id===id){done=true;window.removeEventListener('message',onMsg);cb&&cb(!!d.ok)}}window.addEventListener('message',onMsg);parent.postMessage({type:'plugin:copy',id:id,text:t},'*');setTimeout(function(){if(!done){window.removeEventListener('message',onMsg);cb&&cb(window.execCopyFallback(t))}},300)};
 </script>
-<svg style="display:none" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><symbol id="icon-box" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></symbol></svg>
-<svg style="display:none" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><symbol id="icon-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></symbol><symbol id="icon-send" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></symbol><symbol id="icon-git-branch" viewBox="0 0 24 24"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></symbol><symbol id="icon-trash-2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></symbol><symbol id="icon-shield-alert" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></symbol><symbol id="icon-hard-drive" viewBox="0 0 24 24"><line x1="2" y1="12" x2="22" y2="12"></line><path d="M17 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></symbol><symbol id="icon-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></symbol><symbol id="icon-file-text" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></symbol><symbol id="icon-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></symbol><symbol id="icon-gauge" viewBox="0 0 24 24"><path d="M12 15l-2-2"></path><path d="M19.07 4.93a10 10 0 1 1-14.14 0"></path><path d="M12 2v4"></path></symbol><symbol id="icon-box" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></symbol></svg>
 </head>
 <body>
 <div class="p-app">
   <div class="p-toolbar">
     <span class="p-label">Markdown</span>
     <span class="p-spacer"></span>
-    <button class="btn" id="btnCopy">📋 复制 HTML</button>
+    <button class="btn" id="btnCopy"><span class="qi qi-clipboard"></span> 复制 HTML</button>
     <button class="btn" id="btnClear">✕ 清空</button>
   </div>
   <div class="md-body">
@@ -79,14 +78,14 @@ document.getElementById('btnCopy').addEventListener('click',function(){var html=
 document.getElementById('btnClear').addEventListener('click',function(){mdInput.value='';render()})
 function render(){
   var text=mdInput.value.trim()
-  if(!text){mdPreview.innerHTML='<p style="color:var(--text-muted);font-size:13px">编辑 Markdown 查看实时预览</p>';return}
+  if(!text){mdPreview.innerHTML='<p style="color:var(--text-muted);font-size: var(--fs-md)">编辑 Markdown 查看实时预览</p>';return}
   if(window.marked){
     var html=marked.parse(text)
     // marked 不消毒：原始 HTML、javascript: 链接、<img onerror> 会被注入执行到沙箱 iframe。
     // 用 DOMPurify 净化后再写入（保留代码高亮的 <pre><code> 等安全标签）。
     mdPreview.innerHTML=(window.DOMPurify?DOMPurify.sanitize(html,{ADD_ATTR:['target']}):html)
   }else{
-    mdPreview.innerHTML='<p style="color:var(--text-muted);font-size:13px">Markdown 库未加载，请重装插件</p>'
+    mdPreview.innerHTML='<p style="color:var(--text-muted);font-size: var(--fs-md)">Markdown 库未加载，请重装插件</p>'
   }
 }
 render()

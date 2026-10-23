@@ -3,37 +3,37 @@
 <head>
   <link rel="stylesheet" href="qd-theme.css">
   <link rel="stylesheet" href="components.css">
+<link rel="stylesheet" href="icons.css">
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>磁盘分析器</title>
 <style>
 *{-webkit-box-sizing:border-box;box-sizing:border-box}
 html,body{margin:0;height:100%;background:var(--bg-primary);color:var(--text-primary);font-family:var(--font-sans,system-ui,sans-serif)}
 .p-app{display:flex;flex-direction:column;height:100%;min-height:0}
-.p-head{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0}
-.p-head-title{font-size:13px;font-weight:var(--fw-semibold);margin-right:4px}
+/* 顶栏统一走 qd-theme.css 的 .p-head（44px），此处不再影子重定义 */
 .p-spacer{flex:1}
-.p-btn{background:var(--bg-tertiary);color:var(--text-primary);border:1px solid var(--border);border-radius:5px;padding:4px 9px;font-size:12px;cursor:pointer;white-space:nowrap}
+.p-btn{background:var(--bg-tertiary);color:var(--text-primary);border:1px solid var(--border);border-radius:5px;padding:4px 9px;font-size: var(--fs-sm);cursor:pointer;white-space:nowrap}
 .p-btn:hover{background:var(--bg-hover)}
 .p-btn-primary{background:var(--accent);border-color:var(--accent);color:#fff}
 .p-btn-primary:hover{filter:brightness(1.08)}
-.p-select{background:var(--bg-tertiary);color:var(--text-primary);border:1px solid var(--border);border-radius:5px;padding:3px 6px;font-size:12px}
-.p-drives{display:none;padding:8px 12px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px;font-size:12px;flex-shrink:0}
+.p-select{background:var(--bg-tertiary);color:var(--text-primary);border:1px solid var(--border);border-radius:5px;padding:3px 6px;font-size: var(--fs-sm)}
+.p-drives{display:none;padding:8px 12px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px;font-size: var(--fs-sm);flex-shrink:0}
 .p-drives.show{display:flex}
 .p-drive-opt{display:flex;align-items:center;gap:4px;cursor:pointer;user-select:none;padding:2px 6px;border-radius:4px;background:var(--bg-tertiary);border:1px solid var(--border)}
 .p-drive-opt input{accent-color:var(--accent);margin:0}
 .p-drive-opt span{color:var(--text-primary)}
-.p-drive-hint{width:100%;color:var(--text-muted);font-size:11px}
-.p-progress{display:none;padding:5px 12px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0;font-size:12px;align-items:center;gap:8px}
+.p-drive-hint{width:100%;color:var(--text-muted);font-size: var(--fs-xs)}
+.p-progress{display:none;padding:5px 12px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0;font-size: var(--fs-sm);align-items:center;gap:8px}
 .p-progress.show{display:flex}
 .p-progress-bar{position:relative;flex:1;height:6px;border-radius:3px;background:var(--bg-tertiary);overflow:hidden;max-width:240px}
 .p-progress-bar>i{position:absolute;left:0;top:0;bottom:0;background:var(--accent);opacity:.7;width:0%}
 .p-progress-text{color:var(--text-muted);white-space:nowrap}
-.p-stats{display:flex;gap:16px;padding:6px 12px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0;font-size:12px;flex-wrap:wrap}
+.p-stats{display:flex;gap:16px;padding:6px 12px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0;font-size: var(--fs-sm);flex-wrap:wrap}
 .p-stat-label{color:var(--text-muted)}
 .p-stat-value{color:var(--text-primary);font-weight:var(--fw-semibold)}
-.p-warn{display:none;padding:6px 12px;background:color-mix(in srgb,var(--warn,#e0a000) 18%,transparent);color:var(--text-primary);font-size:11px;flex-shrink:0;border-bottom:1px solid var(--border)}
+.p-warn{display:none;padding:6px 12px;background:color-mix(in srgb,var(--warning) 18%,transparent);color:var(--text-primary);font-size: var(--fs-xs);flex-shrink:0;border-bottom:1px solid var(--border)}
 .p-warn.show{display:block}
-.p-crumb{display:flex;align-items:center;gap:2px;padding:6px 12px;background:var(--bg-primary);border-bottom:1px solid var(--border);flex-shrink:0;font-size:12px;overflow-x:auto;white-space:nowrap}
+.p-crumb{display:flex;align-items:center;gap:2px;padding:6px 12px;background:var(--bg-primary);border-bottom:1px solid var(--border);flex-shrink:0;font-size: var(--fs-sm);overflow-x:auto;white-space:nowrap}
 .p-crumb a{color:var(--accent);cursor:pointer;text-decoration:none}
 .p-crumb a:hover{text-decoration:underline}
 .p-crumb span.p-crumb-sep{color:var(--text-muted);margin:0 2px}
@@ -45,52 +45,52 @@ html,body{margin:0;height:100%;background:var(--bg-primary);color:var(--text-pri
 .p-loading,.p-empty{text-align:center;padding:40px;color:var(--text-muted)}
 /* 列表视图 */
 .p-node{margin:1px 0}
-.p-node-header{display:flex;align-items:center;gap:5px;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:12px;user-select:none}
+.p-node-header{display:flex;align-items:center;gap:5px;padding:4px 8px;border-radius:4px;cursor:pointer;font-size: var(--fs-sm);user-select:none}
 .p-node-header:hover{background:var(--bg-hover)}
 .p-node-header.expanded>.p-arrow{transform:rotate(90deg)}
 .p-arrow{width:12px;height:12px;transition:transform 150ms;flex-shrink:0;color:var(--text-muted)}
+/* 折叠箭头：用 CSS 三角替代 ▶ 字符，跨平台字形一致 */
+.p-arrow::before{content:'';display:block;width:0;height:0;border-left:5px solid currentColor;border-top:4px solid transparent;border-bottom:4px solid transparent;margin:2px 0 0 3px}
 .p-icon{width:16px;height:16px;flex-shrink:0}
 .p-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-primary)}
-.p-size{font-family:var(--font-mono);color:var(--accent);font-size:11px;min-width:72px;text-align:right;flex-shrink:0}
-.p-pct{font-family:var(--font-mono);color:var(--text-muted);font-size:10px;min-width:42px;text-align:right;flex-shrink:0}
+.p-size{font-family:var(--font-mono);color:var(--accent);font-size: var(--fs-xs);min-width:72px;text-align:right;flex-shrink:0}
+.p-pct{font-family:var(--font-mono);color:var(--text-muted);font-size: var(--fs-xs);min-width:42px;text-align:right;flex-shrink:0}
 .p-bar{position:relative;height:3px;flex-basis:100%;margin:2px 0 0 21px;border-radius:2px;background:var(--bg-secondary);overflow:hidden;flex-shrink:0}
 .p-bar>i{position:absolute;left:0;top:0;bottom:0;background:var(--accent);opacity:.55}
-.p-trunc{color:var(--warn,#e0a000);font-size:10px;margin-left:4px}
+.p-trunc{color:var(--warning);font-size: var(--fs-xs);margin-left:4px}
 .p-children{padding-left:14px;display:none}
 .p-children.open{display:block}
 /* 盘符选择视图 */
 .p-drive-card{display:flex;align-items:center;gap:10px;padding:10px 12px;margin:6px 0;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:var(--bg-secondary)}
 .p-drive-card:hover{background:var(--bg-hover)}
-.p-drive-card .p-dc-name{font-size:13px;font-weight:var(--fw-semibold);color:var(--text-primary)}
-.p-drive-card .p-dc-sub{font-size:11px;color:var(--text-muted)}
+.p-drive-card .p-dc-name{font-size: var(--fs-md);font-weight:var(--fw-semibold);color:var(--text-primary)}
+.p-drive-card .p-dc-sub{font-size: var(--fs-xs);color:var(--text-muted)}
 .p-drive-card .p-dc-bar{flex:1;height:6px;border-radius:3px;background:var(--bg-tertiary);overflow:hidden;max-width:200px}
 .p-drive-card .p-dc-bar>i{display:block;height:100%;background:var(--accent);opacity:.7}
 /* 方块图 hover 提示框 */
-.p-tooltip{position:absolute;z-index:50;pointer-events:none;display:none;background:var(--bg-tertiary);color:var(--text-primary);border:1px solid var(--border);border-radius:6px;padding:6px 9px;font-size:12px;max-width:340px;box-shadow:0 4px 16px rgba(0,0,0,.4);line-height:1.5}
+.p-tooltip{position:absolute;z-index:50;pointer-events:none;display:none;background:var(--bg-tertiary);color:var(--text-primary);border:1px solid var(--border);border-radius:6px;padding:6px 9px;font-size: var(--fs-sm);max-width:340px;box-shadow:0 4px 16px rgba(0,0,0,.4);line-height:1.5}
 .p-tooltip .tt-name{font-weight:var(--fw-semibold);word-break:break-all}
 .p-tooltip .tt-meta{color:var(--text-muted);margin-top:2px;word-break:break-all}
 /* 轻量提示（打开文件管理器等操作反馈） */
-.p-toast{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);z-index:60;background:var(--bg-tertiary);color:var(--text-primary);border:1px solid var(--border);border-radius:6px;padding:7px 14px;font-size:12px;box-shadow:0 4px 16px rgba(0,0,0,.4);opacity:0;transition:opacity .25s;pointer-events:none;max-width:80%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.p-toast{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);z-index:60;background:var(--bg-tertiary);color:var(--text-primary);border:1px solid var(--border);border-radius:6px;padding:7px 14px;font-size: var(--fs-sm);box-shadow:0 4px 16px rgba(0,0,0,.4);opacity:0;transition:opacity .25s;pointer-events:none;max-width:80%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 </style>
-<svg style="display:none" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><symbol id="icon-box" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></symbol></svg>
-<svg style="display:none" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><symbol id="icon-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></symbol><symbol id="icon-send" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></symbol><symbol id="icon-git-branch" viewBox="0 0 24 24"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></symbol><symbol id="icon-trash-2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></symbol><symbol id="icon-shield-alert" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></symbol><symbol id="icon-hard-drive" viewBox="0 0 24 24"><line x1="2" y1="12" x2="22" y2="12"></line><path d="M17 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></symbol><symbol id="icon-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></symbol><symbol id="icon-file-text" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></symbol><symbol id="icon-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></symbol><symbol id="icon-gauge" viewBox="0 0 24 24"><path d="M12 15l-2-2"></path><path d="M19.07 4.93a10 10 0 1 1-14.14 0"></path><path d="M12 2v4"></path></symbol><symbol id="icon-box" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></symbol></svg>
 </head>
 <body>
 <div class="p-app">
   <div class="p-head">
-    <span class="p-head-title" data-orig="📊 磁盘分析器">📊 磁盘分析器</span>
+    <span class="p-head-title" data-orig="磁盘分析器">磁盘分析器</span>
     <span class="p-spacer"></span>
-    <label style="font-size:12px;color:var(--text-muted)" data-orig="深度">深度</label>
+    <label style="font-size: var(--fs-sm);color:var(--text-muted)" data-orig="深度">深度</label>
     <select class="p-select" id="selDepth" data-orig-title="后台全量扫描的深度（层数越多树越深、扫描越久）" title="后台全量扫描的深度（层数越多树越深、扫描越久）">
       <option value="1" data-orig="1 层">1 层</option>
       <option value="2" data-orig="2 层">2 层</option>
       <option value="3" selected data-orig="3 层">3 层</option>
       <option value="4" data-orig="4 层">4 层</option>
     </select>
-    <button class="btn" id="btnView" data-orig="🔲 方块图" data-orig-title="切换列表 / 方块图（SpaceSniffer 模式）" title="切换列表 / 方块图（SpaceSniffer 模式）">🔲 方块图</button>
-    <button class="btn" id="btnDrives" data-orig="⚙ 盘符" data-orig-title="选择要扫描的盘符" title="选择要扫描的盘符">⚙ 盘符</button>
+    <button class="btn qi-ico qi-ico-layout-grid" id="btnView" data-orig="方块图" data-orig-title="切换列表 / 方块图（SpaceSniffer 模式）" title="切换列表 / 方块图（SpaceSniffer 模式）">方块图</button>
+    <button class="btn qi-ico qi-ico-settings" id="btnDrives" data-orig="盘符" data-orig-title="选择要扫描的盘符" title="选择要扫描的盘符">盘符</button>
     <button class="btn" id="btnStop" data-orig="⏹ 停止" data-orig-title="停止当前扫描" title="停止当前扫描" style="display:none">⏹ 停止</button>
-    <button class="btn p-btn-primary" id="btnRoot" data-orig="🏠 此电脑">🏠 此电脑</button>
+    <button class="btn p-btn-primary qi-ico qi-ico-house" id="btnRoot" data-orig="此电脑">此电脑</button>
   </div>
   <div class="p-drives" id="drivePanel">
     <div class="p-drive-hint" data-orig="勾选要显示/扫描的盘符（取消勾选的盘符不会出现在下方列表中）：">勾选要显示/扫描的盘符（取消勾选的盘符不会出现在下方列表中）：</div>
@@ -119,17 +119,16 @@ var SEL_KEY='qdDiskAnalyzerDrives';
 // ===== 自包含页面 i18n（样板同 pdf-toolkit，key=中文原文，经 <html lang> 判定语言）=====
 var L10N={'en-US':{
   '磁盘分析器':'Disk Analyzer',
-  '📊 磁盘分析器':'📊 Disk Analyzer',
   '深度':'Depth',
   '1 层':'1 level','2 层':'2 levels','3 层':'3 levels','4 层':'4 levels',
   '后台全量扫描的深度（层数越多树越深、扫描越久）':'Depth for the background full scan (more levels = deeper tree, longer scan)',
-  '🔲 方块图':'🔲 Treemap',
+  '方块图':'Treemap',
   '切换列表 / 方块图（SpaceSniffer 模式）':'Switch list / treemap (SpaceSniffer mode)',
-  '⚙ 盘符':'⚙ Drives',
+  '盘符':'Drives',
   '选择要扫描的盘符':'Choose drives to scan',
   '⏹ 停止':'⏹ Stop',
   '停止当前扫描':'Stop the current scan',
-  '🏠 此电脑':'🏠 This PC',
+  '此电脑':'This PC',
   '勾选要显示/扫描的盘符（取消勾选的盘符不会出现在下方列表中）：':'Check the drives to show/scan (unchecked drives will not appear below):',
   '扫描中...':'Scanning…',
   '总空间:':'Total:',
@@ -159,10 +158,10 @@ var L10N={'en-US':{
   '体积统计中…':'Measuring…',
   ' · 文件':' · File',
   ' · 文件夹':' · Folder',
-  '没有可选的盘符，点"⚙ 盘符"勾选':'No drives available. Click "⚙ Drives" to check some',
+  '没有可选的盘符，点"盘符"勾选':'No drives available. Click "Drives" to check some',
   ' 已用':' used',
   '枚举盘符中...':'Enumerating drives…',
-  '📋 列表':'📋 List'
+  '列表':'List'
 }};
 function isEn(){return (document.documentElement.getAttribute('lang')||'').toLowerCase().indexOf('en')===0}
 function L(s){if(!isEn())return s;var t=L10N['en-US'];return t[s]!==undefined?t[s]:s}
@@ -223,10 +222,10 @@ function formatSize(bytes){if(!bytes||bytes===0)return '0 B';var units=['B','KB'
 function formatPct(n){if(!isFinite(n)||n<0)n=0;if(n>100)n=100;return n.toFixed(1)+'%'}
 
 function getFileIcon(name,isDir){
-  if(isDir)return'📁';
+  if(isDir)return'qi-folder';
   var ext=name.split('.').pop().toLowerCase();
-  var icons={exe:'⚙️',lnk:'🔗',dll:'📦',sys:'⚙️',pdf:'📄',doc:'📝',docx:'📝',xls:'📊',xlsx:'📊',ppt:'📑',pptx:'📑',zip:'📦',rar:'📦','7z':'📦',mp3:'🎵',wav:'🎵',mp4:'🎬',avi:'🎬',mkv:'🎬',jpg:'🖼️',png:'🖼️',gif:'🖼️',bmp:'🖼️',txt:'📝',md:'📝',go:'🐹',py:'🐍',js:'📜',ts:'📜',json:'📋',xml:'📋',html:'🌐',css:'🎨'};
-  return icons[ext]||'📄';
+  var icons={exe:'qi-settings',lnk:'qi-link',dll:'qi-package',sys:'qi-settings',pdf:'qi-file-text',doc:'qi-file-text',docx:'qi-file-text',xls:'qi-table-2',xlsx:'qi-table-2',ppt:'qi-file-spreadsheet',pptx:'qi-file-spreadsheet',zip:'qi-package',rar:'qi-package','7z':'qi-package',mp3:'qi-music',wav:'qi-music',mp4:'qi-video',avi:'qi-video',mkv:'qi-video',jpg:'qi-image',png:'qi-image',gif:'qi-image',bmp:'qi-image',txt:'qi-file-text',md:'qi-file-text',go:'qi-terminal',py:'qi-terminal',js:'qi-file-code',ts:'qi-file-code',json:'qi-clipboard',xml:'qi-clipboard',html:'qi-globe',css:'qi-palette'};
+  return icons[ext]||'qi-file';
 }
 
 // ---- 盘符选择持久化 ----
@@ -363,7 +362,7 @@ function showError(msg){$('tree').innerHTML='<div class="p-empty">'+L('扫描失
 
 function renderCrumb(){
   var c=$('crumb');c.innerHTML='';
-  var home=document.createElement('a');home.textContent=L('🏠 此电脑');
+  var home=document.createElement('a');home.textContent=L('此电脑');
   home.addEventListener('click',function(){scanRoot()});
   c.appendChild(home);
   state.drillPath.forEach(function(name,i){
@@ -422,8 +421,8 @@ function renderTree(node){
     var pctVal=isDrive?(child.usagePct||0):(parentSize>0?(child.size/parentSize*100):0);
     var div=document.createElement('div');div.className='p-node';
     var header=document.createElement('div');header.className='p-node-header';
-    var arrow=document.createElement('span');arrow.className='p-arrow';arrow.textContent='▶';
-    var icon=document.createElement('span');icon.className='p-icon';icon.textContent=isDrive?'💽':getFileIcon(child.name,!child.isFile);
+    var arrow=document.createElement('span');arrow.className='p-arrow';
+    var icon=document.createElement('span');icon.className='p-icon qi '+(isDrive?'qi-hard-drive':getFileIcon(child.name,!child.isFile));
     var name=document.createElement('span');name.className='p-name';name.textContent=child.name+(child.truncated?' ⚠':'');
     var size=document.createElement('span');size.className='p-size';size.textContent=formatSize(child.size);
     var pct=document.createElement('span');pct.className='p-pct';pct.textContent=formatPct(pctVal);
@@ -648,7 +647,7 @@ function renderDrivePicker(data){
   var tree=$('tree');tree.style.display='block';$('mapWrap').classList.remove('show');
   tree.innerHTML='';
   var drives=(data&&data.children||[]).filter(function(d){return isSelected(d.path)});
-  if(drives.length===0){tree.innerHTML='<div class="p-empty">'+L('没有可选的盘符，点"⚙ 盘符"勾选')+'</div>';return}
+  if(drives.length===0){tree.innerHTML='<div class="p-empty">'+L('没有可选的盘符，点"盘符"勾选')+'</div>';return}
   drives.forEach(function(d){
     var card=document.createElement('div');card.className='p-drive-card';
     var pct=d.usagePct||0;
@@ -676,14 +675,14 @@ $('btnDrives').addEventListener('click',function(){$('drivePanel').classList.tog
 $('selDepth').addEventListener('change',function(){state.depth=parseInt(this.value,10)||3});
 $('btnView').addEventListener('click',function(){
   state.view=(state.view==='map')?'list':'map';
-  $('btnView').textContent=(state.view==='map')?L('🔲 方块图'):L('📋 列表');
+  $('btnView').textContent=(state.view==='map')?L('方块图'):L('列表');
   render();
 });
 
 // ---- 初始化 ----
 function refreshL10n(){
   applyStaticL10n();
-  $('btnView').textContent=(state.view==='map')?L('🔲 方块图'):L('📋 列表');
+  $('btnView').textContent=(state.view==='map')?L('方块图'):L('列表');
   if(state.root||state.current){render()}
   else{$('tree').innerHTML='<div class="p-loading">'+L('点击"此电脑"选择盘符开始扫描')+'</div>'}
 }

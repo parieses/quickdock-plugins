@@ -9,16 +9,16 @@
 body{margin:0}
 .app{display:flex;flex-direction:column;height:100vh;padding:12px;gap:10px;box-sizing:border-box}
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.lbl{font-size:12px;color:var(--text-muted)}
-.inp{height:32px;padding:0 10px;background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit}
-.btn{height:32px;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:inherit}
+.lbl{font-size: var(--fs-sm);color:var(--text-muted)}
+.inp{height:32px;padding:0 10px;background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius);font-size: var(--fs-md);font-family:inherit}
+.btn{height:32px;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;color:var(--text-secondary);font-size: var(--fs-md);cursor:pointer;font-family:inherit}
 .btn:hover:not(:disabled){color:var(--text-primary)}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 .btn:disabled{opacity:.5;cursor:not-allowed}
 #out{flex:1;display:flex;align-items:center;justify-content:center;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius);overflow:auto;min-height:0}
 #out img{max-width:100%;max-height:100%}
-#msg{font-size:12px;color:var(--text-muted);min-height:14px}
-#prog{font-size:12px;color:var(--accent)}
+#msg{font-size: var(--fs-sm);color:var(--text-muted);min-height:14px}
+#prog{font-size: var(--fs-sm);color:var(--accent)}
 </style>
 </head>
 <body>
@@ -38,7 +38,7 @@ body{margin:0}
     <span style="flex:1"></span>
     <span id="msg">首次转换需联网加载 ffmpeg.wasm</span>
   </div>
-  <div id="out"><span style="color:var(--text-muted);font-size:13px">选择视频后转换</span></div>
+  <div id="out"><span style="color:var(--text-muted);font-size: var(--fs-md)">选择视频后转换</span></div>
 </div>
 <script>
 var ffmpeg=null,loaded=false,lastBlob=null;

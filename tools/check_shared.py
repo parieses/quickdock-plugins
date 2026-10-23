@@ -59,6 +59,10 @@ def family_components() -> list[Path]:
     return sorted(ROOT.glob("**/frontend/components.css"))
 
 
+def family_icons() -> list[Path]:
+    return sorted(ROOT.glob("**/frontend/icons.css"))
+
+
 def family_qtheme() -> list[Path]:
     return sorted(ROOT.glob("**/frontend/qd-theme.css"))
 
@@ -108,6 +112,17 @@ def check_qtheme(stats: bool) -> list[str]:
     return bad
 
 
+def check_icons(stats: bool) -> list[str]:
+    tpl = (TPL / "icons.css").read_text(encoding="utf-8")
+    bad = []
+    for f in family_icons():
+        if f.read_text(encoding="utf-8") != tpl:
+            bad.append(str(f.relative_to(ROOT)))
+    if stats:
+        print(f"[icons.css] 检查 {len(family_icons())} 份，漂移 {len(bad)} 份")
+    return bad
+
+
 def check_qdlog(stats: bool) -> list[str]:
     tpl = (TPL / "qdlog.go").read_text(encoding="utf-8")
     bad: list[str] = []
@@ -130,6 +145,7 @@ def main() -> int:
 
     bad = []
     bad += check_components(args.stats)
+    bad += check_icons(args.stats)
     bad += check_qtheme(args.stats)
     bad += check_qdlog(args.stats)
 

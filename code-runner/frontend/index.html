@@ -8,20 +8,17 @@
 <style>
 body{margin:0}
 .app{display:flex;flex-direction:column;height:100vh;padding:12px;gap:10px;box-sizing:border-box}
-.tabs{display:flex;gap:6px;flex-shrink:0}
-.tab{height:30px;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:inherit}
-.tab.active{color:var(--accent);border-color:var(--accent)}
 .main{flex:1;display:flex;gap:10px;min-height:0}
 .col{flex:1;display:flex;flex-direction:column;gap:6px;min-width:0}
-.cap{font-size:12px;color:var(--text-muted)}
-#code{flex:1;width:100%;resize:none;padding:10px;font-size:13px;line-height:1.5;font-family:var(--font-mono);background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius);box-sizing:border-box}
-#out{flex:1;width:100%;resize:none;padding:10px;font-size:12px;line-height:1.45;font-family:var(--font-mono);white-space:pre-wrap;overflow:auto;background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius);box-sizing:border-box}
+.cap{font-size: var(--fs-sm);color:var(--text-muted)}
+#code{flex:1;width:100%;resize:none;padding:10px;font-size: var(--fs-md);line-height:1.5;font-family:var(--font-mono);background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius);box-sizing:border-box}
+#out{flex:1;width:100%;resize:none;padding:10px;font-size: var(--fs-sm);line-height:1.45;font-family:var(--font-mono);white-space:pre-wrap;overflow:auto;background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius);box-sizing:border-box}
 #preview{flex:1;width:100%;border:1px solid var(--border);border-radius:var(--radius);background:#fff;display:none}
 .bar{display:flex;gap:8px;align-items:center;flex-shrink:0}
-.btn{height:32px;padding:0 16px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:inherit}
+.btn{height:32px;padding:0 16px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;color:var(--text-secondary);font-size: var(--fs-md);cursor:pointer;font-family:inherit}
 .btn:hover{color:var(--text-primary)}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
-#hint{font-size:11px;color:var(--text-muted)}
+#hint{font-size: var(--fs-xs);color:var(--text-muted)}
 </style>
 </head>
 <body>

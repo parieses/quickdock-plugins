@@ -6,25 +6,26 @@
 <title>OCR 文字识别</title>
 <link rel="stylesheet" href="qd-theme.css" data-page-node-id="FFCM3F5jJF7jYHzDJdRDBe">
 <link rel="stylesheet" href="components.css" data-page-node-id="WLPSSqjFekmqXGYFaoBSuo">
+<link rel="stylesheet" href="icons.css">
 <style>
 /* ===== 通用 ===== */
 .app{display:flex;flex-direction:column;height:100vh;padding:var(--sp-4);gap:var(--sp-3);box-sizing:border-box;overflow:hidden}
 .bar{display:flex;align-items:center;gap:var(--sp-2);flex-shrink:0}
-.title{font-size:14px;font-weight:600;color:var(--text-primary)}
+.title{font-size: var(--fs-lg);font-weight:600;color:var(--text-primary)}
 .main{display:flex;flex-direction:column;gap:var(--sp-3);flex:1;min-height:0}
 
 /* 图片卡片 */
 .img-card{flex-shrink:0}
 .img-card .card-header{padding:8px 12px}
-.img-card .card-title{font-size:12px;font-weight:600}
+.img-card .card-title{font-size: var(--fs-sm);font-weight:600}
 .img-body{display:flex;align-items:center;justify-content:center;height:170px;padding:var(--sp-2);background:var(--bg-primary);overflow:auto;transition:height 150ms}
 .img-card.expanded .img-body{height:420px}
 .drop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;width:100%;height:100%;border:1.5px dashed var(--border-strong);border-radius:var(--radius);color:var(--text-muted);cursor:pointer;text-align:center;transition:border-color 150ms,color 150ms,background 150ms}
 .drop:hover{border-color:var(--accent);color:var(--text-secondary)}
 .drop.dragover{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
-.drop .ic{font-size:20px;line-height:1;opacity:.85}
-.drop .hint{font-size:12px}
-.drop .sub{font-size:11px;color:var(--text-disabled)}
+.drop .ic{font-size: var(--fs-2xl);line-height:1;opacity:.85}
+.drop .hint{font-size: var(--fs-sm)}
+.drop .sub{font-size: var(--fs-xs);color:var(--text-disabled)}
 
 /* 图片 + 框叠加 */
 .img-wrap{position:relative;display:inline-block;line-height:0;max-width:100%}
@@ -38,33 +39,33 @@
 .res-out-wrap{flex:1;min-height:0;display:flex}
 .res-out-wrap .empty-state{padding:20px 16px;gap:8px}
 .res-out-wrap .empty-state-icon{width:40px;height:40px;font-size:18px}
-.res-out-wrap .empty-state-title{font-size:13px}
-.res-out-wrap .empty-state-desc{font-size:12px}
+.res-out-wrap .empty-state-title{font-size: var(--fs-md)}
+.res-out-wrap .empty-state-desc{font-size: var(--fs-sm)}
 
 /* 文本行列表（可点击高亮框） */
 .ocr-lines{flex:1;overflow:auto;margin:0;padding:8px 10px;list-style:none}
-.ocr-lines li{display:flex;gap:8px;padding:6px 8px;border-radius:var(--radius);cursor:pointer;font-family:var(--font-mono);font-size:12px;line-height:1.6;color:var(--text-primary);border:1px solid transparent}
+.ocr-lines li{display:flex;gap:8px;padding:6px 8px;border-radius:var(--radius);cursor:pointer;font-family:var(--font-mono);font-size: var(--fs-sm);line-height:1.6;color:var(--text-primary);border:1px solid transparent}
 .ocr-lines li:hover{border-color:var(--accent);background:var(--accent-soft)}
 .ocr-lines li .idx{color:var(--text-disabled);min-width:22px;text-align:right;flex-shrink:0}
 .ocr-lines li .txt{flex:1;white-space:pre-wrap;word-break:break-word}
-.ocr-lines li .sc{color:var(--text-muted);flex-shrink:0;font-size:11px}
-.ocr-text{flex:1;overflow:auto;margin:0;padding:12px 14px;font-family:var(--font-mono);font-size:12px;line-height:1.7;white-space:pre-wrap;word-break:break-word;color:var(--text-primary);display:none}
+.ocr-lines li .sc{color:var(--text-muted);flex-shrink:0;font-size: var(--fs-xs)}
+.ocr-text{flex:1;overflow:auto;margin:0;padding:12px 14px;font-family:var(--font-mono);font-size: var(--fs-sm);line-height:1.7;white-space:pre-wrap;word-break:break-word;color:var(--text-primary);display:none}
 .ocr-text.show{display:block}
-.toggle{font-size:11px;color:var(--text-muted);cursor:pointer;user-select:none}
+.toggle{font-size: var(--fs-xs);color:var(--text-muted);cursor:pointer;user-select:none}
 .toggle:hover{color:var(--accent)}
 
-.foot{display:flex;align-items:center;gap:6px;flex-shrink:0;font-size:11px;color:var(--text-muted)}
-.err{display:none;padding:6px 10px;border-radius:var(--radius);background:var(--danger-soft);color:var(--danger);font-size:12px;flex-shrink:0;white-space:pre-wrap}
+.foot{display:flex;align-items:center;gap:6px;flex-shrink:0;font-size: var(--fs-xs);color:var(--text-muted)}
+.err{display:none;padding:6px 10px;border-radius:var(--radius);background:var(--danger-soft);color:var(--danger);font-size: var(--fs-sm);flex-shrink:0;white-space:pre-wrap}
 .err.show{display:block}
 
 /* 模型准备 / 下载页 */
 .prepare{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;flex:1;text-align:center;padding:20px}
 .prepare .big{font-size:15px;font-weight:600;color:var(--text-primary)}
-.prepare .desc{font-size:12px;color:var(--text-secondary);max-width:420px;line-height:1.7}
+.prepare .desc{font-size: var(--fs-sm);color:var(--text-secondary);max-width:420px;line-height:1.7}
 .pbar{width:100%;max-width:420px;height:8px;border-radius:99px;background:var(--bg-tertiary);overflow:hidden}
 .pbar > i{display:block;height:100%;width:0;background:var(--accent);transition:width 300ms}
 .dlfiles{width:100%;max-width:420px;display:flex;flex-direction:column;gap:6px}
-.dlfile{font-size:11px;color:var(--text-secondary)}
+.dlfile{font-size: var(--fs-xs);color:var(--text-secondary)}
 .dlfile .nm{display:flex;justify-content:space-between}
 .dlfile .p{height:5px;border-radius:99px;background:var(--bg-tertiary);overflow:hidden;margin-top:3px}
 .dlfile .p > i{display:block;height:100%;width:0;background:var(--accent)}
@@ -93,7 +94,7 @@
       <button id="prepareBtn" class="btn btn-primary" data-page-node-id="ECiHlhhc5a7w9gFnjCsu1W">准备模型</button>
       <div class="pbar hidden" id="dlBar" data-page-node-id="7ENZG4vr04lDXBN9JknTSB"><i data-page-node-id="DPueYZFdohn0VHQbqO4dzD"></i></div>
       <div class="dlfiles hidden" id="dlFiles" data-page-node-id="iGDXmZ2jf85ydXxxlW9ToK"></div>
-      <div class="desc" style="font-size:11px;color:var(--text-disabled)" id="dlSizeHint" data-page-node-id="mlAd0jW7wZastsBCZmvLVC"></div>
+      <div class="desc" style="font-size: var(--fs-xs);color:var(--text-disabled)" id="dlSizeHint" data-page-node-id="mlAd0jW7wZastsBCZmvLVC"></div>
     </div>
 
     <!-- 识别页（就绪后显示） -->
@@ -107,7 +108,7 @@
         </div>
         <div class="img-body" data-page-node-id="tkpanX3RR1IwFMUUj1smWC">
           <div id="dropZone" class="drop" data-page-node-id="5bpoJ8NKLAXOcP28Ln4dvt">
-            <div class="ic" data-page-node-id="5KWxQgIN3qYp2lPnehxpan">🖼️</div>
+            <div class="ic" data-page-node-id="5KWxQgIN3qYp2lPnehxpan"><span class="qi qi-image"></span></div>
             <div class="hint" data-page-node-id="V32iCo2PigysnVgTR5Nln8">拖拽图片到此处，或点击选择</div>
             <div class="sub" data-page-node-id="LfUQhzkoKil2PWuyDQ40In">也支持 Ctrl+V 粘贴截图（Win+Shift+S）</div>
           </div>
@@ -127,7 +128,7 @@
         </div>
         <div class="res-out-wrap" data-page-node-id="7KMb8g3SmDWPfAtoWqHeV9">
           <div id="resultEmpty" class="empty-state" style="flex:1" data-page-node-id="deScv6v4auv8uLOFI0LPxw">
-            <div class="empty-state-icon" data-page-node-id="MAcfb0plGL3JAm0nnkRhxU">📝</div>
+            <div class="empty-state-icon" data-page-node-id="MAcfb0plGL3JAm0nnkRhxU"><span class="qi qi-file-code"></span></div>
             <div class="empty-state-title" data-page-node-id="kjrQVZsWq17RYNaAkksGbl">尚未识别</div>
             <div class="empty-state-desc" data-page-node-id="qKD7WQ2KFAPU9fPEopIs7H">选择或粘贴一张含文字的图片，然后点击「识别」</div>
           </div>

@@ -38,10 +38,10 @@ body { height: 100vh; overflow: hidden; }
 .typing-area { position: relative; flex: 1; overflow: auto; padding: var(--sp-5); }
 #text { position: relative; z-index: 1; pointer-events: none;
   white-space: pre-wrap; word-break: break-word; font-family: var(--font-mono);
-  font-size: 20px; line-height: 2; letter-spacing: .3px; max-width: 900px; }
+  font-size: var(--fs-2xl); line-height: 2; letter-spacing: .3px; max-width: 900px; }
 #input { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2;
   opacity: 0; border: none; outline: none; resize: none; background: transparent;
-  color: transparent; caret-color: transparent; font-size: 20px; }
+  color: transparent; caret-color: transparent; font-size: var(--fs-2xl); }
 .ch { border-radius: 3px; transition: color .05s, background .05s; }
 .ch.pending { color: var(--text-muted); }
 .ch.correct { color: var(--text-primary); }
@@ -68,7 +68,7 @@ body { height: 100vh; overflow: hidden; }
   padding: 8px var(--sp-4); font-size: var(--fs-sm); border-bottom: 1px solid var(--border); align-items: center; }
 .hist-row .h-mode { color: var(--text-secondary); }
 .hist-row .h-wpm { color: var(--accent); font-weight: 700; font-variant-numeric: tabular-nums; }
-.hist-row .h-wpm i { font-style: normal; font-size: 10px; color: var(--text-muted); font-weight: 400; }
+.hist-row .h-wpm i { font-style: normal; font-size: var(--fs-xs); color: var(--text-muted); font-weight: 400; }
 .hist-row .h-acc, .hist-row .h-time { color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .hist-row .h-date { color: var(--text-muted); text-align: right; }
 
