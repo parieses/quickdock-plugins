@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>插件脚手架</title>
+<link rel="stylesheet" href="qd-theme.css">
+<link rel="stylesheet" href="components.css">
+<style>
+.app{display:flex;flex-direction:column;height:100%;box-sizing:border-box;gap:var(--sp-2);padding:var(--sp-3);overflow:auto}
+h3{margin:var(--sp-2) 0 0;font-size:var(--fs-md);color:var(--text-primary)}
+.row{display:flex;flex-wrap:wrap;gap:var(--sp-2);align-items:center}
+.row > label{flex:0 0 92px;font-size:var(--fs-sm);color:var(--text-secondary)}
+.row > .ctl{flex:1;min-width:160px;display:flex;gap:6px;align-items:center}
+input,select{flex:1;min-width:80px;padding:6px 9px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:var(--fs-sm);outline:none}
+input:focus-visible,select:focus-visible{border-color:var(--accent,#4a9eff)}
+.chk{display:flex;align-items:center;gap:5px;font-size:var(--fs-sm);color:var(--text-secondary);cursor:pointer;user-select:none}
+.perms{display:flex;flex-wrap:wrap;gap:10px}
+.foot{display:flex;gap:var(--sp-2);align-items:center;position:sticky;bottom:0;background:var(--bg-secondary);padding-top:var(--sp-2)}
+.hint{font-size:var(--fs-sm);color:var(--text-muted)}
+pre{flex:1;margin:0;padding:var(--sp-2);background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius-lg);color:var(--text-primary);font-size:var(--fs-xs);line-height:1.5;max-height:200px;overflow:auto;white-space:pre-wrap;word-break:break-all}
+</style>
+</head>
+<body>
+<div class="app">
+  <h3 id="t-basic">基本信息</h3>
+  <div class="row"><label id="t-repo">仓库根</label><div class="ctl">
+    <input id="repo" placeholder="quickdock-plugins 仓库根目录">
+    <button id="pickRepo" class="btn">选择</button>
+  </div></div>
+  <div class="row"><label id="t-nz">中文名</label><div class="ctl"><input id="nameZh" placeholder="如：时间戳转换"></div></div>
+  <div class="row"><label id="t-ne">英文名</label><div class="ctl"><input id="nameEn" placeholder="如：Time Converter"></div></div>
+  <div class="row"><label id="t-dir">目录名</label><div class="ctl"><input id="dir" placeholder="kebab-case，由英文名自动生成"></div></div>
+  <div class="row"><label id="t-dz">中文简介</label><div class="ctl"><input id="descZh" placeholder="一句话说明"></div></div>
+  <div class="row"><label id="t-de">英文简介</label><div class="ctl"><input id="descEn" placeholder="one-line description"></div></div>
+
+  <h3 id="t-conf">配置</h3>
+  <div class="row"><label id="t-rt">运行时</label><div class="ctl">
+    <select id="runtime"><option value="none">none（纯前端）</option><option value="goja">goja（JS 后端）</option><option value="native">native（Go 后端）</option></select>
+  </div></div>
+  <div class="row"><label id="t-cat">分类</label><div class="ctl"><select id="category"></select></div></div>
+  <div class="row"><label id="t-author">作者</label><div class="ctl"><input id="author" value="QuickDock"></div></div>
+  <div class="row"><label id="t-size">窗口</label><div class="ctl">
+    <input id="width" type="number" value="960" style="max-width:90px"><span class="hint">×</span>
+    <input id="height" type="number" value="600" style="max-width:90px">
+  </div></div>
+  <div class="row"><label id="t-cmd">主命令</label><div class="ctl"><input id="cmd" placeholder="kebab-case，如 do-thing"></div></div>
+
+  <h3 id="t-perm">所需权限</h3>
+  <div class="perms">
+    <label class="chk"><input type="checkbox" id="p-clipboard">clipboard</label>
+    <label class="chk"><input type="checkbox" id="p-network">network</label>
+    <label class="chk"><input type="checkbox" id="p-filesystem">filesystem</label>
+    <label class="chk"><input type="checkbox" id="p-shell">shell</label>
+    <label class="chk"><input type="checkbox" id="p-process">process</label>
+    <label class="chk"><input type="checkbox" id="p-processKill">processKill</label>
+  </div>
+
+  <h3 id="t-pipe">流水线</h3>
+  <div class="row"><label></label><div class="ctl">
+    <label class="chk"><input type="checkbox" id="integrate" checked>生成后自动接入仓库（登记图标 + 跑 gen_icons/gen_tables/gen_site）</label>
+  </div></div>
+
+  <div class="foot">
+    <button id="gen" class="btn">生成插件</button>
+    <span class="spacer" style="flex:1"></span>
+    <span id="hint" class="hint"></span>
+  </div>
+  <pre id="out">输出将显示在这里…</pre>
+</div>
+<script>
+(function(){
+  'use strict'
+  var L10N = {
+    'en-US': {
+      '基本信息':'Basics','仓库根':'Repo root','选择':'Pick','中文名':'Name (zh)','英文名':'Name (en)',
+      '中文简介':'Desc (zh)','英文简介':'Desc (en)','配置':'Config','运行时':'Runtime','分类':'Category',
+      '作者':'Author','窗口':'Window','主命令':'Command','所需权限':'Permissions','流水线':'Pipeline',
+      '生成插件':'Generate','输出将显示在这里…':'Output appears here…',
+      '请填写仓库根目录':'Set the repo root first','请填写中文名':'Name (zh) required',
+      '已生成':'Generated','生成失败':'Failed','请先选择仓库根目录':'Pick the repo root first',
+      '已选择':'Selected'
+    }
+  }
+  function L(k){ var loc=document.documentElement.getAttribute('lang')||'zh-CN'; var m=L10N[loc]||L10N[loc.split('-')[0]]||{}; return (m&&m[k]!==undefined)?m[k]:k }
+  function $(id){ return document.getElementById(id) }
+
+  var CATEGORIES = ['开发者日常','开发工具','办公效率','内容创作','文件工具','网络工具','安全工具','系统工具','效率工具','教育学习','游戏娱乐']
+  CATEGORIES.forEach(function(c){ var o=document.createElement('option'); o.value=c; o.textContent=c; $('category').appendChild(o) })
+
+  function renderStatic(){
+    ['t-basic','t-repo','pickRepo','t-nz','t-ne','t-dir','t-dz','t-de','t-conf','t-rt','t-cat','t-author','t-size','t-cmd','t-perm','t-pipe','gen','out'].forEach(function(id){
+      var map={'t-basic':'基本信息','t-repo':'仓库根','pickRepo':'选择','t-nz':'中文名','t-ne':'英文名','t-dir':'目录名','t-dz':'中文简介','t-de':'英文简介','t-conf':'配置','t-rt':'运行时','t-cat':'分类','t-author':'作者','t-size':'窗口','t-cmd':'主命令','t-perm':'所需权限','t-pipe':'流水线','gen':'生成插件','out':'输出将显示在这里…'}
+      if(map[id]) $(id).textContent=L(map[id])
+    })
+  }
+
+  // 仓库根持久化
+  qdHostCall('db.get',{key:'plugin-scaffold:repo'}).then(function(r){
+    if(r && r.value){ $('repo').value=r.value; $('hint').textContent=L('已选择') }
+  }).catch(function(){})
+  $('pickRepo').addEventListener('click', async function(){
+    var p = await qdPickFolder({ title:'选择 quickdock-plugins 仓库根目录' })
+    if(p){ $('repo').value=p; qdHostCall('db.set',{key:'plugin-scaffold:repo',value:p}); $('hint').textContent=L('已选择') }
+  })
+
+  function b64(s){ return btoa(unescape(encodeURIComponent(s))) }
+
+  // 目录名：由英文名自动派生 kebab-case（用户手动改过后不再自动覆盖）
+  var dirTouched = false
+  function toSlug(s){
+    return String(s||'').trim().toLowerCase()
+      .replace(/[\s_]+/g,'-').replace(/[^a-z0-9-]/g,'')
+      .replace(/-+/g,'-').replace(/^-|-$/g,'')
+  }
+  $('dir').addEventListener('input', function(){ dirTouched = $('dir').value.trim().length > 0 })
+  $('nameEn').addEventListener('input', function(){
+    if(!dirTouched) $('dir').value = toSlug($('nameEn').value)
+  })
+
+  async function runEngine(args){
+    // process 白名单按 basename，依次尝试 python3 / python
+    var lastErr = null
+    for (var i=0; i<2; i++){
+      var prog = i===0 ? 'python3' : 'python'
+      try {
+        var r = await qdHostCall('host.process.exec', { program: prog, args: args, timeout: 120000 })
+        if (r && r.success) return r
+        lastErr = (r && r.error) || 'exit'
+      } catch(e){ lastErr = e && e.message || String(e) }
+    }
+    throw new Error('未找到可用的 python（请在 PATH 安装 Python，或调整 plugin.json 的 process 白名单）：' + lastErr)
+  }
+
+  $('gen').addEventListener('click', async function(){
+    var repo = $('repo').value.trim()
+    if(!repo){ $('hint').textContent=L('请先选择仓库根目录'); return }
+    var nameZh = $('nameZh').value.trim()
+    if(!nameZh){ $('hint').textContent=L('请填写中文名'); return }
+    var dirVal = $('dir').value.trim() || toSlug($('nameEn').value)
+    if(!dirVal){ $('hint').textContent=L('请填写英文名或目录名（用于目录名与 go module 路径）'); return }
+    var perms = {}
+    ;['clipboard','network','filesystem','shell','process','processKill'].forEach(function(k){
+      if($('p-'+k).checked) perms[k]=true
+    })
+    var spec = {
+      dir: dirVal,
+      name_zh: nameZh,
+      name_en: $('nameEn').value.trim() || nameZh,
+      desc_zh: $('descZh').value.trim() || nameZh,
+      desc_en: $('descEn').value.trim() || ($('nameEn').value.trim()||nameZh),
+      runtime: $('runtime').value,
+      category: $('category').value,
+      author: $('author').value.trim() || 'QuickDock',
+      width: parseInt($('width').value,10)||960,
+      height: parseInt($('height').value,10)||600,
+      permissions: perms,
+      commands: [{ id: ($('cmd').value.trim()||dirVal), title_zh: nameZh, title_en: ($('nameEn').value.trim()||nameZh), keywords: [] }]
+    }
+    $('hint').textContent='生成中…'; $('out').textContent=''
+    try {
+      var engine = repo.replace(/\\/g,'/').replace(/\/$/,'') + '/tools/newplugin.py'
+      var args = [engine, '--spec-b64', b64(JSON.stringify(spec)), '--repo', repo]
+      if($('integrate').checked) args.push('--integrate')
+      var r = await runEngine(args)
+      $('out').textContent = (r.output||'') + (r.error? ('\n[error] '+r.error):'')
+      $('hint').textContent = (r.success? L('已生成') : L('生成失败'))
+    } catch(e){
+      $('out').textContent = String(e && e.message || e)
+      $('hint').textContent = L('生成失败')
+    }
+  })
+
+  window.addEventListener('message', function(e){
+    var d=e.data; if(!d) return
+    if(d.type==='plugin:theme' && d.data && d.data.locale){ document.documentElement.setAttribute('lang', d.data.locale); renderStatic() }
+  })
+
+  renderStatic()
+})()
+</script>
+</body>
+</html>

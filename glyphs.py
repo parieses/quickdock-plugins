@@ -626,3 +626,8 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+GLYPH["plugin-scaffold"] = """
+  <rect x="3" y="3" width="18" height="18" rx="4"/>
+  <path d="M12 8v8M8 12h8" opacity="0.55"/>
+"""

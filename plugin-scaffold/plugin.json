@@ -1,0 +1,36 @@
+{
+  "id": "io.github.parieses.plugin-scaffold",
+  "name": "插件脚手架",
+  "name_i18n": { "zh-CN": "插件脚手架", "en-US": "Plugin Scaffold" },
+  "version": "0.1.0",
+  "description": "可视化生成 QuickDock 插件骨架：填表即产出 plugin.json / 前端 / 后端样板，并自动接入图标与索引流水线",
+  "description_i18n": {
+    "zh-CN": "可视化生成 QuickDock 插件骨架：填表即产出 plugin.json / 前端 / 后端样板，并自动接入图标与索引流水线",
+    "en-US": "Visually scaffold a QuickDock plugin: a form yields plugin.json / frontend / backend boilerplate and wires into the icon & index pipeline"
+  },
+  "author": "QuickDock",
+  "icon": "icon.svg",
+  "category": "开发者日常",
+  "platforms": ["windows"],
+  "capabilities": ["command", "frontend"],
+  "backend": { "runtime": "none" },
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 720,
+    "height": 760
+  },
+  "permissions": {
+    "process": ["python", "python3"]
+  },
+  "commands": [
+    {
+      "id": "plugin-scaffold",
+      "title": "插件脚手架",
+      "keywords": ["scaffold", "插件", "脚手架", "新建", "generate"],
+      "aliases": ["生成插件", "新建插件"],
+      "title_i18n": { "zh-CN": "插件脚手架", "en-US": "Plugin Scaffold" }
+    }
+  ],
+  "changelog": "## v0.1.0\n\n- 初始版本：表单收集插件元信息，经 host.process.exec 调用仓库 tools/newplugin.py 生成引擎，产出即合规、可选自动接入发布流水线"
+}

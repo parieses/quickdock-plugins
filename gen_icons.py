@@ -1012,3 +1012,6 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
+
+# plugin-scaffold 注入
+GROUP["plugin-scaffold"] = "violet"
