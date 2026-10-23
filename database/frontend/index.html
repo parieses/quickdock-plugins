@@ -571,6 +571,7 @@
                       <th v-for="(col,ci) in t.grid.columns" :key="'f'+ci" :class="{filtered: t.filters[col] && String(t.filters[col]).trim()}">
                         <input class="col-filter" :value="t.filters[col] || ''" :data-filt="col"
                                @keydown="onFilterKey(t, col, $event)"
+                               @change="onFilterCommit(t, col, $event)"
                                :placeholder="'筛选 ' + col + ' ⏎'" :title="filterTitle(col)" />
                       </th>
                     </tr>
@@ -1750,6 +1751,18 @@
           e.target.value = ''
           this.applyFilter(t)
         }
+      },
+      // 失焦提交：回车之外，离开输入框时也必须把 DOM 里的可见值回写进模型。
+      // 否则「在 A 列输入 1 回车 → 把 A 列文字删掉 → 去 B 列筛选回车」时，
+      // A 列的模型值仍是 "1"：筛选条件没被移除，且表格随 B 列回车重渲染时，
+      // 受控 :value 会把 "1" 重新画回 A 列输入框（表现为「第一个筛选框的 1 自己恢复了」）。
+      // 值与模型一致时直接返回，因此回车提交后再失焦不会重复查询。
+      onFilterCommit: function(t, col, e){
+        if(!e || !e.target) return
+        var v = e.target.value
+        if((t.filters[col] || '') === v) return
+        t.filters[col] = v
+        this.applyFilter(t)
       },
       filterTitle: function(col){
         return '按 ' + col + ' 筛选（输入后按 Enter 应用）\n' +

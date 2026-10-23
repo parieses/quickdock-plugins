@@ -25,6 +25,7 @@
 
 > 以下日期取自真实提交记录。更早的变更见 [Releases](https://github.com/parieses/quickdock-plugins/releases) 与各插件 `plugin.json` 的 `changelog`。
 
+- **2026-10-23 · 修复删除与筛选的两处静默失败（calcsheet 1.0.9 / database 1.7.6）**：calcsheet「删除稿纸没反应」——确认框裸调宿主注入的 `window.qdConfirm`，未注入时在 async 点击处理器里抛 `ReferenceError` 被吞掉，确认框不弹、稿纸也不删；`delete-sheet` 失败同样被 `.catch(()=>{})` 吞掉，重开后稿纸「又回来了」。现统一兜底到原生 confirm、失败给出可见提示，并在加载时归一夜数据（脏数据缺 `updatedAt`/`dependencies` 会让 `renderAll` 抛 `TypeError` 整块中断，界面停在旧画面），删光稿纸后也不再出现「点哪都没反应」。database 则修复「删掉筛选条件后旧值自己回来」：筛选框此前只在回车时写模型，手动删空文字不会清除条件，去别的列回车时受控 `:value` 会把旧值重新画回输入框——补 `@change` 失焦提交，离开输入框即同步并重查。
 - **2026-10-23 · 新增 `plugin-scaffold`（插件脚手架）**：可视化填表生成插件骨架——插件信息、runtime（native / goja / none）、分类、权限、命令一次填完，即产出合规的 `plugin.json` + 前端页面 + 后端样板（native 还会带上 `qdlog.go` 日志脚手架），并可选自动接入图标与索引流水线（`glyphs.py` / `gen_icons.py` / `gen_tables.py` / `gen_site.py`）。CLI（`tools/newplugin.py`）与插件 UI 共用同一份生成引擎 `tools/scaffold/engine.py`，两边产出 100% 一致。
 - **2026-10-23 · database 列筛选改为回车提交（1.7.5）**：不再监听输入事件、去掉 450ms 防抖自动过滤——输入过程中不改模型、不触发重渲染，中文输入法（拼音 / 候选词）不会再被打断或丢字；按 Enter 以输入框当前值为准应用筛选，Esc 清空本列。顺带修复上一版筛选「输入 / 回车都没反应」：筛选逻辑调用了 Vue 2 的 `$set`（宿主已是 Vue 3，该方法已移除），三个处理函数都在这行抛 `TypeError`，现改为直接赋值。
 - **2026-10-23 · 设计系统对齐（65 个插件批量）**：UI 图标迁移到共享 SVG 图标层（Lucide 描边图标，替代彩色 emoji，opaque origin 下用 mask-image + data URI 内联）；配色/字号收敛到设计令牌；顶栏统一 44px；文档标签栏改下划线式；emoji 图标门禁接入 check_plugins。
@@ -81,12 +82,12 @@
 | [对比工具](./compare/) | 1.0.5 | 文件/图片对比（元数据 + 图片预览 + 文本内容差异）与文本块逐行 Diff 合二为一 |
 | [打字练习](./type-trainer/) | 1.0.5 | 开发者向打字训练器：英文 / 中文 / 代码 / 导入四种模式，支持导入 TXT 字库，实时统计 WPM 与准确率，本地记录历史与最佳成绩 |
 | [插件脚手架](./plugin-scaffold/) | 0.1.0 | 可视化生成 QuickDock 插件骨架：填表即产出 plugin.json / 前端 / 后端样板，并自动接入图标与索引流水线 |
-| [数据库客户端](./database/) | 1.7.5 | 轻量数据库连接与查询工具：MySQL / SQLite / Redis 连接管理、SQL 与 Redis 命令执行、库表浏览器（库→表/视图→字段、Redis 键树）、Redis 键类型感知详情与增删改（string/hash/list/set/zset）、TTL 与 DB 管理、结果网格内联行编辑、智能列筛选（运算符/区间/多值/判空，回车即滤）、勾选批量删除（支持全选匹配筛选的行）。数据独立存储。 |
+| [数据库客户端](./database/) | 1.7.6 | 轻量数据库连接与查询工具：MySQL / SQLite / Redis 连接管理、SQL 与 Redis 命令执行、库表浏览器（库→表/视图→字段、Redis 键树）、Redis 键类型感知详情与增删改（string/hash/list/set/zset）、TTL 与 DB 管理、结果网格内联行编辑、智能列筛选（运算符/区间/多值/判空，回车或失焦即滤）、勾选批量删除（支持全选匹配筛选的行）。数据独立存储。 |
 | [文件哈希](./hash-calc/) | 1.0.8 | 计算文件的 MD5/SHA1/SHA256/SHA512 摘要，结果一键复制 |
 | [文本工具箱](./text-encoder/) | 1.0.7 | Base64 / URL / HTML 编解码，MD5 / SHA1 / SHA256 / SHA512 哈希与 HMAC 签名，Base64 图片识别预览，2/8/10/16 进制互转与字节单位换算 |
 | [时间转换](./time-converter/) | 1.0.4 | Unix 时间戳 / ISO 8601 / 中文日期 / 相对时间互转，支持任意时区偏移输出 |
 | [正则提取工具](./regex-extractor/) | 1.0.6 | 正则提取与替换：匹配高亮、分组捕获、反向引用替换（$1/$2）、一键复制结果 |
-| [计算稿纸](./calcsheet/) | 1.0.8 | 兼具草稿纸自由度与电子表格智能的多行计算工具，支持行号引用、变量定义、函数计算 |
+| [计算稿纸](./calcsheet/) | 1.0.9 | 兼具草稿纸自由度与电子表格智能的多行计算工具，支持行号引用、变量定义、函数计算 |
 | [邮箱足迹查询](./mail-check/) | 1.0.6 | 邮箱足迹与有效性检查：全量 123 站探测（参考 holehe 适配，Gravatar/GitHub/ProtonMail/Spotify 等已校准，其余逐步补），语法 / MX / SMTP 有效性验证 |
 | [颜色工具](./color-converter/) | 1.0.5 | 颜色格式互转（HEX / RGB / HSL）+ 屏幕取色，支持常见英文色名识别 |
 

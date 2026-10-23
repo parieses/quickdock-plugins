@@ -123,6 +123,54 @@ function splitComment(raw) {
 }
 function isVarDef(raw) { const m = raw.trim().match(/^([a-zA-Z_]\w*)\s*=\s*(.+)$/); return m ? { name:m[1], expr:m[2] } : null }
 
+/**
+ * 统一稿纸形状。后端 / 本地缓存里的老数据可能缺 lines、updatedAt、dependencies
+ * （早期版本写库时字段没对齐），渲染层不该为脏数据买单：类型不符会让
+ * renderTable / sortedSheets 抛异常，renderAll 整个中断，界面停在旧画面。
+ */
+function normalizeSheet(s) {
+  if (!s || !s.id) return null
+  const now = new Date().toISOString()
+  const lines = Array.isArray(s.lines) ? s.lines : []
+  return {
+    id: String(s.id),
+    name: s.name || '未命名',
+    pinned: !!s.pinned,
+    createdAt: s.createdAt || now,
+    updatedAt: s.updatedAt || s.createdAt || now,
+    lines: lines.map((l, i) => ({
+      id: (l && l.id) ? String(l.id) : String(i + 1).padStart(3, '0'),
+      raw: (l && l.raw) || '',
+      remark: (l && l.remark) || '',
+      result: (l && typeof l.result === 'number') ? l.result : null,
+      error: (l && l.error) || null,
+      indentLevel: (l && l.indentLevel) | 0,
+      dependencies: (l && Array.isArray(l.dependencies)) ? l.dependencies : []
+    }))
+  }
+}
+
+/**
+ * 宿主确认框。window.qdConfirm 由宿主桥接注入（见 quickdock frontend/src/utils/pluginBridge.ts）。
+ * 老宿主 / 直接双击 index.html 调试时它不存在 —— 此时裸调用会抛 ReferenceError，
+ * 而调用点都在 async 点击处理器里，异常变成 rejected promise 被静默吞掉，
+ * 表现就是「点删除毫无反应」（连确认框都不弹）。这里统一兜底到原生 confirm。
+ */
+function csConfirm(msg) {
+  try {
+    if (typeof qdConfirm === 'function') return qdConfirm(msg)
+  } catch (e) {}
+  return Promise.resolve(typeof window.confirm === 'function' ? window.confirm(msg) : true)
+}
+
+/** 宿主提示（toast）；缺失时退回 console，绝不抛错打断后续逻辑 */
+function csAlert(msg) {
+  try {
+    if (typeof qdAlert === 'function') { qdAlert(msg); return }
+  } catch (e) {}
+  console.warn('[calcsheet]', msg)
+}
+
 // 内联输入弹窗（替代 window.prompt：沙箱 iframe 内 prompt 格式异常）
 function csPrompt(title, def, cb) {
   const modal = $('#csModal'), input = $('#csModalInput'), titleEl = $('#csModalTitle')
@@ -189,21 +237,22 @@ class CalcSheetApp {
             .then(r2 => (r2 && r2.sheet) ? r2.sheet : null)
             .catch(() => null)
         )).then(sheets => {
-          sheets = sheets.filter(Boolean)
+          sheets = sheets.map(normalizeSheet).filter(Boolean)
           // 合并 localStorage 中可能「未同步到后端」的本地草稿
           try {
             const raw = localStorage.getItem(STORAGE_KEY)
             const local = JSON.parse(raw || '{"sheets":[]}')
             const byId = new Map(sheets.map(s => [s.id, s]))
             for (const ls of (local.sheets || [])) {
-              const ex = byId.get(ls.id)
-              if (!ex) byId.set(ls.id, ls)
-              else if ((ls.updatedAt || '') > (ex.updatedAt || '')) byId.set(ls.id, ls)
+              const nls = normalizeSheet(ls); if (!nls) continue
+              const ex = byId.get(nls.id)
+              if (!ex) byId.set(nls.id, nls)
+              else if ((nls.updatedAt || '') > (ex.updatedAt || '')) byId.set(nls.id, nls)
             }
             sheets = [...byId.values()]
           } catch (e) {}
           this.sheets = sheets
-          if (!this.activeId) this.activeId = sheets[0].id
+          if (!this.activeId && sheets.length) this.activeId = sheets[0].id
           this._persistAll() // 把合并结果写回后端 + 本地缓存，保证下次仍可从后端加载
         })
       })
@@ -216,9 +265,10 @@ class CalcSheetApp {
       const raw = localStorage.getItem(STORAGE_KEY)
       if (raw) {
         const p = JSON.parse(raw)
-        if (p.sheets && p.sheets.length) {
-          this.sheets = p.sheets
-          this.activeId = p.activeId || p.sheets[0].id
+        const list = (p.sheets || []).map(normalizeSheet).filter(Boolean)
+        if (list.length) {
+          this.sheets = list
+          this.activeId = (p.activeId && list.some(s => s.id === p.activeId)) ? p.activeId : list[0].id
           this._persistAll() // 把本地草稿补进后端，保证下次能从后端加载
         }
       }
@@ -247,7 +297,10 @@ class CalcSheetApp {
   get activeSheet() { return this.sheets.find(s=>s.id===this.activeId)||null }
   get sortedSheets() {
     const p=this.sheets.filter(s=>s.pinned), o=this.sheets.filter(s=>!s.pinned)
-    p.sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt)); o.sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt))
+    // updatedAt 可能缺失（早期版本写进库的稿纸没有该字段，或后端列为 NULL）：
+    // 直接 localeCompare 会抛 TypeError，renderAll 整个中断 —— 表现是「点了删除页面毫无变化」。
+    const cmp = (a,b) => String(b.updatedAt||'').localeCompare(String(a.updatedAt||''))
+    p.sort(cmp); o.sort(cmp)
     return [...p,...o]
   }
 
@@ -256,9 +309,23 @@ class CalcSheetApp {
     this.sheets.push(s); this.activeId=s.id; this._save(); return s
   }
   _delete(id) {
-    const i=this.sheets.findIndex(s=>s.id===id); if(i<0) return
-    this.sheets.splice(i,1); if(this.activeId===id) this.activeId=this.sheets[0]?.id||null
-    this._save(); pluginExec('delete-sheet',{id},{tries:2,timeout:6000}).catch(()=>{}); renderAll(this)
+    const i=this.sheets.findIndex(s=>s.id===id); if(i<0) return false
+    const name = this.sheets[i].name || ''
+    this.sheets.splice(i,1)
+    if(this.activeId===id) this.activeId=this.sheets[0]?.id||null
+    this._save()
+    // 后端删除失败以前被 .catch(()=>{}) 完全吞掉：界面删掉了、库还在，
+    // 下次打开稿纸「又回来了」，看起来就像删除没生效。这里必须让失败可见。
+    pluginExec('delete-sheet',{id},{tries:2,timeout:6000}).catch((e) => {
+      console.error('[calcsheet] 后端删除稿纸失败', id, e)
+      csAlert('删除稿纸失败：' + ((e && e.message) || e) + '（重新打开后可能再次出现）')
+    })
+    // 删掉最后一张时立刻补一张空白稿纸：若留空态，下次启动 init 又会新建一张
+    // 同名「计算稿纸 1」，用户会以为「删掉的稿纸自己回来了」（删除没生效的错觉）。
+    // 当下补一张，删除动作有即时可见的结果，重开也还是这一张。
+    if (this.sheets.length === 0) this._create('计算稿纸 1')
+    renderAll(this)
+    return name
   }
   _select(id) {
     if(id===this.activeId) return
@@ -313,19 +380,37 @@ class CalcSheetApp {
       else if (e.key==='Enter' && self.editingId===null) { const s=self.activeSheet; if(s&&s.lines.length>0) startEdit(s.lines[s.lines.length-1].id) }
     })
     // 容器点击
+    // 没有稿纸时（删光了）点击区域也必须能落笔：否则 _add 因 activeSheet 为 null 静默返回，
+    // 整个界面「点了没反应」，用户只能去点「新建」才能继续。
+    const ensureSheet = () => self.activeSheet || self._create('计算稿纸 1')
     $('#linesContainer').addEventListener('click', (e) => {
       if (e.target.closest('.line-row')||e.target.closest('.empty-hint')) return
-      commitEdit(); const l=self._add(''); if(l) startEdit(l.id)
+      commitEdit(); ensureSheet(); const l=self._add(''); if(l) startEdit(l.id)
     })
-    $('#emptyHint').addEventListener('click', () => { commitEdit(); const l=self._add(''); if(l) startEdit(l.id) })
+    $('#emptyHint').addEventListener('click', () => { commitEdit(); ensureSheet(); const l=self._add(''); if(l) startEdit(l.id) })
     // 输入区键盘
     $('#linesContainer').addEventListener('keydown', onEditKeydown)
     // 工具栏
     $('#btnNew').addEventListener('click', () => { csPrompt('新建稿纸', '新建稿纸', (n) => { if (n) { commitEdit(); self._create(n); renderAll(self) } }) })
     $('#btnRename').addEventListener('click', () => { const s = self.activeSheet; if (!s) return; csPrompt('重命名稿纸', s.name, (n) => { if (n && n !== s.name) { s.name = n; self._save(); renderAll(self) } }) })
     $('#btnSave').addEventListener('click', () => { self._save(); const b=$('#btnSave'); b.innerHTML='✓ 已保存'; setTimeout(()=>{b.innerHTML='💾 保存'},1500) })
-    $('#btnDel').addEventListener('click', async () => { const s=self.activeSheet; if(!s) return; if(!(await qdConfirm('删除稿纸"'+s.name+'"？'))) return; commitEdit(); self._delete(s.id) })
-    $('#btnClear').addEventListener('click', async () => { if(!self.activeSheet||!self.activeSheet.lines.length) return; if(!(await qdConfirm('清空所有行？'))) return; commitEdit(); self._clear(); renderAll(self) })
+    $('#btnDel').addEventListener('click', async () => {
+      const s = self.activeSheet
+      if (!s) { csAlert('没有可删除的稿纸'); return }
+      let ok = false
+      try { ok = await csConfirm('删除稿纸「' + s.name + '」？删除后不可恢复') } catch (e) { console.error('[calcsheet] 确认框异常', e); ok = false }
+      if (!ok) return
+      commitEdit()
+      const removed = self._delete(s.id)
+      if (removed) csAlert('已删除稿纸「' + removed + '」')
+    })
+    $('#btnClear').addEventListener('click', async () => {
+      if(!self.activeSheet||!self.activeSheet.lines.length) return
+      let ok = false
+      try { ok = await csConfirm('清空所有行？此操作不可撤销') } catch (e) { console.error('[calcsheet] 确认框异常', e); ok = false }
+      if(!ok) return
+      commitEdit(); self._clear(); renderAll(self)
+    })
     $('#btnUndo').addEventListener('click', () => { self._undo(); renderAll(self) })
     $('#btnRedo').addEventListener('click', () => { self._redo(); renderAll(self) })
     $('#sheetSelect').addEventListener('change', (e) => { commitEdit(); self._select(e.target.value) })
@@ -360,7 +445,8 @@ function renderTable(ctx) {
     // 行号列
     const cl = document.createElement('span'); cl.className='cl'
     const num = document.createElement('span'); num.className='line-num'; num.textContent='#'+l.id; cl.appendChild(num)
-    if (l.dependencies.length>0) { const d=document.createElement('span'); d.className='dep-dot'; d.title='↳ '+l.dependencies.map(d=>'#'+d).join(', '); cl.appendChild(d) }
+    const deps = Array.isArray(l.dependencies) ? l.dependencies : []
+    if (deps.length>0) { const d=document.createElement('span'); d.className='dep-dot'; d.title='↳ '+deps.map(x=>'#'+x).join(', '); cl.appendChild(d) }
     row.appendChild(cl)
     // 备注列
     const cm = document.createElement('span'); cm.className='cm'
