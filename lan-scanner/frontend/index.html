@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>局域网设备扫描</title>
+<link rel="stylesheet" href="qd-theme.css">
+<link rel="stylesheet" href="components.css">
+<style>
+.app{display:flex;flex-direction:column;height:100%;box-sizing:border-box;gap:var(--sp-2);padding:var(--sp-3);overflow:hidden}
+.toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2)}
+.toolbar .grow{flex:1;min-width:150px}
+.chk{display:flex;align-items:center;gap:4px;font-size:var(--fs-sm);color:var(--text-secondary);cursor:pointer;user-select:none}
+.chk input{accent-color:var(--accent)}
+.progress{height:4px;background:var(--bg-tertiary);border-radius:var(--radius-pill);overflow:hidden}
+.progress-fill{height:100%;width:0;background:var(--accent);border-radius:var(--radius-pill);transition:width .2s linear}
+.statusline{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-3);font-size:var(--fs-sm);color:var(--text-secondary)}
+.statusline b{color:var(--text-primary);font-weight:var(--fw-medium)}
+.statusline .err{color:var(--danger)}
+.wrap{flex:1;min-height:0;overflow:auto;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--bg-secondary)}
+.ip{font-family:var(--font-mono);font-size:var(--fs-sm);color:var(--text-primary)}
+.mono{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--text-secondary)}
+.kind{font-size:var(--fs-sm);color:var(--text-primary)}
+.kind-none{color:var(--text-muted)}
+.tags{display:flex;flex-wrap:wrap;gap:4px}
+.port{font-size:var(--fs-xs)}
+.cell-ports{display:flex;flex-wrap:wrap;gap:4px;max-width:280px}
+.note{font-size:var(--fs-xs);color:var(--text-muted);line-height:1.6}
+.hint{font-size:var(--fs-sm);color:var(--text-muted)}
+.hint.err{color:var(--danger)}
+.copybtn{margin-left:4px}
+td.nowrap{white-space:nowrap}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="toolbar">
+    <select id="subnet" class="select select-sm" title="本机识别到的网段"></select>
+    <input id="cidr" class="input input-sm grow" placeholder="网段，如 192.168.1.0/24（留空用上面选中的）">
+    <select id="preset" class="select select-sm" title="扫多少端口">
+      <option value="fast">只探存活</option>
+      <option value="common" selected>常用端口</option>
+      <option value="full">完整端口</option>
+    </select>
+    <input id="ports" class="input input-sm grow" placeholder="自定义端口，逗号分隔（可选）">
+    <label class="chk"><input type="checkbox" id="names" checked>解析主机名</label>
+    <button id="go" class="btn btn-primary btn-sm">开始扫描</button>
+  </div>
+
+  <div class="progress"><div id="fill" class="progress-fill"></div></div>
+
+  <div class="statusline">
+    <span id="phase">正在读取本机网段…</span>
+    <span>进度 <b id="prog">0/0</b></span>
+    <span>在线 <b id="online">0</b> 台</span>
+    <span id="hint" class="hint"></span>
+  </div>
+
+  <div class="wrap">
+    <div id="list"></div>
+  </div>
+
+  <div class="note">只读扫描：不发任何修改请求，不写文件。存活以 TCP 握手结果（连上或被拒绝）为准，ARP 缓存里认出来的设备会标「仅 ARP 缓存」——它可能已经离线。只扫你自己的局域网。</div>
+</div>
+
+<script>
+function escapeHtml(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
+</script>
+<script>
+(function(){
+  'use strict'
+  var L10N = {
+    'en-US': {
+      '开始扫描':'Scan', '停止扫描':'Stop', '就绪':'Ready', '正在读取本机网段…':'Detecting subnets…',
+      '进度':'Progress', '在线':'Online', '台':'devices', '未识别到本机网段':'No private subnet detected',
+      '已复制':'Copied', '扫描失败':'Scan failed', '主机名':'Hostname', 'MAC':'MAC', '厂商':'Vendor',
+      '类型':'Type', '开放端口':'Open ports', '未知':'Unknown', '操作':'', '本机':'This PC'
+    }
+  }
+  function L(k){
+    var loc=document.documentElement.getAttribute('lang')||'zh-CN'
+    var m=L10N[loc]||L10N[loc.split('-')[0]]||{}
+    return (m&&m[k]!==undefined)?m[k]:k
+  }
+  function el(i){return document.getElementById(i)}
+
+  var seq=0, pend={}
+  function send(command, input){
+    return new Promise(function(res, rej){
+      var id='ls_'+(++seq); pend[id]={res:res,rej:rej}
+      parent.postMessage({type:'plugin:execute',id:id,command:command,input:input||{}},'*')
+      setTimeout(function(){
+        var t=pend[id]
+        if(t){delete pend[id]; rej(new Error('请求超时：后端 30 秒无响应'))}
+      },30000)
+    })
+  }
+  window.addEventListener('message',function(e){
+    var d=e.data; if(!d) return
+    if(d.type==='plugin:result'&&d.id&&pend[d.id]){
+      var p=pend[d.id]; delete pend[d.id]
+      if(d.error) p.rej(new Error(typeof d.error==='string'?d.error:(d.error.message||'后端错误')))
+      else p.res(d.data)
+      return
+    }
+    if(d.type==='plugin:init'){
+      var t=(d.data||{}).text
+      if(t){ el('cidr').value=t }
+      start()
+      return
+    }
+    if(d.type==='plugin:theme'){
+      var dd=d.data||{}
+      if(dd.locale){ document.documentElement.setAttribute('lang',dd.locale); renderStatic() }
+    }
+  })
+
+  var sid=null, timer=null, running=false, subnets=[]
+
+  function renderStatic(){
+    el('go').textContent = running ? L('停止扫描') : L('开始扫描')
+  }
+
+  function setHint(msg, isErr){
+    var h=el('hint')
+    h.textContent=msg||''
+    h.className = isErr ? 'hint err' : 'hint'
+  }
+
+  function loadSubnets(){
+    return send('net-list',{}).then(function(r){
+      subnets=r.subnets||[]
+      var sel=el('subnet'), html=''
+      if(!subnets.length){
+        html='<option value="">'+L('未识别到本机网段')+'</option>'
+      }else{
+        subnets.forEach(function(s,i){
+          html+='<option value="'+escapeHtml(s.cidr)+'"'+(i===0?' selected':'')+'>'+escapeHtml(s.cidr+' · '+s.iface)+'</option>'
+        })
+      }
+      sel.innerHTML=html
+      if(subnets.length) el('cidr').value=subnets[0].cidr
+      return subnets.length
+    })
+  }
+
+  function start(){
+    if(running) return
+    var cidr=el('cidr').value.trim() || el('subnet').value
+    if(!cidr){ setHint('请先填写网段，如 192.168.1.0/24', true); return }
+    setHint('')
+    running=true
+    el('go').textContent=L('停止扫描')
+    el('go').className='btn btn-sm'
+    el('list').innerHTML=''
+    el('fill').style.width='0%'
+    el('prog').textContent='0/0'
+    el('online').textContent='0'
+
+    send('scan-start',{
+      cidr:cidr,
+      preset:el('preset').value,
+      ports:el('ports').value.trim(),
+      names:el('names').checked
+    }).then(function(r){
+      sid=r.sessionId
+      timer=setInterval(poll,600)
+      poll()
+    }).catch(function(err){
+      finish()
+      setHint(L('扫描失败')+'：'+(err.message||err), true)
+    })
+  }
+
+  function poll(){
+    if(!sid) return
+    send('scan-poll',{sessionId:sid}).then(function(s){
+      render(s)
+      if(!s.running){ finish(); return }
+    }).catch(function(err){
+      finish()
+      setHint(L('扫描失败')+'：'+(err.message||err), true)
+    })
+  }
+
+  function finish(){
+    if(timer){ clearInterval(timer); timer=null }
+    running=false
+    el('go').textContent=L('开始扫描')
+    el('go').className='btn btn-primary btn-sm'
+    var x=sid; sid=null
+    if(x) send('scan-stop',{sessionId:x}).catch(function(){})
+  }
+
+  function render(s){
+    var total=s.total||0, done=s.done||0
+    var pct = total>0 ? Math.min(100, done/total*100) : 0
+    el('fill').style.width=pct.toFixed(1)+'%'
+    el('prog').textContent=done+'/'+total
+    el('online').textContent=s.online||(s.devices?s.devices.length:0)
+    el('phase').textContent=s.phase||''
+    if(s.error) setHint(s.error, true)
+
+    var devs=s.devices||[]
+    if(!devs.length){
+      if(s.running){
+        el('list').innerHTML='<div class="empty-state"><div class="empty-state-icon spinner"></div><div class="empty-state-title">正在扫描…</div><div class="empty-state-desc">先探存活，再扫端口、问名字</div></div>'
+      }else{
+        el('list').innerHTML='<div class="empty-state"><div class="empty-state-title">没扫到设备</div><div class="empty-state-desc">换个网段试试，或确认本机确实连着局域网</div></div>'
+      }
+      return
+    }
+
+    var html='<table class="table table-striped"><thead><tr>'+
+      '<th>IP</th><th>'+L('主机名')+'</th><th>'+L('MAC')+'</th><th>'+L('厂商')+'</th>'+
+      '<th>'+L('类型')+'</th><th>'+L('开放端口')+'</th><th></th></tr></thead><tbody>'
+    devs.forEach(function(d){
+      var ports=(d.ports||[])
+      var chips=''
+      ports.slice(0,6).forEach(function(p){
+        chips+='<span class="badge badge-mono port" title="'+escapeHtml(p.service||'')+'">'+p.port+(p.service?' '+escapeHtml(p.service):'')+'</span>'
+      })
+      if(ports.length>6) chips+='<span class="badge badge-default port">+'+(ports.length-6)+'</span>'
+      if(!ports.length) chips='<span class="text-muted">—</span>'
+
+      var tags=''
+      ;(d.tags||[]).forEach(function(t){
+        var cls = (t==='本机') ? 'badge-accent' : (t==='疑似网关' ? 'badge-success' : 'badge-default')
+        tags+='<span class="badge '+cls+' port">'+escapeHtml(t)+'</span>'
+      })
+
+      html+='<tr>'+
+        '<td class="nowrap"><span class="ip">'+escapeHtml(d.ip)+'</span>'+tags+'</td>'+
+        '<td>'+(d.hostname?'<span class="kind">'+escapeHtml(d.hostname)+'</span>':'<span class="text-muted">—</span>')+'</td>'+
+        '<td class="mono">'+escapeHtml(d.mac||'—')+'</td>'+
+        '<td class="text-sm">'+escapeHtml(d.vendor||'—')+'</td>'+
+        '<td class="nowrap">'+(d.kind?'<span class="kind">'+escapeHtml(d.kind)+'</span>':'<span class="kind-none">'+L('未知')+'</span>')+'</td>'+
+        '<td><div class="cell-ports">'+chips+'</div></td>'+
+        '<td class="nowrap"><button class="btn btn-xxs btn-ghost copybtn" data-ip="'+escapeHtml(d.ip)+'">复制 IP</button></td>'+
+      '</tr>'
+    })
+    html+='</tbody></table>'
+    el('list').innerHTML=html
+
+    var btns=el('list').querySelectorAll('.copybtn')
+    for(var i=0;i<btns.length;i++){
+      btns[i].addEventListener('click',function(){
+        var ip=this.getAttribute('data-ip')
+        send('clip-copy',{text:ip}).then(function(){
+          setHint(L('已复制')+' '+ip)
+        }).catch(function(e){ setHint(String(e.message||e), true) })
+      })
+    }
+  }
+
+  el('go').addEventListener('click',function(){
+    if(running){ finish() } else { start() }
+  })
+  el('subnet').addEventListener('change',function(){
+    if(this.value) el('cidr').value=this.value
+  })
+
+  loadSubnets().then(function(n){
+    if(n>0){ el('phase').textContent='就绪'; start() }
+    else { setHint('没识别到本机网段，请手动填写', true) }
+  }).catch(function(e){
+    setHint(String(e.message||e), true)
+  })
+})()
+</script>
+</body>
+</html>

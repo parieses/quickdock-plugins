@@ -1460,7 +1460,7 @@ native 侧的关键设计（改之前先看 `qdlog.go` 顶部注释）：
 | word-count | 实时统计文本的字数、词数、行数、段落数、字节数与阅读时长，支持中英文混合。 | 纯前端 |
 | xiangqi | 单机中国象棋，完整走子与吃子规则，含基于局面评估的简易 AI 对手。 | 纯前端 |
 
-**Native 插件（`runtime: native`，自带 Go 源码 + 编译产物）** — 共 34 个
+**Native 插件（`runtime: native`，自带 Go 源码 + 编译产物）** — 共 35 个
 | 插件 ID | 功能 |
 |---|---|
 | api-loadtest | 功能丰富的 HTTP 接口压测工具：支持并发/时长双模式、自定义 Header 与 Body、实时 QPS 与延迟分布(p50/p90/p95/p99)、状态码分布、错误率统计与结果一键导出 |
@@ -1480,6 +1480,7 @@ native 侧的关键设计（改之前先看 `qdlog.go` 顶部注释）：
 | http-client | 轻量 HTTP 请求调试客户端：项目管理请求、目录与文档树、环境变量与 {{var}} 替换、请求历史重放、Postman 集合导入。数据独立存储。 |
 | image-studio | 仿 Squoosh 实时对比：左右预览对比，质量滑块、缩放(锁定比例/百分比/预设)、旋转/翻转、亮度/对比度/饱和度调整，实时预览文件大小与压缩率 |
 | junk-cleaner | 扫描并清理系统垃圾文件：临时文件/更新缓存/缩略图缓存/预读取/崩溃转储等，安全只读扫描+确认后删除 |
+| lan-scanner | 扫描你所在局域网里的在线设备：自动识别网段，并发探测存活、主机名、MAC 与厂商、开放端口，用于查陌生设备和找 NAS / 打印机地址。只读，只扫你自己的网段 |
 | login-tester | 对自身网站登录接口进行密码库撞库/爆破安全自检，支持并发、限速与锁定检测。仅用于你拥有或已授权的站点。 |
 | mail-check | 邮箱足迹与有效性检查：全量 123 站探测（参考 holehe 适配，Gravatar/GitHub/ProtonMail/Spotify 等已校准，其余逐步补），语法 / MX / SMTP 有效性验证 |
 | net-traffic | 每秒采样的本机流量监控：实时上下行速率与 5 分钟曲线、按网卡拆分（自动合并同一网卡的多个 NDIS 绑定，不重复计数）、本次会话累计与峰值，并列出 IPv4 连接对应的进程、本地/远端地址与状态。 |
@@ -1498,7 +1499,7 @@ native 侧的关键设计（改之前先看 `qdlog.go` 顶部注释）：
 | wifi-manager | 查看网络列表、WiFi 密码、连接状态 |
 | ws-tester | 连接 ws/wss 服务，发送消息并实时查看返回的帧，支持多连接与历史 |
 
-> 以上 80 个插件均在本仓库根目录各有独立子目录（ID 为 `io.github.parieses.*`），代码可直接复用。goja/none 插件演示「零宿主依赖、纯 JS 自包含」的外部化样板；native 插件演示「Go 源码 vendor + 自编译 entry exe」模式（`build.py` 直接在插件目录 `go build`）。完整 goja 模板见上文「完整示例」。
+> 以上 81 个插件均在本仓库根目录各有独立子目录（ID 为 `io.github.parieses.*`），代码可直接复用。goja/none 插件演示「零宿主依赖、纯 JS 自包含」的外部化样板；native 插件演示「Go 源码 vendor + 自编译 entry exe」模式（`build.py` 直接在插件目录 `go build`）。完整 goja 模板见上文「完整示例」。
 
 <!--DEVGUIDE_PLUGINS_END-->
 

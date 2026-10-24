@@ -157,7 +157,7 @@ for _g, _names in {
                  ascii-art code-runner""".split(),
     "teal": """api-mock api-loadtest http-client ws-tester port-scanner speed-test netdiag
                net-traffic mail-check wifi-manager hosts-manager curl-converter game-sudoku game-adarkroom
-               geoip control-receiver""".split(),
+               geoip control-receiver lan-scanner""".split(),
     "amber": """crypto-toolbox hash-calc jwt-decoder login-tester dir-buster
                 subdomain-enum site-audit game-roguelike otp vault breach-check""".split(),
     "green": "database data-generator disk-analyzer app-manager junk-cleaner game-snake game-gomoku game-proxx xiangqi".split(),

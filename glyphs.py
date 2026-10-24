@@ -612,6 +612,14 @@ GLYPH["control-receiver"] = """
   <path d="M14.4 12.6l6 2.6-2.5 1.1 1.8 2.9-1.8.9-1.8-2.9-1.7 1.7z" fill="#008000" stroke="none"/>
 """
 
+GLYPH["lan-scanner"] = """
+  <path d="M3.6 17.8a9.6 9.6 0 0 1 16.8 0" opacity="0.3"/>
+  <path d="M7.2 15.6a5.6 5.6 0 0 1 9.6 0" opacity="0.55"/>
+  <circle cx="12" cy="18.6" r="1.7" fill="#e6e6e6" stroke="none"/>
+  <path d="M12 18.6l5.8-9.2"/>
+  <rect x="16.4" y="3.4" width="4.6" height="4.6" rx="1.3"/>
+"""
+
 def main():
     made = []
     for name, body in sorted(GLYPH.items()):
