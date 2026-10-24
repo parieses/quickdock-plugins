@@ -14,12 +14,23 @@
 // QuestPhoneMirror 协议（严格对齐协议仓 protocol/src/main/java/com/qpm/protocol/Proto.kt）：
 //   统一帧格式 [type:u8][length:u32 LE][body]，单条 TCP 双向复用：
 //     0x01 VIDEO_FRAME  手机→接收端  body=[pts:u64 LE][flags:u8][h264]，flags bit0=关键帧 bit1=SPS/PPS
-//     0x20 SCREEN_INFO  手机→接收端  body=[w:u32][h:u32][dpi:u32]
+//     0x20 SCREEN_INFO  手机→接收端  body=[w:u32][h:u32][dpi:u32]（v1.1.0 起改为配对通过后下发）
 //     0x10 TAP          接收端→手机  body=[x:f32][y:f32]            （屏幕绝对像素坐标）
 //     0x11 SWIPE        接收端→手机  body=[x1][y1][x2][y2][durMs:u32]
 //     0x12 TEXT         接收端→手机  body=UTF-8 文本
 //     0x13 KEY          接收端→手机  body=[keycode:u32]（4=返回 3=Home 187=多任务）
-//   发现：手机每秒向 255.255.255.255:45555 广播 "QPM1|<tcpPort>|<w>x<h>"。
+//     0x14 PAIR         接收端→手机  body=UTF-8 配对码；空 body=免密直连请求（仅局域网唯一发送端时有效）
+//     0x15 PAIR_RESULT  手机→接收端  body=u8（1=成功 0=失败；连续失败 3 次手机会断开连接）
+//     0x16 FILE_LIST_REQ  接收端→手机  body=UTF-8 路径
+//     0x17 FILE_LIST_RES  手机→接收端  body=UTF-8，条目 \n 分隔、字段 \t 分隔：name\tisDir\tsize\tmtime
+//     0x18 FILE_GET_REQ   接收端→手机  body=UTF-8 路径
+//     0x19 FILE_DATA      手机→接收端  body=[offset:u64][total:u64][flags:u8(eof)][chunk]
+//     0x1A FILE_ERROR     手机→接收端  body=UTF-8（如未授权、路径非法）
+//     0x1B HELLO          接收端→手机  body=UTF-8 设备名（建连后立即报送，供手机端「连接管理」展示）
+//     0x1C REJECT         手机→接收端  body=UTF-8 拒绝原因（如未在白名单），发送后即断开
+//   v1.1.0 起：手机端配对通过前不下发 SCREEN_INFO/视频帧，也不执行任何控制帧；
+//   文件浏览/下载同样要求配对通过。发现：手机每秒向 255.255.255.255:45555 广播 "QPM1|<tcpPort>|<w>x<h>"；
+//   本插件每秒向同端口广播 "QPMR|<设备名>"，让手机端「连接管理」在连接前即可扫描到本接收端。
 //
 // 本地端口设计（见 README「端口建议」）：
 //   controlPort（默认 24556）本地控制通道 WebSocket（状态/日志/画面参数推送，JSON）
@@ -49,7 +60,9 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -139,6 +152,19 @@ const (
 	TypeSwipe      byte = 0x11
 	TypeText       byte = 0x12
 	TypeKey        byte = 0x13
+
+	// v1.1.0 起对齐 QPM 新版 Proto.kt：配对 + 文件浏览/下载。
+	// 手机端（CastService）配对通过前：不下发 SCREEN_INFO/视频帧、不执行控制帧、
+	// 不响应文件请求；连续配对失败 3 次会主动断开连接。
+	TypePair        byte = 0x14 // 本插件→手机  body=UTF-8 配对码；空 body=免密直连请求
+	TypePairResult  byte = 0x15 // 手机→本插件  body=u8（1=成功 0=失败）
+	TypeFileListReq byte = 0x16 // 本插件→手机  body=UTF-8 路径
+	TypeFileListRes byte = 0x17 // 手机→本插件  body=UTF-8，条目 \n 分隔、字段 \t 分隔
+	TypeFileGetReq  byte = 0x18 // 本插件→手机  body=UTF-8 路径
+	TypeFileData    byte = 0x19 // 手机→本插件  body=[offset:u64][total:u64][flags:u8(eof)][chunk]
+	TypeFileError   byte = 0x1A // 手机→本插件  body=UTF-8 错误信息
+	TypeHello       byte = 0x1B // 本插件→手机  body=UTF-8 设备名（建连后立即报送，供手机端「连接管理」展示）
+	TypeReject      byte = 0x1C // 手机→本插件  body=UTF-8 拒绝原因（如未在白名单），发送后即断开
 )
 
 const (
@@ -229,6 +255,81 @@ func decodeScreenInfo(body []byte) (w, h, dpi int) {
 	return int(int32(binary.LittleEndian.Uint32(body[0:4]))),
 		int(int32(binary.LittleEndian.Uint32(body[4:8]))),
 		int(int32(binary.LittleEndian.Uint32(body[8:12])))
+}
+
+// ---------- 配对（0x14/0x15） ----------
+
+// encodePair 配对码（4-6 位数字字符串）；空串 = 免密直连请求。
+func encodePair(code string) []byte { return []byte(code) }
+
+// encodeHello 设备名（建连后立即报送，手机端「连接管理」据此展示是谁）。
+func encodeHello(name string) []byte { return []byte(name) }
+
+func decodePairResult(body []byte) bool {
+	return len(body) > 0 && body[0] != 0
+}
+
+// ---------- 文件（0x16-0x1A） ----------
+
+// fileEntry 目录条目，对齐手机端 FileRelay.listDir 的输出行：
+// name\tisDir\tsize\tmtime。
+type fileEntry struct {
+	Name  string `json:"name"`
+	IsDir bool   `json:"isDir"`
+	Size  int64  `json:"size"`
+	Mtime string `json:"mtime"`
+}
+
+func encodeFileListReq(path string) []byte { return []byte(path) }
+func encodeFileGetReq(path string) []byte  { return []byte(path) }
+
+func decodeFileEntries(body []byte) []fileEntry {
+	lines := strings.Split(string(body), "\n")
+	out := make([]fileEntry, 0, len(lines))
+	for _, ln := range lines {
+		ln = strings.TrimSpace(ln)
+		if ln == "" {
+			continue
+		}
+		f := strings.Split(ln, "\t")
+		if len(f) < 3 || f[0] == "" {
+			continue
+		}
+		e := fileEntry{
+			Name:  f[0],
+			IsDir: f[1] == "1",
+			Mtime: "",
+		}
+		if len(f) >= 4 {
+			e.Mtime = f[3]
+		}
+		e.Size, _ = strconv.ParseInt(f[2], 10, 64)
+		out = append(out, e)
+	}
+	return out
+}
+
+// fileChunk 文件数据分片，对齐 Proto.fileData 的 body 布局。
+type fileChunk struct {
+	offset int64
+	total  int64
+	eof    bool
+	chunk  []byte
+}
+
+func decodeFileChunk(body []byte) (fileChunk, error) {
+	if len(body) < 17 {
+		return fileChunk{}, fmt.Errorf("FILE_DATA 帧过短（%d 字节）", len(body))
+	}
+	c := fileChunk{
+		offset: int64(binary.LittleEndian.Uint64(body[0:8])),
+		total:  int64(binary.LittleEndian.Uint64(body[8:16])),
+		eof:    body[16] != 0,
+	}
+	if len(body) > 17 {
+		c.chunk = body[17:]
+	}
+	return c, nil
 }
 
 // ============================================================ H.264 参数集处理
@@ -388,6 +489,9 @@ type config struct {
 	PhoneHost    string `json:"phoneHost"`
 	PhonePort    int    `json:"phonePort"`
 	AutoDiscover bool   `json:"autoDiscover"`
+	// PairCode 最近一次配对使用的配对码（手机端每次开始投屏都会重新生成，
+	// 但同一次投屏会话内重连/首帧看门狗自动重连仍可用它再次配对）。
+	PairCode string `json:"pairCode"`
 }
 
 func defaultConfig() config {
@@ -956,6 +1060,19 @@ type app struct {
 	discoverStop chan struct{}
 	devices      []Device
 
+	// 配对（v1.1.0）：手机端配对通过前不下发画面、不执行控制/文件请求
+	paired   bool   // 本次连接是否已配对（含旧版手机无配对协议的兼容放行）
+	pairCode string // 本次连接使用的配对码（空=免密直连）
+	pairErr  string // 最近一次配对失败的原因（透传手机端）
+	rejectErr string // 手机端 REJECT 的拒绝原因（白名单未勾选等，非空即被主动拒绝）
+
+	// 文件浏览/下载（v1.1.0）
+	listPending chan listOutcome // 等待中的 file.list（nil=无）
+	fileDL      *fileDownload   // 进行中的下载（nil=无）
+
+	// 接收端宣告 beacon（QPMR）：让手机端「连接管理」在连接前就能扫描到本机
+	beaconStop chan struct{}
+
 	// 本地服务
 	//   wsMu 只保护端点对象的绑定/释放（RPC 主循环与 WS 客户端协程会并发调用）；
 	//   wsCtlPort/wsStreamPort 是「实际在听」的端口快照，由 a.mu 保护，供 snapshot 读取。
@@ -986,6 +1103,30 @@ type Device struct {
 	Seen string `json:"seen"`
 }
 
+// ---------- 文件浏览/下载状态（v1.1.0） ----------
+
+// listOutcome 是 file.list 的等待结果：entries 或 err 二者其一。
+type listOutcome struct {
+	entries []fileEntry
+	err     string
+}
+
+// fileDownload 一次文件下载。手机端分片可靠发送，这里顺序写入临时文件，
+// 收齐后 rename 成正式文件名，避免半截文件被当成成品。
+// 字段读写统一在 readLoop 协程 + a.mu 保护下进行（见 onFileData）。
+type fileDownload struct {
+	path     string   // 手机端路径
+	name     string   // 文件名（落盘用）
+	total    int64    // 手机端报告的总大小
+	received int64    // 已落盘字节
+	lastPush int64    // 上次进度推送时的 received（限频）
+	lastPct  int      // 上次进度推送时的百分比（限频）
+	file     *os.File // 临时文件句柄
+	tmpPath  string   // <downloads>/<name>.part
+	dstPath  string   // <downloads>/<name>
+	discard  bool     // 用户取消后：继续丢弃后续分片直到 eof/错误
+}
+
 var appState = &app{}
 
 func (a *app) logf(level, format string, args ...interface{}) {
@@ -1013,6 +1154,10 @@ func (a *app) snapshotLocked() map[string]interface{} {
 	st := map[string]interface{}{
 		"connected":    a.connected,
 		"remote":       a.remote,
+		"paired":       a.paired,
+		"pairCode":     a.pairCode,
+		"pairErr":      a.pairErr,
+		"rejectErr":    a.rejectErr,
 		"screenW":      a.screenW,
 		"screenH":      a.screenH,
 		"dpi":          a.screenDPI,
@@ -1030,6 +1175,7 @@ func (a *app) snapshotLocked() map[string]interface{} {
 		"devices":      devices,
 		"lastErr":      a.lastErr,
 		"avcC":         a.avcCLocked(),
+		"fileDl":       a.fileDLLocked(),
 	}
 	if a.wsCtlPort != 0 {
 		st["wsControlPort"] = a.wsCtlPort
@@ -1051,6 +1197,26 @@ func (a *app) avcCLocked() interface{} {
 		"description": base64.StdEncoding.EncodeToString(a.avcC),
 		"w":           a.avcCW,
 		"h":           a.avcCH,
+	}
+}
+
+// fileDLLocked 下载进度快照（nil=无进行中下载）。调用方须持有 a.mu。
+func (a *app) fileDLLocked() interface{} {
+	d := a.fileDL
+	if d == nil {
+		return nil
+	}
+	pct := 0
+	if d.total > 0 {
+		pct = int(d.received * 100 / d.total)
+	}
+	return map[string]interface{}{
+		"path":     d.path,
+		"name":     d.name,
+		"total":    d.total,
+		"received": d.received,
+		"pct":      pct,
+		"dst":      d.dstPath,
 	}
 }
 
@@ -1129,7 +1295,13 @@ func (a *app) wsRunning() bool {
 
 // ============================================================ 与手机发送端的连接
 
-func (a *app) connect(host string, port int) error {
+// connect 连接手机发送端，并立即报送配对码。
+//
+// v1.1.0 起手机端（CastService）配对通过前：不下发 SCREEN_INFO/视频帧、不执行
+// 控制帧、不响应文件请求，连续配对失败 3 次还会主动断开。因此连上后的第一件事
+// 就是发 PAIR：pairCode 为空 = 免密直连请求（仅当手机是局域网唯一发送端时会被
+// 接受）；被拒时前端会弹出配对码输入，用户提交后经 pair 命令重发。
+func (a *app) connect(host string, port int, pairCode string) error {
 	addr := net.JoinHostPort(host, strconv.Itoa(port))
 	conn, err := net.DialTimeout("tcp", addr, phoneDialTimeout)
 	if err != nil {
@@ -1152,39 +1324,68 @@ func (a *app) connect(host string, port int) error {
 	a.screenW, a.screenH, a.screenDPI = 0, 0, 0
 	a.avcC, a.codec, a.avcCW, a.avcCH = nil, "", 0, 0
 	a.lastErr = ""
+	a.paired = false
+	a.pairCode = pairCode
+	a.pairErr = ""
+	a.rejectErr = ""
 	a.cfg.PhoneHost = host
 	a.cfg.PhonePort = port
 	cfg := a.cfg
 	a.mu.Unlock()
 	a.pull.reset()
+	a.failPendingFiles("连接已重置，文件操作中断")
 
 	if err := saveConfig(a.cfgPath, cfg); err != nil {
 		hostLog("warn", "保存 config.json 失败: %v", err)
 	}
-	a.logf("info", "已连接手机发送端 %s", a.remote)
+	if pairCode == "" {
+		a.logf("info", "已连接手机发送端 %s，请求免密直连（仅局域网唯一发送端时有效）", a.remote)
+	} else {
+		a.logf("info", "已连接手机发送端 %s，使用配对码 %s 请求配对", a.remote, pairCode)
+	}
 	a.broadcastStatus()
 
 	a.mu.Lock()
 	a.framesAt = a.frames // 首帧看门狗基线：本次连接后收到的帧数
 	a.watchGen++
-	gen := a.watchGen
-	att := a.watchAttempt
 	a.mu.Unlock()
 
 	go a.readLoop(conn)
-	if att < frameWatchMax {
-		go a.frameWatch(gen, host, port, att+1)
+	// 先报送设备名（HELLO）：手机端「连接管理」据此展示是谁，无论是否配对。
+	// 与 QPM 协议仓 MirrorClient.connectTo 的握手顺序一致（HELLO → PAIR）。
+	if err := a.sendFrame(TypeHello, encodeHello(receiverDeviceName())); err != nil {
+		a.logf("warn", "报送设备名失败：%v", err)
 	}
+	// 立即报送配对码：手机端 readLoop 收到后才会回 PAIR_RESULT，
+	// 通过后才开始下发 SCREEN_INFO 与视频帧。
+	if err := a.sendPair(pairCode); err != nil {
+		a.logf("error", "报送配对码失败：%v", err)
+	}
+	// 注意：首帧看门狗不在这里启动——「未配对」时没有画面是正常状态，
+	// 看门狗由 onPairResult 配对成功时启动（见 startFrameWatch）。
 	return nil
 }
 
-// frameWatch 在连接后 frameWatchWait 内没有收到任何画面时重连一次，最多 frameWatchMax 次。
+// startFrameWatch 启动本次连接的首帧看门狗（配对成功后调用；旧版手机无配对
+// 协议、直接下发画面时由 assumeLegacyIfUnpaired 调用）。
+func (a *app) startFrameWatch(host string, port int) {
+	a.mu.Lock()
+	gen := a.watchGen
+	att := a.watchAttempt
+	a.mu.Unlock()
+	if att < frameWatchMax {
+		go a.frameWatch(gen, host, port, att+1)
+	}
+}
+
+// frameWatch 在配对成功后的 frameWatchWait 内没有收到任何画面时重连一次，最多 frameWatchMax 次。
 // 这是「已连接，等待画面…」长时间不消失的主要对策：手机端每接受一条连接都会
 // requestKeyFrame()，而息屏/静止画面下 MediaProjection 根本不产出新帧。
+// 注意：未配对时没有画面是正常状态（手机端配对通过前不发帧），不计入看门狗。
 func (a *app) frameWatch(gen int64, host string, port, attempt int) {
 	time.Sleep(frameWatchWait)
 	a.mu.Lock()
-	stale := a.watchGen == gen && a.connected && a.frames == a.framesAt
+	stale := a.watchGen == gen && a.connected && a.paired && a.frames == a.framesAt
 	a.watchAttempt = attempt
 	remote := a.remote
 	a.mu.Unlock()
@@ -1193,7 +1394,11 @@ func (a *app) frameWatch(gen int64, host string, port, attempt int) {
 	}
 	a.logf("warn", "已连接 %s，但 %.1f 秒内没有收到任何画面（手机息屏或画面静止时不会编码）；重新连接以再次请求关键帧（第 %d/%d 次）",
 		remote, frameWatchWait.Seconds(), attempt, frameWatchMax)
-	if err := a.connect(host, port); err != nil {
+	// 重连沿用上次配对成功的配对码（同一次投屏会话内有效）
+	a.mu.Lock()
+	pairCode := a.cfg.PairCode
+	a.mu.Unlock()
+	if err := a.connect(host, port, pairCode); err != nil {
 		a.logf("error", "重新连接失败：%v", err)
 	}
 }
@@ -1204,13 +1409,40 @@ func (a *app) disconnect() {
 	a.conn = nil
 	wasConnected := a.connected
 	a.connected = false
+	a.paired = false
+	a.pairErr = ""
 	a.watchGen++ // 让在途的首帧看门狗失效
 	a.mu.Unlock()
+	a.failPendingFiles("连接已断开，文件操作中断")
 	if conn != nil {
 		_ = conn.Close()
 	}
 	if wasConnected {
 		a.pull.reset()
+	}
+}
+
+// failPendingFiles 断开连接时清理未落地的文件等待/下载：让前端立刻拿到失败
+// 结果，而不是干等超时；临时 .part 文件一并清掉。
+func (a *app) failPendingFiles(reason string) {
+	a.mu.Lock()
+	wait := a.listPending
+	a.listPending = nil
+	dl := a.fileDL
+	a.fileDL = nil
+	a.mu.Unlock()
+	if wait != nil {
+		wait <- listOutcome{err: reason}
+	}
+	if dl != nil {
+		if dl.file != nil {
+			_ = dl.file.Close()
+		}
+		_ = os.Remove(dl.tmpPath)
+		a.ctlHub.broadcastJSON(map[string]interface{}{
+			"t": "filedl", "done": true, "ok": false,
+			"path": dl.path, "name": dl.name, "err": reason,
+		})
 	}
 }
 
@@ -1224,8 +1456,10 @@ func (a *app) readLoop(conn net.Conn) {
 		if a.conn == conn {
 			a.conn = nil
 			a.connected = false
+			a.paired = false
 		}
 		a.mu.Unlock()
+		a.failPendingFiles("与手机发送端的连接已断开，文件操作中断")
 		a.logf("warn", "与手机发送端的连接已断开")
 		a.broadcastStatus()
 	}()
@@ -1243,12 +1477,103 @@ func (a *app) readLoop(conn net.Conn) {
 	}
 }
 
+// assumeLegacyIfUnpaired 兼容旧版手机端（无配对协议）。
+// 新版手机在配对通过前绝不会下发 SCREEN_INFO/视频帧，因此「未配对却收到了
+// 画面」只可能是旧版手机——直接放行并按已配对继续，不把旧版手机挡在门外。
+func (a *app) assumeLegacyIfUnpaired(what string) {
+	a.mu.Lock()
+	if a.paired || !a.connected {
+		a.mu.Unlock()
+		return
+	}
+	a.paired = true
+	host, port := a.cfg.PhoneHost, a.cfg.PhonePort
+	a.mu.Unlock()
+	a.logf("info", "未收到配对响应但已收到%s，判定为旧版手机端（无配对协议），按原方式继续", what)
+	a.broadcastStatus()
+	a.startFrameWatch(host, port)
+}
+
+// onPairResult 处理手机端配对结果（0x15）。成功后才会有 SCREEN_INFO/视频帧，
+// 失败时前端据此弹出配对码输入（手机端连续失败 3 次会断开连接）。
+func (a *app) onPairResult(ok bool) {
+	a.mu.Lock()
+	if !a.connected {
+		a.mu.Unlock()
+		return
+	}
+	code := a.pairCode
+	host, port := a.cfg.PhoneHost, a.cfg.PhonePort
+	if ok {
+		a.paired = true
+		a.pairErr = ""
+		// 配对码对同一次投屏会话有效：落盘供首帧看门狗/手动重连复用
+		if code != "" && a.cfg.PairCode != code {
+			a.cfg.PairCode = code
+			cfg := a.cfg
+			a.mu.Unlock()
+			if err := saveConfig(a.cfgPath, cfg); err != nil {
+				hostLog("warn", "保存配对码失败: %v", err)
+			}
+			a.logf("ok", "配对成功（配对码 %s），等待手机画面…", code)
+			a.broadcastStatus()
+			a.ctlHub.broadcastJSON(map[string]interface{}{"t": "pair", "ok": true, "paired": true})
+			a.startFrameWatch(host, port)
+			return
+		}
+		a.mu.Unlock()
+		a.logf("ok", "配对成功，等待手机画面…")
+		a.broadcastStatus()
+		a.ctlHub.broadcastJSON(map[string]interface{}{"t": "pair", "ok": true, "paired": true})
+		a.startFrameWatch(host, port)
+		return
+	}
+	a.paired = false
+	if code == "" {
+		a.pairErr = "免密直连被拒绝：局域网内有多个 QPM 发送端，或手机端要求输入配对码"
+	} else {
+		a.pairErr = "配对码不正确，请核对手机端发送页显示的 6 位配对码"
+	}
+	errText := a.pairErr
+	a.mu.Unlock()
+	a.logf("warn", "配对失败：%s", errText)
+	a.broadcastStatus()
+	a.ctlHub.broadcastJSON(map[string]interface{}{
+		"t": "pair", "ok": false, "paired": false, "err": errText,
+	})
+}
+
+// onReject 手机端主动拒绝连接（连接管理白名单未勾选本机）：明确告知原因，
+// 手机随后会断开，UI 需引导用户去手机端「连接管理」勾选本设备后重连。
+// 与 QPM 协议仓 ReceiverActivity.onRejected 的提示语义对齐。
+func (a *app) onReject(reason string) {
+	if reason == "" {
+		reason = "发送端已拒绝本机连接"
+	}
+	a.mu.Lock()
+	if !a.connected {
+		a.mu.Unlock()
+		return
+	}
+	a.paired = false
+	a.rejectErr = reason
+	a.pairErr = reason
+	a.mu.Unlock()
+	a.logf("error", "发送端已拒绝本机连接：%s（请在手机端「连接管理」中勾选本设备后重连）", reason)
+	a.ctlHub.broadcastJSON(map[string]interface{}{
+		"t": "reject", "err": reason,
+	})
+	a.broadcastStatus()
+}
+
 func (a *app) onPhoneFrame(typ byte, body []byte) {
 	switch typ {
 	case TypeScreenInfo:
+		a.assumeLegacyIfUnpaired("SCREEN_INFO")
 		w, h, dpi := decodeScreenInfo(body)
 		a.setScreen(w, h, dpi)
 	case TypeVideoFrame:
+		a.assumeLegacyIfUnpaired("VIDEO_FRAME")
 		if len(body) < 9 {
 			return
 		}
@@ -1273,6 +1598,26 @@ func (a *app) onPhoneFrame(typ byte, body []byte) {
 		}
 		// 统一成 AVCC 再下发：前端用固定 avcC 描述配置解码器，只需喂 AVCC 帧
 		a.pushFrame(flags, pts, normalizeToAVCC(data))
+
+	case TypePairResult:
+		a.onPairResult(decodePairResult(body))
+
+	case TypeReject:
+		a.onReject(string(body))
+
+	case TypeFileListRes:
+		a.onFileListRes(decodeFileEntries(body))
+
+	case TypeFileData:
+		chunk, err := decodeFileChunk(body)
+		if err != nil {
+			hostLog("warn", "%v", err)
+			return
+		}
+		a.onFileData(chunk)
+
+	case TypeFileError:
+		a.onFileError(string(body))
 	}
 }
 
@@ -1365,13 +1710,43 @@ func (a *app) pushFrame(flags byte, pts uint64, data []byte) {
 	}
 }
 
-// sendControl 把控制帧写回手机。写操作串行化，避免多命令交错撕裂帧。
-func (a *app) sendControl(typ byte, body []byte) error {
+// sendPair 报送配对码（空码=免密直连请求）。
+func (a *app) sendPair(code string) error {
+	return a.sendFrame(TypePair, encodePair(code))
+}
+
+// sendFrame 裸写一帧到手机连接（配对/文件请求用，不带 paired 门控）。
+func (a *app) sendFrame(typ byte, body []byte) error {
 	a.mu.Lock()
 	conn := a.conn
 	a.mu.Unlock()
 	if conn == nil {
+		return errors.New("未连接手机发送端")
+	}
+	a.writeMu.Lock()
+	defer a.writeMu.Unlock()
+	_ = conn.SetWriteDeadline(time.Now().Add(3 * time.Second))
+	if err := writeFrame(conn, typ, body); err != nil {
+		_ = conn.SetWriteDeadline(time.Time{})
+		return fmt.Errorf("发送失败: %w", err)
+	}
+	_ = conn.SetWriteDeadline(time.Time{})
+	return nil
+}
+
+// sendControl 把控制帧写回手机。写操作串行化，避免多命令交错撕裂帧。
+// v1.1.0 起手机端只执行配对通过后的控制帧，这里前置门控，让「点了没反应」
+// 在日志和界面上都能第一时间看到原因。
+func (a *app) sendControl(typ byte, body []byte) error {
+	a.mu.Lock()
+	conn := a.conn
+	paired := a.paired
+	a.mu.Unlock()
+	if conn == nil {
 		return errors.New("未连接手机发送端，请先点击「启动」")
+	}
+	if !paired {
+		return errors.New("等待配对：请先输入手机端显示的配对码完成配对")
 	}
 	a.writeMu.Lock()
 	defer a.writeMu.Unlock()
@@ -1391,7 +1766,371 @@ func (a *app) swipe(x1, y1, x2, y2 float32, dur int32) error {
 	return a.sendControl(TypeSwipe, encodeSwipe(x1, y1, x2, y2, dur))
 }
 
+// ============================================================ 配对与文件（v1.1.0）
+
+// handlePair 报送配对码（空码=再次请求免密直连）。
+// 配对码只在配对成功时落盘（last-known-good），避免把错误码写进配置、
+// 让随后的自动重连一直拿错码去试。
+func (a *app) handlePair(input map[string]interface{}) (interface{}, error) {
+	code := strings.TrimSpace(strFrom(input, "code"))
+	if code == "" {
+		// 命令面板/前端可能把码放在 text 里
+		code = strings.TrimSpace(strFrom(input, "text"))
+	}
+	if len(code) > 16 {
+		return nil, errors.New("配对码过长")
+	}
+	a.mu.Lock()
+	if !a.connected {
+		a.mu.Unlock()
+		return nil, errors.New("未连接手机发送端，请先「启动接收」")
+	}
+	a.pairCode = code
+	a.pairErr = ""
+	a.mu.Unlock()
+
+	if err := a.sendPair(code); err != nil {
+		return nil, fmt.Errorf("报送配对码失败: %w", err)
+	}
+	if code == "" {
+		a.logf("info", "已请求免密直连（仅局域网唯一发送端时有效）")
+	} else {
+		a.logf("info", "已报送配对码 %s，等待手机端确认…", code)
+	}
+	a.broadcastStatus()
+	return map[string]interface{}{"ok": true, "submitted": true, "code": code, "status": a.snapshot()}, nil
+}
+
+// handleFileList 请求手机端列出目录，同步等待 FILE_LIST_RES / FILE_ERROR（最多 5 秒）。
+func (a *app) handleFileList(input map[string]interface{}) (interface{}, error) {
+	path := strings.TrimSpace(strFrom(input, "path"))
+	if path == "" {
+		path = "/sdcard"
+	}
+	a.mu.Lock()
+	if !a.connected || !a.paired {
+		a.mu.Unlock()
+		return nil, errors.New("尚未配对：请先完成配对再浏览手机文件")
+	}
+	if a.listPending != nil {
+		a.mu.Unlock()
+		return nil, errors.New("上一个目录请求还在等待，请稍候")
+	}
+	if a.fileDL != nil {
+		a.mu.Unlock()
+		return nil, errors.New("正在下载文件，请先等待或取消")
+	}
+	wait := make(chan listOutcome, 1)
+	a.listPending = wait
+	a.mu.Unlock()
+
+	if err := a.sendFrame(TypeFileListReq, encodeFileListReq(path)); err != nil {
+		a.mu.Lock()
+		if a.listPending == wait {
+			a.listPending = nil
+		}
+		a.mu.Unlock()
+		return nil, fmt.Errorf("请求目录列表失败: %w", err)
+	}
+
+	select {
+	case out := <-wait:
+		if out.err != "" {
+			return nil, errors.New(out.err)
+		}
+		return map[string]interface{}{"ok": true, "path": path, "entries": out.entries}, nil
+	case <-time.After(5 * time.Second):
+		a.mu.Lock()
+		if a.listPending == wait {
+			a.listPending = nil
+		}
+		a.mu.Unlock()
+		return nil, errors.New("等待手机端目录列表超时（5 秒）")
+	}
+}
+
+// handleFileGet 请求下载手机端文件到 <数据目录>/downloads/。
+// 下载是异步的：命令立即返回，进度/完成经控制通道广播 {"t":"filedl",...}。
+// 不同步等待，否则大文件会把 RPC 主循环堵住（status/控制指令全卡）。
+func (a *app) handleFileGet(input map[string]interface{}) (interface{}, error) {
+	path := strings.TrimSpace(strFrom(input, "path"))
+	if path == "" {
+		return nil, errors.New("路径为空")
+	}
+	a.mu.Lock()
+	if !a.connected || !a.paired {
+		a.mu.Unlock()
+		return nil, errors.New("尚未配对：请先完成配对再下载文件")
+	}
+	if a.fileDL != nil {
+		cur := a.fileDL
+		a.mu.Unlock()
+		return nil, fmt.Errorf("正在下载 %s，请先等待或取消", cur.name)
+	}
+	a.mu.Unlock()
+
+	name := filepath.Base(path)
+	if name == "" || name == "." || name == ".." || name == "/" {
+		return nil, fmt.Errorf("无法从路径解析文件名：%s", path)
+	}
+	// 同名文件不覆盖，自动加序号，避免把上一次的成品冲掉
+	dir := filepath.Join(dataRoot(), "downloads")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return nil, fmt.Errorf("创建下载目录失败: %w", err)
+	}
+	dst := filepath.Join(dir, name)
+	ext := filepath.Ext(name)
+	stem := strings.TrimSuffix(name, ext)
+	for i := 1; ; i++ {
+		if _, err := os.Stat(dst); os.IsNotExist(err) {
+			break
+		}
+		dst = filepath.Join(dir, fmt.Sprintf("%s (%d)%s", stem, i, ext))
+	}
+	tmp := dst + ".part"
+	f, err := os.Create(tmp)
+	if err != nil {
+		return nil, fmt.Errorf("创建临时文件失败: %w", err)
+	}
+	dl := &fileDownload{path: path, name: name, file: f, tmpPath: tmp, dstPath: dst}
+	a.mu.Lock()
+	a.fileDL = dl
+	a.mu.Unlock()
+
+	if err := a.sendFrame(TypeFileGetReq, encodeFileGetReq(path)); err != nil {
+		a.mu.Lock()
+		if a.fileDL == dl {
+			a.fileDL = nil
+		}
+		a.mu.Unlock()
+		_ = f.Close()
+		_ = os.Remove(tmp)
+		return nil, fmt.Errorf("请求下载失败: %w", err)
+	}
+	a.logf("info", "开始下载手机文件 %s → %s", path, dst)
+	a.broadcastStatus()
+	return map[string]interface{}{
+		"ok": true, "started": true, "path": path, "name": name, "dst": dst,
+	}, nil
+}
+
+// handleFileCancel 取消进行中的下载：标记丢弃，后续分片继续丢弃直到 eof，
+// 临时文件清理。手机端没有取消消息，这是协议内唯一干净的取消方式。
+func (a *app) handleFileCancel() (interface{}, error) {
+	a.mu.Lock()
+	dl := a.fileDL
+	if dl != nil {
+		dl.discard = true
+	}
+	a.mu.Unlock()
+	if dl == nil {
+		return map[string]interface{}{"ok": true, "cancelled": false}, nil
+	}
+	a.logf("info", "已取消下载 %s（丢弃后续分片）", dl.name)
+	return map[string]interface{}{"ok": true, "cancelled": true, "name": dl.name}, nil
+}
+
+// handleFileReveal 在资源管理器里打开下载目录（Windows）；其他平台只返回路径。
+func (a *app) handleFileReveal() (interface{}, error) {
+	dir := filepath.Join(dataRoot(), "downloads")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return nil, fmt.Errorf("创建下载目录失败: %w", err)
+	}
+	if runtime.GOOS == "windows" {
+		if err := exec.Command("explorer.exe", dir).Start(); err != nil {
+			return nil, fmt.Errorf("打开资源管理器失败: %w", err)
+		}
+		return map[string]interface{}{"ok": true, "dir": dir, "opened": true}, nil
+	}
+	return map[string]interface{}{"ok": true, "dir": dir, "opened": false}, nil
+}
+
+// onFileListRes 收到目录列表：唤醒等待中的 file.list。
+func (a *app) onFileListRes(entries []fileEntry) {
+	a.mu.Lock()
+	wait := a.listPending
+	a.listPending = nil
+	a.mu.Unlock()
+	if wait != nil {
+		wait <- listOutcome{entries: entries}
+	}
+}
+
+// onFileError 手机端文件错误（未授权/路径非法/读取失败）：按当前待办分发。
+func (a *app) onFileError(msg string) {
+	if msg == "" {
+		msg = "手机端返回未知文件错误"
+	}
+	a.mu.Lock()
+	wait := a.listPending
+	a.listPending = nil
+	dl := a.fileDL
+	a.mu.Unlock()
+	if wait != nil {
+		wait <- listOutcome{err: msg}
+		return
+	}
+	if dl != nil {
+		a.finishDownload(dl, false, msg)
+	}
+}
+
+// onFileData 收到文件分片：顺序落盘，限频推送进度，eof 收尾。
+// 所有 dl 字段读写都在 readLoop 单协程 + a.mu 保护下进行。
+func (a *app) onFileData(c fileChunk) {
+	a.mu.Lock()
+	dl := a.fileDL
+	if dl == nil {
+		a.mu.Unlock()
+		return // 无进行中的下载：丢弃（取消后手机端补发的分片）
+	}
+	if dl.discard {
+		eof := c.eof
+		a.mu.Unlock()
+		if eof {
+			a.finishDownload(dl, false, "已取消")
+		}
+		return
+	}
+	if c.total > 0 && dl.total == 0 {
+		dl.total = c.total
+	}
+	var push bool
+	if len(c.chunk) > 0 {
+		if _, err := dl.file.Write(c.chunk); err != nil {
+			a.mu.Unlock()
+			a.finishDownload(dl, false, "写入本地文件失败: "+err.Error())
+			return
+		}
+		dl.received += int64(len(c.chunk))
+		// 限频推送：每 256KB 或每 5% 一次，避免 64KB 分片把控制通道刷爆
+		push = dl.received-dl.lastPush >= 256<<10 ||
+			(dl.total > 0 && int(dl.received*100/dl.total)-dl.lastPct >= 5)
+		if push {
+			dl.lastPush = dl.received
+			if dl.total > 0 {
+				dl.lastPct = int(dl.received * 100 / dl.total)
+			}
+		}
+	}
+	eof := c.eof
+	msg := a.fileDLMsgLocked(dl)
+	a.mu.Unlock()
+	if push {
+		a.ctlHub.broadcastJSON(msg)
+	}
+	if eof {
+		a.finishDownload(dl, true, "")
+	}
+}
+
+// finishDownload 收尾一次下载：成功则 tmp→正式名（原子），失败/取消则清理临时文件。
+func (a *app) finishDownload(dl *fileDownload, ok bool, errMsg string) {
+	a.mu.Lock()
+	if a.fileDL == dl {
+		a.fileDL = nil
+	}
+	a.mu.Unlock()
+
+	if dl.file != nil {
+		_ = dl.file.Close()
+	}
+	if ok {
+		if err := os.Rename(dl.tmpPath, dl.dstPath); err != nil {
+			ok = false
+			errMsg = "保存文件失败: " + err.Error()
+			_ = os.Remove(dl.tmpPath)
+		}
+	} else {
+		_ = os.Remove(dl.tmpPath)
+	}
+	a.ctlHub.broadcastJSON(map[string]interface{}{
+		"t": "filedl", "done": true, "ok": ok,
+		"path": dl.path, "name": dl.name, "dst": dl.dstPath,
+		"total": dl.total, "received": dl.received,
+		"err":   errMsg,
+	})
+	if ok {
+		a.logf("ok", "下载完成：%s（%d 字节）→ %s", dl.name, dl.received, dl.dstPath)
+	} else {
+		a.logf("warn", "下载失败：%s（%s）", dl.name, errMsg)
+	}
+	a.broadcastStatus()
+}
+
+// fileDLMsgLocked 下载进度消息（调用方须持有 a.mu）。
+func (a *app) fileDLMsgLocked(dl *fileDownload) map[string]interface{} {
+	pct := 0
+	if dl.total > 0 {
+		pct = int(dl.received * 100 / dl.total)
+	}
+	return map[string]interface{}{
+		"t": "filedl", "done": false,
+		"path": dl.path, "name": dl.name, "dst": dl.dstPath,
+		"total": dl.total, "received": dl.received, "pct": pct,
+	}
+}
+
 // ============================================================ 自动发现（UDP 45555）
+
+// receiverDeviceName 本接收端在手机端「连接管理」里展示的名字。
+// 带上 Windows 主机名，方便同局域网多台电脑跑插件时区分。
+func receiverDeviceName() string {
+	name := "qpm接收端"
+	if hn, err := os.Hostname(); err == nil && hn != "" {
+		name += "(" + hn + ")"
+	}
+	return name
+}
+
+// startReceiverBeacon 每秒向 255.255.255.255:45555 广播 "QPMR|<设备名>"，
+// 让手机端「连接管理」在连接建立前就能扫描到本接收端（按 IP 勾选白名单）。
+// 与 QPM 协议仓 Discovery.broadcastReceiverLoop 对齐；发送失败不致命——
+// 手机端仍可通过 TCP 建连后的 HELLO 帧认识本机，只是扫描列表里看不到。
+func (a *app) startReceiverBeacon() {
+	a.mu.Lock()
+	if a.beaconStop != nil {
+		a.mu.Unlock()
+		return // 已在广播
+	}
+	stop := make(chan struct{})
+	a.beaconStop = stop
+	a.mu.Unlock()
+
+	conn, err := net.Dial("udp4", net.JoinHostPort("255.255.255.255", strconv.Itoa(discoveryPort)))
+	if err != nil {
+		hostLog("warn", "接收端宣告广播不可用（手机端连接管理扫描不到本机，不影响主动连接）: %v", err)
+		return
+	}
+	payload := []byte("QPMR|" + receiverDeviceName())
+	go func() {
+		defer func() { _ = conn.Close() }()
+		tick := time.NewTicker(time.Second)
+		defer tick.Stop()
+		for {
+			select {
+			case <-stop:
+				return
+			case <-tick.C:
+				_ = conn.SetWriteDeadline(time.Now().Add(2 * time.Second))
+				if _, err := conn.Write(payload); err != nil {
+					return // 网络切换等导致写失败：安静退出，连接管理用不到就算了
+				}
+			}
+		}
+	}()
+	hostLog("info", "接收端宣告已启动：每秒广播 QPMR|%s（手机端「连接管理」可扫描到本机）", receiverDeviceName())
+}
+
+func (a *app) stopReceiverBeacon() {
+	a.mu.Lock()
+	stop := a.beaconStop
+	a.beaconStop = nil
+	a.mu.Unlock()
+	if stop != nil {
+		close(stop)
+	}
+}
 
 // startDiscovery 监听手机广播；found 回调收到的设备。
 // autoConnect=true 时发现第一台设备即自动连接。
@@ -1446,20 +2185,21 @@ func (a *app) startDiscovery(timeout time.Duration, autoConnect bool) error {
 				}
 				return
 			}
-			dev, ok := parseBeacon(string(buf[:n]), src)
-			if !ok {
-				continue
+		dev, ok := parseBeacon(string(buf[:n]), src)
+		if !ok {
+			continue
+		}
+		a.addDevice(dev)
+		a.mu.Lock()
+		connected := a.connected
+		pairCode := a.cfg.PairCode // 已存配对码对同一次投屏会话有效
+		a.mu.Unlock()
+		if autoConnect && !connected {
+			a.logf("info", "发现发送端 %s:%d，正在连接…", dev.Host, dev.Port)
+			if err := a.connect(dev.Host, dev.Port, pairCode); err == nil {
+				return
 			}
-			a.addDevice(dev)
-			a.mu.Lock()
-			connected := a.connected
-			a.mu.Unlock()
-			if autoConnect && !connected {
-				a.logf("info", "发现发送端 %s:%d，正在连接…", dev.Host, dev.Port)
-				if err := a.connect(dev.Host, dev.Port); err == nil {
-					return
-				}
-			}
+		}
 		}
 	}()
 	return nil
@@ -1700,6 +2440,7 @@ func (a *app) handleStart(input map[string]interface{}) (interface{}, error) {
 	host := strFrom(input, "host")
 	port := intFrom(input, "port", 0)
 	discover := boolFrom(input, "discover", false)
+	pairCode := strings.TrimSpace(strFrom(input, "pairCode"))
 
 	// 前端把「端口/地址」与 start 合并成一次 RPC：先落盘配置，省掉 config.set 的整轮往返。
 	// （这是之前「点启动要等两轮 RPC」的直接原因，也是启动慢的一部分。）
@@ -1721,6 +2462,11 @@ func (a *app) handleStart(input map[string]interface{}) (interface{}, error) {
 	}
 	if host == "" {
 		host = a.cfg.PhoneHost
+	}
+	// 配对码优先级：本次入参 > 上次配对成功的码；都没有则请求免密直连
+	//（仅局域网唯一发送端时有效，被拒后前端会弹出配对码输入）。
+	if pairCode == "" {
+		pairCode = a.cfg.PairCode
 	}
 	a.mu.Unlock()
 
@@ -1753,7 +2499,7 @@ func (a *app) handleStart(input map[string]interface{}) (interface{}, error) {
 	a.broadcastStatus()
 
 	if host != "" {
-		if err := a.connect(host, port); err != nil {
+		if err := a.connect(host, port, pairCode); err != nil {
 			a.logf("error", "连接失败：%v", err)
 			return map[string]interface{}{"started": false, "error": err.Error(), "status": a.snapshot()}, nil
 		}
@@ -1861,10 +2607,12 @@ func (a *app) handleConfigSet(input map[string]interface{}) (interface{}, error)
 
 // handlePhoneReconnect 断开并重新连接手机。手机端 acceptLoop 每接受一条连接都会
 // requestKeyFrame()，所以这是「已连接但迟迟没有画面 / 画面冻结」最有效的恢复手段。
+// 重连会带上上次配对成功的配对码（同一次投屏会话内仍然有效）。
 func (a *app) handlePhoneReconnect() (interface{}, error) {
 	a.mu.Lock()
 	host, port := a.cfg.PhoneHost, a.cfg.PhonePort
 	auto := a.cfg.AutoDiscover
+	pairCode := a.cfg.PairCode
 	a.mu.Unlock()
 
 	a.disconnect()
@@ -1873,7 +2621,7 @@ func (a *app) handlePhoneReconnect() (interface{}, error) {
 	a.mu.Unlock()
 
 	if host != "" {
-		if err := a.connect(host, port); err != nil {
+		if err := a.connect(host, port, pairCode); err != nil {
 			return map[string]interface{}{"ok": false, "error": err.Error(), "status": a.snapshot()}, nil
 		}
 		return map[string]interface{}{"ok": true, "mode": "direct", "config": a.cfgSnapshot(), "status": a.snapshot()}, nil
@@ -1935,7 +2683,9 @@ func (a *app) handleStreamPull(input map[string]interface{}) interface{} {
 // wsAllowedCmds 允许经「控制通道 WS」下发的命令白名单。
 //
 // 控制通道只监听 127.0.0.1，且这里只开「控制 / 查询 / 配置」类命令，
-// 不开任何文件、进程、shell 能力，因此对端最多也只能操控这台机器的手机镜像。
+// 不开任何本机文件、进程、shell 能力，因此对端最多也只能操控这台机器的手机镜像。
+// file.* 是「手机端文件」操作：内容来自已配对的手机，落盘也只写插件自己的
+// downloads 目录，不暴露本机文件系统。
 //
 // 有了它，前端就不必依赖宿主的 plugin:execute 桥接：宿主桥接一旦失效
 // （例如插件后端被宿主 kill 后重建），前端仍可直连本地端口把命令送进来。
@@ -1952,6 +2702,11 @@ var wsAllowedCmds = map[string]bool{
 	"control.swipe":   true,
 	"control.text":    true,
 	"control.key":     true,
+	"pair":            true,
+	"file.list":       true,
+	"file.get":        true,
+	"file.cancel":     true,
+	"file.reveal":     true,
 }
 
 // handleWSControl 处理控制通道 WS 上的文本消息。
@@ -2031,6 +2786,21 @@ func (a *app) handleExecute(input map[string]interface{}, cmd string) (interface
 
 	case "phone.reconnect", "phonereconnect":
 		return a.handlePhoneReconnect()
+
+	case "pair":
+		return a.handlePair(input)
+
+	case "file.list", "filelist":
+		return a.handleFileList(input)
+
+	case "file.get", "fileget":
+		return a.handleFileGet(input)
+
+	case "file.cancel", "filecancel":
+		return a.handleFileCancel()
+
+	case "file.reveal", "filereveal":
+		return a.handleFileReveal()
 
 	case "config.get":
 		a.mu.Lock()
@@ -2127,6 +2897,8 @@ func main() {
 	})
 
 	go appState.statsLoop()
+	// 接收端宣告 beacon：让手机端「连接管理」在连接前就能扫描到本机（QPMR）
+	appState.startReceiverBeacon()
 
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Buffer(make([]byte, 1<<20), 1<<20) // 宿主单行上限约 1MB
@@ -2160,6 +2932,7 @@ func main() {
 	appState.stopDiscovery()
 	appState.disconnect()
 	appState.stopWS()
+	appState.stopReceiverBeacon()
 }
 
 func handleRequest(req rpcRequest) {
@@ -2204,6 +2977,7 @@ func handleRequest(req rpcRequest) {
 				"start", "stop", "status", "port.suggest", "phone.reconnect",
 				"control.tap", "control.swipe", "control.text", "control.key",
 				"config.get", "config.set", "stream.pull",
+				"pair", "file.list", "file.get", "file.cancel", "file.reveal",
 			},
 		})
 
@@ -2217,6 +2991,7 @@ func handleRequest(req rpcRequest) {
 		appState.stopDiscovery()
 		appState.disconnect()
 		appState.stopWS()
+		appState.stopReceiverBeacon()
 		os.Exit(0)
 
 	default:

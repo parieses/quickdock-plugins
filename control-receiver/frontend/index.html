@@ -6,6 +6,7 @@
 <title>qpm接收端</title>
 <link rel="stylesheet" href="qd-theme.css">
 <link rel="stylesheet" href="components.css">
+<link rel="stylesheet" href="icons.css">
 <style>
   html,body{height:100%}
   .app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
@@ -108,6 +109,43 @@
   .help-pop .kbd{display:inline-block;padding:0 5px;border:1px solid var(--border);border-radius:4px;
     background:var(--bg-tertiary);font-family:var(--font-mono);color:var(--text-primary)}
 
+  /* —— 配对面板（v1.1.0）：手机端配对通过前不下发画面，连上后先在这里输配对码 —— */
+  .pair-panel{pointer-events:auto;display:flex;flex-direction:column;align-items:center;gap:10px;
+    margin-top:var(--sp-3);padding:var(--sp-4) var(--sp-5);background:var(--bg-secondary);
+    border:1px solid var(--border-strong);border-radius:var(--radius-lg);box-shadow:var(--shadow-2);min-width:300px}
+  .pair-panel.hidden{display:none}
+  .pair-title{font-size:var(--fs-md);color:var(--text-primary);font-weight:var(--fw-semibold)}
+  .pair-row{display:flex;align-items:center;gap:var(--sp-2)}
+  .pair-code{width:150px;text-align:center;font-family:var(--font-mono);font-size:var(--fs-lg);letter-spacing:6px;height:34px}
+  .pair-hint{font-size:var(--fs-xs);color:var(--text-muted);max-width:380px;line-height:1.7;text-align:center}
+  .pair-err{font-size:var(--fs-xs);color:var(--danger);max-width:380px;line-height:1.7;text-align:center}
+  .pair-err.hidden{display:none}
+
+  /* —— 文件面板（v1.1.0）：浏览/下载手机端文件（需配对通过）—— */
+  .file-panel{position:fixed;inset:0;z-index:80;display:flex;flex-direction:column;
+    background:var(--bg-primary);color:var(--text-primary)}
+  .file-panel.hidden{display:none}
+  .fp-head{display:flex;align-items:center;gap:var(--sp-2);padding:8px var(--sp-3);
+    background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0}
+  .fp-path{flex:1;min-width:0;font-family:var(--font-mono);font-size:var(--fs-sm);color:var(--text-secondary);
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 var(--sp-2)}
+  .fp-list{flex:1;overflow:auto;padding:var(--sp-2) var(--sp-3);min-height:0}
+  .fp-empty{padding:var(--sp-5);text-align:center;color:var(--text-muted);font-size:var(--fs-sm)}
+  .fp-row{display:flex;align-items:center;gap:var(--sp-3);padding:8px 10px;border-radius:var(--radius);
+    cursor:pointer;transition:background var(--transition)}
+  .fp-row:hover{background:var(--bg-hover)}
+  .fp-ico{flex-shrink:0;width:20px;text-align:center;color:var(--text-muted);font-size:var(--fs-md)}
+  .fp-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-sm)}
+  .fp-row.dir .fp-name{color:var(--accent)}
+  .fp-meta{flex-shrink:0;font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--text-muted)}
+  .fp-dl{flex-shrink:0}
+  .fp-foot{display:flex;align-items:center;gap:var(--sp-2);padding:8px var(--sp-3);
+    background:var(--bg-secondary);border-top:1px solid var(--border);flex-shrink:0;font-size:var(--fs-xs)}
+  .fp-status{color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .fp-bar{flex:1;min-width:80px;height:6px;border-radius:var(--radius-pill);background:var(--bg-tertiary);overflow:hidden}
+  .fp-bar>i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s ease}
+  .fp-bar.hidden{display:none}
+
   /* —— 沉浸模式：画面占满窗口，控制条变成自动隐藏的浮动条（导航键不丢）—— */
   .app.immersive .p-head,.app.immersive .bar,.app.immersive .suggest{display:none}
   .app.immersive .p-body{position:fixed;inset:0;z-index:50;background:var(--bg-primary)}
@@ -171,6 +209,17 @@
         <div class="ov-acts" id="ovActs">
           <button id="btnOvRetry" class="p-btn p-btn-sm">重新请求画面</button>
         </div>
+        <!-- 配对面板（v1.1.0）：新版手机端配对通过前不下发画面，连上后先输入配对码 -->
+        <div id="pairPanel" class="pair-panel hidden">
+          <div class="pair-title">输入手机端显示的 6 位配对码</div>
+          <div class="pair-row">
+            <input id="pairCode" class="p-input pair-code" maxlength="6" placeholder="6 位数字"
+                   inputmode="numeric" spellcheck="false" autocomplete="off">
+            <button id="btnPair" class="p-btn p-btn-primary">配对</button>
+          </div>
+          <div class="pair-hint" id="pairHint">配对码在手机端「发送页」显示（每次开始投屏会重新生成）。局域网内只有一台发送端时也可留空请求免密直连。</div>
+          <div class="pair-err hidden" id="pairErr"></div>
+        </div>
       </div>
     </div>
     <div class="side">
@@ -190,6 +239,7 @@
         <div class="metric"><div class="k">已收帧</div><div class="v" id="mFrames">0</div></div>
       </div>
       <div class="ctlbar">
+        <div class="row"><span class="k">配对状态</span><span class="v" id="mPair">—</span></div>
         <div class="row"><span class="k">控制通道</span><span class="v" id="mCtl">—</span></div>
         <div class="row"><span class="k">最后指令</span><span class="v" id="mLast">—</span></div>
         <div class="row">
@@ -208,6 +258,7 @@
     <button class="p-btn p-btn-sm nav-btn" data-key="3" title="发送 Home 键（keycode 3）">Home</button>
     <button class="p-btn p-btn-sm nav-btn" data-key="187" title="发送多任务键（keycode 187）">多任务</button>
     <span class="foot-sep"></span>
+    <button id="btnFiles" class="p-btn p-btn-sm" title="浏览并下载手机端文件（需配对通过；下载保存在插件数据目录的 downloads 文件夹）">文件</button>
     <button id="btnToggleText" class="p-btn p-btn-sm btn-toggle-text" title="展开/收起文本输入框">⌨ 文本</button>
     <div class="text-wrap" id="textWrap">
       <input id="text" class="p-input" placeholder="输入文本后回车发送到手机（需手机开启无障碍 QPM 控制服务）" spellcheck="false">
@@ -218,6 +269,24 @@
     <button id="btnFill" class="p-btn p-btn-sm btn-toggle-rot" title="画面铺满方式，点击循环切换：智能（默认，方向一致自动铺满/不一致留黑边完整）→ 填满（强制等比放大铺满窗口、超出裁掉——手机竖持看横屏视频时画面最大）→ 完整（等比缩小完整显示、留黑边看全貌）。方向永远跟随手机真实方向，点击坐标始终精准">⬔ 智能</button>
     <button id="btnHelp" class="p-btn p-btn-sm p-btn-ghost" title="操作说明">?</button>
     <button id="btnExitImmersive" class="p-btn p-btn-sm p-btn-primary btn-imm-only" title="退出沉浸模式（Esc）">退出沉浸</button>
+  </div>
+</div>
+
+<!-- 文件面板（v1.1.0）：浏览/下载手机端共享存储，需配对通过 -->
+<div id="filePanel" class="file-panel hidden">
+  <div class="fp-head">
+    <button id="fpUp" class="p-btn p-btn-sm" title="返回上一级目录">⬆ 上级</button>
+    <span class="fp-path" id="fpPath">/sdcard</span>
+    <button id="fpReload" class="p-btn p-btn-sm" title="重新读取当前目录">刷新</button>
+    <button id="fpReveal" class="p-btn p-btn-sm" title="在资源管理器中打开下载目录">下载目录</button>
+    <button id="fpClose" class="p-btn p-btn-sm p-btn-ghost" title="关闭文件面板（Esc）">✕ 关闭</button>
+  </div>
+  <div class="fp-list" id="fpList"></div>
+  <div class="fp-foot">
+    <span class="fp-status" id="fpStatus">就绪</span>
+    <span class="fp-bar hidden" id="fpBar"><i id="fpBarFill"></i></span>
+    <span class="p-spacer" style="flex:1"></span>
+    <button id="fpCancel" class="p-btn p-btn-sm hidden">取消下载</button>
   </div>
 </div>
 
@@ -238,8 +307,12 @@
   <div>看右侧栏「实际编码帧」：变成 2964×1440 说明编码已跟着横（画面会自动横过来）；仍是 1440×2964 说明手机端没重建编码器，点「重连手机」强制刷新一次。</div>
   <div style="margin-top:6px"><b>全屏 / 窗口方向跟手机不一致，怕画面偏小或留黑边</b></div>
   <div>方向始终跟随手机真实方向，绝不会转反：竖屏手机永远显示竖屏、横屏永远显示横屏。底部按钮三态循环：<b>⬔ 智能</b>（默认：方向一致自动铺满、不一致自动留黑边完整显示）→ <b>⤢ 填满</b>（强制等比放大铺满窗口、超出裁掉——<b>手机竖持看横屏视频时点它，画面最大</b>）→ <b>⤡ 完整</b>（等比缩小看全貌、留黑边）。三种方式的点击坐标都精准。</div>
+  <div style="margin-top:6px"><b>配对（新版手机端必做）</b></div>
+  <div>v1.1.0 起手机端要求配对：连接后输入发送页显示的 <b>6 位配对码</b>，通过才会出画面、才能控制。局域网内只有一台发送端时会自动免码直连；连错 3 次手机会断开，重新连接即可再试。</div>
+  <div style="margin-top:6px"><b>被手机端拒绝连接</b></div>
+  <div>若提示「发送端已拒绝本机连接」：手机端「连接管理」的白名单里没有本机。到手机端发送页的连接管理中勾选本设备（本机在列表里显示为 <b>qpm接收端</b>），再点「重新请求画面」重连。</div>
   <div style="margin-top:6px"><b>手机端要求</b></div>
-  <div>需在「设置 → 无障碍 → 已下载的服务」中开启 QPM 控制服务，否则点击/按键会静默丢弃。</div>
+  <div>需在「设置 → 无障碍 → 已下载的服务」中开启 QPM 控制服务，否则点击/按键会静默丢弃。浏览/下载文件还需手机端授予「文件访问权限」（发送页有入口）。</div>
 </div>
 
 <script>
@@ -307,11 +380,29 @@
     ovActs: document.getElementById('ovActs'),
     btnOvRetry: document.getElementById('btnOvRetry'),
     mCtl: document.getElementById('mCtl'),
+    mPair: document.getElementById('mPair'),
     mLast: document.getElementById('mLast'),
     btnProbe: document.getElementById('btnProbe'),
     btnReconnect: document.getElementById('btnReconnect'),
     btnReset: document.getElementById('btnReset'),
     btnFill: document.getElementById('btnFill'),
+    btnFiles: document.getElementById('btnFiles'),
+    pairPanel: document.getElementById('pairPanel'),
+    pairCode: document.getElementById('pairCode'),
+    btnPair: document.getElementById('btnPair'),
+    pairHint: document.getElementById('pairHint'),
+    pairErr: document.getElementById('pairErr'),
+    filePanel: document.getElementById('filePanel'),
+    fpPath: document.getElementById('fpPath'),
+    fpUp: document.getElementById('fpUp'),
+    fpReload: document.getElementById('fpReload'),
+    fpReveal: document.getElementById('fpReveal'),
+    fpClose: document.getElementById('fpClose'),
+    fpList: document.getElementById('fpList'),
+    fpStatus: document.getElementById('fpStatus'),
+    fpBar: document.getElementById('fpBar'),
+    fpBarFill: document.getElementById('fpBarFill'),
+    fpCancel: document.getElementById('fpCancel'),
     stage: document.getElementById('stage')
   }
   var ctx = els.canvas.getContext('2d', { alpha: false })
@@ -373,7 +464,17 @@
     fit: 'auto',           // 画面铺满方式三态：'auto'=智能(方向一致cover铺满/不一致contain留黑边); 'fill'=强制铺满(裁边); 'fit'=强制完整(contain)
     cssW: 0, cssH: 0,      // 画布当前 CSS 显示尺寸（由 layoutCanvas 计算）
     _stageW: 0, _stageH: 0,// 上次布局时的 stage 尺寸（自愈比对用）
-    fitLogged: ''          // 上一次记录的铺满方式，避免重复刷日志
+    fitLogged: '',         // 上一次记录的铺满方式，避免重复刷日志
+    paired: false,         // v1.1.0：手机端配对是否通过（通过前不收画面、不发控制）
+    pairErr: '',           // 最近一次配对失败原因（后端透传）
+    pairFails: 0,          // 本次连接内已知的配对失败次数（手机端 3 次即断开）
+    pairPending: false,    // 已报送配对码、等待手机端确认
+    pairShown: false,      // 配对面板是否处于展示状态（避免每秒重渲染输入框）
+    pairErrKey: '',        // 上次渲染的错误内容（变化才重绘）
+    lastPairCode: '',      // 本次会话最近一次输入的配对码（预填用）
+    rejectReason: '',      // 手机端 REJECT 的拒绝原因（白名单未勾选；断开后仍要展示）
+    file: null,            // 文件面板状态：{ path, entries[], loading }
+    fileDl: null           // 进行中的下载：{ name, total, received, pct }
   }
 
   /* ===================== 日志 ===================== */
@@ -710,6 +811,12 @@
     }
     if (st.kbps !== undefined) els.mRate.textContent = (st.kbps || 0) + ' kb/s'
     if (st.avcC && st.avcC.codec) els.mCodec.textContent = st.avcC.codec
+    // v1.1.0：配对状态（新版手机端配对通过前不下发画面、不执行控制）
+    if (st.paired !== undefined) state.paired = !!st.paired
+    if (st.pairErr !== undefined) state.pairErr = st.pairErr || ''
+    // 注意：pairPending 只由 pair 事件 / 重连 / 停止清除，不随状态轮询清——
+    // 否则「已报送等待确认」的提示会被每秒一次的 status 广播立刻抹掉。
+    if (st.fileDl) applyFileDL(st.fileDl)
     if (st.lastErr) {
       if (state.lastLogKey !== st.lastErr) {
         state.lastLogKey = st.lastErr
@@ -721,20 +828,35 @@
 
     if (st.connected) {
       state.everConnected = true
-      setState('接收中', 'ok')
-      if (state.gotFrame) hideOverlay()
-      else {
-        if (!state.waitingSince) state.waitingSince = Date.now()
-        tickWaiting()
+      if (state.paired) {
+        setState('接收中', 'ok')
+        hidePairPanel()
+        if (state.gotFrame) hideOverlay()
+        else {
+          if (!state.waitingSince) state.waitingSince = Date.now()
+          tickWaiting()
+        }
+      } else {
+        // 已连接但未配对：这是新版手机端的正常中间态，引导输入配对码
+        setState('等待配对', 'warn')
+        showOverlay('已连接，等待配对…', (state.remote || '') + ' · 输入手机端发送页显示的 6 位配对码')
+        showPairPanel()
       }
     } else if (state.started) {
+      hidePairPanel()
       var wsec = state.waitingSince ? Math.round((Date.now() - state.waitingSince) / 1000) : 0
       if (st.discovering) {
         setState('搜索发送端…', 'info')
         showOverlay('正在自动发现手机… ' + wsec + ' 秒', '监听 UDP 45555 广播（最多 12 秒）；也可直接填写手机 IP')
       } else if (state.everConnected) {
         setState('已断开', 'warn')
-        showOverlay('与手机断开', '点下方「重新请求画面」重连；也可能是手机端停止了投屏')
+        if (state.rejectReason) {
+          // 手机端白名单拒绝：断开是预料之中的，浮层继续引导去手机端勾选
+          showOverlay('发送端已拒绝本机连接',
+            state.rejectReason + '。请在手机端「连接管理」中勾选本设备，然后点「重新请求画面」重连')
+        } else {
+          showOverlay('与手机断开', '点下方「重新请求画面」重连；也可能是手机端停止了投屏')
+        }
         els.btnOvRetry.textContent = '重新请求画面'
         els.ovActs.style.display = 'flex'
       } else {
@@ -742,9 +864,252 @@
         showOverlay('正在启动… ' + wsec + ' 秒', '监听本地端口并连接手机发送端')
       }
     } else {
+      hidePairPanel()
       setState('未启动', 'neutral')
       showOverlay('未连接', '点击「启动接收」，连接手机发送端后即可看到实时画面')
     }
+    renderPairMetric()
+  }
+
+  /* ===================== 配对（v1.1.0） =====================
+   * 新版手机端（CastService）配对通过前：不下发 SCREEN_INFO/视频帧、不执行
+   * 控制帧、不响应文件请求，连续配对失败 3 次还会断开连接。
+   * 连接时后端会自动请求免密直连（仅局域网唯一发送端时有效）；被拒或手机端
+   * 要求输码时，这里弹出输入框，用户提交后经 pair 命令报送。 */
+  function renderPairMetric() {
+    var txt, cls
+    if (!state.connected) { txt = '—'; cls = '' }
+    else if (state.paired) { txt = '已配对 ✓'; cls = 'on' }
+    else if (state.rejectReason) { txt = '已被拒绝'; cls = 'off' }
+    else if (state.pairErr) { txt = '配对失败'; cls = 'off' }
+    else { txt = '等待配对…'; cls = 'off' }
+    els.mPair.textContent = txt
+    els.mPair.className = 'v ' + cls
+    els.mPair.title = state.pairErr || (state.paired ? '手机端已接受本接收端' : '请输入手机端显示的配对码')
+  }
+
+  // 展示/刷新配对面板。幂等：展示内容没变就不动 DOM（status 每秒推送，
+  // 不能每次都重绘输入框，否则用户正在输入会被打断）。
+  function showPairPanel() {
+    var pendingTxt = state.pairPending ? '已报送配对码，等待手机端确认…' : ''
+    var errTxt = state.pairErr || pendingTxt
+    var key = (state.connected ? 1 : 0) + '|' + errTxt + '|' + state.pairFails + '|' + (state.lastPairCode || '')
+    if (state.pairShown && state.pairErrKey === key) return
+    state.pairShown = true
+    state.pairErrKey = key
+    els.pairPanel.classList.remove('hidden')
+    if (errTxt) {
+      els.pairErr.textContent = errTxt + (state.pairFails > 0 && !state.pairPending
+        ? '（本次连接已失败 ' + state.pairFails + ' 次，手机端连续失败 3 次会断开）' : '')
+      els.pairErr.classList.remove('hidden')
+    } else {
+      els.pairErr.classList.add('hidden')
+    }
+    if (!els.pairCode.value && state.lastPairCode) els.pairCode.value = state.lastPairCode
+    if (!state.pairPending) {
+      try { els.pairCode.focus() } catch (e) { }
+    }
+  }
+  function hidePairPanel() {
+    els.pairPanel.classList.add('hidden')
+    els.pairErr.classList.add('hidden')
+    state.pairShown = false
+    state.pairErrKey = ''
+    state.pairPending = false
+  }
+  function submitPair() {
+    var code = els.pairCode.value.replace(/\D/g, '').slice(0, 6)
+    els.pairCode.value = code
+    state.lastPairCode = code
+    state.pairPending = true
+    state.pairErr = ''
+    state.pairErrKey = ''   // 强制重绘出「等待确认」
+    showPairPanel()
+    call('pair', { code: code }, { timeout: 8000 }).then(function (res) {
+      if (res && res.error) {
+        state.pairPending = false
+        state.pairErr = res.error.message || '配对报送失败'
+        state.pairErrKey = ''
+        showPairPanel()
+        return
+      }
+      log('info', code ? '已报送配对码 ' + code + '，等待手机端确认…' : '已请求免密直连，等待手机端确认…')
+    }).catch(function (e) {
+      state.pairPending = false
+      state.pairErr = '配对报送失败：' + e.message
+      state.pairErrKey = ''
+      showPairPanel()
+    })
+  }
+  els.btnPair.onclick = submitPair
+  els.pairCode.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Enter') { ev.preventDefault(); submitPair() }
+    ev.stopPropagation()
+  })
+
+  /* ===================== 文件面板（v1.1.0） =====================
+   * 浏览/下载手机端共享存储（配对通过后才可用）。下载落到插件数据目录的
+   * downloads 文件夹，临时文件 .part 收齐后改名，取消则丢弃后续分片。 */
+  function openFilePanel() {
+    if (!state.connected || !state.paired) {
+      log('warn', '尚未配对：请先完成配对再浏览手机文件')
+      if (state.connected && !state.paired) showPairPanel()
+      return
+    }
+    els.filePanel.classList.remove('hidden')
+    if (!state.file) loadDir('/sdcard')
+    else renderFileList()
+  }
+  function closeFilePanel() { els.filePanel.classList.add('hidden') }
+  function setFpStatus(text) { els.fpStatus.textContent = text }
+  function fpJoin(dir, name) {
+    return (dir === '/' ? '' : dir.replace(/\/+$/, '')) + '/' + name
+  }
+  function fpParent(path) {
+    var p = (path || '/').replace(/\/+$/, '')
+    var i = p.lastIndexOf('/')
+    if (i <= 0) return '/'
+    return p.substring(0, i)
+  }
+  function fmtSize(n) {
+    if (!n || n < 0) return '—'
+    if (n < 1024) return n + ' B'
+    if (n < 1048576) return (n / 1024).toFixed(1) + ' KB'
+    if (n < 1073741824) return (n / 1048576).toFixed(1) + ' MB'
+    return (n / 1073741824).toFixed(2) + ' GB'
+  }
+
+  function loadDir(path) {
+    state.file = state.file || {}
+    state.file.loading = true
+    state.file.path = path
+    state.file.entries = []
+    els.fpPath.textContent = path
+    renderFileList()
+    setFpStatus('正在读取 ' + path + ' …')
+    call('file.list', { path: path }, { timeout: 8000 }).then(function (res) {
+      state.file.loading = false
+      if (res && res.error) {
+        setFpStatus('读取失败：' + (res.error.message || '未知错误'))
+        renderFileList()
+        return
+      }
+      state.file.entries = (res && res.entries) || []
+      renderFileList()
+      setFpStatus(state.file.entries.length ? ('共 ' + state.file.entries.length + ' 项') : '空目录')
+    }).catch(function (e) {
+      state.file.loading = false
+      setFpStatus('读取失败：' + e.message)
+      renderFileList()
+    })
+  }
+
+  function renderFileList() {
+    var f = state.file
+    els.fpPath.textContent = f ? f.path : '/sdcard'
+    els.fpList.innerHTML = ''
+    if (!f || f.loading) {
+      els.fpList.innerHTML = '<div class="fp-empty">正在读取…</div>'
+      return
+    }
+    if (!f.entries.length) {
+      els.fpList.innerHTML = '<div class="fp-empty">空目录（或手机端未授予文件访问权限）</div>'
+      return
+    }
+    f.entries.forEach(function (e) {
+      var row = document.createElement('div')
+      row.className = 'fp-row' + (e.isDir ? ' dir' : '')
+      var ico = document.createElement('span')
+      ico.className = 'fp-ico qi ' + (e.isDir ? 'qi-folder' : 'qi-file')
+      var name = document.createElement('span')
+      name.className = 'fp-name'
+      name.textContent = e.name
+      name.title = e.name
+      var meta = document.createElement('span')
+      meta.className = 'fp-meta'
+      meta.textContent = (e.isDir ? '目录' : fmtSize(e.size)) + (e.mtime ? ' · ' + e.mtime : '')
+      row.appendChild(ico)
+      row.appendChild(name)
+      row.appendChild(meta)
+      if (e.isDir) {
+        row.title = '进入 ' + e.name
+        row.onclick = function () { loadDir(fpJoin(f.path, e.name)) }
+      } else {
+        var dl = document.createElement('button')
+        dl.className = 'p-btn p-btn-sm fp-dl'
+        dl.textContent = '下载'
+        dl.title = '下载到插件数据目录的 downloads 文件夹'
+        dl.onclick = function (ev) {
+          ev.stopPropagation()
+          downloadFile(fpJoin(f.path, e.name), e.name, e.size)
+        }
+        row.appendChild(dl)
+        row.title = '下载 ' + e.name
+      }
+      els.fpList.appendChild(row)
+    })
+  }
+
+  function downloadFile(path, name, size) {
+    if (state.fileDl) {
+      log('warn', '正在下载 ' + state.fileDl.name + '，请先等待或取消')
+      return
+    }
+    setFpStatus('正在请求下载 ' + name + ' …')
+    els.fpCancel.classList.remove('hidden')
+    call('file.get', { path: path }, { timeout: 8000 }).then(function (res) {
+      if (res && res.error) {
+        setFpStatus('下载失败：' + (res.error.message || '未知错误'))
+        els.fpCancel.classList.add('hidden')
+        return
+      }
+      log('info', '开始下载 ' + name + '（' + fmtSize(size) + '）→ ' + (res.dst || 'downloads/'))
+      setFpStatus('下载中 ' + name + ' …')
+    }).catch(function (e) {
+      setFpStatus('下载失败：' + e.message)
+      els.fpCancel.classList.add('hidden')
+    })
+  }
+
+  // 下载进度/完成（后端广播与 status 快照共用同一结构）
+  function applyFileDL(m) {
+    if (m.done) {
+      state.fileDl = null
+      els.fpBar.classList.add('hidden')
+      els.fpBarFill.style.width = '0'
+      els.fpCancel.classList.add('hidden')
+      if (m.ok) {
+        setFpStatus('下载完成：' + m.name + ' → ' + m.dst)
+        log('ok', '下载完成：' + m.name + '（' + fmtSize(m.received) + '）→ ' + m.dst)
+      } else {
+        setFpStatus('下载失败：' + (m.err || m.name || '未知错误'))
+        log('warn', '下载失败：' + m.name + (m.err ? '（' + m.err + '）' : ''))
+      }
+      return
+    }
+    state.fileDl = m
+    var pct = m.pct || 0
+    els.fpBar.classList.remove('hidden')
+    els.fpBarFill.style.width = pct + '%'
+    els.fpCancel.classList.remove('hidden')
+    setFpStatus('下载中 ' + m.name + '：' + fmtSize(m.received) + ' / ' + fmtSize(m.total) + '（' + pct + '%）')
+  }
+
+  els.btnFiles.onclick = function () { openFilePanel() }
+  els.fpClose.onclick = function () { closeFilePanel() }
+  els.fpUp.onclick = function () { loadDir(fpParent((state.file && state.file.path) || '/sdcard')) }
+  els.fpReload.onclick = function () { loadDir((state.file && state.file.path) || '/sdcard') }
+  els.fpReveal.onclick = function () {
+    call('file.reveal', {}, { timeout: 6000 }).then(function (res) {
+      if (res && res.error) { log('err', '打开下载目录失败：' + (res.error.message || '')); return }
+      if (res && res.dir && !res.opened) log('info', '下载目录：' + res.dir)
+    }).catch(function (e) { log('err', '打开下载目录失败: ' + e.message) })
+  }
+  els.fpCancel.onclick = function () {
+    call('file.cancel', {}, { timeout: 6000 }).then(function () {
+      log('info', '已请求取消下载（丢弃后续分片）')
+      setFpStatus('正在取消…')
+    }).catch(function (e) { log('err', '取消下载失败: ' + e.message) })
   }
 
   /* ===================== WebCodecs 解码 ===================== */
@@ -962,6 +1327,44 @@
       els.phoneHost.value = d.host
       els.phonePort.value = d.port
       log('ok', '发现发送端 ' + d.host + ':' + d.port + '（' + d.w + '×' + d.h + '）')
+      return
+    }
+    // v1.1.0：配对结果事件（后端在 PAIR_RESULT 时广播，比轮询 status 更即时）
+    if (m.t === 'pair') {
+      if (m.ok) {
+        state.paired = true
+        state.pairErr = ''
+        state.pairFails = 0
+        state.pairPending = false
+        hidePairPanel()
+        log('ok', '配对成功，开始接收手机画面')
+        renderPairMetric()
+      } else {
+        state.paired = false
+        state.pairPending = false
+        state.pairFails++
+        state.pairErr = m.err || '配对失败'
+        showPairPanel()
+        renderPairMetric()
+      }
+      return
+    }
+    // v1.1.0：文件下载进度/完成事件
+    if (m.t === 'filedl') { applyFileDL(m); return }
+    // v1.1.0：手机端主动拒绝连接（连接管理白名单未勾选本机）。
+    // 手机随后会断开，这里先把原因记住，断开浮层据此给出处理引导。
+    if (m.t === 'reject') {
+      state.paired = false
+      state.pairPending = false
+      state.rejectReason = m.err || '发送端已拒绝本机连接'
+      state.pairErr = state.rejectReason
+      renderPairMetric()
+      log('err', '发送端已拒绝本机连接：' + state.rejectReason + '（请在手机端「连接管理」中勾选本设备）')
+      showOverlay('发送端已拒绝本机连接',
+        state.rejectReason + '。请在手机端「连接管理」中勾选本设备，然后点「重新请求画面」重连')
+      els.btnOvRetry.textContent = '重新请求画面'
+      els.ovActs.style.display = 'flex'
+      return
     }
   }
 
@@ -1101,15 +1504,28 @@
   }
 
   /* ===================== 控制指令 ===================== */
-  // 未连接时本地拦截：拖拽会按 40ms 连续切片，若不拦截会把后端「未连接」错误刷满日志
+  // 未连接/未配对时本地拦截：拖拽会按 40ms 连续切片，若不拦截会把后端
+  // 「未连接」「等待配对」错误刷满日志。v1.1.0 起新版手机端配对通过前
+  // 不执行任何控制帧，因此这里按 paired 一并门控。
   function requireOnline() {
-    if (state.connected) return true
-    var now = Date.now()
-    if (now - state.offlineNoticeAt > 2500) {
-      state.offlineNoticeAt = now
-      log('warn', '尚未连接手机，请先点击「启动接收」')
+    if (!state.connected) {
+      var now = Date.now()
+      if (now - state.offlineNoticeAt > 2500) {
+        state.offlineNoticeAt = now
+        log('warn', '尚未连接手机，请先点击「启动接收」')
+      }
+      return false
     }
-    return false
+    if (!state.paired) {
+      var now2 = Date.now()
+      if (now2 - state.offlineNoticeAt > 2500) {
+        state.offlineNoticeAt = now2
+        log('warn', '等待配对：请先输入手机端显示的配对码完成配对')
+        showPairPanel()
+      }
+      return false
+    }
+    return true
   }
 
   // 控制指令优先走本地直连 WebSocket：不经宿主队列、无超时定时器，
@@ -1258,6 +1674,13 @@
     state.waitingSince = Date.now()
     state.gotFrame = false
     state.waitKey = true
+    // v1.1.0：重连 = 新连接，配对重新走一遍（后端会带上次配对成功的码再试）
+    state.paired = false
+    state.pairErr = ''
+    state.pairPending = false
+    state.pairFails = 0
+    state.rejectReason = ''
+    hidePairPanel()
     call('phone.reconnect', {}, { timeout: 8000 }).then(function (r) {
       if (r && r.error) { log('err', r.error); return }
       if (r && r.status) applyStatus(r.status)
@@ -1449,6 +1872,13 @@
     state.frames = 0
     state.waitingSince = Date.now()
     state.lastFrameAt = 0
+    // v1.1.0：每次启动都是全新的配对流程（后端会自动先试免密直连）
+    state.paired = false
+    state.pairErr = ''
+    state.pairFails = 0
+    state.pairPending = false
+    state.rejectReason = ''
+    hidePairPanel()
     els.canvas.classList.add('hidden')
     hideOverlay()
     setState('启动中…', 'info')
@@ -1528,6 +1958,14 @@
     state.waitingSince = 0
     state.lastFrameAt = 0
     state.everConnected = false
+    // v1.1.0：配对状态随连接一起复位
+    state.paired = false
+    state.pairErr = ''
+    state.pairFails = 0
+    state.pairPending = false
+    state.rejectReason = ''
+    hidePairPanel()
+    renderPairMetric()
     setCtlChannel(directReady() ? 'ws' : '')
     noteCmd('—')
     els.canvas.classList.add('hidden')
@@ -1636,6 +2074,7 @@
     if (tag === 'input' || tag === 'textarea') return
     if (ev.key === 'Escape') {
       if (els.suggest.classList.contains('open')) { ev.preventDefault(); closeSuggest(); return }
+      if (!els.filePanel.classList.contains('hidden')) { ev.preventDefault(); closeFilePanel(); return }
       if (!els.helpPop.classList.contains('hidden')) { ev.preventDefault(); els.helpPop.classList.add('hidden'); return }
       if (state.textOpen) { ev.preventDefault(); setTextOpen(false); return }
       if (state.immersive) { ev.preventDefault(); setImmersive(false) }
@@ -1700,6 +2139,14 @@
     state.running = false
     state.gotFrame = false
     state.everConnected = false
+    // v1.1.0：配对状态一并复位
+    state.paired = false
+    state.pairErr = ''
+    state.pairFails = 0
+    state.pairPending = false
+    state.rejectReason = ''
+    hidePairPanel()
+    renderPairMetric()
     els.btnStart.disabled = false
     els.btnStop.disabled = true
     els.canvas.classList.add('hidden')
@@ -1785,6 +2232,20 @@
     if (!d) return
     if (d.type === 'plugin:init') {
       var t = (d.data && d.data.text) || ''
+      var cmd = (d.data && d.data.command) || ''
+      // v1.1.0：命令面板「配对」——text 为 6 位配对码；带入后连接着就直接报送
+      if (cmd === 'pair' || /^\d{6}$/.test(t)) {
+        els.pairCode.value = t.replace(/\D/g, '')
+        state.lastPairCode = els.pairCode.value
+        if (state.connected && !state.paired) submitPair()
+        else log('info', '已带入配对码 ' + els.pairCode.value + '，连接手机后将自动使用')
+        return
+      }
+      // v1.1.0：命令面板「文件」——打开文件浏览面板
+      if (cmd === 'file.browse' || t === 'file' || t === '文件') {
+        openFilePanel()
+        return
+      }
       if (t) {
         // 命令面板传参：可以是 IP、IP:PORT，或纯端口
         var m = t.match(/^(\d{1,3}(?:\.\d{1,3}){3})(?::(\d+))?$/)
