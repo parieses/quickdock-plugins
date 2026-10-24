@@ -53,6 +53,11 @@
   #screen{position:absolute;left:50%;top:50%;display:block;image-rendering:auto;box-shadow:var(--shadow-2);cursor:default;background:#000;transform:translate(-50%,-50%)}
   #screen.can-grab{cursor:grab}
   #screen.dragging{cursor:grabbing}
+  /* 拖动轨迹（v1.2.1）：拖拽改成松手才执行滑动，用一条虚线让用户看清 PC 端确实捕获了轨迹 */
+  .drag-trail{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;display:none}
+  .drag-trail.on{display:block}
+  .drag-trail line{stroke:var(--accent);stroke-width:2;stroke-dasharray:7 6;stroke-linecap:round;opacity:.95}
+  .drag-trail circle{fill:var(--accent);opacity:.95}
   #screen.hidden{display:none}
   .overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--sp-2);color:var(--text-muted);font-size:var(--fs-md);pointer-events:none;text-align:center;padding:var(--sp-4)}
   .overlay .big{font-size:var(--fs-xl);color:var(--text-secondary)}
@@ -146,6 +151,32 @@
   .fp-bar>i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s ease}
   .fp-bar.hidden{display:none}
 
+  /* —— 剪贴板同步对话框（v1.2.0）—— */
+  .clip-dlg{position:fixed;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;
+    background:var(--bg-primary);padding:var(--sp-4)}
+  .clip-dlg.hidden{display:none}
+  .clip-card{width:min(520px,92vw);max-height:86vh;overflow:auto;display:flex;flex-direction:column;
+    background:var(--bg-secondary);border:1px solid var(--border-strong);border-radius:var(--radius-lg);
+    box-shadow:var(--shadow-2);color:var(--text-primary)}
+  .clip-head{display:flex;align-items:center;gap:var(--sp-2);padding:10px var(--sp-3);
+    border-bottom:1px solid var(--border);flex-shrink:0}
+  .clip-title{font-size:var(--fs-md);font-weight:var(--fw-semibold)}
+  .clip-sec{padding:var(--sp-3);display:flex;flex-direction:column;gap:8px}
+  .clip-sec + .clip-sec{border-top:1px solid var(--border)}
+  .clip-label{font-size:var(--fs-xs);color:var(--text-muted)}
+  .clip-text{min-height:44px;max-height:180px;overflow:auto;padding:8px 10px;border-radius:var(--radius);
+    background:var(--bg-tertiary);font-size:var(--fs-sm);color:var(--text-secondary);
+    white-space:pre-wrap;word-break:break-all;line-height:1.7}
+  .clip-text.empty{color:var(--text-muted)}
+  .clip-input{resize:vertical;min-height:70px;padding:8px 10px;border-radius:var(--radius);
+    background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text-primary);
+    font-size:var(--fs-sm);font-family:inherit;line-height:1.6}
+  .clip-input:focus{outline:none;border-color:var(--accent)}
+  .clip-acts{display:flex;align-items:center;gap:var(--sp-2)}
+  .clip-note{font-size:var(--fs-xs);color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .clip-note.ok{color:var(--success)}
+  .clip-note.err{color:var(--danger)}
+
   /* —— 沉浸模式：画面占满窗口，控制条变成自动隐藏的浮动条（导航键不丢）—— */
   .app.immersive .p-head,.app.immersive .bar,.app.immersive .suggest{display:none}
   .app.immersive .p-body{position:fixed;inset:0;z-index:50;background:var(--bg-primary)}
@@ -202,6 +233,10 @@
   <div class="p-body">
     <div class="stage" id="stage">
       <canvas id="screen" class="hidden"></canvas>
+      <svg id="dragTrail" class="drag-trail" aria-hidden="true">
+        <line id="dragLine" x1="0" y1="0" x2="0" y2="0"></line>
+        <circle id="dragDot" cx="0" cy="0" r="4"></circle>
+      </svg>
       <div id="overlay" class="overlay">
         <div class="big" id="ovTitle">未连接</div>
         <div id="ovDesc">点击「启动接收」，连接手机发送端后即可看到实时画面</div>
@@ -240,6 +275,8 @@
       </div>
       <div class="ctlbar">
         <div class="row"><span class="k">配对状态</span><span class="v" id="mPair">—</span></div>
+        <div class="row"><span class="k">加密通道</span><span class="v" id="mCrypto">—</span></div>
+        <div class="row"><span class="k">手机统计</span><span class="v" id="mStats">—</span></div>
         <div class="row"><span class="k">控制通道</span><span class="v" id="mCtl">—</span></div>
         <div class="row"><span class="k">最后指令</span><span class="v" id="mLast">—</span></div>
         <div class="row">
@@ -259,6 +296,7 @@
     <button class="p-btn p-btn-sm nav-btn" data-key="187" title="发送多任务键（keycode 187）">多任务</button>
     <span class="foot-sep"></span>
     <button id="btnFiles" class="p-btn p-btn-sm" title="浏览并下载手机端文件（需配对通过；下载保存在插件数据目录的 downloads 文件夹）">文件</button>
+    <button id="btnClip" class="p-btn p-btn-sm" title="剪贴板同步：查看手机复制过来文本、一键粘贴到本机，或把本机文本发送到手机剪贴板（需配对通过）">剪贴板</button>
     <button id="btnToggleText" class="p-btn p-btn-sm btn-toggle-text" title="展开/收起文本输入框">⌨ 文本</button>
     <div class="text-wrap" id="textWrap">
       <input id="text" class="p-input" placeholder="输入文本后回车发送到手机（需手机开启无障碍 QPM 控制服务）" spellcheck="false">
@@ -278,6 +316,8 @@
     <button id="fpUp" class="p-btn p-btn-sm" title="返回上一级目录">⬆ 上级</button>
     <span class="fp-path" id="fpPath">/sdcard</span>
     <button id="fpReload" class="p-btn p-btn-sm" title="重新读取当前目录">刷新</button>
+    <button id="fpPush" class="p-btn p-btn-sm" title="把本机文件推送到手机共享存储（需配对通过；保存位置与手机端「接收文件」一致，经本地直连通道分片发送）">⬆ 上传到手机</button>
+    <input id="fpFile" type="file" style="display:none">
     <button id="fpReveal" class="p-btn p-btn-sm" title="在资源管理器中打开下载目录">下载目录</button>
     <button id="fpClose" class="p-btn p-btn-sm p-btn-ghost" title="关闭文件面板（Esc）">✕ 关闭</button>
   </div>
@@ -287,12 +327,42 @@
     <span class="fp-bar hidden" id="fpBar"><i id="fpBarFill"></i></span>
     <span class="p-spacer" style="flex:1"></span>
     <button id="fpCancel" class="p-btn p-btn-sm hidden">取消下载</button>
+    <button id="fpPushCancel" class="p-btn p-btn-sm hidden">取消上传</button>
+  </div>
+</div>
+
+<!-- 剪贴板同步对话框（v1.2.0）：查看手机同步来的文本 / 发送文本到手机 -->
+<div id="clipDlg" class="clip-dlg hidden">
+  <div class="clip-card">
+    <div class="clip-head">
+      <span class="clip-title">剪贴板同步</span>
+      <span class="p-spacer" style="flex:1"></span>
+      <button id="clipClose" class="p-btn p-btn-sm p-btn-ghost" title="关闭（Esc）">✕</button>
+    </div>
+    <div class="clip-sec">
+      <div class="clip-label">手机同步来的文本（手机端复制后自动送达）</div>
+      <div class="clip-text" id="clipText">暂无</div>
+      <div class="clip-acts">
+        <button id="clipCopy" class="p-btn p-btn-sm" title="把上面的文本复制到本机剪贴板">复制到本机</button>
+        <span class="clip-note" id="clipFromNote"></span>
+      </div>
+    </div>
+    <div class="clip-sec">
+      <div class="clip-label">发送到手机（写入手机剪贴板，手机上直接粘贴）</div>
+      <textarea id="clipInput" class="clip-input" rows="4" maxlength="8000"
+                placeholder="输入文本后点「发送到手机」（需配对通过）" spellcheck="false"></textarea>
+      <div class="clip-acts">
+        <button id="clipSend" class="p-btn p-btn-sm p-btn-primary">发送到手机</button>
+        <span class="clip-note" id="clipHint"></span>
+      </div>
+    </div>
   </div>
 </div>
 
 <div id="helpPop" class="help-pop hidden">
   <div><b>画面内操作</b></div>
-  <div>单击 = 点击 · 拖拽 = 滑动 · 长按 = 长按</div>
+  <div>单击 = 点击 · 长按 = 长按（≥0.65s）</div>
+  <div>拖拽 = 滑动（松开鼠标时整段执行）</div>
   <div>右键 = 返回 · 滚轮 = 上下滑动</div>
   <div style="margin-top:6px"><b>快捷键</b></div>
   <div><span class="kbd">F</span> 进入/退出沉浸 · <span class="kbd">Esc</span> 退出沉浸</div>
@@ -313,6 +383,12 @@
   <div>若提示「发送端已拒绝本机连接」：手机端「连接管理」的白名单里没有本机。到手机端发送页的连接管理中勾选本设备（本机在列表里显示为 <b>qpm接收端</b>），再点「重新请求画面」重连。</div>
   <div style="margin-top:6px"><b>手机端要求</b></div>
   <div>需在「设置 → 无障碍 → 已下载的服务」中开启 QPM 控制服务，否则点击/按键会静默丢弃。浏览/下载文件还需手机端授予「文件访问权限」（发送页有入口）。</div>
+  <div style="margin-top:6px"><b>加密通道（v1.2.0）</b></div>
+  <div>侧栏「加密通道」显示 <b>AES-256-GCM</b> 时，控制 / 文件 / 剪贴板全部走加密通道（ECDH P-256 换密钥，帧体 AES-256-GCM）。显示「明文」说明手机端是旧版本（未回应密钥交换），功能不受影响、只是不加密。</div>
+  <div style="margin-top:6px"><b>剪贴板同步（v1.2.0）</b></div>
+  <div>手机端复制文本后会同步到电脑：点底栏「剪贴板」查看，「复制到本机」即可粘贴。在输入框写文本「发送到手机」则写入手机剪贴板，手机上直接粘贴。需配对通过。</div>
+  <div style="margin-top:6px"><b>上传文件到手机（v1.2.0）</b></div>
+  <div>文件面板点「⬆ 上传到手机」选本机文件，经本地直连通道分片推送到手机共享存储（保存位置由手机端决定，与它「接收文件」的位置一致）。上传期间可取消；一次只推一个文件。</div>
 </div>
 
 <script>
@@ -348,6 +424,9 @@
     btnClearLog: document.getElementById('btnClearLog'),
     suggest: document.getElementById('suggest'),
     canvas: document.getElementById('screen'),
+    dragTrail: document.getElementById('dragTrail'),
+    dragLine: document.getElementById('dragLine'),
+    dragDot: document.getElementById('dragDot'),
     overlay: document.getElementById('overlay'),
     ovTitle: document.getElementById('ovTitle'),
     ovDesc: document.getElementById('ovDesc'),
@@ -381,6 +460,8 @@
     btnOvRetry: document.getElementById('btnOvRetry'),
     mCtl: document.getElementById('mCtl'),
     mPair: document.getElementById('mPair'),
+    mCrypto: document.getElementById('mCrypto'),
+    mStats: document.getElementById('mStats'),
     mLast: document.getElementById('mLast'),
     btnProbe: document.getElementById('btnProbe'),
     btnReconnect: document.getElementById('btnReconnect'),
@@ -403,6 +484,18 @@
     fpBar: document.getElementById('fpBar'),
     fpBarFill: document.getElementById('fpBarFill'),
     fpCancel: document.getElementById('fpCancel'),
+    fpPush: document.getElementById('fpPush'),
+    fpFile: document.getElementById('fpFile'),
+    fpPushCancel: document.getElementById('fpPushCancel'),
+    btnClip: document.getElementById('btnClip'),
+    clipDlg: document.getElementById('clipDlg'),
+    clipClose: document.getElementById('clipClose'),
+    clipText: document.getElementById('clipText'),
+    clipCopy: document.getElementById('clipCopy'),
+    clipFromNote: document.getElementById('clipFromNote'),
+    clipInput: document.getElementById('clipInput'),
+    clipSend: document.getElementById('clipSend'),
+    clipHint: document.getElementById('clipHint'),
     stage: document.getElementById('stage')
   }
   var ctx = els.canvas.getContext('2d', { alpha: false })
@@ -441,8 +534,6 @@
     fps: 0,
     gotFrame: false,
     drag: null,
-    lastSwipeAt: 0,
-    swipeBusy: false,
     lastLogKey: '',
     connected: false,
     everConnected: false,
@@ -474,8 +565,15 @@
     lastPairCode: '',      // 本次会话最近一次输入的配对码（预填用）
     rejectReason: '',      // 手机端 REJECT 的拒绝原因（白名单未勾选；断开后仍要展示）
     file: null,            // 文件面板状态：{ path, entries[], loading }
-    fileDl: null           // 进行中的下载：{ name, total, received, pct }
+    fileDl: null,          // 进行中的下载：{ name, total, received, pct }
+    filePush: null,        // 进行中的上传：{ name, total, sent }（v1.2.0）
+    crypto: false,         // 与手机端的通道是否已加密（v1.2.0）
+    stats: null,           // 手机端每秒广播的投屏统计（v1.2.0）
+    clipText: '',          // 手机端同步来的最近一条剪贴板文本（v1.2.0）
+    clipDlgOpen: false
   }
+  var uploadCtx = null     // 上传上下文：{ file, off }（随上传建立/取消销毁）
+  var UPLOAD_CHUNK = 256 * 1024
 
   /* ===================== 日志 ===================== */
   function log(level, msg) {
@@ -817,6 +915,13 @@
     // 注意：pairPending 只由 pair 事件 / 重连 / 停止清除，不随状态轮询清——
     // 否则「已报送等待确认」的提示会被每秒一次的 status 广播立刻抹掉。
     if (st.fileDl) applyFileDL(st.fileDl)
+    // v1.2.0：加密通道 / 手机统计 / 上传进度（status 每秒广播，断开时清零）
+    if (st.crypto !== undefined) state.crypto = !!st.crypto
+    if (st.stats) state.stats = st.stats
+    if (st.filePush) applyFilePush(st.filePush)
+    if (!st.connected) state.stats = null
+    renderCrypto()
+    renderStats()
     if (st.lastErr) {
       if (state.lastLogKey !== st.lastErr) {
         state.lastLogKey = st.lastErr
@@ -1112,6 +1217,221 @@
     }).catch(function (e) { log('err', '取消下载失败: ' + e.message) })
   }
 
+  /* ===================== 加密通道 / 手机统计（v1.2.0） ===================== */
+  function renderCrypto() {
+    var v = els.mCrypto
+    if (!state.connected) { v.textContent = '—'; v.className = 'v'; v.title = ''; return }
+    if (state.crypto) {
+      v.textContent = 'AES-256-GCM ✓'
+      v.className = 'v on'
+      v.title = '已加密：ECDH(P-256) 换密钥，帧体 AES-256-GCM（控制/文件/剪贴板）'
+    } else {
+      v.textContent = '明文'
+      v.className = 'v off'
+      v.title = '手机端未回应密钥交换（旧版手机端）：功能不受影响，但帧为明文'
+    }
+  }
+
+  function renderStats() {
+    var s = state.stats
+    if (!s) { els.mStats.textContent = '—'; els.mStats.title = ''; return }
+    var kbps = Math.round((s.bitrate || 0) / 1000)
+    els.mStats.textContent = (s.w || 0) + '×' + (s.h || 0) + ' · ' + (s.fps || 0) + 'fps · ' + kbps + 'kb/s' +
+      (s.dropped ? ' · 丢' + s.dropped : '')
+    els.mStats.title = '手机端每秒广播：编码 ' + (s.w || 0) + '×' + (s.h || 0) + '，' + (s.fps || 0) +
+      ' fps，' + kbps + ' kb/s，累计丢帧 ' + (s.dropped || 0)
+  }
+
+  /* ===================== 剪贴板同步（v1.2.0） ===================== */
+  function renderClip() {
+    var t = state.clipText || ''
+    if (t) {
+      els.clipText.textContent = t
+      els.clipText.classList.remove('empty')
+      els.clipFromNote.textContent = t.length + ' 字符'
+    } else {
+      els.clipText.textContent = '暂无（手机端复制文本后会自动送达）'
+      els.clipText.classList.add('empty')
+      els.clipFromNote.textContent = ''
+    }
+  }
+  function openClipDlg() {
+    if (!state.connected || !state.paired) {
+      log('warn', '尚未配对：请先完成配对再同步剪贴板')
+      if (state.connected && !state.paired) showPairPanel()
+      return
+    }
+    state.clipDlgOpen = true
+    els.clipDlg.classList.remove('hidden')
+    renderClip()
+    setClipHint('', '')
+  }
+  function closeClipDlg() {
+    state.clipDlgOpen = false
+    els.clipDlg.classList.add('hidden')
+  }
+  function setClipHint(text, kind) {
+    els.clipHint.textContent = text
+    els.clipHint.className = 'clip-note' + (kind ? ' ' + kind : '')
+  }
+  els.btnClip.onclick = function () { openClipDlg() }
+  els.clipClose.onclick = function () { closeClipDlg() }
+  els.clipCopy.onclick = function () {
+    var t = state.clipText || ''
+    if (!t) { setClipHint('暂无文本可复制', 'err'); return }
+    function fallback() {
+      // 部分 WebView 无异步剪贴板 API：用临时 textarea + execCommand 兜底
+      try {
+        var ta = document.createElement('textarea')
+        ta.value = t
+        ta.style.position = 'fixed'
+        ta.style.opacity = '0'
+        document.body.appendChild(ta)
+        ta.select()
+        var ok = document.execCommand('copy')
+        document.body.removeChild(ta)
+        setClipHint(ok ? '已复制到本机剪贴板' : '复制失败，请手动选择文本复制', ok ? 'ok' : 'err')
+      } catch (e) { setClipHint('复制失败：' + e.message, 'err') }
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(t).then(function () {
+        setClipHint('已复制到本机剪贴板', 'ok')
+      }, fallback)
+    } else fallback()
+  }
+  els.clipSend.onclick = function () {
+    var t = els.clipInput.value || ''
+    if (!t.trim()) { setClipHint('请输入要发送的文本', 'err'); return }
+    if (!state.connected || !state.paired) { setClipHint('尚未配对，无法发送', 'err'); return }
+    setClipHint('发送中…', '')
+    call('clipboard.send', { text: t }, { timeout: 8000 }).then(function (res) {
+      if (res && res.error) { setClipHint('发送失败：' + (res.error.message || ''), 'err'); return }
+      setClipHint('已写入手机剪贴板（' + t.length + ' 字符）', 'ok')
+      els.clipInput.value = ''
+      log('ok', '剪贴板文本已发送到手机（' + t.length + ' 字符）')
+    }).catch(function (e) { setClipHint('发送失败：' + e.message, 'err') })
+  }
+
+  /* ===================== 文件上传（v1.2.0，浏览器 → 手机） =====================
+   * File 对象没有本机路径，file.push（路径直推）用不上；改为：
+   *   wsDirect 发 {"t":"filepush.begin","name","size"} → 后端转发 FILE_PUSH_REQ
+   *   wsDirect 发二进制分片（256KB/片）               → 后端转发 FILE_PUSH_DATA
+   *   wsDirect 发 {"t":"filepush.end"}                → 后端补空 eof 帧
+   * 进度/结果走后端广播 {"t":"filepush",...}。二进制只能走本地直连
+   * （宿主桥是 JSON 文本通道），因此上传前先确保直连可用。 */
+  function applyFilePush(m) {
+    if (m.phase === 'done') {
+      state.filePush = null
+      uploadCtx = null
+      els.fpPushCancel.classList.add('hidden')
+      if (m.ok) {
+        setFpStatus('上传完成：' + (m.name || '') + (m.msg ? ' → ' + m.msg : ''))
+        log('ok', '上传完成：' + (m.name || '') + '（' + fmtSize(m.sent) + '）' + (m.msg ? ' → ' + m.msg : ''))
+      } else {
+        setFpStatus('上传失败：' + (m.name || '') + (m.err ? '（' + m.err + '）' : ''))
+        log('warn', '上传失败：' + (m.name || '') + (m.err ? '（' + m.err + '）' : ''))
+      }
+      return
+    }
+    state.filePush = { name: m.name, total: m.total, sent: m.sent }
+    renderFilePush()
+  }
+  function renderFilePush() {
+    var p = state.filePush
+    if (!p) return
+    var pct = p.total ? Math.min(100, Math.round(p.sent * 100 / p.total)) : 0
+    setFpStatus('上传中 ' + p.name + '：' + fmtSize(p.sent) + ' / ' + fmtSize(p.total) + '（' + pct + '%）')
+  }
+  function failUpload(msg) {
+    if (!state.filePush) return
+    var name = state.filePush.name
+    state.filePush = null
+    uploadCtx = null
+    els.fpPushCancel.classList.add('hidden')
+    setFpStatus('上传失败：' + name + '（' + msg + '）')
+    log('warn', '上传失败：' + name + '（' + msg + '）')
+    // 后端可能还挂着推送任务，补一次取消（失败无所谓）
+    call('file.push.cancel', {}, { timeout: 6000 }).catch(function () { })
+  }
+  function doUpload(file) {
+    if (!directReady()) { setFpStatus('上传失败：本地直连通道不可用'); return }
+    state.filePush = { name: file.name, total: file.size, sent: 0 }
+    uploadCtx = { file: file, off: 0, pumping: false }
+    setFpStatus('上传中 ' + file.name + ' …')
+    log('info', '开始上传 ' + file.name + '（' + fmtSize(file.size) + '）→ 手机共享存储')
+    els.fpPushCancel.classList.remove('hidden')
+    try {
+      state.wsDirect.send(JSON.stringify({ t: 'filepush.begin', name: file.name, size: file.size }))
+    } catch (e) { failUpload('发送失败: ' + e.message) }
+  }
+  function pumpUpload() {
+    var ctx = uploadCtx
+    if (!ctx || !state.filePush || ctx.pumping) return
+    ctx.pumping = true
+    var f = ctx.file
+    function next() {
+      ctx.pumping = false
+      if (!uploadCtx || uploadCtx !== ctx || !state.filePush) return
+      if (ctx.off >= f.size) {
+        try { state.wsDirect.send(JSON.stringify({ t: 'filepush.end' })) } catch (e) { failUpload('发送失败: ' + e.message) }
+        return
+      }
+      pumpUpload()
+    }
+    if (ctx.off >= f.size) { next(); return }
+    f.slice(ctx.off, ctx.off + UPLOAD_CHUNK).arrayBuffer().then(function (ab) {
+      // 读盘期间可能已被取消/换文件：上下文对不上就丢弃
+      if (!uploadCtx || uploadCtx !== ctx || !state.filePush) { ctx.pumping = false; return }
+      try {
+        state.wsDirect.send(ab)
+      } catch (e) { ctx.pumping = false; failUpload('发送失败: ' + e.message); return }
+      ctx.off += ab.byteLength
+      state.filePush.sent = ctx.off
+      renderFilePush()
+      setTimeout(next, 0) // 让出事件循环，避免连续读盘卡住界面
+    }).catch(function (e) { ctx.pumping = false; failUpload('读取文件失败: ' + e.message) })
+  }
+  els.fpPush.onclick = function () {
+    if (state.filePush) {
+      log('warn', '正在上传 ' + state.filePush.name + '，请先等待或取消')
+      return
+    }
+    if (!state.connected || !state.paired) {
+      log('warn', '尚未配对：请先完成配对再上传文件')
+      if (state.connected && !state.paired) showPairPanel()
+      return
+    }
+    els.fpFile.click()
+  }
+  els.fpFile.onchange = function () {
+    var f = els.fpFile.files && els.fpFile.files[0]
+    els.fpFile.value = '' // 允许再次选同一文件
+    if (!f) return
+    if (!directReady()) {
+      setFpStatus('上传需要本地直连通道，正在尝试建立…')
+      ensureDirectChannel().then(function (ok) {
+        if (!ok) {
+          setFpStatus('上传失败：本地直连不可用（二进制分片无法走宿主通道）')
+          log('err', '上传失败：本地直连通道不可用')
+          return
+        }
+        doUpload(f)
+      })
+      return
+    }
+    doUpload(f)
+  }
+  els.fpPushCancel.onclick = function () {
+    if (!state.filePush) { els.fpPushCancel.classList.add('hidden'); return }
+    var name = state.filePush.name
+    state.filePush = null
+    uploadCtx = null
+    els.fpPushCancel.classList.add('hidden')
+    setFpStatus('已取消上传：' + name)
+    log('info', '已取消上传 ' + name)
+    call('file.push.cancel', {}, { timeout: 6000 }).catch(function (e) { log('warn', '取消上传请求失败: ' + e.message) })
+  }
+
   /* ===================== WebCodecs 解码 ===================== */
   function b64ToU8(b64) {
     var bin = atob(b64), out = new Uint8Array(bin.length)
@@ -1366,6 +1686,30 @@
       els.ovActs.style.display = 'flex'
       return
     }
+    // v1.2.0：手机端每秒广播的投屏统计
+    if (m.t === 'stats') {
+      state.stats = m
+      renderStats()
+      return
+    }
+    // v1.2.0：手机端同步剪贴板文本过来
+    if (m.t === 'clipboard') {
+      state.clipText = m.text || ''
+      renderClip()
+      log('info', '收到手机剪贴板文本（' + state.clipText.length + ' 字符），点底栏「剪贴板」查看/复制')
+      return
+    }
+    // v1.2.0：文件上传进度/完成
+    if (m.t === 'filepush') { applyFilePush(m); return }
+    if (m.t === 'filepush.begin.ok') {
+      if (state.filePush) pumpUpload()
+      return
+    }
+    if (m.t === 'filepush.end.ok') { return }
+    if (m.t === 'error' && (m.cmd === 'filepush.begin' || m.cmd === 'filepush.end')) {
+      failUpload(m.msg || '上传被拒绝')
+      return
+    }
   }
 
   function connectWS(port, onText, onBinary, onDead) {
@@ -1504,8 +1848,8 @@
   }
 
   /* ===================== 控制指令 ===================== */
-  // 未连接/未配对时本地拦截：拖拽会按 40ms 连续切片，若不拦截会把后端
-  // 「未连接」「等待配对」错误刷满日志。v1.1.0 起新版手机端配对通过前
+  // 未连接/未配对时本地拦截：拖拽松手就会下发一条滑动指令，不拦截的话
+  // 会把后端「未连接」「等待配对」错误刷满日志。v1.1.0 起新版手机端配对通过前
   // 不执行任何控制帧，因此这里按 paired 一并门控。
   function requireOnline() {
     if (!state.connected) {
@@ -1575,13 +1919,14 @@
     if (!requireOnline()) return
     sendControl('control.tap', { x: x, y: y }).catch(function (e) { log('err', '点击失败: ' + e.message) })
   }
+  // 滑动：一次拖拽 = 一条 SWIPE 帧。手机端一条 SWIPE 对应 dispatchGesture 的一次完整
+  // 手势（按下→移动→抬起），所以不能再「按住期间按 40ms 切片连发」——切片既短于系统
+  // touch slop，又会被手势串行机制丢弃，表现就是划不动。切片时代加的 swipeBusy 节流
+  // 也一并去掉：一次松手只发一条，不需要节流，留着反而可能吞掉用户的滑动。
   function sendSwipe(x1, y1, x2, y2, dur) {
     if (!requireOnline()) return
-    if (state.swipeBusy) return
-    state.swipeBusy = true
     sendControl('control.swipe', { x1: x1, y1: y1, x2: x2, y2: y2, durationMs: dur })
       .catch(function (e) { log('err', '滑动失败: ' + e.message) })
-      .then(function () { state.swipeBusy = false })
   }
   function sendKey(code) {
     if (!requireOnline()) return
@@ -1611,45 +1956,78 @@
     return { x: Math.round(nx * state.screenW), y: Math.round(ny * state.screenH) }
   }
 
-  var DRAG_THRESHOLD = 6
+  // 拖拽 = 松手时整段发一次滑动。
+  //
+  // v1.2.0 及以前是「每 40ms 切一片、每片单独发一个 40ms 短滑动」想做出跟手效果，但手机上
+  // 一条 SWIPE 帧对应的是 dispatchGesture 的一次完整手势（按下→移动→抬起），于是：
+  //   1) 每片只移动十几像素，全部低于系统 touch slop（约 8dp≈20px），列表/翻页视图一律不滚；
+  //   2) 每片都是一次独立的 down/up，slop 被反复重置，连起来也滚不动；
+  //   3) 手势串行执行，40ms 一片恰好卡在上一片还没结束时，dispatchGesture 直接返回 false，
+  //      而我们传的是空回调，失败完全静默 —— 表现就是「点了没反应，划不动」。
+  // 所以改为：拖动过程只本地记轨迹（侧栏给个「拖动中」反馈），松手时把起点→终点作为
+  // 一次滑动发出，时长取真实拖动时长（夹在 120–600ms），系统才认得出这是一次滑动/甩动。
+  var DRAG_THRESHOLD_CSS = 8   // 判定「拖动而非点击」的位移阈值（CSS 像素，与缩放无关）
+  var DRAG_MIN_PHONE = 12      // 松手时位移仍小于该值则按点击处理（手机像素）
   els.canvas.addEventListener('mousedown', function (ev) {
     if (ev.button !== 0) return
     var p = toPhone(ev)
     if (!p) return
     ev.preventDefault()
     els.canvas.classList.add('dragging')
-    state.drag = { x: p.x, y: p.y, sx: p.x, sy: p.y, moved: false, t: Date.now() }
+    var sr = els.stage.getBoundingClientRect()
+    state.drag = {
+      sx: p.x, sy: p.y, x: p.x, y: p.y, moved: false,
+      t: Date.now(), cx: ev.clientX, cy: ev.clientY,
+      rect: sr, lx: ev.clientX - sr.left, ly: ev.clientY - sr.top
+    }
   })
   els.canvas.addEventListener('mousemove', function (ev) {
     var d = state.drag
     if (!d) return
     var p = toPhone(ev)
     if (!p) return
-    var dist = Math.abs(p.x - d.sx) + Math.abs(p.y - d.sy)
-    if (!d.moved && dist < DRAG_THRESHOLD) return
-    d.moved = true
-    var now = Date.now()
-    if (now - state.lastSwipeAt < 40) return
-    state.lastSwipeAt = now
-    sendSwipe(d.x, d.y, p.x, p.y, 40)
+    if (!d.moved) {
+      var cdist = Math.abs(ev.clientX - d.cx) + Math.abs(ev.clientY - d.cy)
+      if (cdist < DRAG_THRESHOLD_CSS) return
+      d.moved = true
+    }
     d.x = p.x; d.y = p.y
+    // 轨迹虚线：纯视觉反馈，告诉用户 PC 端已捕获这段拖动（指令仍要等松手）
+    var lx = ev.clientX - d.rect.left, ly = ev.clientY - d.rect.top
+    els.dragLine.setAttribute('x1', d.lx); els.dragLine.setAttribute('y1', d.ly)
+    els.dragLine.setAttribute('x2', lx);   els.dragLine.setAttribute('y2', ly)
+    els.dragDot.setAttribute('cx', lx);    els.dragDot.setAttribute('cy', ly)
+    els.dragTrail.classList.add('on')
+    // 拖动中只做即时反馈，真正的指令在松手时下发
+    els.mLast.textContent = '拖动 ' + d.sx + ',' + d.sy + ' → ' + d.x + ',' + d.y
+    els.mLast.className = 'v off'
   })
-  function endDrag(ev) {
+  function endDrag() {
     var d = state.drag
     state.drag = null
     els.canvas.classList.remove('dragging')
+    els.dragTrail.classList.remove('on')
     if (!d) return
     var held = Date.now() - d.t
-    if (d.moved) return
-    if (held > 650) {
+    if (d.moved && Math.abs(d.x - d.sx) + Math.abs(d.y - d.sy) >= DRAG_MIN_PHONE) {
+      sendSwipe(d.sx, d.sy, d.x, d.y, Math.max(120, Math.min(600, held)))
+      return
+    }
+    if (!d.moved && held > 650) {
       sendSwipe(d.sx, d.sy, d.sx, d.sy, Math.min(1200, held)) // 原地长按
       log('info', '长按 ' + d.sx + ',' + d.sy + '（' + held + 'ms）')
       return
     }
     sendTap(d.sx, d.sy)
   }
-  els.canvas.addEventListener('mouseup', endDrag)
-  els.canvas.addEventListener('mouseleave', function () { state.drag = null; els.canvas.classList.remove('dragging') })
+  // 松手位置可能在画布之外（拖到侧栏或窗口外），所以挂 window：
+  // 画布内的 mouseup 会冒泡到这里，同一处收尾，不会丢拖动。
+  window.addEventListener('mouseup', endDrag)
+  window.addEventListener('blur', function () {
+    state.drag = null
+    els.canvas.classList.remove('dragging')
+    els.dragTrail.classList.remove('on')
+  })
   els.canvas.addEventListener('contextmenu', function (ev) { ev.preventDefault(); sendKey(4) })
   els.canvas.addEventListener('wheel', function (ev) {
     if (!state.screenW) return
@@ -2073,6 +2451,7 @@
     var tag = (ev.target && ev.target.tagName || '').toLowerCase()
     if (tag === 'input' || tag === 'textarea') return
     if (ev.key === 'Escape') {
+      if (!els.clipDlg.classList.contains('hidden')) { ev.preventDefault(); closeClipDlg(); return }
       if (els.suggest.classList.contains('open')) { ev.preventDefault(); closeSuggest(); return }
       if (!els.filePanel.classList.contains('hidden')) { ev.preventDefault(); closeFilePanel(); return }
       if (!els.helpPop.classList.contains('hidden')) { ev.preventDefault(); els.helpPop.classList.add('hidden'); return }

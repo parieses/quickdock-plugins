@@ -1468,7 +1468,7 @@ native 侧的关键设计（改之前先看 `qdlog.go` 顶部注释）：
 | app-manager | 本机已安装应用一览：名称 / 版本 / 发布者 / 占用体积 / 安装日期 / 安装范围（所有用户 / 当前用户 / 32 位），支持搜索与按体积、安装日期排序。MSI 程序可直接唤起卸载，自带卸载器的程序提供命令复制、安装目录直达与系统卸载页入口。 |
 | breach-check | 基于 Have I Been Pwned 检查密码是否出现在泄露库中（k-匿名，密码不出本机）；邮箱泄露需自备 API Key。 |
 | color-converter | 颜色格式互转（HEX / RGB / HSL）+ 屏幕取色，支持常见英文色名识别 |
-| control-receiver | 手机屏幕镜像接收端 + 控制端：连接 QuestPhoneMirror 发送端实时显示画面，鼠标点击/拖拽反向操控真机（配套手机端发送端见 https://github.com/parieses/QuestPhoneMirror） |
+| control-receiver | 手机屏幕镜像接收端 + 控制端：连接 QuestPhoneMirror 发送端实时显示画面，鼠标点击/拖拽反向操控真机；支持加密通道、剪贴板双向同步、文件上传手机与投屏统计（配套手机端发送端见 https://github.com/parieses/QuestPhoneMirror） |
 | database | 轻量数据库连接与查询工具：MySQL / SQLite / Redis 连接管理、SQL 与 Redis 命令执行、库表浏览器（库→表/视图→字段、Redis 键树）、Redis 键类型感知详情与增删改（string/hash/list/set/zset）、TTL 与 DB 管理、结果网格内联行编辑、智能列筛选（运算符/区间/多值/判空，回车或失焦即滤）、勾选批量删除（支持全选匹配筛选的行）。数据独立存储。 |
 | dir-buster | 对指定目标 URL 用内置常见路径字典进行轻量探测（自用）：并发受限、可配扩展名，采用异步会话模型实时返回命中的非 404 路径。仅探测你授权的目标，内置字典、不递归 |
 | disk-analyzer | 可视化磁盘空间占用分析工具，类似 SpaceSniffer，支持树图展示目录结构 |

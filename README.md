@@ -133,7 +133,7 @@
 |------|------|------|
 | [IP 归属地](./geoip/) | 1.0.4 | 查询 IP 的地理位置、运营商、时区与坐标，支持指定 IP 或查询本机公网 IP。 |
 | [WebSocket 测试](./ws-tester/) | 1.0.5 | 连接 ws/wss 服务，发送消息并实时查看返回的帧，支持多连接与历史 |
-| [qpm接收端](./control-receiver/) | 1.1.0 | 手机屏幕镜像接收端 + 控制端：连接 QuestPhoneMirror 发送端实时显示画面，鼠标点击/拖拽反向操控真机（配套手机端发送端见 https://github.com/parieses/QuestPhoneMirror） |
+| [qpm接收端](./control-receiver/) | 1.2.1 | 手机屏幕镜像接收端 + 控制端：连接 QuestPhoneMirror 发送端实时显示画面，鼠标点击/拖拽反向操控真机；支持加密通道、剪贴板双向同步、文件上传手机与投屏统计（配套手机端发送端见 https://github.com/parieses/QuestPhoneMirror） |
 | [子域名枚举](./subdomain-enum/) | 1.0.3 | 被动收集域名子域名（证书透明日志 CertSpotter / crt.sh + HackerTarget + urlscan + rapiddns + AlienVault OTX），可选并发解析 A 记录筛选存活 |
 | [实时流量监控](./net-traffic/) | 1.0.1 | 每秒采样的本机流量监控：实时上下行速率与 5 分钟曲线、按网卡拆分（自动合并同一网卡的多个 NDIS 绑定，不重复计数）、本次会话累计与峰值，并列出 IPv4 连接对应的进程、本地/远端地址与状态。 |
 | [目录探测](./dir-buster/) | 1.0.3 | 对指定目标 URL 用内置常见路径字典进行轻量探测（自用）：并发受限、可配扩展名，采用异步会话模型实时返回命中的非 404 路径。仅探测你授权的目标，内置字典、不递归 |

@@ -165,6 +165,14 @@ const (
 	TypeFileError   byte = 0x1A // 手机→本插件  body=UTF-8 错误信息
 	TypeHello       byte = 0x1B // 本插件→手机  body=UTF-8 设备名（建连后立即报送，供手机端「连接管理」展示）
 	TypeReject      byte = 0x1C // 手机→本插件  body=UTF-8 拒绝原因（如未在白名单），发送后即断开
+
+	// v1.2.0 起对齐 QPM 新版 Proto.kt：加密通道 + 剪贴板同步 + 投屏统计 + 文件推送。
+	TypeClipboard    byte = 0x1D // 双向 body=UTF-8 文本（手机→本插件=写入 PC 剪贴板；本插件→手机=写入手机剪贴板）
+	TypeKeyExchange  byte = 0x1E // 双向 body=X.509 编码的 EC(secp256r1) 临时公钥；连接后最先发送，此后帧体全部 AES-GCM 加密
+	TypeStats        byte = 0x1F // 手机→本插件 body=[fps:u16][bitrateBps:u32][w:u16][h:u16][dropped:u16]，每秒广播
+	TypeFilePushReq  byte = 0x21 // 本插件→手机 body=[total:u64][path UTF-8]，path 为手机侧目标文件名
+	TypeFilePushData byte = 0x22 // 本插件→手机 body=[offset:u64][flags:u8(eof)][chunk]，64KB 分片
+	TypeFilePushRes  byte = 0x23 // 手机→本插件 body=[ok:u8][msg UTF-8]，ok=1 时 msg 为手机侧保存路径
 )
 
 const (
@@ -223,6 +231,23 @@ func writeFrame(w io.Writer, t byte, body []byte) error {
 	}
 	_, err := w.Write(body)
 	return err
+}
+
+// frameWire 组一整帧的 wire 字节（[type:u8][length:u32 LE][body]），
+// 供加密通道整体 seal（只加密 body，头保持明文）。
+func frameWire(t byte, body []byte) []byte {
+	out := make([]byte, 5+len(body))
+	out[0] = t
+	binary.LittleEndian.PutUint32(out[1:5], uint32(len(body)))
+	copy(out[5:], body)
+	return out
+}
+
+// pendingFrame 密钥交换握手期预读到的首帧（旧版手机不回 KE 时的回落帧），
+// 由 readLoop 在主循环前优先处理，避免被 bufio 缓冲吞掉。
+type pendingFrame struct {
+	typ  byte
+	body []byte
 }
 
 func encodeTap(x, y float32) []byte {
@@ -330,6 +355,68 @@ func decodeFileChunk(body []byte) (fileChunk, error) {
 		c.chunk = body[17:]
 	}
 	return c, nil
+}
+
+// ---------- v1.2.0：剪贴板 / 统计 / 文件推送 ----------
+
+// encodeClipboard 剪贴板文本（双向，UTF-8）。
+func encodeClipboard(text string) []byte { return []byte(text) }
+
+// phoneStats 手机端每秒广播的投屏统计（STATS 0x1F）。
+type phoneStats struct {
+	FPS     int `json:"fps"`
+	Bitrate int `json:"bitrate"` // bps
+	W       int `json:"w"`
+	H       int `json:"h"`
+	Dropped int `json:"dropped"`
+}
+
+func decodeStats(body []byte) (phoneStats, error) {
+	if len(body) < 12 {
+		return phoneStats{}, fmt.Errorf("STATS 帧过短（%d 字节）", len(body))
+	}
+	return phoneStats{
+		FPS:     int(binary.LittleEndian.Uint16(body[0:2])),
+		Bitrate: int(binary.LittleEndian.Uint32(body[2:6])),
+		W:       int(binary.LittleEndian.Uint16(body[6:8])),
+		H:       int(binary.LittleEndian.Uint16(body[8:10])),
+		Dropped: int(binary.LittleEndian.Uint16(body[10:12])),
+	}, nil
+}
+
+// encodeFilePushReq [total:u64][path UTF-8]；path 为手机侧目标文件名
+// （与 QPM ReceiverActivity.pushFile 的 DISPLAY_NAME 语义一致，
+// 手机端 FileRelay.resolveWritable 会把它约束到共享存储根目录内）。
+func encodeFilePushReq(total int64, path string) []byte {
+	raw := []byte(path)
+	out := make([]byte, 8+len(raw))
+	binary.LittleEndian.PutUint64(out[0:8], uint64(total))
+	copy(out[8:], raw)
+	return out
+}
+
+// encodeFilePushData [offset:u64][flags:u8(eof)][chunk]。
+func encodeFilePushData(offset int64, eof bool, chunk []byte) []byte {
+	out := make([]byte, 9+len(chunk))
+	binary.LittleEndian.PutUint64(out[0:8], uint64(offset))
+	if eof {
+		out[8] = 1
+	}
+	copy(out[9:], chunk)
+	return out
+}
+
+// decodeFilePushRes [ok:u8][msg UTF-8]；ok=1 时 msg 为手机侧保存路径。
+func decodeFilePushRes(body []byte) (bool, string) {
+	if len(body) == 0 {
+		return false, ""
+	}
+	ok := body[0] != 0
+	msg := ""
+	if len(body) > 1 {
+		msg = string(body[1:])
+	}
+	return ok, msg
 }
 
 // ============================================================ H.264 参数集处理
@@ -620,7 +707,9 @@ func (c *wsClient) readLoop() {
 		}
 		switch op {
 		case wsOpText, wsOpBinary:
-			if c.hub.onText != nil {
+			if op == wsOpBinary && c.hub.onBinary != nil {
+				c.hub.onBinary(c, payload)
+			} else if c.hub.onText != nil {
 				c.hub.onText(c, payload)
 			}
 		case wsOpPing:
@@ -667,6 +756,9 @@ func (c *wsClient) close() {
 		close(c.done)
 		_ = c.conn.Close()
 		c.hub.remove(c)
+		if c.hub.onDetach != nil {
+			c.hub.onDetach(c)
+		}
 	})
 }
 
@@ -683,6 +775,8 @@ type hub struct {
 	queue      int
 	keepLatest bool
 	onText     func(c *wsClient, payload []byte)
+	onBinary   func(c *wsClient, payload []byte) // 二进制消息（文件上传数据分片）
+	onDetach   func(c *wsClient)                 // 客户端断开（清理其发起的文件上传）
 	onAttach   func(c *wsClient)
 
 	mu      sync.Mutex
@@ -1061,14 +1155,26 @@ type app struct {
 	devices      []Device
 
 	// 配对（v1.1.0）：手机端配对通过前不下发画面、不执行控制/文件请求
-	paired   bool   // 本次连接是否已配对（含旧版手机无配对协议的兼容放行）
-	pairCode string // 本次连接使用的配对码（空=免密直连）
-	pairErr  string // 最近一次配对失败的原因（透传手机端）
+	paired    bool   // 本次连接是否已配对（含旧版手机无配对协议的兼容放行）
+	pairCode  string // 本次连接使用的配对码（空=免密直连）
+	pairErr   string // 最近一次配对失败的原因（透传手机端）
 	rejectErr string // 手机端 REJECT 的拒绝原因（白名单未勾选等，非空即被主动拒绝）
 
 	// 文件浏览/下载（v1.1.0）
 	listPending chan listOutcome // 等待中的 file.list（nil=无）
-	fileDL      *fileDownload   // 进行中的下载（nil=无）
+	fileDL      *fileDownload    // 进行中的下载（nil=无）
+
+	// 加密通道（v1.2.0）：nil=本连接未尝试加密；armed 见 sec.isArmed()
+	sec          *secureChannel
+	crypto       bool          // 本次连接是否已建立加密通道（状态展示用）
+	pendingFrame *pendingFrame // 握手期预读的首帧（readLoop 优先处理）
+
+	// 手机端投屏统计（v1.2.0，STATS 0x1F 每秒广播）
+	stats    phoneStats
+	hasStats bool
+
+	// 文件推送（v1.2.0，PC → 手机共享存储）
+	filePush *filePushState
 
 	// 接收端宣告 beacon（QPMR）：让手机端「连接管理」在连接前就能扫描到本机
 	beaconStop chan struct{}
@@ -1127,6 +1233,20 @@ type fileDownload struct {
 	discard  bool     // 用户取消后：继续丢弃后续分片直到 eof/错误
 }
 
+// filePushState 进行中的文件推送（v1.2.0，PC → 手机共享存储）。
+// 所有字段读写都在 push 协程 + a.mu 保护下进行。
+type filePushState struct {
+	path     string // 本机文件路径（浏览器上传时为空）
+	name     string // 发给手机端的名字
+	total    int64  // 文件总大小
+	sent     int64  // 已发送字节
+	lastPush int64  // 上次进度推送时的 sent（限频）
+	lastPct  int    // 上次进度推送时的百分比（限频）
+	cancel   chan struct{}
+	owner    *wsClient // 二进制分片上传的发起客户端（本地路径推送为 nil）
+	ended    bool      // 已发出 eof（等待/已收到 FILE_PUSH_RES）
+}
+
 var appState = &app{}
 
 func (a *app) logf(level, format string, args ...interface{}) {
@@ -1176,6 +1296,14 @@ func (a *app) snapshotLocked() map[string]interface{} {
 		"lastErr":      a.lastErr,
 		"avcC":         a.avcCLocked(),
 		"fileDl":       a.fileDLLocked(),
+		"crypto":       a.crypto,
+		"filePush":     a.filePushLocked(),
+	}
+	if a.hasStats {
+		st["stats"] = map[string]interface{}{
+			"fps": a.stats.FPS, "bitrate": a.stats.Bitrate,
+			"w": a.stats.W, "h": a.stats.H, "dropped": a.stats.Dropped,
+		}
 	}
 	if a.wsCtlPort != 0 {
 		st["wsControlPort"] = a.wsCtlPort
@@ -1217,6 +1345,25 @@ func (a *app) fileDLLocked() interface{} {
 		"received": d.received,
 		"pct":      pct,
 		"dst":      d.dstPath,
+	}
+}
+
+// filePushLocked 推送进度快照（nil=无进行中推送）。调用方须持有 a.mu。
+func (a *app) filePushLocked() interface{} {
+	st := a.filePush
+	if st == nil {
+		return nil
+	}
+	pct := 0
+	if st.total > 0 {
+		pct = int(st.sent * 100 / st.total)
+	}
+	return map[string]interface{}{
+		"path":  st.path,
+		"name":  st.name,
+		"total": st.total,
+		"sent":  st.sent,
+		"pct":   pct,
 	}
 }
 
@@ -1350,9 +1497,57 @@ func (a *app) connect(host string, port int, pairCode string) error {
 	a.watchGen++
 	a.mu.Unlock()
 
-	go a.readLoop(conn)
-	// 先报送设备名（HELLO）：手机端「连接管理」据此展示是谁，无论是否配对。
-	// 与 QPM 协议仓 MirrorClient.connectTo 的握手顺序一致（HELLO → PAIR）。
+	// —— 密钥交换握手（v1.2.0，对齐 QPM Crypto.kt / SecureChannel.kt）——
+	// 手机端发送器要求接收端首帧必须是 KEY_EXCHANGE，否则整条连接回落明文。
+	// 顺序：本方 KE（明文）→ 预读对端 KE（1.5s 超时）→ 武装 → HELLO → PAIR。
+	// 握手与后续读共用同一个 bufio.Reader，预读帧不会丢。
+	reader := bufio.NewReaderSize(conn, 1<<20)
+	sec := &secureChannel{}
+	kp, kerr := newECKeyPair()
+	if kerr != nil {
+		a.logf("warn", "生成加密密钥对失败，使用明文连接：%v", kerr)
+	} else {
+		a.writeMu.Lock()
+		_ = conn.SetWriteDeadline(time.Now().Add(3 * time.Second))
+		werr := writeFrame(conn, TypeKeyExchange, kp.spki)
+		_ = conn.SetWriteDeadline(time.Time{})
+		a.writeMu.Unlock()
+		if werr != nil {
+			a.logf("warn", "报送密钥交换帧失败，回退明文连接：%v", werr)
+		} else {
+			// 预读对端 KE：超时 / 非 KE 都回落明文（旧版手机无此协议）
+			_ = conn.SetReadDeadline(time.Now().Add(1500 * time.Millisecond))
+			typ, body, rerr := readFrame(reader)
+			_ = conn.SetReadDeadline(time.Time{})
+			switch {
+			case rerr != nil:
+				a.logf("info", "未收到对端密钥交换（%v），回退明文通道（旧版手机端或对方未启用加密）", rerr)
+			case typ != TypeKeyExchange:
+				a.mu.Lock()
+				a.pendingFrame = &pendingFrame{typ: typ, body: body}
+				a.mu.Unlock()
+				a.logf("info", "对端不支持加密，回退明文通道")
+			default:
+				key, derr := deriveSessionKey(kp, body)
+				if derr != nil {
+					a.logf("warn", "密钥派生失败，回退明文通道：%v", derr)
+				} else {
+					sec.arm(key)
+					a.mu.Lock()
+					a.crypto = true
+					a.mu.Unlock()
+					a.logf("ok", "加密通道已建立（ECDH secp256r1 → SHA-256 → AES-256-GCM）")
+				}
+			}
+		}
+	}
+	a.mu.Lock()
+	a.sec = sec
+	a.mu.Unlock()
+
+	go a.readLoop(conn, reader)
+	// 报送设备名（HELLO）：手机端「连接管理」据此展示是谁，无论是否配对。
+	// 已武装时自动被 AES-GCM 加密（KE 帧之后 HELLO 占加密计数器 0，与手机端预期一致）。
 	if err := a.sendFrame(TypeHello, encodeHello(receiverDeviceName())); err != nil {
 		a.logf("warn", "报送设备名失败：%v", err)
 	}
@@ -1411,6 +1606,10 @@ func (a *app) disconnect() {
 	a.connected = false
 	a.paired = false
 	a.pairErr = ""
+	a.sec = nil
+	a.crypto = false
+	a.pendingFrame = nil
+	a.hasStats = false
 	a.watchGen++ // 让在途的首帧看门狗失效
 	a.mu.Unlock()
 	a.failPendingFiles("连接已断开，文件操作中断")
@@ -1430,6 +1629,8 @@ func (a *app) failPendingFiles(reason string) {
 	a.listPending = nil
 	dl := a.fileDL
 	a.fileDL = nil
+	push := a.filePush
+	a.filePush = nil
 	a.mu.Unlock()
 	if wait != nil {
 		wait <- listOutcome{err: reason}
@@ -1444,10 +1645,21 @@ func (a *app) failPendingFiles(reason string) {
 			"path": dl.path, "name": dl.name, "err": reason,
 		})
 	}
+	if push != nil {
+		select {
+		case <-push.cancel:
+		default:
+			close(push.cancel)
+		}
+		a.ctlHub.broadcastJSON(map[string]interface{}{
+			"t": "filepush", "phase": "done", "ok": false,
+			"name": push.name, "path": push.path, "err": reason,
+		})
+	}
 }
 
 // readLoop 持续解析手机发来的帧，直到连接断开。
-func (a *app) readLoop(conn net.Conn) {
+func (a *app) readLoop(conn net.Conn, reader *bufio.Reader) {
 	defer func() {
 		if r := recover(); r != nil {
 			qdLogPanic("readLoop", r)
@@ -1464,14 +1676,35 @@ func (a *app) readLoop(conn net.Conn) {
 		a.broadcastStatus()
 	}()
 
-	reader := bufio.NewReaderSize(conn, 1<<20)
+	// 握手期预读的首帧（旧版手机不回 KE 时的回落帧）优先处理
+	a.mu.Lock()
+	pf := a.pendingFrame
+	a.pendingFrame = nil
+	sec := a.sec
+	a.mu.Unlock()
+	if pf != nil {
+		a.onPhoneFrame(pf.typ, pf.body)
+	}
+
 	for {
 		typ, body, err := readFrame(reader)
 		if err != nil {
+			if sec != nil && sec.isArmed() && !errors.Is(err, io.EOF) {
+				// 加密通道解密计数错位/被破坏：GCM tag 校验失败会走到这里
+				hostLog("warn", "加密通道读帧失败（可能对端计数错位）: %v", err)
+			}
 			if !errors.Is(err, io.EOF) {
 				hostLog("warn", "读帧结束: %v", err)
 			}
 			return
+		}
+		if sec != nil {
+			typ, body, err = sec.open(typ, body)
+			if err != nil {
+				a.logf("error", "加密通道解密失败（%v），断开连接", err)
+				a.disconnect()
+				return
+			}
 		}
 		a.onPhoneFrame(typ, body)
 	}
@@ -1618,6 +1851,32 @@ func (a *app) onPhoneFrame(typ byte, body []byte) {
 
 	case TypeFileError:
 		a.onFileError(string(body))
+
+	case TypeStats:
+		// 手机端每秒广播的投屏统计（v1.2.0）
+		s, err := decodeStats(body)
+		if err != nil {
+			hostLog("warn", "%v", err)
+			return
+		}
+		a.mu.Lock()
+		a.stats = s
+		a.hasStats = true
+		a.mu.Unlock()
+		a.ctlHub.broadcastJSON(map[string]interface{}{
+			"t": "stats", "fps": s.FPS, "bitrate": s.Bitrate,
+			"w": s.W, "h": s.H, "dropped": s.Dropped,
+		})
+
+	case TypeClipboard:
+		// 手机端同步剪贴板文本过来（v1.2.0）：透给前端写入 PC 剪贴板
+		a.ctlHub.broadcastJSON(map[string]interface{}{
+			"t": "clipboard", "text": string(body),
+		})
+
+	case TypeFilePushRes:
+		ok, msg := decodeFilePushRes(body)
+		a.onFilePushRes(ok, msg)
 	}
 }
 
@@ -1716,17 +1975,29 @@ func (a *app) sendPair(code string) error {
 }
 
 // sendFrame 裸写一帧到手机连接（配对/文件请求用，不带 paired 门控）。
+// 已建立加密通道时自动 seal（seal 与写出在同一把 writeMu 内原子完成，
+// 保证 GCM 计数器自增顺序与 wire 顺序一致）。
 func (a *app) sendFrame(typ byte, body []byte) error {
 	a.mu.Lock()
 	conn := a.conn
+	sec := a.sec
 	a.mu.Unlock()
 	if conn == nil {
 		return errors.New("未连接手机发送端")
 	}
+	wire := frameWire(typ, body)
+	if sec != nil {
+		wire = sec.seal(wire)
+	}
+	return a.writeWire(conn, wire)
+}
+
+// writeWire 把整帧 wire 字节写进手机连接（写串行化 + 3 秒写超时）。
+func (a *app) writeWire(conn net.Conn, wire []byte) error {
 	a.writeMu.Lock()
 	defer a.writeMu.Unlock()
 	_ = conn.SetWriteDeadline(time.Now().Add(3 * time.Second))
-	if err := writeFrame(conn, typ, body); err != nil {
+	if _, err := conn.Write(wire); err != nil {
 		_ = conn.SetWriteDeadline(time.Time{})
 		return fmt.Errorf("发送失败: %w", err)
 	}
@@ -1741,6 +2012,7 @@ func (a *app) sendControl(typ byte, body []byte) error {
 	a.mu.Lock()
 	conn := a.conn
 	paired := a.paired
+	sec := a.sec
 	a.mu.Unlock()
 	if conn == nil {
 		return errors.New("未连接手机发送端，请先点击「启动」")
@@ -1748,15 +2020,11 @@ func (a *app) sendControl(typ byte, body []byte) error {
 	if !paired {
 		return errors.New("等待配对：请先输入手机端显示的配对码完成配对")
 	}
-	a.writeMu.Lock()
-	defer a.writeMu.Unlock()
-	_ = conn.SetWriteDeadline(time.Now().Add(3 * time.Second))
-	if err := writeFrame(conn, typ, body); err != nil {
-		_ = conn.SetWriteDeadline(time.Time{})
-		return fmt.Errorf("控制指令发送失败: %w", err)
+	wire := frameWire(typ, body)
+	if sec != nil {
+		wire = sec.seal(wire)
 	}
-	_ = conn.SetWriteDeadline(time.Time{})
-	return nil
+	return a.writeWire(conn, wire)
 }
 
 func (a *app) tap(x, y float32) error { return a.sendControl(TypeTap, encodeTap(x, y)) }
@@ -1945,6 +2213,389 @@ func (a *app) handleFileReveal() (interface{}, error) {
 	return map[string]interface{}{"ok": true, "dir": dir, "opened": false}, nil
 }
 
+// ---------- 剪贴板同步（v1.2.0，CLIPBOARD 0x1D） ----------
+
+// handleClipboardSend 把文本发送到手机剪贴板（手机端 CastService 写入系统剪贴板）。
+// 与 QPM ReceiverActivity.showClipboardDialog 的正按钮语义一致。
+func (a *app) handleClipboardSend(input map[string]interface{}) (interface{}, error) {
+	text := strings.TrimSpace(strFrom(input, "text"))
+	if text == "" {
+		return nil, errors.New("文本为空")
+	}
+	a.mu.Lock()
+	connected := a.connected
+	paired := a.paired
+	a.mu.Unlock()
+	if !connected {
+		return nil, errors.New("未连接手机发送端，请先「启动接收」")
+	}
+	if !paired {
+		return nil, errors.New("尚未配对：请先完成配对再同步剪贴板")
+	}
+	if err := a.sendFrame(TypeClipboard, encodeClipboard(text)); err != nil {
+		return nil, fmt.Errorf("发送剪贴板失败: %w", err)
+	}
+	a.logf("info", "已发送剪贴板文本到手机（%d 字符）", len([]rune(text)))
+	return map[string]interface{}{"ok": true, "sent": true, "chars": len([]rune(text))}, nil
+}
+
+// ---------- 文件推送（v1.2.0，PC → 手机共享存储，0x21/0x22/0x23） ----------
+
+// handleFilePush 把本机文件推送到手机共享存储。
+// 异步：命令立即返回，进度/结果经控制通道广播 {"t":"filepush",...}。
+// 手机端按 64KB 分片落盘（FileRelay.resolveWritable 约束在共享存储根目录内），
+// 完成后回 FILE_PUSH_RES（ok=1 时 msg 为手机侧保存路径）。
+func (a *app) handleFilePush(input map[string]interface{}) (interface{}, error) {
+	path := strings.TrimSpace(strFrom(input, "path"))
+	if path == "" {
+		return nil, errors.New("路径为空")
+	}
+	a.mu.Lock()
+	if !a.connected || !a.paired {
+		a.mu.Unlock()
+		return nil, errors.New("尚未配对：请先完成配对再推送文件")
+	}
+	if a.filePush != nil {
+		cur := a.filePush
+		a.mu.Unlock()
+		return nil, fmt.Errorf("正在推送 %s，请先等待或取消", cur.name)
+	}
+	a.mu.Unlock()
+
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("打开文件失败: %w", err)
+	}
+	st, err := f.Stat()
+	if err != nil || st.IsDir() {
+		_ = f.Close()
+		return nil, errors.New("无法读取文件（不存在或是目录）")
+	}
+	name := filepath.Base(path)
+	if name == "" || name == "." || name == ".." || name == "/" {
+		_ = f.Close()
+		return nil, fmt.Errorf("无法从路径解析文件名：%s", path)
+	}
+	st2 := &filePushState{
+		path:   path,
+		name:   name,
+		total:  st.Size(),
+		cancel: make(chan struct{}),
+	}
+	a.mu.Lock()
+	a.filePush = st2
+	a.mu.Unlock()
+
+	go a.pushFile(st2, f)
+	a.logf("info", "开始推送文件 %s → 手机共享存储（%d 字节）", path, st2.total)
+	a.broadcastStatus()
+	return map[string]interface{}{
+		"ok": true, "started": true, "path": path, "name": name, "total": st2.total,
+	}, nil
+}
+
+// pushFile 按 64KB 分片发送 FILE_PUSH_REQ/DATA；发送完成后等待手机端 FILE_PUSH_RES。
+// eof 语义与 QPM ReceiverActivity.pushFile 一致：短读即最后一块；
+// 文件大小恰为分片整数倍时补一个空 eof 帧。
+func (a *app) pushFile(st *filePushState, f *os.File) {
+	defer func() { _ = f.Close() }()
+
+	if err := a.sendFrame(TypeFilePushReq, encodeFilePushReq(st.total, st.name)); err != nil {
+		a.finishFilePush(st, false, "发送推送请求失败: "+err.Error())
+		return
+	}
+	buf := make([]byte, 64<<10)
+	var offset int64
+	for {
+		select {
+		case <-st.cancel:
+			a.finishFilePush(st, false, "已取消")
+			return
+		default:
+		}
+		n, rerr := f.Read(buf)
+		if n > 0 {
+			eof := n < len(buf) // 短读 = 文件末尾
+			if err := a.sendFrame(TypeFilePushData, encodeFilePushData(offset, eof, buf[:n])); err != nil {
+				a.finishFilePush(st, false, "发送数据失败: "+err.Error())
+				return
+			}
+			offset += int64(n)
+			a.mu.Lock()
+			st.sent = offset
+			a.mu.Unlock()
+			a.pushFileProgress(st)
+			if eof {
+				return // 等 FILE_PUSH_RES 收尾
+			}
+		}
+		if rerr != nil {
+			if rerr == io.EOF {
+				// 完整读满最后一块：补一个空 eof 帧让手机端收尾
+				if err := a.sendFrame(TypeFilePushData, encodeFilePushData(offset, true, nil)); err != nil {
+					a.finishFilePush(st, false, "发送结束帧失败: "+err.Error())
+					return
+				}
+				return // 等 FILE_PUSH_RES 收尾
+			}
+			a.finishFilePush(st, false, "读取文件失败: "+rerr.Error())
+			return
+		}
+	}
+}
+
+// pushFileProgress 限频广播推送进度（每 256KB 或每 5% 一次）。
+func (a *app) pushFileProgress(st *filePushState) {
+	a.mu.Lock()
+	push := st.sent-st.lastPush >= 256<<10 ||
+		(st.total > 0 && int(st.sent*100/st.total)-st.lastPct >= 5)
+	if push {
+		st.lastPush = st.sent
+		if st.total > 0 {
+			st.lastPct = int(st.sent * 100 / st.total)
+		}
+	}
+	msg := a.filePushMsgLocked(st)
+	a.mu.Unlock()
+	if push {
+		a.ctlHub.broadcastJSON(msg)
+	}
+}
+
+// filePushMsgLocked 推送进度/结果快照（调用方须持有 a.mu）。
+func (a *app) filePushMsgLocked(st *filePushState) map[string]interface{} {
+	pct := 0
+	if st.total > 0 {
+		pct = int(st.sent * 100 / st.total)
+	}
+	return map[string]interface{}{
+		"t": "filepush", "phase": "progress",
+		"name": st.name, "path": st.path,
+		"total": st.total, "sent": st.sent, "pct": pct,
+	}
+}
+
+// onFilePushRes 手机端推送结果（ok=1 时 msg 为手机侧保存路径）。
+func (a *app) onFilePushRes(ok bool, msg string) {
+	a.mu.Lock()
+	st := a.filePush
+	a.mu.Unlock()
+	if st == nil {
+		return // 无进行中的推送：丢弃（取消后手机端补发的结果）
+	}
+	if ok {
+		a.finishFilePush(st, true, msg)
+		a.logf("ok", "文件推送完成：%s → 手机 %s", st.path, msg)
+	} else {
+		if msg == "" {
+			msg = "手机端推送失败"
+		}
+		a.finishFilePush(st, false, msg)
+		a.logf("warn", "文件推送失败：%s", msg)
+	}
+}
+
+// finishFilePush 收尾一次推送：清理状态并广播最终结果。
+// ok 时 detail 为手机侧保存路径（FILE_PUSH_RES 的 msg），失败时为错误原因。
+func (a *app) finishFilePush(st *filePushState, ok bool, detail string) {
+	a.mu.Lock()
+	if a.filePush == st {
+		a.filePush = nil
+	}
+	sent, name, path := st.sent, st.name, st.path
+	a.mu.Unlock()
+	res := map[string]interface{}{
+		"t": "filepush", "phase": "done",
+		"name": name, "path": path,
+		"sent": sent, "ok": ok,
+	}
+	if ok {
+		if detail != "" {
+			res["msg"] = "已保存到手机：" + detail
+		} else {
+			res["msg"] = "已保存到手机共享存储"
+		}
+	} else {
+		res["err"] = detail
+	}
+	a.ctlHub.broadcastJSON(res)
+	a.broadcastStatus()
+}
+
+// handleFilePushCancel 取消进行中的推送：关闭取消通道，发送协程随即停止。
+// 手机端可能仍在写入已收到的分片（协议内无取消消息），随后补发的
+// FILE_PUSH_RES 会被 onFilePushRes 丢弃。
+func (a *app) handleFilePushCancel() (interface{}, error) {
+	a.mu.Lock()
+	st := a.filePush
+	a.mu.Unlock()
+	if st == nil {
+		return map[string]interface{}{"ok": true, "cancelled": false}, nil
+	}
+	select {
+	case <-st.cancel:
+	default:
+		close(st.cancel)
+	}
+	a.logf("info", "已取消推送 %s", st.name)
+	return map[string]interface{}{"ok": true, "cancelled": true, "name": st.name}, nil
+}
+
+// ---------- 文件上传（浏览器 → 控制通道二进制分片 → 手机，v1.2.0） ----------
+//
+// 浏览器里的 File 对象拿不到本机路径，file.push（路径直推）用不上；
+// 改为前端把文件切成 256KB 二进制帧经控制 WS 发来，后端原样转成
+// FILE_PUSH_DATA 帧发给手机（免 base64、免落盘中转）：
+//   {"t":"filepush.begin","name":..,"size":..} → FILE_PUSH_REQ
+//   二进制帧 ×N（按序追加）                    → FILE_PUSH_DATA
+//   {"t":"filepush.end"}                       → 空 eof 帧，等 FILE_PUSH_RES
+
+// handleFilePushBegin 建立上传任务并转发 FILE_PUSH_REQ。
+func (a *app) handleFilePushBegin(c *wsClient, msg map[string]interface{}) {
+	name := strings.TrimSpace(strFrom(msg, "name"))
+	if name == "" {
+		c.sendJSON(map[string]interface{}{"t": "error", "cmd": "filepush.begin", "msg": "文件名为空"})
+		return
+	}
+	if len([]rune(name)) > 200 || strings.ContainsAny(name, "/\\") {
+		c.sendJSON(map[string]interface{}{"t": "error", "cmd": "filepush.begin", "msg": "文件名不合法（仅支持纯文件名）"})
+		return
+	}
+	sizeF := floatFrom(msg, "size", -1)
+	if sizeF < 0 || sizeF > 1<<53 {
+		c.sendJSON(map[string]interface{}{"t": "error", "cmd": "filepush.begin", "msg": "文件大小不合法"})
+		return
+	}
+	size := int64(sizeF)
+	a.mu.Lock()
+	if !a.connected || !a.paired {
+		a.mu.Unlock()
+		c.sendJSON(map[string]interface{}{"t": "error", "cmd": "filepush.begin", "msg": "尚未配对：请先完成配对再上传文件"})
+		return
+	}
+	if a.filePush != nil {
+		cur := a.filePush
+		a.mu.Unlock()
+		c.sendJSON(map[string]interface{}{"t": "error", "cmd": "filepush.begin", "msg": fmt.Sprintf("正在推送 %s，请先等待或取消", cur.name)})
+		return
+	}
+	st := &filePushState{
+		name:   name,
+		total:  size,
+		cancel: make(chan struct{}),
+		owner:  c,
+	}
+	a.filePush = st
+	a.mu.Unlock()
+
+	a.logf("info", "开始接收上传 %s（%d 字节）→ 手机共享存储", name, size)
+	if err := a.sendFrame(TypeFilePushReq, encodeFilePushReq(size, name)); err != nil {
+		a.finishFilePush(st, false, "发送推送请求失败: "+err.Error())
+		return
+	}
+	if size == 0 {
+		// 空文件：立即补空 eof 帧让手机端收尾（等 FILE_PUSH_RES）
+		a.mu.Lock()
+		st.ended = true
+		a.mu.Unlock()
+		if err := a.sendFrame(TypeFilePushData, encodeFilePushData(0, true, nil)); err != nil {
+			a.finishFilePush(st, false, "发送结束帧失败: "+err.Error())
+			return
+		}
+	}
+	c.sendJSON(map[string]interface{}{"t": "filepush.begin.ok", "name": name, "size": size})
+}
+
+// handleFilePushEnd 前端数据发完：补发空 eof 帧（size 命中时上一帧已带 eof，跳过）。
+func (a *app) handleFilePushEnd(c *wsClient, msg map[string]interface{}) {
+	a.mu.Lock()
+	st := a.filePush
+	if st == nil || st.owner != c {
+		a.mu.Unlock()
+		c.sendJSON(map[string]interface{}{"t": "error", "cmd": "filepush.end", "msg": "没有进行中的上传"})
+		return
+	}
+	if st.ended {
+		a.mu.Unlock()
+		c.sendJSON(map[string]interface{}{"t": "filepush.end.ok", "eof": false})
+		return
+	}
+	st.ended = true
+	offset := st.sent
+	a.mu.Unlock()
+	if err := a.sendFrame(TypeFilePushData, encodeFilePushData(offset, true, nil)); err != nil {
+		a.finishFilePush(st, false, "发送结束帧失败: "+err.Error())
+		return
+	}
+	c.sendJSON(map[string]interface{}{"t": "filepush.end.ok", "eof": true})
+}
+
+// handleWSBinary 控制通道二进制消息：上传文件的数据分片。
+// 每个帧按到达顺序追加到 filepush.begin 建立的任务，直接中转为
+// FILE_PUSH_DATA；累计达到声明大小时该帧即带 eof。
+func (a *app) handleWSBinary(c *wsClient, payload []byte) {
+	a.mu.Lock()
+	st := a.filePush
+	if st == nil || st.owner != c {
+		a.mu.Unlock()
+		c.sendJSON(map[string]interface{}{"t": "error", "msg": "当前没有进行中的文件上传（请先 filepush.begin）"})
+		return
+	}
+	if st.ended {
+		a.mu.Unlock()
+		c.sendJSON(map[string]interface{}{"t": "error", "msg": "上传已结束，忽略多余数据"})
+		return
+	}
+	if len(payload) == 0 {
+		a.mu.Unlock()
+		return
+	}
+	if st.sent+int64(len(payload)) > st.total {
+		over := st.sent + int64(len(payload)) - st.total
+		a.mu.Unlock()
+		a.finishFilePush(st, false, fmt.Sprintf("上传数据超过声明大小（多 %d 字节）", over))
+		return
+	}
+	offset := st.sent
+	eof := st.sent+int64(len(payload)) >= st.total
+	if eof {
+		st.ended = true
+	}
+	st.sent += int64(len(payload))
+	a.mu.Unlock()
+
+	a.pushFileProgress(st)
+	if err := a.sendFrame(TypeFilePushData, encodeFilePushData(offset, eof, payload)); err != nil {
+		a.finishFilePush(st, false, "发送数据失败: "+err.Error())
+		return
+	}
+}
+
+// handleWSDetach 控制通道客户端断开：若其发起的上传还在进行，取消之，
+// 避免手机端永远等不到 eof、前端也等不到结果。
+func (a *app) handleWSDetach(c *wsClient) {
+	a.mu.Lock()
+	st := a.filePush
+	if st != nil && st.owner == c {
+		a.filePush = nil
+	}
+	a.mu.Unlock()
+	if st == nil || st.owner != c {
+		return
+	}
+	select {
+	case <-st.cancel:
+	default:
+		close(st.cancel)
+	}
+	a.ctlHub.broadcastJSON(map[string]interface{}{
+		"t": "filepush", "phase": "done", "ok": false,
+		"name": st.name, "path": st.name, "err": "上传已中断（控制通道断开）",
+	})
+	a.broadcastStatus()
+	a.logf("warn", "上传 %s 中断：控制通道客户端断开", st.name)
+}
+
 // onFileListRes 收到目录列表：唤醒等待中的 file.list。
 func (a *app) onFileListRes(entries []fileEntry) {
 	a.mu.Lock()
@@ -2048,7 +2699,7 @@ func (a *app) finishDownload(dl *fileDownload, ok bool, errMsg string) {
 		"t": "filedl", "done": true, "ok": ok,
 		"path": dl.path, "name": dl.name, "dst": dl.dstPath,
 		"total": dl.total, "received": dl.received,
-		"err":   errMsg,
+		"err": errMsg,
 	})
 	if ok {
 		a.logf("ok", "下载完成：%s（%d 字节）→ %s", dl.name, dl.received, dl.dstPath)
@@ -2185,21 +2836,21 @@ func (a *app) startDiscovery(timeout time.Duration, autoConnect bool) error {
 				}
 				return
 			}
-		dev, ok := parseBeacon(string(buf[:n]), src)
-		if !ok {
-			continue
-		}
-		a.addDevice(dev)
-		a.mu.Lock()
-		connected := a.connected
-		pairCode := a.cfg.PairCode // 已存配对码对同一次投屏会话有效
-		a.mu.Unlock()
-		if autoConnect && !connected {
-			a.logf("info", "发现发送端 %s:%d，正在连接…", dev.Host, dev.Port)
-			if err := a.connect(dev.Host, dev.Port, pairCode); err == nil {
-				return
+			dev, ok := parseBeacon(string(buf[:n]), src)
+			if !ok {
+				continue
 			}
-		}
+			a.addDevice(dev)
+			a.mu.Lock()
+			connected := a.connected
+			pairCode := a.cfg.PairCode // 已存配对码对同一次投屏会话有效
+			a.mu.Unlock()
+			if autoConnect && !connected {
+				a.logf("info", "发现发送端 %s:%d，正在连接…", dev.Host, dev.Port)
+				if err := a.connect(dev.Host, dev.Port, pairCode); err == nil {
+					return
+				}
+			}
 		}
 	}()
 	return nil
@@ -2690,28 +3341,33 @@ func (a *app) handleStreamPull(input map[string]interface{}) interface{} {
 // 有了它，前端就不必依赖宿主的 plugin:execute 桥接：宿主桥接一旦失效
 // （例如插件后端被宿主 kill 后重建），前端仍可直连本地端口把命令送进来。
 var wsAllowedCmds = map[string]bool{
-	"start":           true,
-	"stop":            true,
-	"status":          true,
-	"port.suggest":    true,
-	"phone.reconnect": true,
-	"config.get":      true,
-	"config.set":      true,
-	"stream.pull":     true,
-	"control.tap":     true,
-	"control.swipe":   true,
-	"control.text":    true,
-	"control.key":     true,
-	"pair":            true,
-	"file.list":       true,
-	"file.get":        true,
-	"file.cancel":     true,
-	"file.reveal":     true,
+	"start":            true,
+	"stop":             true,
+	"status":           true,
+	"port.suggest":     true,
+	"phone.reconnect":  true,
+	"config.get":       true,
+	"config.set":       true,
+	"stream.pull":      true,
+	"control.tap":      true,
+	"control.swipe":    true,
+	"control.text":     true,
+	"control.key":      true,
+	"pair":             true,
+	"file.list":        true,
+	"file.get":         true,
+	"file.cancel":      true,
+	"file.reveal":      true,
+	"file.push":        true,
+	"file.push.cancel": true,
+	"clipboard.send":   true,
 }
 
 // handleWSControl 处理控制通道 WS 上的文本消息。
 // 载荷形式：{"t":"命令名","id":任意,"参数...":...}
 //   - t=ping            → 回 {"t":"pong"}
+//   - t=filepush.begin  → 建上传任务（数据经同连接二进制帧发来）
+//   - t=filepush.end    → 上传数据发完，补 eof 收尾
 //   - t=白名单命令       → 回 {"t":"res","id":..,"ok":true,"data":..}
 //   - 其它               → 回 {"t":"error","id":..,"msg":..}
 func (a *app) handleWSControl(c *wsClient, payload []byte) {
@@ -2724,6 +3380,17 @@ func (a *app) handleWSControl(c *wsClient, payload []byte) {
 	name = strings.ToLower(strings.TrimSpace(name))
 	if name == "" || name == "ping" {
 		c.sendJSON(map[string]interface{}{"t": "pong", "ts": time.Now().UnixMilli()})
+		return
+	}
+	// 文件上传的传输层信令（浏览器无本机文件路径，数据走同连接二进制分片）：
+	// begin 建推送任务并转发 FILE_PUSH_REQ，随后每个二进制帧是一段数据，
+	// end 补发 eof 收尾。不属于 RPC 命令，免白名单。
+	switch name {
+	case "filepush.begin":
+		a.handleFilePushBegin(c, msg)
+		return
+	case "filepush.end":
+		a.handleFilePushEnd(c, msg)
 		return
 	}
 	cmd := strings.ReplaceAll(name, "_", ".")
@@ -2801,6 +3468,15 @@ func (a *app) handleExecute(input map[string]interface{}, cmd string) (interface
 
 	case "file.reveal", "filereveal":
 		return a.handleFileReveal()
+
+	case "file.push", "filepush":
+		return a.handleFilePush(input)
+
+	case "file.push.cancel", "filepushcancel":
+		return a.handleFilePushCancel()
+
+	case "clipboard.send", "clipboardsend":
+		return a.handleClipboardSend(input)
 
 	case "config.get":
 		a.mu.Lock()
@@ -2883,6 +3559,8 @@ func main() {
 		appState.ctlHub.broadcastJSON(map[string]interface{}{"t": "devices", "devices": appState.deviceList()})
 	})
 	appState.ctlHub.onText = appState.handleWSControl
+	appState.ctlHub.onBinary = appState.handleWSBinary
+	appState.ctlHub.onDetach = appState.handleWSDetach
 	appState.strHub = newHub("stream", 16, true, func(c *wsClient) {
 		// 中途连入的前端也要立刻知道屏幕尺寸与解码参数
 		appState.mu.Lock()
@@ -2978,6 +3656,7 @@ func handleRequest(req rpcRequest) {
 				"control.tap", "control.swipe", "control.text", "control.key",
 				"config.get", "config.set", "stream.pull",
 				"pair", "file.list", "file.get", "file.cancel", "file.reveal",
+				"file.push", "file.push.cancel", "clipboard.send",
 			},
 		})
 
