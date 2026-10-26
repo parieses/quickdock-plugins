@@ -1199,6 +1199,13 @@ type app struct {
 	watchGen     int64
 	watchAttempt int
 	framesAt     int64
+
+	// 自动重连（v1.2.3）：意外断开（手机旋转瞬间的网络抖动、对端 RST 等）后按退避重连。
+	// reconnGen 是代际：connect 成功 / 用户主动 stop 时 +1，使在途的重连循环失效。
+	sessionActive    bool // 用户已「启动接收」且未主动停止；只在这种状态下才自动重连
+	reconnecting     bool // 正在自动重连（状态展示用）
+	reconnectAttempt int
+	reconnGen        int
 }
 
 type Device struct {
@@ -1272,32 +1279,34 @@ func (a *app) snapshotLocked() map[string]interface{} {
 	devices := make([]Device, len(a.devices))
 	copy(devices, a.devices)
 	st := map[string]interface{}{
-		"connected":    a.connected,
-		"remote":       a.remote,
-		"paired":       a.paired,
-		"pairCode":     a.pairCode,
-		"pairErr":      a.pairErr,
-		"rejectErr":    a.rejectErr,
-		"screenW":      a.screenW,
-		"screenH":      a.screenH,
-		"dpi":          a.screenDPI,
-		"fps":          round1(a.fps),
-		"kbps":         round1(a.kbps),
-		"frames":       a.frames,
-		"bytes":        a.bytes,
-		"controlPort":  a.cfg.ControlPort,
-		"streamPort":   a.cfg.StreamPort,
-		"phoneHost":    a.cfg.PhoneHost,
-		"phonePort":    a.cfg.PhonePort,
-		"autoDiscover": a.cfg.AutoDiscover,
-		"wsRunning":    a.wsCtlPort != 0 && a.wsStreamPort != 0,
-		"discovering":  a.discovering,
-		"devices":      devices,
-		"lastErr":      a.lastErr,
-		"avcC":         a.avcCLocked(),
-		"fileDl":       a.fileDLLocked(),
-		"crypto":       a.crypto,
-		"filePush":     a.filePushLocked(),
+		"connected":     a.connected,
+		"remote":        a.remote,
+		"paired":        a.paired,
+		"pairCode":      a.pairCode,
+		"pairErr":       a.pairErr,
+		"rejectErr":     a.rejectErr,
+		"screenW":       a.screenW,
+		"screenH":       a.screenH,
+		"dpi":           a.screenDPI,
+		"fps":           round1(a.fps),
+		"kbps":          round1(a.kbps),
+		"frames":        a.frames,
+		"bytes":         a.bytes,
+		"controlPort":   a.cfg.ControlPort,
+		"streamPort":    a.cfg.StreamPort,
+		"phoneHost":     a.cfg.PhoneHost,
+		"phonePort":     a.cfg.PhonePort,
+		"autoDiscover":  a.cfg.AutoDiscover,
+		"wsRunning":     a.wsCtlPort != 0 && a.wsStreamPort != 0,
+		"discovering":   a.discovering,
+		"devices":       devices,
+		"reconnecting":  a.reconnecting,
+		"reconnAttempt": a.reconnectAttempt,
+		"lastErr":       a.lastErr,
+		"avcC":          a.avcCLocked(),
+		"fileDl":        a.fileDLLocked(),
+		"crypto":        a.crypto,
+		"filePush":      a.filePushLocked(),
 	}
 	if a.hasStats {
 		st["stats"] = map[string]interface{}{
@@ -1477,6 +1486,10 @@ func (a *app) connect(host string, port int, pairCode string) error {
 	a.rejectErr = ""
 	a.cfg.PhoneHost = host
 	a.cfg.PhonePort = port
+	a.reconnGen++ // 新连接建立：在途的自动重连循环全部失效
+	a.reconnecting = false
+	a.reconnectAttempt = 0
+	a.sessionActive = true
 	cfg := a.cfg
 	a.mu.Unlock()
 	a.pull.reset()
@@ -1621,6 +1634,63 @@ func (a *app) disconnect() {
 	}
 }
 
+// maybeAutoReconnect 意外断开时启动自动重连。用户主动 stop（sessionActive 已清）、
+// 本就在重连中、或没有可用地址时跳过。旋转/网络抖动这类瞬时断开由此自愈，
+// 不再把用户晾在「已断开」界面。
+func (a *app) maybeAutoReconnect() {
+	a.mu.Lock()
+	if !a.sessionActive || a.reconnecting || a.connected {
+		a.mu.Unlock()
+		return
+	}
+	host, port := a.cfg.PhoneHost, a.cfg.PhonePort
+	if host == "" {
+		a.mu.Unlock()
+		return
+	}
+	a.reconnGen++
+	gen := a.reconnGen
+	a.reconnecting = true
+	a.reconnectAttempt = 0
+	a.mu.Unlock()
+	a.broadcastStatus()
+	go a.autoReconnectLoop(gen, host, port)
+}
+
+// autoReconnectLoop 按 1.5s→3s→6s→12s→24s 退避重连，最多 5 次（约 46 秒）。
+// 每次醒来先核对代际：期间用户点过启动/停止（connect 成功或 stop 都会推进代际）就退出。
+func (a *app) autoReconnectLoop(gen int, host string, port int) {
+	const maxAttempts = 5
+	delays := []time.Duration{
+		1500 * time.Millisecond, 3 * time.Second, 6 * time.Second, 12 * time.Second, 24 * time.Second,
+	}
+	a.logf("warn", "与手机的连接意外断开，开始自动重连（最多 %d 次，约 1 分钟）", maxAttempts)
+	for i, d := range delays {
+		time.Sleep(d)
+		a.mu.Lock()
+		if gen != a.reconnGen || a.connected {
+			a.mu.Unlock()
+			return
+		}
+		a.reconnectAttempt = i + 1
+		a.mu.Unlock()
+		a.broadcastStatus()
+		a.logf("info", "自动重连第 %d/%d 次：%s…", i+1, maxAttempts, net.JoinHostPort(host, strconv.Itoa(port)))
+		if err := a.connect(host, port, a.cfg.PairCode); err != nil {
+			continue
+		}
+		// connect 成功时已把 reconnecting/attempt 清零并推进代际
+		a.logf("info", "自动重连成功，投屏继续")
+		return
+	}
+	a.mu.Lock()
+	a.reconnecting = false
+	a.reconnectAttempt = 0
+	a.mu.Unlock()
+	a.logf("warn", "自动重连 %d 次仍未连上：确认手机端还在投屏；若手机换了 IP，点「设置 → 检测手机」取最新地址", maxAttempts)
+	a.broadcastStatus()
+}
+
 // failPendingFiles 断开连接时清理未落地的文件等待/下载：让前端立刻拿到失败
 // 结果，而不是干等超时；临时 .part 文件一并清掉。
 func (a *app) failPendingFiles(reason string) {
@@ -1674,6 +1744,8 @@ func (a *app) readLoop(conn net.Conn, reader *bufio.Reader) {
 		a.failPendingFiles("与手机发送端的连接已断开，文件操作中断")
 		a.logf("warn", "与手机发送端的连接已断开")
 		a.broadcastStatus()
+		// v1.2.3：非用户主动停止的意外断开（旋转瞬间抖动等）自动重连，自愈恢复投屏
+		a.maybeAutoReconnect()
 	}()
 
 	// 握手期预读的首帧（旧版手机不回 KE 时的回落帧）优先处理
@@ -2894,6 +2966,96 @@ func (a *app) deviceList() []Device {
 	return list
 }
 
+// discoverOnce 同步做一次短扫描：监听 UDP 45555 收集 beacon，到时返回发现的设备。
+// 不自动连接——「检测手机」只负责回答「现在有哪些发送端」。
+// 手机 DHCP 换 IP / 换 Wi-Fi 后，这里拿到的是最新地址，而不是 config.json 里那台上一次的。
+func (a *app) discoverOnce(timeout time.Duration) ([]Device, error) {
+	addr := &net.UDPAddr{IP: net.IPv4zero, Port: discoveryPort}
+	conn, err := net.ListenUDP("udp4", addr)
+	if err != nil {
+		return nil, fmt.Errorf("监听 UDP %d 失败（可能被其它程序占用）: %w", discoveryPort, err)
+	}
+	defer conn.Close()
+
+	deadline := time.Now().Add(timeout)
+	buf := make([]byte, 256)
+	for {
+		remain := time.Until(deadline)
+		if remain <= 0 {
+			break
+		}
+		if remain > 400*time.Millisecond {
+			remain = 400 * time.Millisecond
+		}
+		_ = conn.SetReadDeadline(time.Now().Add(remain))
+		n, src, rerr := conn.ReadFromUDP(buf)
+		if rerr != nil {
+			continue // 含读超时：继续等下一个 beacon
+		}
+		if dev, ok := parseBeacon(string(buf[:n]), src); ok {
+			a.addDevice(dev) // 同步进设备表，顺带给前端广播 devices
+		}
+	}
+	return a.deviceList(), nil
+}
+
+// waitDevices 轮询设备表，直到有结果 / 切片用尽 / 扫描已结束。
+// 已有自动发现在跑（例如刚点过启动）时用它取结果，避免再去抢 UDP 45555。
+func (a *app) waitDevices(timeout time.Duration) []Device {
+	deadline := time.Now().Add(timeout)
+	for {
+		list := a.deviceList()
+		if len(list) > 0 {
+			return list
+		}
+		a.mu.Lock()
+		busy := a.discovering
+		a.mu.Unlock()
+		if !busy || time.Now().After(deadline) {
+			return a.deviceList()
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+}
+
+// handlePhoneScan 「检测手机」：短扫描一次并返回发送端列表。
+// 前端据此回填/选择地址；失败时返回 error（前端转提示文案）。
+func (a *app) handlePhoneScan(input map[string]interface{}) (interface{}, error) {
+	ms := intFrom(input, "timeoutMs", 4000)
+	if ms < 500 {
+		ms = 500
+	}
+	if ms > 15000 {
+		ms = 15000
+	}
+	timeout := time.Duration(ms) * time.Millisecond
+
+	a.mu.Lock()
+	busy := a.discovering
+	a.mu.Unlock()
+	if busy {
+		list := a.waitDevices(timeout)
+		if len(list) == 0 {
+			return map[string]interface{}{
+				"ok": true, "devices": []Device{}, "note": "本次检测未发现发送端（沿用进行中的自动发现）",
+			}, nil
+		}
+		return map[string]interface{}{"ok": true, "devices": list, "note": "沿用进行中的自动发现结果"}, nil
+	}
+
+	list, err := a.discoverOnce(timeout)
+	if err != nil {
+		return nil, err
+	}
+	if len(list) == 0 {
+		return map[string]interface{}{
+			"ok": true, "devices": []Device{},
+			"note": "未发现发送端：确认手机端已在「发送」页开始投屏，且两端在同一网段（路由器没开 AP 隔离、不是一方连另一方的热点）",
+		}, nil
+	}
+	return map[string]interface{}{"ok": true, "devices": list}, nil
+}
+
 func parseBeacon(msg string, src *net.UDPAddr) (Device, bool) {
 	const prefix = "QPM1|"
 	if !strings.HasPrefix(msg, prefix) {
@@ -3152,7 +3314,35 @@ func (a *app) handleStart(input map[string]interface{}) (interface{}, error) {
 	if host != "" {
 		if err := a.connect(host, port, pairCode); err != nil {
 			a.logf("error", "连接失败：%v", err)
-			return map[string]interface{}{"started": false, "error": err.Error(), "status": a.snapshot()}, nil
+			// 手机 DHCP 换 IP / 换 Wi-Fi 后，config.json 里记的旧地址基本都是「超时或被拒」。
+			// 这种情况不要让流程卡死在这里：只要开了自动发现就自动转入 UDP 扫描，
+			// 用户点一次「启动接收」也能自己连上，不必先去设置里改地址。
+			if discover || autoDiscover {
+				a.logf("info", "旧地址不可达，自动转入 UDP 45555 广播扫描…")
+				if derr := a.startDiscovery(12*time.Second, true); derr != nil {
+					a.logf("error", "自动发现启动失败：%v", derr)
+					return map[string]interface{}{
+						"started": false,
+						"error":   err.Error() + "（且无法转入自动发现：" + derr.Error() + "）",
+						"status":  a.snapshot(),
+					}, nil
+				}
+				return map[string]interface{}{
+					"started": true,
+					"mode":    "discover",
+					"note": "配好的地址 " + net.JoinHostPort(host, strconv.Itoa(port)) +
+						" 连不上（多半是手机换了 IP），已自动转入 UDP 自动发现",
+					"staleHost": host,
+					"config":    a.cfgSnapshot(),
+					"status":    a.snapshot(),
+				}, nil
+			}
+			return map[string]interface{}{
+				"started": false,
+				"error":   err.Error(),
+				"hint":    "地址连不上：手机可能换了 IP。勾选「自动发现」或在设置里点「检测手机」取最新地址。",
+				"status":  a.snapshot(),
+			}, nil
 		}
 		return map[string]interface{}{"started": true, "mode": "direct", "config": a.cfgSnapshot(), "status": a.snapshot()}, nil
 	}
@@ -3346,6 +3536,7 @@ var wsAllowedCmds = map[string]bool{
 	"status":           true,
 	"port.suggest":     true,
 	"phone.reconnect":  true,
+	"phone.scan":       true,
 	"config.get":       true,
 	"config.set":       true,
 	"stream.pull":      true,
@@ -3441,6 +3632,13 @@ func (a *app) handleExecute(input map[string]interface{}, cmd string) (interface
 
 	case "stop":
 		a.stopDiscovery()
+		// 用户主动停止：先推进代际并清会话标记，readLoop 的断开回调就不会触发自动重连
+		a.mu.Lock()
+		a.sessionActive = false
+		a.reconnGen++
+		a.reconnecting = false
+		a.reconnectAttempt = 0
+		a.mu.Unlock()
 		a.disconnect()
 		a.logf("info", "已停止接收")
 		return map[string]interface{}{"ok": true, "status": a.snapshot()}, nil
@@ -3453,6 +3651,9 @@ func (a *app) handleExecute(input map[string]interface{}, cmd string) (interface
 
 	case "phone.reconnect", "phonereconnect":
 		return a.handlePhoneReconnect()
+
+	case "phone.scan", "phonescan", "discover":
+		return a.handlePhoneScan(input)
 
 	case "pair":
 		return a.handlePair(input)
@@ -3652,7 +3853,7 @@ func handleRequest(req rpcRequest) {
 			"pluginId": "io.github.parieses.control-receiver",
 			"localWS":  localWS,
 			"capabilities": []string{
-				"start", "stop", "status", "port.suggest", "phone.reconnect",
+				"start", "stop", "status", "port.suggest", "phone.reconnect", "phone.scan",
 				"control.tap", "control.swipe", "control.text", "control.key",
 				"config.get", "config.set", "stream.pull",
 				"pair", "file.list", "file.get", "file.cancel", "file.reveal",

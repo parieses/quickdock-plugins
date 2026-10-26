@@ -221,6 +221,7 @@
     <input id="phoneHost" class="p-input addr" placeholder="自动发现 / 如 192.168.1.20" spellcheck="false">
     <span class="p-label">端口</span>
     <input id="phonePort" class="p-input num" type="number" min="1" max="65535" value="45556">
+    <button id="btnScan" class="p-btn p-btn-sm" title="扫描局域网，看看手机当前的实际 IP（手机换 Wi-Fi / DHCP 重新分配后用它取最新地址）">检测手机</button>
     <label class="chk"><input id="autoDiscover" type="checkbox" checked>自动发现（UDP 45555）</label>
     <span class="sep"></span>
     <button id="btnReset" class="p-btn p-btn-sm" title="清空请求队列、重连本地直连并重新读取状态（界面卡住时点这里）">重置通道</button>
@@ -366,6 +367,9 @@
   <div>右键 = 返回 · 滚轮 = 上下滑动</div>
   <div style="margin-top:6px"><b>快捷键</b></div>
   <div><span class="kbd">F</span> 进入/退出沉浸 · <span class="kbd">Esc</span> 退出沉浸</div>
+  <div style="margin-top:6px"><b>连不上手机</b></div>
+  <div>手机换了 IP（换 Wi-Fi / 路由器重启）→ 标题栏「设置」→「检测手机」取最新地址；
+       直接点「启动接收」也会自动转成广播扫描</div>
   <div style="margin-top:6px"><b>画面发虚时看右侧栏</b></div>
   <div>· 「实际编码帧」比「手机屏幕」小 → 手机在降分辨率编码</div>
   <div>· 两者一致 → 手机没降分辨率，糊来自上游或系统层面</div>
@@ -415,6 +419,7 @@
     ctlPort: document.getElementById('ctlPort'),
     streamPort: document.getElementById('streamPort'),
     phoneHost: document.getElementById('phoneHost'),
+    btnScan: document.getElementById('btnScan'),
     phonePort: document.getElementById('phonePort'),
     autoDiscover: document.getElementById('autoDiscover'),
     btnStart: document.getElementById('btnStart'),
@@ -534,6 +539,8 @@
     fps: 0,
     gotFrame: false,
     drag: null,
+    scanning: false,
+    startConnErr: false,
     lastLogKey: '',
     connected: false,
     everConnected: false,
@@ -953,6 +960,12 @@
       if (st.discovering) {
         setState('搜索发送端…', 'info')
         showOverlay('正在自动发现手机… ' + wsec + ' 秒', '监听 UDP 45555 广播（最多 12 秒）；也可直接填写手机 IP')
+      } else if (st.reconnecting) {
+        // v1.2.3：意外断开（手机旋转瞬间抖动等）后端在自动重连，浮层如实反映，不要显示成死掉的「已断开」
+        setState('自动重连中…', 'warn')
+        showOverlay('连接断开，正在自动重连…（第 ' + (st.reconnAttempt || 0) + '/5 次）',
+          '手机旋转瞬间或网络抖动打断连接后会自动恢复；连续失败多半是手机换了 IP（点「设置 → 检测手机」）或手机端已停止投屏')
+        els.ovActs.style.display = 'none'
       } else if (state.everConnected) {
         setState('已断开', 'warn')
         if (state.rejectReason) {
@@ -1230,6 +1243,20 @@
       v.className = 'v off'
       v.title = '手机端未回应密钥交换（旧版手机端）：功能不受影响，但帧为明文'
     }
+  }
+
+  var perfHintAt = 0
+  function maybeLogPerfHint() {
+    if (!state.connected || !state.paired || !state.stats) return
+    var phoneFps = state.stats.fps || 0
+    var localFps = state.fps || 0
+    if (phoneFps < 25 || localFps <= 0) return      // 手机端本身就慢 → 不是本机瓶颈，不提示
+    if (localFps >= phoneFps * 0.7) return          // 本机跟得上
+    if (Date.now() - perfHintAt < 30000) return     // 30 秒最多提示一次，别刷屏
+    perfHintAt = Date.now()
+    log('warn', '本机显示 ' + localFps + ' fps、手机端编码 ' + phoneFps +
+      ' fps —— 瓶颈在本机（解码/渲染跟不上）：① 底部铺满方式切「完整」减小渲染面积；' +
+      '② 手机端画质切「流畅」降低码率；③ 关掉其它吃显卡/CPU 的程序')
   }
 
   function renderStats() {
@@ -1520,10 +1547,13 @@
   }
 
   // 画面显示布局：永远保持手机真实方向（绝不旋转内容）。铺满方式 state.fit 三态（底部按钮循环切换）：
-  //   'auto'（默认·智能）：手机与窗口同方向 → cover 等比放大铺满；方向不一致 → contain 完整留黑边（不丢内容）。
-  //   'fill'（填满）：始终 cover 等比放大铺满窗口、超出裁掉 —— 手机竖持看横屏视频（画面居中上下带黑边）时，
-  //                 用它可把视频放大到铺满窗口，黑边被裁掉、画面最大；点按坐标按画布实际矩形映射、依然精准。
+  //   'auto'（默认·智能）：同方向且「铺满要裁掉的比例很小」→ cover 铺满；否则 contain 完整显示。
+  //                     v1.2.4：手机横屏常是 2.2:1（3200×1440）这种超宽画面，在 1.5:1 的横窗口里
+  //                     铺满要把左右裁掉约三成，用户看到的就是「显示不全」——所以只在裁切 ≤12%
+  //                     时才自动铺满，超了就退回完整显示并在日志里说明。
+  //   'fill'（填满）：始终 cover 铺满、超出裁掉（想要最大画面、接受裁切时手动切它）。
   //   'fit' （完整）：始终 contain，等比缩小完整显示、必要时留黑边看全貌。
+  var AUTO_COVER_MAX_CROP_PCT = 12   // 智能模式下允许的最大裁切百分比（超过就退回完整显示）
   function layoutCanvas() {
     if (!state.frameW || !state.frameH) return
     var box = els.stage.getBoundingClientRect()
@@ -1532,21 +1562,38 @@
     var fw = state.frameW, fh = state.frameH
     var cv = els.canvas
     var sameOri = (fw > fh) === (W > H)   // 手机与窗口是否同方向
-    var useCover = state.fit === 'fill' || (state.fit === 'auto' && sameOri)
-    var s = useCover ? Math.max(W / fw, H / fh) : Math.min(W / fw, H / fh)
+    var sCover = Math.max(W / fw, H / fh)
+    var sContain = Math.min(W / fw, H / fh)
+    // 铺满时看不到的那一部分占比（cover 与 contain 的缩放之比即裁切倍数）
+    var cropRatio = sContain > 0 ? sCover / sContain : 1
+    var cropPct = Math.max(0, Math.round((1 - 1 / cropRatio) * 100))
+    var useCover = state.fit === 'fill'
+    var autoNote = ''
+    if (state.fit === 'auto') {
+      // 注意比较的是「真实裁掉百分比」而不是缩放倍数：倍数 1.125 只对应 11% 裁切
+      if (sameOri && cropPct <= AUTO_COVER_MAX_CROP_PCT) {
+        useCover = true
+      } else if (sameOri) {
+        autoNote = '（手机画面比窗口宽得多，铺满会裁掉约 ' + cropPct + '%，已改为完整显示；要更大画面请点「智能」切「填满」）'
+      } else {
+        autoNote = '（与窗口方向不一致，留黑边）'
+      }
+    }
+    var s = useCover ? sCover : sContain
     cv.style.width = (fw * s) + 'px'
     cv.style.height = (fh * s) + 'px'
     cv.style.transform = 'translate(-50%,-50%)'
     state.cssW = parseFloat(cv.style.width)
     state.cssH = parseFloat(cv.style.height)
+    state.cropPct = useCover ? cropPct : 0
     state._stageW = W; state._stageH = H
     state._fit = useCover ? 'cover' : 'contain'
-    if (state.fitLogged !== state.fit + '|' + state._fit) {
-      state.fitLogged = state.fit + '|' + state._fit
+    if (state.fitLogged !== state.fit + '|' + state._fit + '|' + cropPct) {
+      state.fitLogged = state.fit + '|' + state._fit + '|' + cropPct
       var modeName = state.fit === 'fill' ? '填满' : state.fit === 'fit' ? '完整' : '智能'
       log('info', '画面适配（' + modeName + '）：' + (useCover
-        ? '等比放大铺满窗口，方向保持手机真实方向，超出部分裁掉'
-        : '等比缩小完整显示，方向保持手机真实方向' + (sameOri ? '' : '（与窗口方向不一致，留黑边）')))
+        ? '等比放大铺满窗口' + (cropPct ? '，横向裁掉约 ' + cropPct + '%' : '') + '，方向保持手机真实方向'
+        : '等比缩小完整显示，方向保持手机真实方向' + autoNote))
     }
   }
 
@@ -1643,10 +1690,19 @@
     if (m.t === 'config') { ensureDecoder(m.codec, m.description); return }
     if (m.t === 'log') { log(m.level === 'error' ? 'err' : m.level === 'warn' ? 'warn' : 'info', m.msg); return }
     if (m.t === 'devices' && m.devices && m.devices.length) {
-      var d = m.devices[0]
-      els.phoneHost.value = d.host
-      els.phonePort.value = d.port
-      log('ok', '发现发送端 ' + d.host + ':' + d.port + '（' + d.w + '×' + d.h + '）')
+      var dv = m.devices[0]
+      if (dv && dv.host) {
+        var wasHost = els.phoneHost.value.trim()
+        if (wasHost !== dv.host || String(els.phonePort.value) !== String(dv.port || els.phonePort.value)) {
+          els.phoneHost.value = dv.host
+          if (dv.port) els.phonePort.value = dv.port
+          updateCfgSummary()
+          // 手机 beacon 每秒一次，只在地址真的变了时记一条，免得刷爆日志
+          log('ok', '发现发送端 ' + dv.host + ':' + (dv.port || els.phonePort.value) +
+            '（' + dv.w + '×' + dv.h + '）' +
+            (wasHost && wasHost !== dv.host ? '，地址已从 ' + wasHost + ' 更新' : ''))
+        }
+      }
       return
     }
     // v1.1.0：配对结果事件（后端在 PAIR_RESULT 时广播，比轮询 status 更即时）
@@ -2068,7 +2124,16 @@
   }
   els.btnReconnect.onclick = function () { doReconnect('手动重连') }
   els.btnOvRetry.onclick = function () {
-    if (!state.started) { els.btnOvRetry.textContent = '重新请求画面'; els.btnStart.onclick(); return }
+    if (!state.started) {
+      els.btnOvRetry.textContent = '重新请求画面'
+      // 上次失败是「地址连不上」（多半手机换了 IP）：先扫一次拿最新地址，再启动
+      if (state.startConnErr) {
+        doScan().then(function () { els.btnStart.onclick() })
+        return
+      }
+      els.btnStart.onclick()
+      return
+    }
     doReconnect('重新请求关键帧')
   }
 
@@ -2139,6 +2204,80 @@
     return '<div class="sug-head"><span class="sug-title">' + text + '</span>' +
       '<button class="sug-close" type="button" title="关闭（Esc）">×</button></div>'
   }
+
+  /* ===================== 检测手机（手机换 IP 可恢复） ===================== */
+  // 手机 DHCP 换 IP / 换 Wi-Fi / 路由器重启后，config.json 里记的旧地址就失效了：
+  // 启动时会因为连不上这个地址直接失败。「检测手机」做一次 UDP 短扫描，
+  // 把当前真实存在的发送端列出来供回填或点选；启动失败时也会引导到这里。
+  function fmtDevice(d) {
+    return d.host + ':' + (d.port || 45556) + '（' + d.w + '×' + d.h + '）'
+  }
+  function applyFoundDevice(d) {
+    var host = d.host
+    if (!host) return false
+    var prev = els.phoneHost.value.trim()
+    els.phoneHost.value = host
+    if (d.port) els.phonePort.value = d.port
+    updateCfgSummary()
+    if (prev && prev !== host) {
+      log('ok', '手机地址已从 ' + prev + ' 更新为 ' + fmtDevice(d))
+    } else {
+      log('info', '已填入检测到的地址 ' + fmtDevice(d))
+    }
+    if (state.started && !state.connected) {
+      // 已启动但没连上：直接按新地址重连一次，不用再点一次启动
+      hidePairPanel()
+      doReconnect('按最新地址 ' + host + ' 重连')
+    } else if (state.connected && prev && prev !== host) {
+      log('warn', '当前已连 ' + (state.remote || prev) + '，要切到这台请先停止接收再启动')
+    }
+    return true
+  }
+  function renderDevicePicker(list) {
+    var html = sugHead('检测到 ' + list.length + ' 台发送端，点选一台')
+    list.forEach(function (d) {
+      html += '<div class="sug-item" data-host="' + d.host + '" data-port="' + (d.port || 45556) + '">' +
+        '<span class="sug-port">' + d.host + '</span>' +
+        '<span class="sug-reason">' + (d.port || 45556) + ' · ' + d.w + '×' + d.h + '</span></div>'
+    })
+    els.suggest.innerHTML = html
+    els.suggest.classList.add('open')
+    bindSuggestClose()
+    Array.prototype.forEach.call(els.suggest.querySelectorAll('.sug-item'), function (it) {
+      it.onclick = function () {
+        applyFoundDevice({ host: it.getAttribute('data-host'), port: Number(it.getAttribute('data-port')) })
+        closeSuggest()
+      }
+    })
+  }
+  function doScan() {
+    if (state.scanning) return Promise.resolve(0)
+    state.scanning = true
+    els.btnScan.disabled = true
+    els.btnScan.textContent = '检测中…'
+    log('info', '正在扫描局域网内的发送端（UDP 45555，最多 4 秒）…')
+    return call('phone.scan', { timeoutMs: 4000 }, { timeout: 9000 }).then(function (r) {
+      var list = (r && r.devices) || []
+      if (!list.length) {
+        log('warn', (r && r.note) ||
+          '没检测到发送端：① 手机端先点「开始投屏」；② 两端同一网段（路由器没开 AP 隔离）；③ 不是一方连另一方的热点')
+        return 0
+      }
+      log('ok', '检测到 ' + list.length + ' 台发送端')
+      if (list.length === 1) applyFoundDevice(list[0])
+      else renderDevicePicker(list)
+      return list.length
+    }).catch(function (e) {
+      log('err', '检测失败: ' + e.message)
+      return 0
+    }).then(function (n) {
+      state.scanning = false
+      els.btnScan.disabled = false
+      els.btnScan.textContent = '检测手机'
+      return n
+    })
+  }
+  els.btnScan.onclick = function () { doScan() }
 
   els.btnSuggest.onclick = function () {
     if (els.suggest.classList.contains('open')) { closeSuggest(); return }
@@ -2270,6 +2409,10 @@
         sLog('warn', sec + ' 秒仍无画面：本地服务=' + (state.wsReady ? '已监听' : '未监听') +
           '，手机连接=' + (state.connected ? state.remote : '未建立') +
           (state.connected ? '' : '（手机端没开投屏、手机换 IP、手机息屏都会这样）'))
+        if (!state.connected && sec >= 8) {
+          log('warn', '排查：点标题栏「设置」→「检测手机」取手机当前 IP；' +
+            '配了固定地址而手机已换 IP 时，检测后会自动填入新地址并重连')
+        }
       }
     }, 1000)
 
@@ -2287,10 +2430,16 @@
       if (res && res.status) applyStatus(res.status)
       if (res && res.error) {
         sLog('err', '后端返回失败（耗时 ' + (Date.now() - t0) + 'ms）：' + res.error)
+        if (res.hint) log('warn', res.hint)
+        // 地址类失败（多为手机换了 IP）：把浮层按钮变成「先检测最新地址、再重连」
+        state.startConnErr = /连接|不可达|refused|timed?\s*out/i.test(String(res.error)) ||
+          /地址/i.test(String(res.hint || ''))
         setState('启动失败', 'warn')
         showOverlay('启动失败', res.error)
-        els.ovHint.textContent = '改端口后重试，或点下方按钮重新启动。'
-        els.btnOvRetry.textContent = '重试启动'
+        els.ovHint.textContent = state.startConnErr
+          ? '多半是手机换了 IP：点「检测最新地址并重试」，会自动扫描当前地址再重连。'
+          : '改端口后重试，或点下方按钮重新启动。'
+        els.btnOvRetry.textContent = state.startConnErr ? '检测最新地址并重试' : '重试启动'
         els.ovActs.style.display = 'flex'
         els.btnStart.disabled = false
         els.btnStop.disabled = true
@@ -2305,7 +2454,13 @@
       sLog('ok', '后端已启动（耗时 ' + (Date.now() - t0) + 'ms）：控制通道 ' + c.controlPort +
         ' / 视频流 ' + c.streamPort + '，本地监听=' + (st.wsRunning === false ? '否' : '是') +
         (st.error ? '，错误 ' + st.error : ''))
-      if (res && res.mode === 'discover') sLog('info', '正在监听 UDP 45555 广播，发现发送端后自动连接…')
+      if (res && res.mode === 'discover') {
+        // 旧地址连不上但已自动转入扫描（后端 note 说明原因），这里把提示透出来
+        if (res.note) sLog('warn', res.note)
+        else sLog('info', '正在监听 UDP 45555 广播，发现发送端后自动连接…')
+        state.startConnErr = true
+      }
+      if (res && res.staleHost) sLog('info', '旧地址 ' + res.staleHost + ' 已失效，连接成功后会自动更新为检测到的新地址')
       els.btnOvRetry.textContent = '重新请求画面'
       if (c.controlPort) onPortsChanged(c.controlPort)
       sLog('info', '开始连接视频流 ws://127.0.0.1:' + c.streamPort)
@@ -2587,9 +2742,20 @@
     // 1440 宽的手机屏在约 360px 宽的画布里就是 25%，小字号界面（微信/QQ 这类）缩到这个比例必然发虚。
     if (state.cssW && els.canvas.width) {
       var sc = Math.round(state.cssW / els.canvas.width * 100)
-      if (sc) els.mScale.textContent = sc + '%'
+      if (sc) {
+        // 铺满模式会裁掉一部分画面，侧栏直接标出来（「横屏显示不全」一眼能看出是裁切而非丢帧）
+        var crop = state.cropPct || 0
+        els.mScale.textContent = sc + '%' + (crop ? ' · 裁掉 ' + crop + '%' : '')
+        els.mScale.className = 'v' + (crop ? ' warn' : '')
+        els.mScale.title = crop
+          ? '画面被放大铺满窗口，横向约 ' + crop + '% 内容被裁掉（切「完整」可看全）'
+          : '解码帧被缩放到窗口的几何比例'
+      }
     }
     tickWaiting()
+    // v1.2.4：横屏画面（3200×1440 这类）比竖屏渲染面积大得多，本机容易跟不上。
+    // 这里把「卡在手机端还是卡在本机」说清楚，并给出可执行的三步排查。
+    maybeLogPerfHint()
     // 队列自检：在途请求超过预期还没结束 → 强制释放（保证界面永远能再操作）
     if (inFlight && inFlight.sentAt && Date.now() - inFlight.sentAt > 40000) {
       var t = inFlight
