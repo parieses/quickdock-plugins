@@ -9,10 +9,6 @@
 body{margin:0}
 .app{display:flex;flex-direction:column;height:100vh;padding:12px;gap:10px;box-sizing:border-box}
 .lock{display:flex;flex-direction:column;gap:10px;align-items:center;justify-content:center;flex:1}
-.inp{height:34px;padding:0 12px;background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius);font-size: var(--fs-lg);font-family:inherit;width:280px}
-.btn{height:34px;padding:0 16px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;color:var(--text-secondary);font-size: var(--fs-md);cursor:pointer;font-family:inherit}
-.btn:hover{color:var(--text-primary)}
-.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .list{flex:1;overflow:auto;display:flex;flex-direction:column;gap:8px}
 .item{display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius)}
@@ -31,8 +27,8 @@ body{margin:0}
 <div class="app" id="app">
   <div class="lock" id="lock">
     <div id="msg"></div>
-    <input class="inp" id="mp" type="password" placeholder="主密码（首次使用即创建）">
-    <button class="btn primary" id="unlock">解锁 / 创建</button>
+    <input class="input input-auto" id="mp" style="width:280px" type="password" placeholder="主密码（首次使用即创建）">
+    <button class="btn btn-primary" id="unlock">解锁 / 创建</button>
     <span style="font-size: var(--fs-xs);color:var(--text-muted)">密钥仅本机，忘记无法找回</span>
   </div>
 </div>
@@ -129,7 +125,7 @@ async function save(){
   var buf=await crypto.subtle.encrypt({name:'AES-GCM',iv:iv},key,new TextEncoder().encode(JSON.stringify(entries)));
   saveRaw(JSON.stringify({mode:'subtle',salt:Array.from(salt),iv:Array.from(iv),data:Array.from(new Uint8Array(buf))}))
 }
-function buildUI(){var app=document.getElementById('app');var warn=key&&key.fb?'<div class="warn">⚠️ 当前环境拿不到 WebCrypto，密码库以降级模式（异或混淆）保存：只能挡住「顺手一瞥」，挡不住拿到数据的人。建议在正常安装的 QuickDock 窗口中使用。</div>':'';app.innerHTML=warn+'<div class="row"><input class="inp" id="site" placeholder="网站/名称" style="flex:1"><input class="inp" id="user" placeholder="账号" style="flex:1"><input class="inp" id="pass" placeholder="密码" style="flex:1.2"><button class="btn primary" id="add">添加</button><button class="btn" id="exp">导出</button><input type="file" id="imp" style="display:none"><button class="btn" id="impb">导入</button><button class="btn" id="lockb">锁定</button></div><div class="list" id="list"></div>';document.getElementById('add').onclick=add;document.getElementById('exp').onclick=exportFile;document.getElementById('impb').onclick=function(){document.getElementById('imp').click()};document.getElementById('imp').onchange=importFile;document.getElementById('lockb').onclick=function(){key=null;salt=null;entries=[];location.reload()};renderList();document.getElementById('list').addEventListener('click',onListClick)}
+function buildUI(){var app=document.getElementById('app');var warn=key&&key.fb?'<div class="warn">⚠️ 当前环境拿不到 WebCrypto，密码库以降级模式（异或混淆）保存：只能挡住「顺手一瞥」，挡不住拿到数据的人。建议在正常安装的 QuickDock 窗口中使用。</div>':'';app.innerHTML=warn+'<div class="row"><input class="input input-auto" id="site" placeholder="网站/名称" style="flex:1"><input class="input input-auto" id="user" placeholder="账号" style="flex:1"><input class="input input-auto" id="pass" placeholder="密码" style="flex:1.2"><button class="btn btn-primary" id="add">添加</button><button class="btn" id="exp">导出</button><input type="file" id="imp" style="display:none"><button class="btn" id="impb">导入</button><button class="btn" id="lockb">锁定</button></div><div class="list" id="list"></div>';document.getElementById('add').onclick=add;document.getElementById('exp').onclick=exportFile;document.getElementById('impb').onclick=function(){document.getElementById('imp').click()};document.getElementById('imp').onchange=importFile;document.getElementById('lockb').onclick=function(){key=null;salt=null;entries=[];location.reload()};renderList();document.getElementById('list').addEventListener('click',onListClick)}
 function renderList(){var l=document.getElementById('list');if(!l)return;if(!entries.length){l.innerHTML='<div class="empty">还没有条目</div>';return}l.innerHTML='';entries.forEach(function(e,i){var d=document.createElement('div');d.className='item';d.innerHTML='<div class="m"><div class="t">'+esc(e.site)+'</div><div class="u">'+esc(e.user)+'</div></div><div class="p">'+'•'.repeat(Math.min(12,(e.pass||'').length))+'</div><span class="act" data-i="'+i+'">复制</span><span class="del" data-i="'+i+'">删</span>';l.appendChild(d)})}
 function onListClick(ev){if(ev.target.classList.contains('act')){window.copyViaHost(entries[+ev.target.dataset.i].pass)}else if(ev.target.classList.contains('del')){var i=+ev.target.dataset.i,it=entries[i]||{};if(!confirm('删除「'+(it.site||'')+'」？删除后无法恢复。'))return;entries.splice(i,1);save();renderList()}}
 async function add(){var s=document.getElementById('site').value.trim(),u=document.getElementById('user').value.trim(),p=document.getElementById('pass').value;if(!s||!p)return;entries.push({site:s,user:u,pass:p});await save();document.getElementById('site').value='';document.getElementById('user').value='';document.getElementById('pass').value='';renderList()}

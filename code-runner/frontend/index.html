@@ -15,9 +15,6 @@ body{margin:0}
 #out{flex:1;width:100%;resize:none;padding:10px;font-size: var(--fs-sm);line-height:1.45;font-family:var(--font-mono);white-space:pre-wrap;overflow:auto;background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius);box-sizing:border-box}
 #preview{flex:1;width:100%;border:1px solid var(--border);border-radius:var(--radius);background:#fff;display:none}
 .bar{display:flex;gap:8px;align-items:center;flex-shrink:0}
-.btn{height:32px;padding:0 16px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;color:var(--text-secondary);font-size: var(--fs-md);cursor:pointer;font-family:inherit}
-.btn:hover{color:var(--text-primary)}
-.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 #hint{font-size: var(--fs-xs);color:var(--text-muted)}
 </style>
 </head>
@@ -40,7 +37,7 @@ body{margin:0}
     </div>
   </div>
   <div class="bar">
-    <button class="btn primary" id="run">运行</button>
+    <button class="btn btn-primary" id="run">运行</button>
     <span id="hint">JS/HTML 本地运行；Python 首次需从 CDN 加载 Pyodide</span>
     <span style="flex:1"></span>
     <button class="btn" id="sample">示例</button>

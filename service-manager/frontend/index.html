@@ -9,10 +9,6 @@
 body{margin:0}
 .app{display:flex;flex-direction:column;height:100vh;padding:12px;gap:10px;box-sizing:border-box}
 .bar{display:flex;gap:8px}
-.inp{height:34px;padding:0 12px;flex:1;background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius);font-size: var(--fs-lg);font-family:inherit}
-.btn{height:34px;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;color:var(--text-secondary);font-size: var(--fs-md);cursor:pointer;font-family:inherit}
-.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
-.btn.sm{height:26px;padding:0 10px;font-size: var(--fs-sm)}
 .list{flex:1;overflow:auto;display:flex;flex-direction:column;gap:4px}
 .row{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius)}
 .row .meta{flex:1;min-width:0}
@@ -30,8 +26,8 @@ body{margin:0}
 <body>
 <div class="app">
   <div class="bar">
-    <input class="inp" id="filter" placeholder="按名称筛选（如 Spooler / Windows Update）">
-    <button class="btn primary" id="go">查询</button>
+    <input class="input input-auto flex-1" id="filter" placeholder="按名称筛选（如 Spooler / Windows Update）">
+    <button class="btn btn-primary" id="go">查询</button>
   </div>
   <div id="msg"></div>
   <div class="list" id="list"><div class="hint">输入筛选条件后点击「查询」</div></div>
@@ -45,8 +41,8 @@ function render(list){var l=document.getElementById('list');l.innerHTML='';
   if(!list.length){l.innerHTML='<div class="hint">无匹配服务</div>';return}
   list.forEach(function(s){var el=document.createElement('div');el.className='row';
     var acts='';
-    if(s.status==='Running'){acts+='<button class="btn sm" data-act="stop" data-name="'+s.name+'">停止</button><button class="btn sm" data-act="restart" data-name="'+s.name+'">重启</button>'}
-    else {acts+='<button class="btn sm primary" data-act="start" data-name="'+s.name+'">启动</button>'}
+    if(s.status==='Running'){acts+='<button class="btn btn-sm" data-act="stop" data-name="'+s.name+'">停止</button><button class="btn btn-sm" data-act="restart" data-name="'+s.name+'">重启</button>'}
+    else {acts+='<button class="btn btn-sm btn-primary" data-act="start" data-name="'+s.name+'">启动</button>'}
     el.innerHTML='<div class="meta"><div class="name">'+s.name+'</div><div class="sub">'+s.displayName+' · '+s.startType+'</div></div>'+badge(s.status)+'<div class="acts">'+acts+'</div>';
     l.appendChild(el)});
   l.querySelectorAll('button[data-act]').forEach(function(b){b.onclick=function(){act(b.dataset.name,b.dataset.act)}})}

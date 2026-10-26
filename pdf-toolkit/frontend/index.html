@@ -14,23 +14,14 @@
 .p-body{flex:1;display:flex;overflow:hidden}
 .p-sidebar{width:200px;flex:0 0 200px;border-right:1px solid var(--border);overflow-y:auto}
 .p-main{flex:1;display:flex;flex-direction:column;overflow:hidden}
-.p-tabs{display:flex;gap:var(--sp-1);padding:var(--sp-2) var(--sp-3);border-bottom:1px solid var(--border);flex-wrap:wrap}
-.p-tab{padding:6px 12px;border-radius:var(--radius);cursor:pointer;font-size:var(--fs-sm);color:var(--text-secondary);border:1px solid transparent;transition:all 150ms}
-.p-tab:hover{background:var(--bg-secondary)}
-.p-tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.side-tab{display:flex;align-items:center;height:28px;padding:0 12px;border-radius:var(--radius-sm);cursor:pointer;font-size:var(--fs-sm);color:var(--text-secondary);border:1px solid transparent;transition:all 150ms}
+.side-tab:hover{background:var(--bg-hover);color:var(--text-primary)}
+.side-tab.active{background:var(--accent-soft);color:var(--accent);border-color:var(--accent-line)}
 .p-content{flex:1;overflow-y:auto;padding:var(--sp-3)}
 .p-section{margin-bottom:var(--sp-4)}
 .p-section h3{font-size:var(--fs-sm);font-weight:var(--fw-semibold);color:var(--text-muted);margin:0 0 var(--sp-2) 0;text-transform:uppercase;letter-spacing:.5px}
 .p-field{display:flex;flex-direction:column;gap:6px;margin-bottom:var(--sp-2)}
 .p-label{font-size:var(--fs-xs);font-weight:var(--fw-medium);color:var(--text-muted)}
-.p-input{padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-secondary);color:var(--text-primary);font-size:var(--fs-sm);outline:none;transition:border-color 150ms}
-.p-input:focus-visible{border-color:var(--accent)}
-.p-input.wide{width:100%}
-.p-btn{padding:8px 16px;border:none;border-radius:var(--radius);background:var(--accent);color:#fff;font-size:var(--fs-sm);cursor:pointer;transition:opacity 150ms}
-.p-btn:hover{opacity:.9}
-.p-btn:disabled{opacity:.5;cursor:not-allowed}
-.p-btn.secondary{background:var(--bg-secondary);color:var(--text-primary)}
-.p-btn.danger{background:var(--danger)}
 .p-file-drop{border:2px dashed var(--border);border-radius:var(--radius-lg);padding:var(--sp-4);text-align:center;cursor:pointer;transition:all 150ms}
 .p-file-drop:hover,.p-file-drop.dragover{border-color:var(--accent);background:var(--bg-secondary)}
 .p-file-drop .icon{font-size:24px;margin-bottom:var(--sp-2)}
@@ -58,12 +49,12 @@
   <div class="p-body">
     <div class="p-sidebar">
       <div style="padding:var(--sp-2)">
-        <div class="p-tab active" data-tab="merge" style="width:100%;text-align:left;margin-bottom:4px">合并 PDF</div>
-        <div class="p-tab" data-tab="split" style="width:100%;text-align:left;margin-bottom:4px">拆分 PDF</div>
-        <div class="p-tab" data-tab="compress" style="width:100%;text-align:left;margin-bottom:4px">压缩 PDF</div>
-        <div class="p-tab" data-tab="watermark" style="width:100%;text-align:left;margin-bottom:4px">添加水印</div>
-        <div class="p-tab" data-tab="extract" style="width:100%;text-align:left;margin-bottom:4px">提取图片</div>
-        <div class="p-tab" data-tab="info" style="width:100%;text-align:left">PDF 信息</div>
+        <div class="side-tab active" data-tab="merge" style="width:100%;text-align:left;margin-bottom:4px">合并 PDF</div>
+        <div class="side-tab" data-tab="split" style="width:100%;text-align:left;margin-bottom:4px">拆分 PDF</div>
+        <div class="side-tab" data-tab="compress" style="width:100%;text-align:left;margin-bottom:4px">压缩 PDF</div>
+        <div class="side-tab" data-tab="watermark" style="width:100%;text-align:left;margin-bottom:4px">添加水印</div>
+        <div class="side-tab" data-tab="extract" style="width:100%;text-align:left;margin-bottom:4px">提取图片</div>
+        <div class="side-tab" data-tab="info" style="width:100%;text-align:left">PDF 信息</div>
       </div>
     </div>
     <div class="p-main">
@@ -213,7 +204,6 @@
   </div>
 </div>
 
-
 <script>
 function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
 </script>
@@ -292,7 +282,7 @@ function L(key, params) {
 
 // 静态文本应用：用原始文本(缓存于 data-orig)查翻译，避免重复翻译已替换文本
 function applyStaticL10n() {
-  document.querySelectorAll('h1, h3, .p-tab, .p-label, .p-btn, .p-hint, .p-file-drop div').forEach((el) => {
+  document.querySelectorAll('h1, h3, .side-tab, .p-label, .p-hint, .p-file-drop div').forEach((el) => {
     let src = el.getAttribute('data-orig');
     if (!src) { src = el.textContent.trim(); el.setAttribute('data-orig', src); }
     if (src) el.textContent = L(src);
@@ -411,7 +401,7 @@ class PDFToolkit {
   }
   
   bindTabs() {
-    document.querySelectorAll('.p-tab').forEach(tab => {
+    document.querySelectorAll('.side-tab').forEach(tab => {
       tab.addEventListener('click', () => {
         const tabName = tab.dataset.tab;
         this.switchTab(tabName);
@@ -421,8 +411,8 @@ class PDFToolkit {
   
   switchTab(tabName) {
     this.currentTab = tabName;
-    document.querySelectorAll('.p-tab').forEach(t => t.classList.remove('active'));
-    document.querySelector(`.p-tab[data-tab="${tabName}"]`).classList.add('active');
+    document.querySelectorAll('.side-tab').forEach(t => t.classList.remove('active'));
+    document.querySelector(`.side-tab[data-tab="${tabName}"]`).classList.add('active');
     document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
     document.getElementById(`tab-${tabName}`).style.display = 'block';
   }

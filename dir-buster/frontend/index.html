@@ -9,10 +9,9 @@
 <style>
 .app{display:flex;flex-direction:column;height:100%;padding:var(--sp-4);gap:var(--sp-3);box-sizing:border-box}
 .row{display:flex;gap:var(--sp-2);align-items:center}
-.input{flex:1;height:32px;padding:0 10px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:var(--fs-sm);outline:none;font-family:var(--font-mono)}
-.input:focus-visible{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
-.input.sm{flex:0 0 200px}
-.select{height:32px;padding:0 8px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:var(--fs-sm);outline:none}
+/* qd-allow-local: input — 只声明本页工具条的宽度策略，外观一律来自共享 components.css */
+.input { flex: 1; }
+.input.sm { flex: 0 0 200px; }
 .hint{font-size:var(--fs-xs);color:var(--text-muted);min-height:14px}
 .hint.err{color:var(--danger)}
 .warn{font-size:var(--fs-xs);color:var(--warning);background:var(--warning-soft);padding:6px 10px;border-radius:var(--radius)}

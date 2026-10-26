@@ -14,9 +14,6 @@ body{margin:0}
 .stat .l{font-size: var(--fs-xs);color:var(--text-muted);margin-top:2px}
 #ta{flex:1;width:100%;resize:none;padding:12px;font-size: var(--fs-lg);line-height:1.6;font-family:var(--font-mono);background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius);box-sizing:border-box}
 .bar{display:flex;gap:8px;align-items:center;flex-shrink:0}
-.btn{height:32px;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;color:var(--text-secondary);font-size: var(--fs-md);cursor:pointer;font-family:inherit}
-.btn:hover{color:var(--text-primary)}
-.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 #cnt{font-size: var(--fs-sm);color:var(--text-muted)}
 </style>
 </head>
@@ -28,7 +25,7 @@ body{margin:0}
     <span id="cnt">0 字符</span>
     <span style="flex:1"></span>
     <button class="btn" id="clear">清空</button>
-    <button class="btn primary" id="copy">复制统计</button>
+    <button class="btn btn-primary" id="copy">复制统计</button>
   </div>
 </div>
 <script>

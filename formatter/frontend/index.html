@@ -15,15 +15,6 @@
 .cmp-pane[hidden]{display:none}
 .p-app{display:flex;flex-direction:column;height:100%}
 .p-toolbar{display:flex;align-items:center;gap:6px;padding:8px 10px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap}
-.p-btn{height:28px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-tertiary);color:var(--text-primary);font-size: var(--fs-sm);cursor:pointer;font-family:inherit;white-space:nowrap}
-.p-btn:hover{background:var(--bg-hover)}
-.p-btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
-.p-btn-primary:hover{background:var(--accent-hover)}
-.p-btn-toggle{background:transparent}.p-btn-toggle.active{background:var(--accent);color:#fff;border-color:var(--accent)}
-.p-btn-group{display:flex;gap:1px}.p-btn-group .p-btn{border-radius:0}
-.p-btn-group .p-btn:first-child{border-radius:var(--radius)0 0 var(--radius)}
-.p-btn-group .p-btn:last-child{border-radius:0 var(--radius)var(--radius)0}
-.p-select{height:28px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-tertiary);color:var(--text-primary);font-size: var(--fs-sm);font-family:inherit;outline:none;cursor:pointer}
 .p-spacer{flex:1}
 .p-body{display:flex;flex:1;min-height:0;gap:1px}
 .p-pane{display:flex;flex-direction:column;flex:1;min-width:0;background:var(--bg-secondary)}
@@ -52,10 +43,10 @@ window.copyViaHost=function(t,cb){var id='cp_'+(++window.__cpSeq),done=false;fun
       <div class="p-toolbar">
         <select class="p-select" id="cpLang"><option value="auto">自动检测</option><option value="js">JavaScript</option><option value="css">CSS</option><option value="html">HTML</option></select>
         <div class="btn-group">
-          <button class="btn p-btn-toggle active" id="cpMinify" data-mode="minify">压缩</button>
-          <button class="btn p-btn-toggle" id="cpPrettify" data-mode="prettify">美化</button>
+          <button class="p-btn is-on" id="cpMinify" data-mode="minify">压缩</button>
+          <button class="p-btn" id="cpPrettify" data-mode="prettify">美化</button>
         </div>
-        <button class="btn p-btn-primary" id="cpProcess">▶ 执行</button>
+        <button class="p-btn p-btn-primary" id="cpProcess">▶ 执行</button>
         <button class="btn" id="cpCopy"><span class="qi qi-clipboard"></span> 复制</button>
         <span class="p-spacer"></span>
         <button class="btn" id="cpClear">✕ 清空</button>
@@ -72,7 +63,7 @@ window.copyViaHost=function(t,cb){var id='cp_'+(++window.__cpSeq),done=false;fun
   <div class="cmp-pane" id="paneSql" hidden>
     <div class="p-app">
       <div class="p-toolbar">
-        <button class="btn p-btn-primary" id="spFormat">▶ 格式化</button>
+        <button class="p-btn p-btn-primary" id="spFormat">▶ 格式化</button>
         <button class="btn" id="spCopy"><span class="qi qi-clipboard"></span> 复制</button>
         <span class="p-spacer"></span>
         <button class="btn" id="spClear">✕ 清空</button>
@@ -105,8 +96,8 @@ window.copyViaHost=function(t,cb){var id='cp_'+(++window.__cpSeq),done=false;fun
   var cpMinify=document.getElementById('cpMinify'),cpPrettify=document.getElementById('cpPrettify')
   var cpLang=document.getElementById('cpLang'),cpStatus=document.getElementById('cpStatus')
   var cpMode='minify'
-  cpMinify.addEventListener('click',function(){cpMode='minify';cpMinify.classList.add('active');cpPrettify.classList.remove('active');if(cpInput.value.trim())cpProcessCode()})
-  cpPrettify.addEventListener('click',function(){cpMode='prettify';cpPrettify.classList.add('active');cpMinify.classList.remove('active');if(cpInput.value.trim())cpProcessCode()})
+  cpMinify.addEventListener('click',function(){cpMode='minify';cpMinify.classList.add('is-on');cpPrettify.classList.remove('is-on');if(cpInput.value.trim())cpProcessCode()})
+  cpPrettify.addEventListener('click',function(){cpMode='prettify';cpPrettify.classList.add('is-on');cpMinify.classList.remove('is-on');if(cpInput.value.trim())cpProcessCode()})
   cpProcess.addEventListener('click',cpProcessCode)
   cpCopy.addEventListener('click',function(){if(cpOutput.value){window.copyViaHost(cpOutput.value,function(){cpStatus.textContent='已复制！'})}})
   cpClear.addEventListener('click',function(){cpInput.value='';cpOutput.value='';cpStatus.textContent='等待输入…';cpInput.focus()})
@@ -216,8 +207,8 @@ window.copyViaHost=function(t,cb){var id='cp_'+(++window.__cpSeq),done=false;fun
       if(pd.text){spInput.value=pd.text;spDoFormat()}
     }else{
       showFmtTab('code')
-      if(cmd==='code-prettify'){cpMode='prettify';cpPrettify.classList.add('active');cpMinify.classList.remove('active')}
-      else{cpMode='minify';cpMinify.classList.add('active');cpPrettify.classList.remove('active')}
+      if(cmd==='code-prettify'){cpMode='prettify';cpPrettify.classList.add('is-on');cpMinify.classList.remove('is-on')}
+      else{cpMode='minify';cpMinify.classList.add('is-on');cpPrettify.classList.remove('is-on')}
       if(pd.text){cpInput.value=pd.text;cpProcessCode()}
     }
   })

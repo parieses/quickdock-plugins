@@ -16,11 +16,7 @@
 /* 编解码/哈希（原 text-encoder） */
 .p-app{display:flex;flex-direction:column;height:100%}
 .p-toolbar{display:flex;align-items:center;gap:6px;padding:8px 10px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap}
-.p-btn{height:28px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-tertiary);color:var(--text-primary);font-size: var(--fs-sm);cursor:pointer;font-family:inherit;white-space:nowrap}
-.p-btn:hover{background:var(--bg-hover)}
-.p-btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
-.p-btn-primary:hover{background:var(--accent-hover)}
-.p-select{height:28px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-tertiary);color:var(--text-primary);font-size: var(--fs-sm);outline:none;cursor:pointer;min-width:130px}
+.p-select{min-width:130px} /* qd-allow-local: p-select —— 仅宽度策略，外观走 qd-theme.css */
 .p-spacer{flex:1}
 .p-body{display:flex;flex:1;min-height:0;gap:1px}
 .p-pane{display:flex;flex-direction:column;flex:1;min-width:0;background:var(--bg-secondary)}
@@ -81,7 +77,7 @@
       <span id="keyWrap" style="display:none;align-items:center;gap:4px">
         <input id="keyInput" class="input" placeholder="HMAC 密钥" style="width:110px;height:28px;padding:0 8px" spellcheck="false">
       </span>
-      <button class="btn p-btn-primary" id="btnProcess">▶ 执行</button>
+      <button class="p-btn p-btn-primary" id="btnProcess">▶ 执行</button>
       <button class="btn qi-ico qi-ico-copy" id="btnCopy">复制</button>
       <span class="p-spacer"></span>
       <button class="btn" id="btnClear">✕ 清空</button>

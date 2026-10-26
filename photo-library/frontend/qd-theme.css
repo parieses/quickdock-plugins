@@ -4,42 +4,42 @@
 
 :root {
   /* ===== 表面（暗色） ===== */
-  --bg-primary: #17181b;
-  --bg-secondary: #1e1f23;
-  --bg-tertiary: #26282d;
-  --bg-hover: #2f3137;
-  --bg-active: #3a3d44;
+  --bg-primary: #0f1116;
+  --bg-secondary: #151920;
+  --bg-tertiary: #1c2029;
+  --bg-hover: #1f242e;
+  --bg-active: #262d39;
 
   /* ===== 文字 ===== */
-  --text-primary: #e9eaec;
-  --text-secondary: #a9adb5;
-  --text-muted: #7c818b;
-  --text-disabled: #5c606a;
-  --text-placeholder: #646875;
+  --text-primary: #e6e9ef;
+  --text-secondary: #a1a8b4;
+  --text-muted: #6f7784;
+  --text-disabled: #565d68;
+  --text-placeholder: #565d68;
 
   /* ===== 描边 ===== */
-  --border: #2b2d33;
-  --border-strong: #3a3d44;
+  --border: #22272f;
+  --border-strong: #2e3440;
 
   /* ===== 品牌 / 状态 ===== */
-  --accent: #4a9eff;
-  --accent-hover: #3a8ae0;
-  --accent-soft: rgba(74, 158, 255, 0.12);
-  --success: #28c864;
-  --success-soft: rgba(40, 200, 100, 0.12);
-  --danger: #e24b4a;
-  --danger-soft: rgba(226, 75, 74, 0.12);
-  --warning: #f0a030;
-  --warning-soft: rgba(240, 160, 48, 0.12);
+  --accent: #5b8cff;
+  --accent-hover: #4a7af0;
+  --accent-soft: rgba(91, 140, 255, 0.1);
+  --success: #22c55e;
+  --success-soft: rgba(34, 197, 94, 0.12);
+  --danger: #ef4444;
+  --danger-soft: rgba(239, 68, 68, 0.12);
+  --warning: #f59e0b;
+  --warning-soft: rgba(245, 158, 11, 0.12);
 
   /* ===== 圆角刻度 ===== */
   --radius-xs: 4px;
   --radius-sm: 6px;
-  --radius: 8px;
+  --radius: 6px;
   --fw-normal: 400;
   --radius-md: 10px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
   --radius-pill: 999px;
 
   /* ===== 间距刻度 ===== */
@@ -54,7 +54,7 @@
   --fs-xs: 11px;
   --fs-sm: 12px;
   --fs-md: 13px;
-  --fs-lg: 14px;
+  --fs-lg: 15px;
   --fs-xl: 16px;
   --fs-2xl: 20px;
   --fw-medium: 500;
@@ -79,7 +79,9 @@
   --canvas-nav-hover: rgba(0, 0, 0, 0.6);
   --canvas-on-image: rgba(0, 0, 0, 0.45);
   --canvas-on-image-border: rgba(255, 255, 255, 0.5);
-}
+
+  /* 与 templates/qd-theme.css 对齐（fork 手工合并） */
+  --accent-line: rgba(91, 140, 255, 0.45);}
 
 /* 浅色主题适配 — 由宿主通过 html[data-theme="light"] 控制 */
 html[data-theme="light"] {

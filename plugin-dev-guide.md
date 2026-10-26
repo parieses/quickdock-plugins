@@ -1507,6 +1507,9 @@ native 侧的关键设计（改之前先看 `qdlog.go` 顶部注释）：
 
 > 样式自包含（2026-08-24 约定）：外部插件的 `frontend/` 下必须自带 `qd-theme.css`（即 `common.css` 的副本，改名以绕开宿主对 `common.css` 后缀的拦截改写），页面用 `<link rel="stylesheet" href="qd-theme.css">` 引用——zip 解压到任何环境都有完整样式，不依赖宿主注入。宿主仍会向页面注入 `PluginsDir/builtin/common.css/js` 以兼容历史已安装的旧版插件，但新插件不得依赖该注入。
 
+> **样式规范见 [`plugin-ui-style.md`](./plugin-ui-style.md)**：令牌数值、尺寸基准（页头 44 / 按钮 28 / 输入 28 / 圆角 4-6-10-14）、`p-*` 组件清单、禁止事项、同步与门禁脚本。
+> 三份共享文件的权威源都在 `templates/`：改完跑 `tools/sync_shared.py --all`，再用 `check_shared.py` / `check_design.py` / `check_plugins.py` 三条门禁确认。**不要直接改某个插件目录下的副本。**
+
 ## 完整示例
 
 - **Goja 模板**：`plugins/templates/goja/` 目录下的 Goja 模板项目（含 `main.js` 骨架）。

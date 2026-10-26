@@ -48,59 +48,21 @@
     "modal": "存量待迁移",
     "modal-body": "存量待迁移"
   },
-  "ascii-art": {
-    "btn": "存量待迁移"
-  },
   "batch-rename": {
     "card": "存量待迁移"
   },
-  "breach-check": {
-    "btn": "存量待迁移"
-  },
-  "code-card": {
-    "btn": "存量待迁移",
-    "btn-ghost": "存量待迁移"
-  },
-  "code-runner": {
-    "btn": "存量待迁移"
-  },
-  "cron-explainer": {
-    "p-btn": "存量待迁移",
-    "p-btn-primary": "存量待迁移",
-    "p-input": "存量待迁移"
-  },
-  "dir-buster": {
-    "input": "存量待迁移",
-    "select": "存量待迁移"
-  },
   "disk-analyzer": {
-    "p-btn": "存量待迁移",
-    "p-btn-primary": "存量待迁移",
     "p-empty": "存量待迁移",
-    "p-select": "存量待迁移",
     "p-toast": "存量待迁移"
   },
   "exif-viewer": {
-    "btn": "存量待迁移",
-    "btn-ghost": "存量待迁移",
     "card": "存量待迁移"
   },
   "flashcards": {
-    "btn": "存量待迁移",
     "card": "存量待迁移"
   },
   "formatter": {
-    "p-btn": "存量待迁移",
-    "p-btn-group": "存量待迁移",
-    "p-btn-primary": "存量待迁移",
-    "p-select": "存量待迁移",
     "p-textarea": "存量待迁移"
-  },
-  "geoip": {
-    "btn": "存量待迁移"
-  },
-  "hash-calc": {
-    "btn-ghost": "存量待迁移"
   },
   "image-uploader": {
     "card": "存量待迁移"
@@ -111,81 +73,25 @@
     "p-textarea": "存量待迁移"
   },
   "jwt-decoder": {
-    "p-btn": "存量待迁移",
-    "p-btn-primary": "存量待迁移",
     "p-empty": "存量待迁移",
-    "p-error": "存量待迁移",
-    "p-input": "存量待迁移"
+    "p-error": "存量待迁移"
   },
   "login-tester": {
-    "input": "存量待迁移",
     "p-head-title": "存量待迁移"
-  },
-  "netdiag": {
-    "btn": "存量待迁移",
-    "input": "存量待迁移"
-  },
-  "otp": {
-    "btn": "存量待迁移"
-  },
-  "pdf-toolkit": {
-    "p-btn": "存量待迁移",
-    "p-input": "存量待迁移",
-    "p-tab": "存量待迁移",
-    "p-tabs": "存量待迁移"
   },
   "port-scanner": {
     "p-empty": "存量待迁移"
   },
-  "rmb-upper": {
-    "btn": "存量待迁移",
-    "btn-ghost": "存量待迁移",
-    "input": "存量待迁移"
-  },
   "service-manager": {
-    "badge": "存量待迁移",
-    "btn": "存量待迁移"
-  },
-  "site-audit": {
-    "btn": "存量待迁移",
-    "input": "存量待迁移"
-  },
-  "speed-test": {
-    "input": "存量待迁移"
+    "badge": "存量待迁移"
   },
   "startup-manager": {
-    "badge": "存量待迁移",
-    "btn": "存量待迁移"
-  },
-  "subdomain-enum": {
-    "btn": "存量待迁移",
-    "btn-ghost": "存量待迁移",
-    "input": "存量待迁移"
-  },
-  "system-info": {
-    "btn": "存量待迁移"
+    "badge": "存量待迁移"
   },
   "text-encoder": {
-    "p-btn": "存量待迁移",
-    "p-btn-primary": "存量待迁移",
-    "p-select": "存量待迁移",
     "p-textarea": "存量待迁移"
   },
-  "vault": {
-    "btn": "存量待迁移"
-  },
   "video-to-gif": {
-    "btn": "存量待迁移"
-  },
-  "word-count": {
-    "btn": "存量待迁移"
-  },
-  "ws-tester": {
-    "btn": "存量待迁移",
-    "btn-ghost": "存量待迁移",
-    "input": "存量待迁移"
-  },
-  "xiangqi": {
     "btn": "存量待迁移"
   }
 }

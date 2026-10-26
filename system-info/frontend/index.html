@@ -9,8 +9,6 @@
 body{margin:0}
 .app{display:flex;flex-direction:column;height:100vh;padding:12px;gap:10px;box-sizing:border-box}
 .bar{display:flex;gap:8px}
-.btn{height:34px;padding:0 16px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;color:var(--text-secondary);font-size: var(--fs-md);cursor:pointer;font-family:inherit}
-.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 .list{flex:1;overflow:auto;display:flex;flex-direction:column;gap:6px}
 .item{display:flex;justify-content:space-between;gap:12px;padding:9px 12px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius)}
 .item .k{font-size: var(--fs-md);color:var(--text-muted);white-space:nowrap}
@@ -25,7 +23,7 @@ body{margin:0}
 <body>
 <div class="app">
   <div class="bar">
-    <button class="btn primary" id="go">采集</button>
+    <button class="btn btn-primary" id="go">采集</button>
   </div>
   <div id="msg"></div>
   <div class="list" id="list"><div style="font-size: var(--fs-xs);color:var(--text-muted)">点击「采集」查看本机概览</div></div>

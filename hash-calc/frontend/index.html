@@ -9,7 +9,6 @@
 <style>
 .app{display:flex;flex-direction:column;height:100%;padding:var(--sp-4);gap:var(--sp-3);box-sizing:border-box}
 .row{display:flex;gap:var(--sp-2);align-items:center}
-.btn-ghost{padding:9px 14px;background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius-md);cursor:pointer;font-size:13px;white-space:nowrap}
 .hint{font-size:12px;color:var(--text-muted);min-height:16px}
 .pathbox{flex:1;padding:8px 10px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius-md);color:var(--text-secondary);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .result{margin-top:var(--sp-2);background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-lg);padding:var(--sp-3);display:flex;flex-direction:column;gap:8px}
@@ -28,7 +27,7 @@
 <div class="app">
   <div class="row">
     <div id="pathBox" class="pathbox">未选择文件</div>
-    <button id="btnPick" class="btn-ghost">选择文件</button>
+    <button id="btnPick" class="btn">选择文件</button>
   </div>
   <div class="row"><span id="hint" class="hint"></span></div>
   <div id="result" class="result hidden"></div>

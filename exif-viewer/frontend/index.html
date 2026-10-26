@@ -9,8 +9,6 @@
 <style>
 .app{display:flex;flex-direction:column;height:100%;padding:var(--sp-4);gap:var(--sp-3);box-sizing:border-box}
 .row{display:flex;gap:var(--sp-2);align-items:center}
-.btn{padding:9px 16px;background:var(--accent,#4a9eff);color:#fff;border:none;border-radius:var(--radius-md);cursor:pointer;font-size: var(--fs-md);font-weight:600}
-.btn-ghost{padding:9px 14px;background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius-md);cursor:pointer;font-size: var(--fs-md)}
 .pathbox{flex:1;padding:8px 10px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius-md);color:var(--text-secondary);font-size: var(--fs-sm);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .hint{font-size: var(--fs-sm);color:var(--text-muted);min-height:16px}
 .card{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:var(--sp-3)}
@@ -32,10 +30,10 @@
 <div class="app">
   <div class="row">
     <div id="pathBox" class="pathbox">未选择图片</div>
-    <button id="btnPick" class="btn-ghost">选择图片</button>
+    <button id="btnPick" class="btn">选择图片</button>
   </div>
   <div class="row">
-    <button id="btnRead" class="btn">读取 EXIF</button>
+    <button id="btnRead" class="btn btn-primary">读取 EXIF</button>
     <span id="hint" class="hint"></span>
   </div>
   <div id="card" class="card"></div>

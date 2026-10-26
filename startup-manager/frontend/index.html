@@ -9,9 +9,6 @@
 body{margin:0}
 .app{display:flex;flex-direction:column;height:100vh;padding:12px;gap:8px;box-sizing:border-box}
 .bar{display:flex;gap:8px}
-.btn{height:34px;padding:0 16px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;color:var(--text-secondary);font-size: var(--fs-md);cursor:pointer;font-family:inherit}
-.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
-.btn.sm{height:26px;padding:0 10px;font-size: var(--fs-sm)}
 .list{flex:1;overflow:auto;display:flex;flex-direction:column;gap:6px}
 .sec{font-size: var(--fs-sm);color:var(--text-muted);margin-top:4px}
 .row{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius)}
@@ -27,7 +24,7 @@ body{margin:0}
 <body>
 <div class="app">
   <div class="bar">
-    <button class="btn primary" id="go">刷新</button>
+    <button class="btn btn-primary" id="go">刷新</button>
   </div>
   <div id="msg"></div>
   <div class="list" id="list"><div style="font-size: var(--fs-xs);color:var(--text-muted)">点击「刷新」加载启动项</div></div>
@@ -38,7 +35,7 @@ window.copyViaHost=function(t,cb){var id='cp_'+(++window.__cpSeq),done=false;fun
 window.__qdNativeBound=true;(function(){var seq=0,pend={};window.pluginExec=function(c,i){return new Promise(function(res,rej){var id='qd_'+(++seq);pend[id]={res:res,rej:rej};parent.postMessage({type:'plugin:execute',id:id,command:c,input:i||{}},'*')})};window.addEventListener('message',function(e){var d=e.data;if(!d||d.type!=='plugin:result'||!d.id||!pend[d.id])return;var p=pend[d.id];delete pend[d.id];if(d.error)p.rej(new Error(typeof d.error==='string'?d.error:(d.error.message||'error')));else p.res(d.data||{})})})();
 function row(item){var el=document.createElement('div');el.className='row';
   var b=item.enabled?'<span class="badge b-on">已启用</span>':'<span class="badge b-off">已禁用</span>';
-  var act=item.enabled?'<button class="btn sm" data-act="0" data-id="'+item.id+'">禁用</button>':'<button class="btn sm primary" data-act="1" data-id="'+item.id+'">启用</button>';
+  var act=item.enabled?'<button class="btn btn-sm" data-act="0" data-id="'+item.id+'">禁用</button>':'<button class="btn btn-sm btn-primary" data-act="1" data-id="'+item.id+'">启用</button>';
   var sub=item.command?item.command:item.location;
   el.innerHTML='<div class="meta"><div class="name">'+item.name+'</div><div class="sub" data-copy="1">'+sub+'</div></div>'+b+'<div class="acts">'+act+'</div>';
   return el}

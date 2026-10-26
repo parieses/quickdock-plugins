@@ -11,10 +11,7 @@ body{margin:0}
 .block{display:none;flex-direction:column;gap:8px}
 .block.on{display:flex}
 .row{display:flex;gap:8px;align-items:center}
-.inp{flex:1;height:34px;padding:0 12px;background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius);font-size: var(--fs-lg);font-family:inherit}
 .inp.sec{width:100%}
-.btn{height:34px;padding:0 16px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;color:var(--text-secondary);font-size: var(--fs-md);cursor:pointer;font-family:inherit}
-.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 .list{flex:1;overflow:auto;display:flex;flex-direction:column;gap:6px}
 .result{padding:12px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius);font-size: var(--fs-md)}
 .safe{color:#35c268}
@@ -33,15 +30,15 @@ body{margin:0}
   <div class="block on" id="b-pw">
     <div class="hint">采用 HIBP k-匿名性：只发送 SHA1 哈希前 5 位，密码原文不出本机。</div>
     <div class="row">
-      <input class="inp" id="pw" type="password" placeholder="输入要检查的密码">
-      <button class="btn primary" id="pwgo">检查</button>
+      <input class="input input-auto flex-1" id="pw" type="password" placeholder="输入要检查的密码">
+      <button class="btn btn-primary" id="pwgo">检查</button>
     </div>
   </div>
   <div class="block" id="b-em">
     <div class="hint">邮箱查询需要 HIBP API Key（haveibeenpwned.com 免费申请）。</div>
-    <input class="inp" id="em" placeholder="邮箱地址">
+    <input class="input input-auto flex-1" id="em" placeholder="邮箱地址">
     <input class="inp sec" id="key" type="password" placeholder="HIBP API Key">
-    <button class="btn primary" id="emgo">检查</button>
+    <button class="btn btn-primary" id="emgo">检查</button>
   </div>
   <div id="msg"></div>
   <div class="list" id="list"></div>

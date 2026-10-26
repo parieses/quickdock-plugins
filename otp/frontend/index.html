@@ -9,10 +9,6 @@
 body{margin:0}
 .app{display:flex;flex-direction:column;height:100vh;padding:12px;gap:10px;box-sizing:border-box}
 .row{display:flex;gap:8px;align-items:center}
-.inp{height:32px;padding:0 10px;background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius);font-size: var(--fs-md);font-family:inherit}
-.btn{height:32px;padding:0 14px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;color:var(--text-secondary);font-size: var(--fs-md);cursor:pointer;font-family:inherit}
-.btn:hover{color:var(--text-primary)}
-.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 .list{flex:1;overflow:auto;display:flex;flex-direction:column;gap:8px}
 .item{display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius)}
 .item .lab{flex:1;min-width:0}
@@ -28,9 +24,9 @@ body{margin:0}
 <body>
 <div class="app">
   <div class="row">
-    <input class="inp" id="label" placeholder="名称，如 GitHub" style="flex:1">
-    <input class="inp" id="secret" placeholder="Base32 密钥" style="flex:1.4">
-    <button class="btn primary" id="add">添加</button>
+    <input class="input input-auto" id="label" placeholder="名称，如 GitHub" style="flex:1">
+    <input class="input input-auto" id="secret" placeholder="Base32 密钥" style="flex:1.4">
+    <button class="btn btn-primary" id="add">添加</button>
   </div>
   <div id="bar"></div>
   <div class="list" id="list"></div>

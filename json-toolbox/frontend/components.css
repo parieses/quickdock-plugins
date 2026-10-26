@@ -7,19 +7,26 @@
  *  按钮体系
  * ========================================================== */
 
+/* 高度阶梯与宿主 .qd-btn、插件 .p-btn 同一条：28 / 24 / 22 / 20。
+ * 用固定 height 而不是 padding 撑高 —— 插件常把字号局部改成 11px，
+ * padding 撑出来的高度会跟着缩，同一排按钮就不齐了（历史事故：一条工具栏里三种高度）。 */
 .btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
-  font-size: 13px;
-  font-weight: 500;
+  justify-content: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 11px;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg-secondary);
-  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  line-height: 1;
   cursor: pointer;
-  transition: all var(--transition);
+  transition: background var(--transition), border-color var(--transition), color var(--transition);
   white-space: nowrap;
   user-select: none;
 }
@@ -27,15 +34,16 @@
 .btn:hover {
   background: var(--bg-hover);
   border-color: var(--border-strong);
+  color: var(--text-primary);
 }
 
 .btn:active {
-  transform: translateY(1px);
+  background: var(--bg-active);
 }
 
 .btn:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
 }
 
 /* 主按钮 - 强调操作 */
@@ -87,77 +95,102 @@
 }
 
 /* 激活/选中态按钮：用于「分段切换」「模式切换」等可切换按钮。
- * 语义是「当前选中」，不是「强调主操作」——主操作用 .btn-primary。 */
+ * 语义是「当前选中」，不是「强调主操作」——主操作用 .btn-primary。
+ * 与 .p-btn.is-on 同款：淡蓝底 + accent 文字 + accent-line 边线。 */
 .btn-toggle {
   background: var(--accent-soft);
-  border-color: var(--accent);
+  border-color: var(--accent-line);
   color: var(--accent);
 }
 
 .btn-toggle:hover {
   background: var(--accent-soft);
-  border-color: var(--accent);
+  border-color: var(--accent-line);
   color: var(--accent);
 }
 
-/* 尺寸变体 */
+/* 尺寸变体：高度严格递减，别按字号反推 */
 .btn-sm {
-  padding: 4px 10px;
-  font-size: 12px;
-  border-radius: var(--radius-xs);
+  height: 24px;
+  padding: 0 8px;
+  font-size: var(--fs-xs);
 }
 
-/* 高密度变体：数据工具条 / 网格工具栏等纵向空间紧张处使用。
- * 规格与 .btn-sm 同族但更紧凑（26px 高），供 data-dense 类界面使用。 */
+/* 高密度变体：数据工具条 / 网格工具栏等纵向空间紧张处使用。 */
 .btn-xs {
-  height: 26px;
-  padding: 0 9px;
-  gap: 4px;
-  font-size: 11px;
-  border-radius: var(--radius-sm);
-}
-
-/* 极高密度：分页条 / 筛选 chips 条等 22px 高场景。 */
-.btn-xxs {
   height: 22px;
   padding: 0 7px;
   gap: 4px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
+  border-radius: var(--radius-xs);
+}
+
+/* 极高密度：分页条 / 筛选 chips 条等 20px 高场景。 */
+.btn-xxs {
+  height: 20px;
+  padding: 0 6px;
+  gap: 3px;
+  font-size: var(--fs-xs);
   border-radius: var(--radius-xs);
 }
 
 .btn-lg {
-  padding: 10px 20px;
-  font-size: 14px;
-  border-radius: var(--radius-lg);
+  height: 32px;
+  padding: 0 16px;
+  font-size: var(--fs-md);
+  border-radius: var(--radius-md);
 }
 
-/* 图标按钮 */
+/* 图标按钮：正方形，宽度跟着高度走 */
 .btn-icon {
-  padding: 6px;
-  min-width: 32px;
-  justify-content: center;
+  padding: 0;
+  min-width: 28px;
 }
 
 .btn-icon.btn-sm {
-  min-width: 26px;
-  padding: 4px;
+  min-width: 24px;
 }
 
 .btn-icon.btn-xs {
-  min-width: 26px;
-  padding: 0 6px;
+  min-width: 22px;
 }
 
 .btn-icon.btn-xxs {
-  min-width: 22px;
-  padding: 0 5px;
+  min-width: 20px;
 }
 
-.btn:disabled, .btn.disabled {
-  opacity: 0.5;
+/* 禁用态用「文字下沉」而不是整块降透明度：透明度会让底色跟着变淡，
+ * 在一排按钮里反而更像可点的次要按钮。有底色的变体才需要降透明度。
+ * 注意别在这里写 background: none —— `.btn:disabled` 是 (0,2,0)，
+ * 会盖掉 `.btn-primary` (0,1,0) 的强调底色，禁用主按钮变成"白底白字"的一块空白。 */
+.btn:disabled,
+.btn.disabled {
+  color: var(--text-disabled);
+  border-color: var(--border);
   cursor: not-allowed;
   pointer-events: none;
+}
+
+/* 有底色的变体：保留语义色、压到淡底，别整块降 opacity ——
+ * 白色文字降到 45% 在浅色主题里等于隐形（video-to-gif 的「转换」曾整块消失）。 */
+.btn-primary:disabled, .btn-primary.disabled {
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+  color: var(--accent);
+}
+
+.btn-danger:disabled, .btn-danger.disabled {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.btn-success:disabled, .btn-success.disabled {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.btn-toggle:disabled, .btn-toggle.disabled {
+  color: var(--text-disabled);
 }
 
 /* ============================================================
@@ -195,14 +228,43 @@
 .select,
 .textarea {
   width: 100%;
-  padding: 8px 12px;
-  font-size: 13px;
   font-family: inherit;
+  font-size: var(--fs-sm);
   color: var(--text-primary);
-  background: var(--bg-primary);
+  background: var(--bg-tertiary);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  transition: all var(--transition);
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition: border-color var(--transition);
+}
+
+/* 单行控件锁 28px，与 .btn 同高 —— 同一行里输入框和按钮要能对得上，
+ * 早前 .input 靠 8px 上下 padding 撑到 35px，和 28px 的按钮并排就高低不齐。 */
+.input,
+.select {
+  height: 28px;
+  padding: 0 9px;
+}
+
+.textarea {
+  padding: 8px 9px;
+  min-height: 80px;
+  line-height: 1.6;
+  resize: vertical;
+  font-family: var(--font-mono);
+  tab-size: 2;
+}
+
+/* 防御：.input 被直接挂在 <textarea> 上时（历史写法，见 api-loadtest 的请求头框），
+ * 退回多行规格 —— 否则 28px 的固定高度会把多行输入压成一行。
+ * 元素+类选择器（0,1,1）优先于 .input（0,1,0），不需要 !important。 */
+textarea.input {
+  height: auto;
+  min-height: 80px;
+  padding: 8px 9px;
+  line-height: 1.6;
+  resize: vertical;
+  font-family: var(--font-mono);
 }
 
 .input:hover,
@@ -216,24 +278,21 @@
 .textarea:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-soft);
-}
-
-.input::placeholder,
-.textarea::placeholder {
-  color: var(--text-placeholder);
 }
 
 /* 键盘焦点环：仅 :focus-visible（鼠标点击不显示，Tab 导航才显示）。
    工具套件的重度用户是键盘用户，焦点环缺失会让 Tab 导航"失明"。 */
 .input:focus-visible,
 .select:focus-visible,
-.textarea:focus-visible,
-.input:focus-visible,
-.select:focus-visible {
+.textarea:focus-visible {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.input::placeholder,
+.textarea::placeholder {
+  color: var(--text-placeholder);
 }
 
 .input.error,
@@ -244,7 +303,7 @@
 
 .input.error:focus,
 .textarea.error:focus {
-  box-shadow: 0 0 0 3px var(--danger-soft);
+  box-shadow: 0 0 0 2px var(--danger-soft);
 }
 
 .input.success {
@@ -252,34 +311,43 @@
 }
 
 .input.success:focus {
-  box-shadow: 0 0 0 3px var(--success-soft);
+  box-shadow: 0 0 0 2px var(--success-soft);
 }
 
+/* 禁用态同样「文字下沉」，不整块变淡 */
 .input:disabled,
 .select:disabled,
 .textarea:disabled {
-  opacity: 0.6;
+  color: var(--text-disabled);
+  background: var(--bg-secondary);
   cursor: not-allowed;
 }
 
-/* 高密度变体：数据工具条 / 网格工具栏等纵向空间紧张处使用（26px 高）。 */
+/* 高密度变体：与 .btn-sm 同高（24px）。 */
 .input-sm,
-.select-sm,
-.textarea-sm {
-  height: 26px;
+.select-sm {
+  height: 24px;
   padding: 0 8px;
-  font-size: 11px;
-  border-radius: var(--radius-sm);
+  font-size: var(--fs-xs);
+}
+
+.textarea-sm {
+  padding: 6px 8px;
+  font-size: var(--fs-xs);
 }
 
 /* 极高密度：分页条 / 筛选条内的输入（22px 高）。 */
 .input-xxs,
-.select-xxs,
-.textarea-xxs {
+.select-xxs {
   height: 22px;
   padding: 0 7px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   border-radius: var(--radius-xs);
+}
+
+.textarea-xxs {
+  padding: 5px 7px;
+  font-size: var(--fs-xs);
 }
 
 /* 自适应宽度：.input 默认 width:100%（表单铺满），工具条里的紧凑输入框
@@ -297,18 +365,12 @@
   box-shadow: 0 0 0 2px var(--accent-soft);
 }
 
-.textarea {
-  resize: vertical;
-  min-height: 80px;
-  font-family: var(--font-mono);
-}
-
 .select {
   appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237c818b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 12px center;
-  padding-right: 36px;
+  background-position: right 8px center;
+  padding-right: 26px;
 }
 
 /* ============================================================

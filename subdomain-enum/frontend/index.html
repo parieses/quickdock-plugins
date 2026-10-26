@@ -9,12 +9,8 @@
 <style>
 .app{display:flex;flex-direction:column;height:100%;padding:var(--sp-3);gap:var(--sp-2);box-sizing:border-box}
 .row{display:flex;gap:var(--sp-2);align-items:center;flex-wrap:wrap}
-.input{flex:1;min-width:200px;padding:8px 10px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size: var(--fs-md);outline:none;font-family:ui-monospace,Consolas,monospace}
-.input:focus-visible{border-color:var(--accent,#4a9eff)}
-.btn{padding:8px 18px;background:var(--accent,#4a9eff);color:#fff;border:none;border-radius:var(--radius);cursor:pointer;font-size: var(--fs-md);font-weight:600;white-space:nowrap}
-.btn.stop{background:var(--danger,#e24b4a)}
-.btn:disabled{opacity:.55;cursor:not-allowed}
-.btn-ghost{padding:7px 12px;background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;font-size: var(--fs-sm)}
+/* qd-allow-local: input — 只声明本页工具条的宽度策略，外观一律来自共享 components.css */
+.input { flex: 1; min-width: 200px; font-family: var(--font-mono); }
 .chk{display:flex;align-items:center;gap:4px;font-size: var(--fs-sm);color:var(--text-secondary);cursor:pointer}
 .hint{font-size: var(--fs-sm);color:var(--text-muted);min-height:16px}
 .hint.err{color:var(--danger,#e24b4a)}
@@ -43,14 +39,14 @@ tr:hover td{background:var(--bg-hover,rgba(255,255,255,.03))}
 <div class="app">
   <div class="row">
     <input id="domain" class="input" placeholder="域名，如 example.com" spellcheck="false" autofocus>
-    <button id="btnGo" class="btn">开始</button>
+    <button id="btnGo" class="btn btn-primary">开始</button>
   </div>
   <div class="row">
     <label class="chk"><input id="resolve" type="checkbox" checked><span id="t-resolve">解析 A 记录</span></label>
     <input id="filter" class="input" style="flex:0 0 180px" placeholder="过滤…" spellcheck="false">
     <label class="chk"><input id="onlyAlive" type="checkbox"><span id="t-alive">仅看可解析</span></label>
     <span style="flex:1"></span>
-    <button id="btnCopy" class="btn-ghost">复制全部</button>
+    <button id="btnCopy" class="btn">复制全部</button>
     <span id="status" class="hint"></span>
   </div>
   <div class="srcbar" id="srcbar"></div>
@@ -195,7 +191,7 @@ function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;
     running = v
     var b = el('btnGo')
     b.textContent = v ? L('停止') : L('开始')
-    b.className = v ? 'btn stop' : 'btn'
+    b.className = v ? 'btn btn-danger' : 'btn btn-primary'
   }
 
   function poll(){

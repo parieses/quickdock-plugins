@@ -6,24 +6,7 @@
   <link rel="stylesheet" href="components.css">
 <link rel="stylesheet" href="icons.css">
   <style>
-    /* 表单控件：qd-theme.css 只提供 .p-input，本页统一用 .input，这里补齐样式 */
-    .input {
-      width: 100%;
-      height: 32px;
-      padding: 0 10px;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      background: var(--bg-primary);
-      color: var(--text-primary);
-      font-size: var(--fs-sm);
-      outline: none;
-      transition: border-color var(--transition), box-shadow var(--transition);
-    }
-    .input:hover { border-color: var(--border-strong); }
-    .input:focus-visible { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
-    .input::placeholder { color: var(--text-placeholder); }
-    textarea.input { height: auto; min-height: 68px; padding: 8px 10px; resize: vertical; font-family: var(--font-mono); font-size: var(--fs-sm); line-height: 1.5; }
-    select.input { height: 32px; cursor: pointer; }
+    /* 输入框外观全部来自共享 components.css（.input / textarea.input / select.input 都在那里） */
 
     /* 区块标题左侧强调条 */
     .p-section-label::before {

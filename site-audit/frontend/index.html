@@ -13,13 +13,10 @@
 .pane{display:none;flex-direction:column;gap:var(--sp-3)}
 .pane.active{display:flex}
 .row{display:flex;gap:var(--sp-2);align-items:center;flex-wrap:wrap}
-.input{flex:1;min-width:160px;height:30px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-primary);color:var(--text-primary);font-size:var(--fs-sm);outline:none}
-.input:focus-visible{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+/* qd-allow-local: input — 只声明本页工具条的宽度策略，外观一律来自共享 components.css */
+.input { flex: 1; min-width: 160px; }
 .mini{width:90px;height:30px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-primary);color:var(--text-primary);font-size:var(--fs-sm);outline:none}
 .lbl{font-size:var(--fs-xs);color:var(--text-muted);white-space:nowrap}
-.btn{padding:8px 18px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);cursor:pointer;font-size:var(--fs-sm);font-weight:var(--fw-semibold);white-space:nowrap}
-.btn:hover{background:var(--accent-hover)}
-.btn:disabled{opacity:.5;cursor:not-allowed}
 .hint{font-size:var(--fs-sm);color:var(--text-muted);min-height:16px}
 .hint.err{color:var(--danger)}
 .fields{background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-lg);padding:var(--sp-3)}
@@ -107,7 +104,7 @@ select.input{flex:0 0 auto;min-width:auto}
     <div class="pane active" id="pane-whois">
       <div class="row">
         <input id="whois-q" class="input" placeholder="域名或 IP，如 example.com / 8.8.8.8" spellcheck="false" autofocus>
-        <button id="whois-go" class="btn">查询</button>
+        <button id="whois-go" class="btn btn-primary">查询</button>
       </div>
       <div id="whois-hint" class="hint"></div>
       <textarea id="whois-raw" class="raw" readonly placeholder="WHOIS 原始信息将显示在这里…"></textarea>
@@ -117,7 +114,7 @@ select.input{flex:0 0 auto;min-width:auto}
     <div class="pane" id="pane-ssl">
       <div class="row">
         <input id="ssl-host" class="input" placeholder="域名或 host:port，如 github.com" spellcheck="false">
-        <button id="ssl-go" class="btn">检查</button>
+        <button id="ssl-go" class="btn btn-primary">检查</button>
       </div>
       <div id="ssl-hint" class="hint"></div>
       <div id="ssl-fields" class="fields"><div class="empty" style="min-height:120px">输入目标后点击检查</div></div>
@@ -127,7 +124,7 @@ select.input{flex:0 0 auto;min-width:auto}
     <div class="pane" id="pane-dns">
       <div class="row">
         <input id="dns-domain" class="input" placeholder="域名，如 example.com" spellcheck="false">
-        <button id="dns-go" class="btn">查询</button>
+        <button id="dns-go" class="btn btn-primary">查询</button>
       </div>
       <div class="row">
         <span class="lbl">记录类型</span>
@@ -159,7 +156,7 @@ select.input{flex:0 0 auto;min-width:auto}
           <option value="TXT">TXT</option>
           <option value="NS">NS</option>
         </select>
-        <button id="prop-go" class="btn">对比</button>
+        <button id="prop-go" class="btn btn-primary">对比</button>
       </div>
       <div id="prop-hint" class="hint"></div>
       <div id="prop-summary" class="fields" style="display:none"></div>
@@ -182,7 +179,7 @@ select.input{flex:0 0 auto;min-width:auto}
     <div class="pane" id="pane-headers">
       <div class="row">
         <input id="hd-url" class="input" placeholder="目标 URL，如 https://example.com" spellcheck="false">
-        <button id="hd-go" class="btn">审计</button>
+        <button id="hd-go" class="btn btn-primary">审计</button>
       </div>
       <div id="hd-hint" class="hint"></div>
       <div id="hd-score" style="display:none"></div>

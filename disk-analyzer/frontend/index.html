@@ -12,11 +12,6 @@ html,body{margin:0;height:100%;background:var(--bg-primary);color:var(--text-pri
 .p-app{display:flex;flex-direction:column;height:100%;min-height:0}
 /* 顶栏统一走 qd-theme.css 的 .p-head（44px），此处不再影子重定义 */
 .p-spacer{flex:1}
-.p-btn{background:var(--bg-tertiary);color:var(--text-primary);border:1px solid var(--border);border-radius:5px;padding:4px 9px;font-size: var(--fs-sm);cursor:pointer;white-space:nowrap}
-.p-btn:hover{background:var(--bg-hover)}
-.p-btn-primary{background:var(--accent);border-color:var(--accent);color:#fff}
-.p-btn-primary:hover{filter:brightness(1.08)}
-.p-select{background:var(--bg-tertiary);color:var(--text-primary);border:1px solid var(--border);border-radius:5px;padding:3px 6px;font-size: var(--fs-sm)}
 .p-drives{display:none;padding:8px 12px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px;font-size: var(--fs-sm);flex-shrink:0}
 .p-drives.show{display:flex}
 .p-drive-opt{display:flex;align-items:center;gap:4px;cursor:pointer;user-select:none;padding:2px 6px;border-radius:4px;background:var(--bg-tertiary);border:1px solid var(--border)}
@@ -90,7 +85,7 @@ html,body{margin:0;height:100%;background:var(--bg-primary);color:var(--text-pri
     <button class="btn qi-ico qi-ico-layout-grid" id="btnView" data-orig="方块图" data-orig-title="切换列表 / 方块图（SpaceSniffer 模式）" title="切换列表 / 方块图（SpaceSniffer 模式）">方块图</button>
     <button class="btn qi-ico qi-ico-settings" id="btnDrives" data-orig="盘符" data-orig-title="选择要扫描的盘符" title="选择要扫描的盘符">盘符</button>
     <button class="btn" id="btnStop" data-orig="⏹ 停止" data-orig-title="停止当前扫描" title="停止当前扫描" style="display:none">⏹ 停止</button>
-    <button class="btn p-btn-primary qi-ico qi-ico-house" id="btnRoot" data-orig="此电脑">此电脑</button>
+    <button class="p-btn p-btn-primary qi-ico qi-ico-house" id="btnRoot" data-orig="此电脑">此电脑</button>
   </div>
   <div class="p-drives" id="drivePanel">
     <div class="p-drive-hint" data-orig="勾选要显示/扫描的盘符（取消勾选的盘符不会出现在下方列表中）：">勾选要显示/扫描的盘符（取消勾选的盘符不会出现在下方列表中）：</div>
