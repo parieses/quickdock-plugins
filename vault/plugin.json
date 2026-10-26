@@ -17,7 +17,7 @@
     "enabled": true,
     "entry": "frontend/index.html",
     "width": 620,
-    "height": 640
+    "height": 600
   },
   "permissions": {
     "clipboard": true,

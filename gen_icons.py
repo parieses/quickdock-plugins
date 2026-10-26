@@ -159,7 +159,7 @@ for _g, _names in {
                net-traffic mail-check wifi-manager hosts-manager curl-converter game-sudoku game-adarkroom
                geoip control-receiver lan-scanner""".split(),
     "amber": """crypto-toolbox hash-calc jwt-decoder login-tester dir-buster
-                subdomain-enum site-audit game-roguelike otp vault breach-check""".split(),
+                subdomain-enum site-audit game-roguelike otp vault breach-check secrets-scanner disk-shredder""".split(),
     "green": "database data-generator disk-analyzer app-manager junk-cleaner game-snake game-gomoku game-proxx xiangqi".split(),
     "pink": "image-studio ocr-tool exif-viewer image-uploader game-code-snake photo-library md2card video-to-gif".split(),
 }.items():

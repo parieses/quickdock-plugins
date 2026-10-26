@@ -1460,7 +1460,7 @@ native 侧的关键设计（改之前先看 `qdlog.go` 顶部注释）：
 | word-count | 实时统计文本的字数、词数、行数、段落数、字节数与阅读时长，支持中英文混合。 | 纯前端 |
 | xiangqi | 单机中国象棋，完整走子与吃子规则，含基于局面评估的简易 AI 对手。 | 纯前端 |
 
-**Native 插件（`runtime: native`，自带 Go 源码 + 编译产物）** — 共 35 个
+**Native 插件（`runtime: native`，自带 Go 源码 + 编译产物）** — 共 37 个
 | 插件 ID | 功能 |
 |---|---|
 | api-loadtest | 功能丰富的 HTTP 接口压测工具：支持并发/时长双模式、自定义 Header 与 Body、实时 QPS 与延迟分布(p50/p90/p95/p99)、状态码分布、错误率统计与结果一键导出 |
@@ -1472,6 +1472,7 @@ native 侧的关键设计（改之前先看 `qdlog.go` 顶部注释）：
 | database | 轻量数据库连接与查询工具：MySQL / SQLite / Redis 连接管理、SQL 与 Redis 命令执行、库表浏览器（库→表/视图→字段、Redis 键树）、Redis 键类型感知详情与增删改（string/hash/list/set/zset）、TTL 与 DB 管理、结果网格内联行编辑、智能列筛选（运算符/区间/多值/判空，回车或失焦即滤）、勾选批量删除（支持全选匹配筛选的行）。数据独立存储。 |
 | dir-buster | 对指定目标 URL 用内置常见路径字典进行轻量探测（自用）：并发受限、可配扩展名，采用异步会话模型实时返回命中的非 404 路径。仅探测你授权的目标，内置字典、不递归 |
 | disk-analyzer | 可视化磁盘空间占用分析工具，类似 SpaceSniffer，支持树图展示目录结构 |
+| disk-shredder | 彻底删除敏感文件，让数据无法被恢复：多次覆写文件内容后重命名并删除；另可覆写磁盘空闲空间，清理此前已删除文件留下的数据残片 |
 | exif-viewer | 选择图片（JPEG/PNG）查看拍摄时间、相机/镜头、参数与 GPS 经纬度等 EXIF 信息 |
 | geoip | 查询 IP 的地理位置、运营商、时区与坐标，支持指定 IP 或查询本机公网 IP。 |
 | git-workbench | Git 仓库一体化工作台：仓库浏览、二分定位 bug 引入提交、三方合并冲突可视化解决、代码演化时间轴、历史改写（改作者/删敏感文件）、仓库体检与知识孤岛识别。 |
@@ -1490,6 +1491,7 @@ native 侧的关键设计（改之前先看 `qdlog.go` 顶部注释）：
 | pdf-toolkit | PDF 处理工具箱：合并/拆分/压缩/加水印/提取图片，无需安装 Adobe Acrobat |
 | photo-library | 选择本地文件夹，网格缩略图浏览照片，按日期/文件夹筛选，点击查看 EXIF 拍摄信息与参数 |
 | port-scanner | 检查端口占用，显示进程名和 PID |
+| secrets-scanner | 扫描项目目录，找出意外硬编码的密钥、私钥、token、密码字段与身份证号等敏感信息，防止它们被提交进仓库或泄露 |
 | service-manager | 查看本机 Windows 服务列表，按名称筛选，并启动 / 停止 / 重启服务。 |
 | site-audit | 将 WHOIS 查询、SSL 证书检查、DNS 查询、DNS 传播检查、HTTP 状态码速查、HTTP 安全头审计六个站点工具合并为单一插件，按需切换标签页，共享一个原生子进程 |
 | speed-test | 测量网络下载速率与延迟：流式下载测速（支持自定义测速节点 URL），实时显示速率与进度，采用异步会话模型规避宿主执行超时 |
@@ -1499,7 +1501,7 @@ native 侧的关键设计（改之前先看 `qdlog.go` 顶部注释）：
 | wifi-manager | 查看网络列表、WiFi 密码、连接状态 |
 | ws-tester | 连接 ws/wss 服务，发送消息并实时查看返回的帧，支持多连接与历史 |
 
-> 以上 81 个插件均在本仓库根目录各有独立子目录（ID 为 `io.github.parieses.*`），代码可直接复用。goja/none 插件演示「零宿主依赖、纯 JS 自包含」的外部化样板；native 插件演示「Go 源码 vendor + 自编译 entry exe」模式（`build.py` 直接在插件目录 `go build`）。完整 goja 模板见上文「完整示例」。
+> 以上 83 个插件均在本仓库根目录各有独立子目录（ID 为 `io.github.parieses.*`），代码可直接复用。goja/none 插件演示「零宿主依赖、纯 JS 自包含」的外部化样板；native 插件演示「Go 源码 vendor + 自编译 entry exe」模式（`build.py` 直接在插件目录 `go build`）。完整 goja 模板见上文「完整示例」。
 
 <!--DEVGUIDE_PLUGINS_END-->
 

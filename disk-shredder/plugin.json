@@ -1,0 +1,67 @@
+{
+  "id": "io.github.parieses.disk-shredder",
+  "name": "数据粉碎",
+  "name_i18n": {
+    "zh-CN": "数据粉碎",
+    "en-US": "Data Shredder"
+  },
+  "version": "1.0.0",
+  "description": "彻底删除敏感文件，让数据无法被恢复：多次覆写文件内容后重命名并删除；另可覆写磁盘空闲空间，清理此前已删除文件留下的数据残片",
+  "description_i18n": {
+    "zh-CN": "彻底删除敏感文件，让数据无法被恢复：多次覆写文件内容后重命名并删除；另可覆写磁盘空闲空间，清理此前已删除文件留下的数据残片",
+    "en-US": "Permanently destroy sensitive files so they cannot be recovered: overwrite content multiple times, rename, then delete; also wipe free space to clean up remnants of previously deleted files"
+  },
+  "author": "QuickDock",
+  "icon": "icon.svg",
+  "category": "安全工具",
+  "platforms": [
+    "windows"
+  ],
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "backend": {
+    "runtime": "native",
+    "entry": "disk-shredder",
+    "args": []
+  },
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 940,
+    "height": 600
+  },
+  "permissions": {
+    "filesystem": true
+  },
+  "commands": [
+    {
+      "id": "shred",
+      "title": "数据粉碎",
+      "keywords": [
+        "粉碎",
+        "覆写",
+        "擦除",
+        "销毁",
+        "彻底删除",
+        "恢复",
+        "shred",
+        "wipe",
+        "cipher",
+        "数据残留"
+      ],
+      "aliases": [
+        "文件粉碎",
+        "数据擦除",
+        "覆写空闲空间",
+        "删除后无法恢复"
+      ],
+      "title_i18n": {
+        "zh-CN": "数据粉碎",
+        "en-US": "Data Shredder"
+      }
+    }
+  ],
+  "changelog": "## v1.0.0\n\n- **文件粉碎**：按选定档位覆写文件内容（保持原大小，避免 NTFS 分配到新簇而原数据不动）→ 随机改名若干次清掉 MFT 里的旧文件名 → Sync 落盘后删除；目录递归处理，最后删空壳\n- **空闲空间覆写**：清此前已删除文件留下的数据残片。在目标卷上建临时大文件写到安全余量为止再删除，语义与 Windows `cipher /w` 一致（覆写的是整个卷，不是某个文件夹），但可中断、留余量、不写满到 0、不限 NTFS\n- **介质判定**：用 IOCTL_STORAGE_QUERY_PROPERTY 问寻道惩罚 / TRIM 判定 SSD 与机械盘（卷句柄不转发时反查物理磁盘号再问），判不出就如实说未知——SSD 上覆写本来就未必有效，这一点必须让用户知道\n- **三道闸门**：后端硬拒绝设备路径 / 卷根 / 系统目录 / 回收站；启动要求 confirm（粉碎须输入 DELETE、覆写须输入卷名）；UI 强制先预览，并明说 SSD 无效、小文件常驻 MFT、卷影副本不受影响、多遍覆写无额外收益\n"
+}

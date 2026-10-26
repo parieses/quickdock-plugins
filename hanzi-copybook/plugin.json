@@ -21,7 +21,7 @@
     "enabled": true,
     "entry": "frontend/index.html",
     "width": 1024,
-    "height": 760
+    "height": 600
   },
   "commands": [
     {

@@ -639,3 +639,19 @@ GLYPH["plugin-scaffold"] = """
   <rect x="3" y="3" width="18" height="18" rx="4"/>
   <path d="M12 8v8M8 12h8" opacity="0.55"/>
 """
+
+GLYPH["disk-shredder"] = """
+  <path d="M6 3.2h6.6l4.2 4.2v13.4H6z"/>
+  <path d="M12.6 3.2v4.2h4.2" opacity="0.55"/>
+  <path d="M8.6 11.4h6.8M8.6 14.4h6.8" opacity="0.55"/>
+  <path d="M4.6 17.2l14.8-8.4"/>
+  <path d="M5.4 20.6h3.2M10.6 20.6h2.2" opacity="0.55"/>
+"""
+
+GLYPH["secrets-scanner"] = """
+  <path d="M5 3h7l4 4v13H5z"/>
+  <path d="M12 3v4h4" opacity="0.55"/>
+  <path d="M7.5 11h7M7.5 14h7" opacity="0.55"/>
+  <circle cx="15.5" cy="8.5" r="3.2"/>
+  <path d="M18 11l3 3"/>
+"""

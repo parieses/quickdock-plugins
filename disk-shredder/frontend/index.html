@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>数据粉碎</title>
+<link rel="stylesheet" href="qd-theme.css">
+<link rel="stylesheet" href="components.css">
+<style>
+.app{display:flex;flex-direction:column;height:100%;box-sizing:border-box;gap:var(--sp-2);padding:var(--sp-3);overflow:hidden}
+.bar{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2)}
+.bar .grow{flex:1;min-width:120px}
+.lbl{font-size:var(--fs-sm);color:var(--text-secondary);white-space:nowrap}
+.modebar{display:flex;gap:2px;padding:2px;background:var(--bg-tertiary);border-radius:var(--radius-md);align-self:flex-start}
+.modebtn{padding:5px 14px;border:none;background:transparent;color:var(--text-secondary);font-size:var(--fs-sm);border-radius:var(--radius-sm);cursor:pointer;font-family:inherit}
+.modebtn.on{background:var(--bg-primary);color:var(--text-primary);font-weight:var(--fw-medium)}
+.targets{flex:0 0 auto;max-height:150px;overflow:auto;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--bg-secondary)}
+.trow{display:flex;align-items:center;gap:var(--sp-2);padding:6px 10px;border-bottom:1px solid var(--border);font-size:var(--fs-sm)}
+.trow:last-child{border-bottom:none}
+.trow .p{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--text-primary)}
+.trow .sz{font-size:var(--fs-xs);color:var(--text-muted);white-space:nowrap}
+.xbtn{border:none;background:transparent;color:var(--text-muted);cursor:pointer;font-size:var(--fs-md);line-height:1;padding:0 4px}
+.xbtn:hover{color:var(--danger)}
+.empty{padding:var(--sp-3);text-align:center;font-size:var(--fs-sm);color:var(--text-muted)}
+.previewbox{border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--bg-secondary);padding:var(--sp-3);display:flex;flex-direction:column;gap:var(--sp-2);max-height:210px;overflow:auto}
+.pvhead{display:flex;flex-wrap:wrap;gap:var(--sp-3);font-size:var(--fs-sm);color:var(--text-secondary)}
+.pvhead b{color:var(--text-primary);font-weight:var(--fw-medium)}
+.warns{display:flex;flex-direction:column;gap:6px}
+.warn{display:flex;gap:6px;font-size:var(--fs-xs);line-height:1.6;padding:6px 8px;border-radius:var(--radius-sm)}
+.warn.warn-lv{background:var(--danger-soft);color:var(--text-primary)}
+.warn.info-lv{background:var(--bg-tertiary);color:var(--text-secondary)}
+.warn.error-lv{background:var(--danger-soft);color:var(--danger);font-weight:var(--fw-medium)}
+.confirmbar{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2);padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--bg-secondary)}
+.confirmbar.hot{border-color:var(--danger)}
+.progress{height:4px;background:var(--bg-tertiary);border-radius:var(--radius-pill);overflow:hidden}
+.progress-fill{height:100%;width:0;background:var(--accent);border-radius:var(--radius-pill);transition:width .2s linear}
+.statusline{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-3);font-size:var(--fs-sm);color:var(--text-secondary)}
+.statusline b{color:var(--text-primary);font-weight:var(--fw-medium)}
+.wrap{flex:1;min-height:0;overflow:auto;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--bg-secondary)}
+table.res{width:100%;border-collapse:collapse;font-size:var(--fs-xs)}
+table.res th{position:sticky;top:0;background:var(--bg-tertiary);color:var(--text-secondary);text-align:left;padding:6px 8px;font-weight:var(--fw-medium);white-space:nowrap}
+table.res td{padding:5px 8px;border-top:1px solid var(--border);color:var(--text-primary);vertical-align:top}
+table.res td.pth{font-family:var(--font-mono);word-break:break-all;max-width:420px}
+table.res td.ok{color:var(--success)}
+table.res td.bad{color:var(--danger)}
+.mono{font-family:var(--font-mono);font-size:var(--fs-xs)}
+.dim{color:var(--text-muted)}
+.note{font-size:var(--fs-xs);color:var(--text-muted);line-height:1.6}
+.hint{font-size:var(--fs-sm);color:var(--text-muted)}
+.hint.err{color:var(--danger)}
+.hidden{display:none !important}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="modebar">
+    <button id="m-shred" class="modebtn on">粉碎文件</button>
+    <button id="m-wipe" class="modebtn">覆写空闲空间</button>
+  </div>
+
+  <!-- ============ 模式一：粉碎文件 / 目录 ============ -->
+  <div id="pane-shred">
+    <div class="bar">
+      <button id="addFile" class="btn btn-sm">添加文件</button>
+      <button id="addDir" class="btn btn-sm">添加目录</button>
+      <input id="pathInput" class="input input-sm grow" placeholder="或直接粘贴完整路径后回车">
+      <button id="clearT" class="btn btn-ghost btn-sm">清空</button>
+    </div>
+
+    <div id="targets" class="targets"><div class="empty">还没有选择目标</div></div>
+
+    <div class="bar">
+      <span class="lbl">覆写档位</span>
+      <select id="passes" class="select select-sm">
+        <option value="1" selected>1 遍 · 随机（推荐）</option>
+        <option value="3">3 遍 · 0x00/0xFF/随机（兼容 cipher /w）</option>
+        <option value="7">7 遍 · DoD 5220.22-M</option>
+      </select>
+      <span class="lbl">随机改名</span>
+      <input id="renames" class="input input-sm" style="width:60px;flex:none" value="6" title="改名次数：清掉 MFT 记录里的旧文件名">
+      <span class="lbl">次</span>
+      <div class="grow"></div>
+      <button id="preview" class="btn btn-sm">预览</button>
+    </div>
+
+    <div id="pv-shred" class="previewbox hidden"></div>
+
+    <div id="cf-shred" class="confirmbar">
+      <span class="lbl">此操作不可撤销，输入</span>
+      <span class="mono" style="color:var(--danger);font-weight:var(--fw-semibold)">DELETE</span>
+      <span class="lbl">解锁</span>
+      <input id="confirmShred" class="input input-sm" style="width:110px;flex:none" placeholder="DELETE" autocomplete="off">
+      <div class="grow"></div>
+      <button id="go" class="btn btn-danger btn-sm" disabled>开始粉碎</button>
+      <button id="stop" class="btn btn-ghost btn-sm hidden">停止</button>
+    </div>
+  </div>
+
+  <!-- ============ 模式二：覆写空闲空间 ============ -->
+  <div id="pane-wipe" class="hidden">
+    <div class="bar">
+      <span class="lbl">目标卷</span>
+      <select id="vol" class="select select-sm"></select>
+      <span class="lbl">覆写档位</span>
+      <select id="wpasses" class="select select-sm">
+        <option value="1" selected>1 遍 · 随机（推荐）</option>
+        <option value="3">3 遍 · 0x00/0xFF/随机（兼容 cipher /w）</option>
+      </select>
+      <span class="lbl">保留余量</span>
+      <select id="reserve" class="select select-sm">
+        <option value="2147483648" selected>2 GB</option>
+        <option value="5368709120">5 GB</option>
+        <option value="10737418240">10 GB</option>
+      </select>
+    </div>
+    <div class="bar">
+      <span class="lbl">临时文件目录（留空自动选）</span>
+      <input id="tempDir" class="input input-sm grow" placeholder="该卷上一个可写目录">
+      <button id="pickTemp" class="btn btn-sm">选择</button>
+      <button id="previewW" class="btn btn-sm">预览</button>
+    </div>
+    <div class="note">覆写的是<b>整个卷的空闲空间</b>，用来清除此前已删除文件留下的数据残片——不是某个文件夹。这一点与 Windows 的 <span class="mono">cipher /w</span> 一致。</div>
+    <div id="pv-wipe" class="previewbox hidden"></div>
+    <div id="cf-wipe" class="confirmbar">
+      <span class="lbl">输入上面的卷名（如</span>
+      <span class="mono" id="cfvol" style="color:var(--danger)">D:</span>
+      <span class="lbl">）解锁</span>
+      <input id="confirmWipe" class="input input-sm" style="width:90px;flex:none" placeholder="D:" autocomplete="off">
+      <div class="grow"></div>
+      <button id="goW" class="btn btn-danger btn-sm" disabled>开始覆写</button>
+      <button id="stopW" class="btn btn-ghost btn-sm hidden">停止</button>
+    </div>
+  </div>
+
+  <div class="progress"><div id="fill" class="progress-fill"></div></div>
+
+  <div class="statusline">
+    <span id="phase">就绪</span>
+    <span>进度 <b id="prog">0%</b></span>
+    <span id="speed"></span>
+    <span id="eta"></span>
+    <span>完成 <b id="cnt">0/0</b></span>
+    <span id="hint" class="hint"></span>
+  </div>
+
+  <div class="wrap"><div id="list"></div></div>
+
+  <div class="note">覆写前先看清这几点：SSD / U 盘有磨损均衡与保留区，覆写写到的是新物理块，旧数据可能仍可读；NTFS 上小于约 900 字节的文件内容常驻 MFT，覆写数据流未必擦得掉；文件名会随机改名多次再删除，但大小、时间戳等元数据仍会残留；卷影副本 / 系统还原点里的旧版本不会被覆写。要真正让整盘不可恢复，请用全盘加密后丢弃密钥，或走厂商的 Secure Erase。</div>
+</div>
+
+<script>
+function escapeHtml(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
+function fmtBytes(n){
+  n=Number(n)||0
+  if(n<1024) return n+' B'
+  var u=['KB','MB','GB','TB'], i=-1, v=n
+  do{ v/=1024; i++ }while(v>=1024&&i<u.length-1)
+  return v.toFixed(v>=100?0:1)+' '+u[i]
+}
+function fmtDur(s){
+  s=Math.round(Number(s)||0)
+  if(s<60) return s+' 秒'
+  if(s<3600) return Math.floor(s/60)+' 分 '+(s%60)+' 秒'
+  return Math.floor(s/3600)+' 小时 '+Math.floor((s%3600)/60)+' 分'
+}
+</script>
+<script>
+(function(){
+  'use strict'
+  var L10N = {
+    'en-US': {
+      '粉碎文件':'Shred files', '覆写空闲空间':'Wipe free space', '添加文件':'Add file',
+      '添加目录':'Add folder', '清空':'Clear', '预览':'Preview', '开始粉碎':'Shred now',
+      '开始覆写':'Wipe now', '停止':'Stop', '就绪':'Ready', '还没有选择目标':'No target selected'
+    }
+  }
+  function L(k){
+    var loc=document.documentElement.getAttribute('lang')||'zh-CN'
+    var m=L10N[loc]||L10N[loc.split('-')[0]]||{}
+    return (m&&m[k]!==undefined)?m[k]:k
+  }
+  function el(i){return document.getElementById(i)}
+  function setHint(msg,isErr){var h=el('hint');h.textContent=msg||'';h.className=isErr?'hint err':'hint'}
+
+  var seq=0, pend={}
+  function send(command,input){
+    return new Promise(function(res,rej){
+      var id='ds_'+(++seq); pend[id]={res:res,rej:rej}
+      parent.postMessage({type:'plugin:execute',id:id,command:command,input:input||{}},'*')
+      setTimeout(function(){ var t=pend[id]; if(t){delete pend[id]; rej(new Error('后端 30 秒无响应'))} },30000)
+    })
+  }
+  window.addEventListener('message',function(e){
+    var d=e.data; if(!d) return
+    if(d.type==='plugin:result'&&d.id&&pend[d.id]){
+      var p=pend[d.id]; delete pend[d.id]
+      if(d.error) p.rej(new Error(typeof d.error==='string'?d.error:(d.error.message||'后端错误')))
+      else p.res(d.data)
+      return
+    }
+    if(d.type==='plugin:init'){
+      var t=(d.data||{}).text
+      if(t) addTarget(t)
+      boot() // 宿主桥接就绪，触发首屏卷列表加载（booted 守卫保证只加载一次）
+      return
+    }
+    if(d.type==='plugin:theme'){
+      var dd=d.data||{}
+      if(dd.locale){ document.documentElement.setAttribute('lang',dd.locale); renderStatic() }
+    }
+  })
+
+  /* ---------- 状态 ---------- */
+  var mode='shred', running=false, sid=null, timer=null
+  var targets=[], lastPreview=null
+
+  function renderStatic(){
+    el('m-shred').textContent=L('粉碎文件')
+    el('m-wipe').textContent=L('覆写空闲空间')
+    el('addFile').textContent=L('添加文件')
+    el('addDir').textContent=L('添加目录')
+    el('clearT').textContent=L('清空')
+    el('preview').textContent=L('预览')
+    el('previewW').textContent=L('预览')
+    el('go').textContent=L('开始粉碎')
+    el('goW').textContent=L('开始覆写')
+    el('stop').textContent=L('停止')
+    el('stopW').textContent=L('停止')
+  }
+
+  /* ---------- 模式切换 ---------- */
+  function setMode(m){
+    mode=m
+    el('m-shred').className='modebtn'+(m==='shred'?' on':'')
+    el('m-wipe').className='modebtn'+(m==='wipe'?' on':'')
+    el('pane-shred').className=m==='shred'?'':'hidden'
+    el('pane-wipe').className=m==='wipe'?'':'hidden'
+    if(m==='wipe'&&!el('vol').options.length) loadVolumes()
+  }
+  el('m-shred').addEventListener('click',function(){setMode('shred')})
+  el('m-wipe').addEventListener('click',function(){setMode('wipe')})
+
+  /* ---------- 目标列表 ---------- */
+  function addTarget(p){
+    p=String(p||'').trim()
+    if(!p) return
+    for(var i=0;i<targets.length;i++){ if(targets[i].path===p) return }
+    targets.push({path:p})
+    renderTargets()
+    resetConfirm()
+  }
+  function resetConfirm(){
+    el('confirmShred').value=''
+    el('go').disabled=true
+    el('cf-shred').className='confirmbar'
+    el('pv-shred').className='previewbox hidden'
+    lastPreview=null
+  }
+  function renderTargets(){
+    var box=el('targets')
+    if(!targets.length){ box.innerHTML='<div class="empty">'+L('还没有选择目标')+'</div>'; return }
+    var html=''
+    targets.forEach(function(t,i){
+      html+='<div class="trow"><span class="p" title="'+escapeHtml(t.path)+'">'+escapeHtml(t.path)+'</span>'+
+        '<button class="xbtn" data-i="'+i+'" title="移除">&times;</button></div>'
+    })
+    box.innerHTML=html
+    var btns=box.querySelectorAll('.xbtn')
+    for(var k=0;k<btns.length;k++){
+      btns[k].addEventListener('click',function(){
+        targets.splice(parseInt(this.getAttribute('data-i'),10),1)
+        renderTargets()
+        resetConfirm()
+      })
+    }
+  }
+  el('addFile').addEventListener('click',function(){
+    if(window.qdPickFile) window.qdPickFile({title:'选择要粉碎的文件',filter:'所有文件',pattern:'*.*'}).then(function(p){ if(p) addTarget(p) })
+    else setHint('当前宿主不支持文件选择，请粘贴路径',true)
+  })
+  el('addDir').addEventListener('click',function(){
+    if(window.qdPickFolder) window.qdPickFolder({title:'选择要粉碎的文件夹'}).then(function(p){ if(p) addTarget(p) })
+    else setHint('当前宿主不支持目录选择，请粘贴路径',true)
+  })
+  el('pathInput').addEventListener('keydown',function(e){
+    if(e.key==='Enter'){ addTarget(this.value); this.value='' }
+  })
+  el('clearT').addEventListener('click',function(){ targets=[]; renderTargets(); resetConfirm() })
+  el('pickTemp').addEventListener('click',function(){
+    if(window.qdPickFolder) window.qdPickFolder({title:'选择临时文件目录'}).then(function(p){ if(p) el('tempDir').value=p })
+  })
+
+  /* ---------- 卷列表 ---------- */
+  function loadVolumes(){
+    return send('volumes',{}).then(function(r){
+      var vs=r.volumes||[], html=''
+      vs.forEach(function(v){
+        var lab=v.path+'  '+v.name+'  '+(v.fs||'')+'  可用 '+fmtBytes(v.freeBytes)+(v.writable?'':'  （卷根不可写）')
+        html+='<option value="'+escapeHtml(v.path)+'">'+escapeHtml(lab)+'</option>'
+      })
+      el('vol').innerHTML=html||'<option value="">未识别到卷</option>'
+      onVolChange()
+    }).catch(function(e){ setHint('读取卷失败：'+e.message,true) })
+  }
+  function onVolChange(){
+    var v=el('vol').value||''
+    el('cfvol').textContent=v.replace(/\\$/,'')
+    el('confirmWipe').value=''
+    el('goW').disabled=true
+    el('cf-wipe').className='confirmbar'
+    el('pv-wipe').className='previewbox hidden'
+  }
+  el('vol').addEventListener('change',onVolChange)
+
+  /* ---------- 预览 ---------- */
+  function warnHtml(ws){
+    if(!ws||!ws.length) return ''
+    var h='<div class="warns">'
+    ws.forEach(function(w){
+      var cls=w.level==='error'?'error-lv':(w.level==='warn'?'warn-lv':'info-lv')
+      h+='<div class="warn '+cls+'"><span>'+escapeHtml(w.text)+'</span></div>'
+    })
+    return h+'</div>'
+  }
+  function doPreview(){
+    setHint('')
+    if(!targets.length){ setHint('请先添加要粉碎的文件或文件夹',true); return }
+    el('preview').disabled=true
+    send('preview',{mode:'shred',paths:targets.map(function(t){return t.path}),passes:parseInt(el('passes').value,10)||1})
+      .then(function(r){
+        lastPreview=r
+        var items=r.items||[], rej=r.rejected||[]
+        var h='<div class="pvhead"><span>文件 <b>'+r.totalFiles+'</b> 个</span>'+
+          '<span>合计 <b>'+fmtBytes(r.totalBytes)+'</b></span>'+
+          '<span>实际写入 <b>'+fmtBytes(r.workBytes)+'</b>（'+escapeHtml((r.plan||[]).join(' → '))+'）</span>'+
+          '<span>预计 <b>'+fmtDur(r.estSec)+'</b></span></div>'
+        if(items.length){
+          h+='<div class="mono dim">目标：</div>'
+          items.forEach(function(it){
+            h+='<div class="mono" style="word-break:break-all">· '+escapeHtml(it.path)+
+               (it.isDir?'（目录，'+it.files+' 个文件）':'')+' '+fmtBytes(it.bytes)+
+               (it.note?' <span style="color:var(--danger)">'+escapeHtml(it.note)+'</span>':'')+'</div>'
+          })
+        }
+        if(rej.length){
+          h+='<div class="mono" style="margin-top:4px;color:var(--danger)">已拒绝：</div>'
+          rej.forEach(function(x){ h+='<div class="mono" style="color:var(--danger);word-break:break-all">· '+escapeHtml(x.path)+'：'+escapeHtml(x.reason)+'</div>' })
+        }
+        h+=warnHtml(r.warnings)
+        el('pv-shred').innerHTML=h
+        el('pv-shred').className='previewbox'
+        if(!items.length) setHint('没有可处理的目标（全部被拒绝）',true)
+      })
+      .catch(function(e){ setHint('预览失败：'+e.message,true) })
+      .then(function(){ el('preview').disabled=false })
+  }
+  function mediaText(m){ return m==='ssd'?'SSD / 闪存':(m==='hdd'?'机械硬盘':'未知') }
+  function doPreviewWipe(){
+    setHint('')
+    var v=el('vol').value
+    if(!v){ setHint('请选择卷',true); return }
+    el('previewW').disabled=true
+    send('preview',{mode:'wipe-free',volume:v,passes:parseInt(el('wpasses').value,10)||1,
+                    reserveBytes:parseInt(el('reserve').value,10)||0,tempDir:el('tempDir').value.trim()})
+      .then(function(r){
+        var vol=r.volume||{}
+        var h='<div class="pvhead"><span>卷 <b>'+escapeHtml(vol.path||v)+'</b></span>'+
+          '<span>文件系统 <b>'+escapeHtml(vol.fs||'-')+'</b></span>'+
+          '<span>介质 <b>'+escapeHtml(mediaText(vol.media))+'</b></span>'+
+          '<span>可用 <b>'+fmtBytes(r.freeBytes)+'</b></span>'+
+          '<span>将写入 <b>'+fmtBytes(r.target)+'</b></span>'+
+          '<span>保留 <b>'+fmtBytes(r.reserve)+'</b></span>'+
+          '<span>预计 <b>'+fmtDur(r.estSec)+'</b></span></div>'
+        h+='<div class="mono dim">临时文件目录：'+escapeHtml(r.tempDir||'（未找到可写目录）')+'</div>'
+        h+=warnHtml(r.warnings)
+        el('pv-wipe').innerHTML=h
+        el('pv-wipe').className='previewbox'
+        el('goW').disabled = !r.tempDir || r.target<=0
+      })
+      .catch(function(e){ setHint('预览失败：'+e.message,true) })
+      .then(function(){ el('previewW').disabled=false })
+  }
+  el('preview').addEventListener('click',doPreview)
+  el('previewW').addEventListener('click',doPreviewWipe)
+
+  /* ---------- 确认闸门：不输入就不给按钮 ---------- */
+  el('confirmShred').addEventListener('input',function(){
+    var ok=this.value.trim().toUpperCase()==='DELETE'
+    el('go').disabled=!(ok&&lastPreview&&(lastPreview.items||[]).length>0)
+    el('cf-shred').className='confirmbar'+(ok?' hot':'')
+  })
+  el('confirmWipe').addEventListener('input',function(){
+    var want=(el('vol').value||'').replace(/\\$/,'')
+    var got=this.value.trim().replace(/\\$/,'')
+    var ok=!!want&&!!got&&want.toLowerCase()===got.toLowerCase()
+    el('goW').disabled=!ok
+    el('cf-wipe').className='confirmbar'+(ok?' hot':'')
+  })
+
+  /* ---------- 执行与轮询 ---------- */
+  function start(){
+    if(running) return
+    var input
+    if(mode==='shred'){
+      input={mode:'shred',paths:targets.map(function(t){return t.path}),
+             passes:parseInt(el('passes').value,10)||1,
+             renames:parseInt(el('renames').value,10)||0,
+             confirm:el('confirmShred').value.trim()}
+    }else{
+      input={mode:'wipe-free',volume:el('vol').value,
+             passes:parseInt(el('wpasses').value,10)||1,
+             reserveBytes:parseInt(el('reserve').value,10)||0,
+             tempDir:el('tempDir').value.trim(),
+             confirm:el('confirmWipe').value.trim()}
+    }
+    setHint('')
+    send('task-start',input).then(function(r){
+      sid=r.sessionId
+      running=true
+      el('go').disabled=true; el('goW').disabled=true
+      el('stop').className='btn btn-ghost btn-sm'
+      el('stopW').className='btn btn-ghost btn-sm'
+      el('list').innerHTML=''
+      timer=setInterval(poll,600)
+      poll()
+    }).catch(function(e){ setHint(e.message,true) })
+  }
+  el('go').addEventListener('click',start)
+  el('goW').addEventListener('click',start)
+
+  function stop(){
+    if(!running||!sid) return
+    send('task-cancel',{sessionId:sid}).then(function(){ setHint('已请求停止，正在清理…') })
+      .catch(function(e){ setHint('停止失败：'+e.message,true) })
+  }
+  el('stop').addEventListener('click',stop)
+  el('stopW').addEventListener('click',stop)
+
+  function poll(){
+    if(!sid) return
+    send('task-poll',{sessionId:sid}).then(function(s){
+      el('fill').style.width=(s.percent||0)+'%'
+      el('prog').textContent=(s.percent||0).toFixed(0)+'%'
+      el('phase').textContent=s.phase||s.status||''
+      el('cnt').textContent=(s.doneItems||0)+'/'+(s.totalItems||0)
+      el('speed').textContent=s.speed>0?('速度 '+fmtBytes(s.speed)+'/s'):''
+      el('eta').textContent=(s.etaSec>0&&s.status==='running')?('剩余 '+fmtDur(s.etaSec)):''
+      renderItems(s.items||[],s.notes||[])
+      if(s.status!=='running'){
+        clearInterval(timer); timer=null
+        running=false
+        el('stop').className='btn btn-ghost btn-sm hidden'
+        el('stopW').className='btn btn-ghost btn-sm hidden'
+        el('fill').style.width='100%'
+        var msg='完成：'+(s.doneItems||0)+' 项，写入 '+fmtBytes(s.doneBytes)
+        if(s.failed) msg+='，失败 '+s.failed+' 项'
+        if(s.status==='canceled') msg='已停止（已覆写的部分不会回滚）：'+msg
+        if(s.error) msg+='（'+s.error+'）'
+        setHint(msg,s.status!=='done')
+        if(mode==='shred'){ targets=[]; renderTargets(); resetConfirm() }
+      }
+    }).catch(function(e){
+      clearInterval(timer); timer=null; running=false
+      setHint('轮询失败：'+e.message,true)
+    })
+  }
+
+  function renderItems(items,notes){
+    if(!items.length&&!notes.length){ return }
+    var h='<table class="res"><thead><tr><th style="width:56px">结果</th><th>路径</th><th style="width:90px">大小</th><th>说明</th></tr></thead><tbody>'
+    items.forEach(function(it){
+      h+='<tr><td class="'+(it.ok?'ok':'bad')+'">'+(it.ok?'成功':'失败')+'</td>'+
+         '<td class="pth">'+escapeHtml(it.path)+'</td>'+
+         '<td class="dim">'+fmtBytes(it.size)+'</td>'+
+         '<td class="dim">'+escapeHtml(it.err||it.note||'')+'</td></tr>'
+    })
+    h+='</tbody></table>'
+    if(notes&&notes.length){
+      h+='<div class="note" style="padding:6px 8px">'
+      notes.forEach(function(n){ h+='· '+escapeHtml(n)+'<br>' })
+      h+='</div>'
+    }
+    el('list').innerHTML=h
+  }
+
+  /* ---------- 首屏加载（门控） ---------- */
+  // 卷列表需经 plugin:execute 拉取，必须在宿主桥接就绪（plugin:init）后发送，
+  // 否则早期请求可能被丢弃 → 卷列表加载失败。个别宿主不下发 plugin:init 时，
+  // 由下方 1.5s 兜底触发，避免白屏。booted 守卫保证只加载一次。
+  var booted=false
+  function boot(){
+    if(booted) return
+    booted=true
+    loadVolumes()
+  }
+
+  renderStatic()
+  renderTargets()
+  setTimeout(function(){ boot() }, 1500) // 兜底：宿主未发 plugin:init 时仍能加载
+})()
+</script>
+</body>
+</html>

@@ -26,7 +26,7 @@
     "enabled": true,
     "entry": "frontend/index.html",
     "width": 900,
-    "height": 650
+    "height": 600
   },
   "capabilities": [
     "command",

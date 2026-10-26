@@ -1,0 +1,79 @@
+{
+  "id": "io.github.parieses.secrets-scanner",
+  "name": "敏感信息扫描",
+  "name_i18n": {
+    "zh-CN": "敏感信息扫描",
+    "en-US": "Secret Scanner"
+  },
+  "version": "0.1.0",
+  "description": "扫描项目目录，找出意外硬编码的密钥、私钥、token、密码字段与身份证号等敏感信息，防止它们被提交进仓库或泄露",
+  "description_i18n": {
+    "zh-CN": "扫描项目目录，找出意外硬编码的密钥、私钥、token、密码字段与身份证号等敏感信息，防止它们被提交进仓库或泄露",
+    "en-US": "Scan project directories to find accidentally hardcoded secrets, private keys, tokens, password fields and ID numbers before they leak into a repo"
+  },
+  "author": "QuickDock",
+  "icon": "icon.svg",
+  "category": "安全工具",
+  "platforms": [
+    "windows"
+  ],
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "backend": {
+    "runtime": "native",
+    "entry": "secrets-scanner",
+    "args": []
+  },
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 960,
+    "height": 600
+  },
+  "permissions": {
+    "filesystem": true,
+    "process": ["git"]
+  },
+  "commands": [
+    {
+      "id": "scan",
+      "title": "扫描目录",
+      "keywords": ["扫描", "敏感信息", "密钥", "secret", "扫描目录"],
+      "title_i18n": {
+        "zh-CN": "扫描目录",
+        "en-US": "Scan directory"
+      }
+    },
+    {
+      "id": "scan-poll",
+      "title": "轮询扫描进度",
+      "keywords": ["进度", "轮询", "poll"],
+      "title_i18n": {
+        "zh-CN": "轮询扫描进度",
+        "en-US": "Poll scan progress"
+      }
+    },
+    {
+      "id": "scan-cancel",
+      "title": "取消扫描",
+      "keywords": ["取消", "停止", "cancel"],
+      "title_i18n": {
+        "zh-CN": "取消扫描",
+        "en-US": "Cancel scan"
+      }
+    },
+    {
+      "id": "rules",
+      "title": "获取规则列表",
+      "keywords": ["规则", "rules", "检测器"],
+      "title_i18n": {
+        "zh-CN": "获取规则列表",
+        "en-US": "List rules"
+      }
+    }
+  ],
+  "keywords": ["敏感信息", "密钥扫描", "secret scanner", "硬编码", "泄露", "安全"],
+  "changelog": "## v0.1.0\n\n- 初始版本（由 plugin-scaffold 生成）\n- 15 条检测规则：AWS / Google / Stripe / Slack / GitHub 密钥、私钥块、JWT、.env 敏感变量、身份证（含校验位）、银行卡（Luhn）、手机号、邮箱\n- 递归扫描目录，自动跳过二进制与 node_modules/.git 等目录，可按规则开关\n- 可选扫描 Git 历史（git log -p），捕捉已提交过的密钥\n- 命中值默认脱敏，可一键导出"
+}

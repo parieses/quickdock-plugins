@@ -289,13 +289,13 @@ import (
 
 type rpcRequest struct {
 	JSONRPC string          `json:"jsonrpc"`
-	ID      int64           `json:"id"`
+	ID      json.RawMessage `json:"id"`
 	Method  string          `json:"method"`
 	Params  json.RawMessage `json:"params,omitempty"`
 }
 type rpcResponse struct {
 	JSONRPC string          `json:"jsonrpc"`
-	ID      int64           `json:"id,omitempty"`
+	ID      json.RawMessage `json:"id,omitempty"`
 	Result  json.RawMessage `json:"result,omitempty"`
 	Error   *rpcError       `json:"error,omitempty"`
 }
@@ -330,7 +330,7 @@ func main() {
 		}
 		var req rpcRequest
 		if err := json.Unmarshal([]byte(data), &req); err != nil {
-			respondError(0, -32700, "parse error: "+err.Error())
+			respondError(json.RawMessage("0"), -32700, "parse error: "+err.Error())
 			continue
 		}
 		if req.Method == "" {
@@ -408,18 +408,30 @@ func execute(p executeParams) (map[string]interface{}, string) {
 	}
 }
 
-func respond(id int64, result interface{}) {
-	defer qdFinishRequest(id, 0, "")
+// idToInt 把请求 id 归一化为 int64 供日志追踪使用；字符串 id（前端桥接常用）无法转数字时返回 0。
+func idToInt(raw json.RawMessage) int64 {
+	if len(raw) == 0 {
+		return 0
+	}
+	var n float64
+	if err := json.Unmarshal(raw, &n); err == nil {
+		return int64(n)
+	}
+	return 0
+}
+
+func respond(id json.RawMessage, result interface{}) {
+	defer qdFinishRequest(idToInt(id), 0, "")
 	payload, err := json.Marshal(result)
 	if err != nil {
-		respondError(id, -32603, "marshal result failed: "+err.Error())
+		respondError(json.RawMessage("0"), -32603, "marshal result failed: "+err.Error())
 		return
 	}
 	writeResponse(rpcResponse{JSONRPC: "2.0", ID: id, Result: payload})
 }
 
-func respondError(id int64, code int, msg string) {
-	defer qdFinishRequest(id, code, msg)
+func respondError(id json.RawMessage, code int, msg string) {
+	defer qdFinishRequest(idToInt(id), code, msg)
 	writeResponse(rpcResponse{JSONRPC: "2.0", ID: id, Error: &rpcError{Code: code, Message: msg}})
 }
 
