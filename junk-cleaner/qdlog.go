@@ -118,7 +118,7 @@ func qdLogExit() {
 // 直接跳过」；返回 false 时调用方照旧交给 dispatch/handleRequest，不改变任何既有语义。
 func qdObserveLine(raw string) bool {
 	var probe struct {
-		ID     int64           `json:"id"`
+		ID     json.RawMessage `json:"id"`
 		Method string          `json:"method"`
 		Params json.RawMessage `json:"params"`
 	}
@@ -127,11 +127,13 @@ func qdObserveLine(raw string) bool {
 		qdLogWarn("stdin 行解析失败 err=%v line=%s", err, qdTrunc(raw, 200))
 		return false
 	}
+	// id 归一化为 int64 供日志追踪；前端桥接常用字符串 id（如 "ss_1"），无法转数字时记 0。
+	id := idToInt(probe.ID)
 	if probe.Method == "" {
 		qdStateMu.Lock()
-		_, ours := qdPending[probe.ID]
+		_, ours := qdPending[id]
 		if ours {
-			delete(qdPending, probe.ID)
+			delete(qdPending, id)
 		}
 		qdStateMu.Unlock()
 		return ours // 只有自己 log.* 的回包才吞，host.* 的回包必须交回
@@ -144,28 +146,41 @@ func qdObserveLine(raw string) bool {
 			PluginDir   string `json:"pluginDir"`
 		}
 		_ = json.Unmarshal(probe.Params, &p)
-		qdTrack(probe.Method, probe.ID, "")
+		qdTrack(probe.Method, id, "")
 		qdLogInfo("initialize 握手 host=%s dir=%s", p.HostVersion, p.PluginDir)
 	case "plugin.execute":
 		var p struct {
 			Command string `json:"command"`
 		}
 		_ = json.Unmarshal(probe.Params, &p)
-		qdTrack(probe.Method, probe.ID, p.Command)
+		qdTrack(probe.Method, id, p.Command)
 		if qdThrottled("start:"+p.Command, 2*time.Second) {
-			qdLogInfo("命令开始 command=%s id=%d", p.Command, probe.ID)
+			qdLogInfo("命令开始 command=%s id=%d", p.Command, id)
 		}
 	case "shutdown", "terminate", "dispose", "exit":
 		qdLogInfo("收到 %s，准备退出（已运行 %s）", probe.Method, qdDur(time.Since(qdStartedAt)))
 	case "host.ping", "health.ping":
 		// 健康检查高频，不记；超时由宿主侧记录
 	default:
-		qdTrack(probe.Method, probe.ID, "")
+		qdTrack(probe.Method, id, "")
 		if qdThrottled("method:"+probe.Method, 5*time.Second) {
-			qdLogInfo("收到请求 method=%s id=%d", probe.Method, probe.ID)
+			qdLogInfo("收到请求 method=%s id=%d", probe.Method, id)
 		}
 	}
 	return false
+}
+
+// idToInt 把请求 id 归一化为 int64 供日志追踪使用；字符串 id（前端桥接常用）无法转数字时返回 0。
+// 内联在本文件而非各插件 main.go，保证 qdlog.go 自包含、可逐字节同步到所有插件。
+func idToInt(raw json.RawMessage) int64 {
+	if len(raw) == 0 {
+		return 0
+	}
+	var n float64
+	if err := json.Unmarshal(raw, &n); err == nil {
+		return int64(n)
+	}
+	return 0
 }
 
 // qdTrack 记一次在途请求，供 respond/respondError 计算耗时与上下文。

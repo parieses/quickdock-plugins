@@ -288,18 +288,6 @@ func cmdCancel(in map[string]interface{}) (map[string]interface{}, string) {
 	return map[string]interface{}{"ok": true}, ""
 }
 
-// idToInt 把请求 id 归一化为 int64 供日志追踪使用；字符串 id（前端桥接常用）无法转数字时返回 0。
-func idToInt(raw json.RawMessage) int64 {
-	if len(raw) == 0 {
-		return 0
-	}
-	var n float64
-	if err := json.Unmarshal(raw, &n); err == nil {
-		return int64(n)
-	}
-	return 0
-}
-
 func respond(id json.RawMessage, result interface{}) {
 	defer qdFinishRequest(idToInt(id), 0, "")
 	payload, err := json.Marshal(result)

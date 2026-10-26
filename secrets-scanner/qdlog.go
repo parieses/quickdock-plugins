@@ -170,6 +170,19 @@ func qdObserveLine(raw string) bool {
 	return false
 }
 
+// idToInt 把请求 id 归一化为 int64 供日志追踪使用；字符串 id（前端桥接常用）无法转数字时返回 0。
+// 内联在本文件而非各插件 main.go，保证 qdlog.go 自包含、可逐字节同步到所有插件。
+func idToInt(raw json.RawMessage) int64 {
+	if len(raw) == 0 {
+		return 0
+	}
+	var n float64
+	if err := json.Unmarshal(raw, &n); err == nil {
+		return int64(n)
+	}
+	return 0
+}
+
 // qdTrack 记一次在途请求，供 respond/respondError 计算耗时与上下文。
 // 只保留有限条数：插件若不回包（或回包 id 不匹配），不能让 map 无界增长。
 func qdTrack(method string, id int64, command string) {

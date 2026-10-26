@@ -17,7 +17,7 @@
   "frontend": {
     "enabled": true,
     "entry": "frontend/index.html",
-    "width": 940,
+    "width": 900,
     "height": 600
   },
   "capabilities": [
