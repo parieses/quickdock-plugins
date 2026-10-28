@@ -1,7 +1,6 @@
 module ocr-tool
 
-go 1.25.10
-
+go 1.26
 require (
 	github.com/getcharzp/go-ocr v0.0.0-20260820015638-3abab59da814
 	github.com/up-zero/gotool v0.0.0-20260120011100-d685b2532b5a

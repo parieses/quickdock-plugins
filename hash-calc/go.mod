@@ -1,3 +1,3 @@
 module io.github.parieses.hash-calc
 
-go 1.25
+go 1.26

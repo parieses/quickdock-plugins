@@ -1,7 +1,6 @@
 module git-workbench
 
-go 1.25.0
-
+go 1.26
 require (
 	github.com/go-git/go-git/v5 v5.16.4
 	golang.org/x/sys v0.32.0

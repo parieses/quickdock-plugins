@@ -1,3 +1,3 @@
 module io.github.parieses.dir-buster
 
-go 1.25
+go 1.26

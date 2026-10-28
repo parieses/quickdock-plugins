@@ -450,7 +450,7 @@ func writeResponse(resp rpcResponse) {
 
 
 def render_gomod(spec: dict) -> str:
-    return "module %s\n\ngo 1.25.10\n" % spec["dir"]
+    return "module %s\n\ngo 1.26\n" % spec["dir"]
 
 
 def render_readme(spec: dict) -> str:

@@ -1,7 +1,6 @@
 module http-client
 
-go 1.25.0
-
+go 1.26
 require (
 	github.com/google/uuid v1.6.0
 	modernc.org/sqlite v1.44.3
