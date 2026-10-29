@@ -5,7 +5,7 @@
     "zh-CN": "数据粉碎",
     "en-US": "Data Shredder"
   },
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "彻底删除敏感文件，让数据无法被恢复：多次覆写文件内容后重命名并删除；另可覆写磁盘空闲空间，清理此前已删除文件留下的数据残片",
   "description_i18n": {
     "zh-CN": "彻底删除敏感文件，让数据无法被恢复：多次覆写文件内容后重命名并删除；另可覆写磁盘空闲空间，清理此前已删除文件留下的数据残片",
@@ -99,36 +99,43 @@
     {
       "id": "task-start",
       "title": "开始粉碎",
-      "description": "执行覆写并删除，不可撤销；必须传 confirm 确认",
+      "description": "启动不可逆的覆写删除任务，返回 sessionId；进度用 task-poll 轮询",
       "params": {
         "type": "object",
         "required": [
-          "mode",
           "confirm"
         ],
         "properties": {
           "mode": {
             "type": "string",
-            "description": "模式：shred 粉碎文件 / wipe-free 覆写空闲空间",
-            "default": "shred"
+            "description": "shred 粉碎指定文件（需 paths）/ wipe-free 覆写卷空闲空间（需 volume），默认 shred",
+            "default": "shred",
+            "enum": [
+              "shred",
+              "wipe-free"
+            ]
           },
           "confirm": {
             "type": "string",
-            "description": "确认口令，必须传 \"yes\" 表示知悉不可恢复"
+            "description": "确认口令：shred 必须传 DELETE；wipe-free 必须传卷路径，如 D:"
           },
-          "passes": {
-            "type": "integer",
-            "description": "覆写遍数，默认 1",
-            "default": 1
-          },
-          "renames": {
-            "type": "integer",
-            "description": "删除前重命名次数，默认 6",
-            "default": 6
+          "paths": {
+            "type": "string",
+            "description": "要粉碎的文件或目录，逗号分隔或 JSON 数组文本，如 D:/tmp/a.log；shred 模式必填"
           },
           "volume": {
             "type": "string",
             "description": "wipe-free 模式要覆写的卷，如 D:"
+          },
+          "passes": {
+            "type": "integer",
+            "description": "覆写遍数 1–7，默认 1",
+            "default": 1
+          },
+          "renames": {
+            "type": "integer",
+            "description": "删除前重命名次数 0–32，默认 6",
+            "default": 6
           },
           "tempDir": {
             "type": "string",
@@ -172,5 +179,5 @@
       }
     }
   ],
-  "changelog": "## v1.0.2\n\n- 补暴露真实动作命令 `volumes`, `preview`, `task-start`, `task-poll`, `task-cancel`（带 params），并为面板入口命令补引导性报错；未传参时行为不变\n\n## v1.0.1\n\n- 新增 `commands[].params` 参数声明与 `commands[].description` 命令说明，AI 客户端可照着填 `input`；未传参时行为不变\n\n## v1.0.0\n\n- **文件粉碎**：按选定档位覆写文件内容（保持原大小，避免 NTFS 分配到新簇而原数据不动）→ 随机改名若干次清掉 MFT 里的旧文件名 → Sync 落盘后删除；目录递归处理，最后删空壳\n- **空闲空间覆写**：清此前已删除文件留下的数据残片。在目标卷上建临时大文件写到安全余量为止再删除，语义与 Windows `cipher /w` 一致（覆写的是整个卷，不是某个文件夹），但可中断、留余量、不写满到 0、不限 NTFS\n- **介质判定**：用 IOCTL_STORAGE_QUERY_PROPERTY 问寻道惩罚 / TRIM 判定 SSD 与机械盘（卷句柄不转发时反查物理磁盘号再问），判不出就如实说未知——SSD 上覆写本来就未必有效，这一点必须让用户知道\n- **三道闸门**：后端硬拒绝设备路径 / 卷根 / 系统目录 / 回收站；启动要求 confirm（粉碎须输入 DELETE、覆写须输入卷名）；UI 强制先预览，并明说 SSD 无效、小文件常驻 MFT、卷影副本不受影响、多遍覆写无额外收益\n"
+  "changelog": "## v1.0.3\n\n- 修正 `task-start` 的参数声明：补上 `paths`（shred 模式的核心参数，此前漏声明导致 AI 照文档调用必失败），`confirm` 口令改为代码真正要求的 `DELETE`（原描述写的是 `yes`）；`mode` 有默认值不再占 `required`。`paths` 新增逗号 / 分号 / JSON 数组文本三种形式的解析\n\n## v1.0.2\n\n- 补暴露真实动作命令 `volumes`, `preview`, `task-start`, `task-poll`, `task-cancel`（带 params），并为面板入口命令补引导性报错；未传参时行为不变\n\n## v1.0.1\n\n- 新增 `commands[].params` 参数声明与 `commands[].description` 命令说明，AI 客户端可照着填 `input`；未传参时行为不变\n\n## v1.0.0\n\n- **文件粉碎**：按选定档位覆写文件内容（保持原大小，避免 NTFS 分配到新簇而原数据不动）→ 随机改名若干次清掉 MFT 里的旧文件名 → Sync 落盘后删除；目录递归处理，最后删空壳\n- **空闲空间覆写**：清此前已删除文件留下的数据残片。在目标卷上建临时大文件写到安全余量为止再删除，语义与 Windows `cipher /w` 一致（覆写的是整个卷，不是某个文件夹），但可中断、留余量、不写满到 0、不限 NTFS\n- **介质判定**：用 IOCTL_STORAGE_QUERY_PROPERTY 问寻道惩罚 / TRIM 判定 SSD 与机械盘（卷句柄不转发时反查物理磁盘号再问），判不出就如实说未知——SSD 上覆写本来就未必有效，这一点必须让用户知道\n- **三道闸门**：后端硬拒绝设备路径 / 卷根 / 系统目录 / 回收站；启动要求 confirm（粉碎须输入 DELETE、覆写须输入卷名）；UI 强制先预览，并明说 SSD 无效、小文件常驻 MFT、卷影副本不受影响、多遍覆写无额外收益\n"
 }

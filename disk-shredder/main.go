@@ -166,13 +166,51 @@ func strFrom(in map[string]interface{}, k string) string {
 	return ""
 }
 
+// strListFrom 读一个路径列表。
+//
+// 接受三种形式（AI 客户端经 MCP 只能传字符串，命令面板传的也是字符串）：
+//   - 数组：["D:/a", "D:/b"]
+//   - JSON 数组文本：'["D:/a","D:/b"]'
+//   - 逗号/分号分隔：D:/a,D:/b
+//
+// 单路径原样保留：Windows 路径不含逗号，但带空格的目录名很常见，别 Trim 掉内部空白。
 func strListFrom(in map[string]interface{}, k string) []string {
 	raw, ok := in[k].([]interface{})
 	if !ok {
-		if s, ok2 := in[k].(string); ok2 && s != "" {
-			return []string{s}
+		s, ok2 := in[k].(string)
+		if !ok2 {
+			return nil
 		}
-		return nil
+		s = strings.TrimSpace(s)
+		if s == "" {
+			return nil
+		}
+		if strings.HasPrefix(s, "[") {
+			var arr []string
+			if err := json.Unmarshal([]byte(s), &arr); err == nil && len(arr) > 0 {
+				out := make([]string, 0, len(arr))
+				for _, e := range arr {
+					if t := strings.TrimSpace(e); t != "" {
+						out = append(out, t)
+					}
+				}
+				if len(out) > 0 {
+					return out
+				}
+			}
+		}
+		if strings.ContainsAny(s, ",;") {
+			out := make([]string, 0, 4)
+			for _, part := range strings.FieldsFunc(s, func(r rune) bool { return r == ',' || r == ';' }) {
+				if t := strings.TrimSpace(part); t != "" {
+					out = append(out, t)
+				}
+			}
+			if len(out) > 0 {
+				return out
+			}
+		}
+		return []string{s}
 	}
 	out := make([]string, 0, len(raw))
 	for _, v := range raw {
