@@ -143,6 +143,10 @@ func handleQueryRun(id int64, input map[string]interface{}) {
 	cid := strFrom(input, "id")
 	query := rawStrFrom(input, "query")
 	if strings.TrimSpace(query) == "" {
+		// 命令面板 / 命令直达只带一段文本时落在 text 上（plugin.json 已声明该键）
+		query = rawStrFrom(input, "text")
+	}
+	if strings.TrimSpace(query) == "" {
 		respondError(id, -32602, "查询内容为空")
 		return
 	}

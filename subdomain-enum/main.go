@@ -717,8 +717,18 @@ func strFrom(m map[string]interface{}, key string) string {
 }
 
 func boolFrom(m map[string]interface{}, key string, def bool) bool {
-	if v, ok := m[key].(bool); ok {
+	switch v := m[key].(type) {
+	case bool:
 		return v
+	case string: // 命令面板 / AI 传 "true" / "1" 走的是字符串
+		switch strings.ToLower(strings.TrimSpace(v)) {
+		case "1", "true", "yes", "on":
+			return true
+		case "0", "false", "no", "off":
+			return false
+		}
+	case float64:
+		return v != 0
 	}
 	return def
 }

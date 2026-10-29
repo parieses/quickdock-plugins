@@ -138,8 +138,18 @@ func getStr(input map[string]interface{}, key string) string {
 	return ""
 }
 func getBool(input map[string]interface{}, key string) bool {
-	if v, ok := input[key].(bool); ok {
+	switch v := input[key].(type) {
+	case bool:
 		return v
+	case string: // 命令面板 / AI 传 "true" / "1" 走的是字符串
+		switch strings.ToLower(strings.TrimSpace(v)) {
+		case "1", "true", "yes", "on":
+			return true
+		case "0", "false", "no", "off":
+			return false
+		}
+	case float64:
+		return v != 0
 	}
 	return false
 }

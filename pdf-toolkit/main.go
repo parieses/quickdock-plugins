@@ -438,10 +438,10 @@ func handleWatermark(id int64, input map[string]interface{}) {
 		return
 	}
 
-	if v, ok := input["opacity"].(float64); ok {
+	if v, ok := floatFrom(input, "opacity", 0.3); ok {
 		opacity = v
 	}
-	if v, ok := input["size"].(float64); ok {
+	if v, ok := floatFrom(input, "size", 48); ok {
 		size = v
 	}
 
@@ -970,10 +970,34 @@ func strList(v interface{}) []string {
 }
 
 func intFrom(m map[string]interface{}, key string, def int) int {
-	if v, ok := m[key].(float64); ok {
+	switch v := m[key].(type) {
+	case float64:
 		return int(v)
+	case int:
+		return v
+	case string: // 命令面板 / AI 传 "48" 走的是字符串
+		var n int
+		if _, err := fmt.Sscanf(strings.TrimSpace(v), "%d", &n); err == nil {
+			return n
+		}
 	}
 	return def
+}
+
+// floatFrom 读取浮点参数，兼容数字与数字字符串（"0.5"）。
+func floatFrom(m map[string]interface{}, key string, def float64) (float64, bool) {
+	switch v := m[key].(type) {
+	case float64:
+		return v, true
+	case int:
+		return float64(v), true
+	case string:
+		var f float64
+		if _, err := fmt.Sscanf(strings.TrimSpace(v), "%g", &f); err == nil {
+			return f, true
+		}
+	}
+	return def, false
 }
 
 func ensureExt(path, ext string) string {

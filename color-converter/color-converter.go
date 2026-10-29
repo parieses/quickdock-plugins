@@ -20,7 +20,9 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -145,6 +147,30 @@ func execute(p executeParams) (map[string]interface{}, string) {
 	command := strings.ReplaceAll(p.Command, ".", "-")
 
 	switch command {
+	case "color-convert", "convert", "color":
+		// HEX / RGB / HSL 互转（纯计算，AI 可直接调用；面板不传参时也不影响原行为）
+		text := inputStr(p.Input, "text")
+		if text == "" {
+			text = inputStr(p.Input, "value")
+		}
+		if text == "" {
+			text = inputStr(p.Input, "color")
+		}
+		if text == "" {
+			return nil, "缺少颜色值：请传入 text，如 #ff0000、rgb(255,0,0)、hsl(0,100%,50%)"
+		}
+		r, g, b, ok := parseColor(text)
+		if !ok {
+			return nil, "无法识别颜色：" + text + "（支持 #rgb / #rrggbb / rgb(r,g,b) / hsl(h,s%,l%)）"
+		}
+		h, s, l := rgbToHSL(r, g, b)
+		return map[string]interface{}{
+			"hex": fmt.Sprintf("#%02x%02x%02x", r, g, b),
+			"rgb": fmt.Sprintf("rgb(%d, %d, %d)", r, g, b),
+			"hsl": fmt.Sprintf("hsl(%d, %d%%, %d%%)", h, s, l),
+			"r":   r, "g": g, "b": b,
+			"h": h, "s": s, "l": l,
+		}, ""
 	case "screen-pick", "pick-color":
 		// 同步取色：立即采样鼠标当前位置（保留用于冒烟测试）
 		r, g, b, err := pickScreenColor()
@@ -233,6 +259,116 @@ func pickResult(r, g, b uint8, copied bool) map[string]interface{} {
 		"b":      b,
 		"copied": copied,
 	}
+}
+
+// ---- 颜色解析与转换（color-convert 用；算法与前端 hexToRgb / rgbToHsl / hslToRgb 对齐）----
+
+func inputStr(input map[string]interface{}, key string) string {
+	if input == nil {
+		return ""
+	}
+	if v, ok := input[key]; ok {
+		if s, ok := v.(string); ok {
+			return strings.TrimSpace(s)
+		}
+	}
+	return ""
+}
+
+func clampInt(v, lo, hi int) int {
+	if v < lo {
+		return lo
+	}
+	if v > hi {
+		return hi
+	}
+	return v
+}
+
+// parseColor 解析 #rgb / #rrggbb / rgb(r,g,b) / hsl(h,s%,l%)，返回 RGB 分量。
+func parseColor(s string) (int, int, int, bool) {
+	t := strings.ToLower(strings.TrimSpace(s))
+	if t == "" {
+		return 0, 0, 0, false
+	}
+	if i := strings.Index(t, "("); i >= 0 {
+		body := strings.TrimSuffix(t[i+1:], ")")
+		parts := strings.Split(body, ",")
+		switch {
+		case strings.HasPrefix(t, "rgb") && len(parts) >= 3:
+			var vals [3]int
+			for k := 0; k < 3; k++ {
+				n, err := strconv.Atoi(strings.TrimSpace(parts[k]))
+				if err != nil {
+					return 0, 0, 0, false
+				}
+				vals[k] = clampInt(n, 0, 255)
+			}
+			return vals[0], vals[1], vals[2], true
+		case strings.HasPrefix(t, "hsl") && len(parts) >= 3:
+			h, err1 := strconv.ParseFloat(strings.TrimSpace(parts[0]), 64)
+			sv, err2 := strconv.ParseFloat(strings.TrimSuffix(strings.TrimSpace(parts[1]), "%"), 64)
+			lv, err3 := strconv.ParseFloat(strings.TrimSuffix(strings.TrimSpace(parts[2]), "%"), 64)
+			if err1 != nil || err2 != nil || err3 != nil {
+				return 0, 0, 0, false
+			}
+			r, g, b := hslToRGB(h, sv, lv)
+			return r, g, b, true
+		}
+	}
+	h := strings.TrimPrefix(t, "#")
+	if len(h) == 3 {
+		h = string([]byte{h[0], h[0], h[1], h[1], h[2], h[2]})
+	}
+	if len(h) == 6 {
+		if n, err := strconv.ParseUint(h, 16, 32); err == nil {
+			return int(n>>16) & 255, int(n>>8) & 255, int(n) & 255, true
+		}
+	}
+	return 0, 0, 0, false
+}
+
+// rgbToHSL 与前端 rgbToHsl 一致：h∈[0,360)、s/l 为百分比整数。
+func rgbToHSL(r, g, b int) (int, int, int) {
+	rf, gf, bf := float64(r)/255, float64(g)/255, float64(b)/255
+	mx := math.Max(rf, math.Max(gf, bf))
+	mn := math.Min(rf, math.Min(gf, bf))
+	var h, s float64
+	l := (mx + mn) / 2
+	if mx != mn {
+		d := mx - mn
+		if l > 0.5 {
+			s = d / (2 - mx - mn)
+		} else {
+			s = d / (mx + mn)
+		}
+		switch mx {
+		case rf:
+			h = (gf-bf)/d
+			if gf < bf {
+				h += 6
+			}
+		case gf:
+			h = (bf-rf)/d + 2
+		default:
+			h = (rf-gf)/d + 4
+		}
+		h *= 60
+	}
+	return int(math.Round(h)), int(math.Round(s * 100)), int(math.Round(l * 100))
+}
+
+// hslToRGB 与前端 hslToRgb 一致（h 度，s/l 百分比）。
+func hslToRGB(h, s, l float64) (int, int, int) {
+	h = math.Mod(math.Mod(h, 360)+360, 360)
+	s = math.Min(100, math.Max(0, s)) / 100
+	l = math.Min(100, math.Max(0, l)) / 100
+	f := func(n float64) float64 {
+		k := math.Mod(n+h/30, 12)
+		a := s * math.Min(l, 1-l)
+		return l - a*math.Max(-1, math.Min(k-3, math.Min(9-k, 1)))
+	}
+	return int(math.Round(f(0) * 255)), int(math.Round(f(8) * 255)), int(math.Round(f(4) * 255))
 }
 
 func respond(id int64, result interface{}) {

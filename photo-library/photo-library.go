@@ -640,11 +640,16 @@ func loadLib() []string {
 
 func isLibMode(input map[string]interface{}) bool {
 	if v, ok := input["library"]; ok {
-		if b, ok := v.(bool); ok {
+		switch b := v.(type) {
+		case bool:
 			return b
-		}
-		if s, ok := v.(string); ok && s == "1" {
-			return true
+		case string:
+			switch strings.ToLower(strings.TrimSpace(b)) {
+			case "1", "true", "yes", "on":
+				return true
+			}
+		case float64:
+			return b != 0
 		}
 	}
 	return false
@@ -888,10 +893,17 @@ func handleSaveEdit(id int64, input map[string]interface{}) {
 func handleBatch(id int64, input map[string]interface{}) {
 	action := strings.ToLower(strings.TrimSpace(strFrom(input, "action")))
 	paths := strSlice(input, "paths")
+	if len(paths) == 0 {
+		respondError(id, -32602, "缺少 paths 参数（逗号分隔或 JSON 数组文本）")
+		return
+	}
 	failed := []string{}
 	switch action {
 	case "rotate":
 		angle := int(num(input["angle"]))
+		if angle == 0 { // 与 plugin.json 的 default 90 对齐；0 度旋转没有意义
+			angle = 90
+		}
 		count := 0
 		for _, p := range paths {
 			img, _, err := decodeImage(p)
@@ -962,7 +974,11 @@ func handleBatch(id int64, input map[string]interface{}) {
 		}
 		respond(id, map[string]interface{}{"ok": true, "action": "export", "count": count, "failed": failed, "dest": dest})
 	default:
-		respondError(id, -32601, "unknown batch action: "+action)
+		if action == "" {
+			respondError(id, -32602, "缺少 action 参数（rotate / rename / export）")
+			return
+		}
+		respondError(id, -32602, "不支持的 action: "+action+"（可选 rotate / rename / export）")
 	}
 }
 

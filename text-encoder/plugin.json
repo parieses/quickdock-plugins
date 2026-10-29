@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.text-encoder",
   "name": "文本工具箱",
-  "version": "1.0.8",
+  "version": "1.1.0",
   "description": "Base64 / URL / HTML 编解码，MD5 / SHA1 / SHA256 / SHA512 哈希与 HMAC 签名，Base64 图片识别预览，2/8/10/16 进制互转与字节单位换算",
   "author": "QuickDock",
   "icon": "icon.svg",
@@ -21,326 +21,36 @@
   },
   "commands": [
     {
-      "id": "base64-encode",
-      "title": "Base64 编码",
-      "description": "把文本做 Base64 编码",
+      "id": "text-encoder",
+      "title": "文本编解码",
+      "description": "打开文本编解码面板：Base64 / URL / HTML 编解码、MD5/SHA 哈希、命名转换、进制换算（仅界面；编解码模型可直接完成，故不对 AI 开放命令）",
       "keywords": [
+        "text",
+        "encode",
+        "decode",
         "base64",
-        "encode"
-      ],
-      "aliases": [
-        "base64编码"
-      ],
-      "prefix": "/b64e",
-      "acceptsInput": true,
-      "params": {
-        "type": "object",
-        "properties": {
-          "text": {
-            "type": "string",
-            "description": "要处理的文本，直接原样传入"
-          }
-        }
-      },
-      "matchPattern": "[\\s\\S]+",
-      "title_i18n": {
-        "zh-CN": "Base64 编码",
-        "en-US": "Base64 Encode"
-      }
-    },
-    {
-      "id": "base64-decode",
-      "title": "Base64 解码",
-      "description": "把 Base64 还原成文本，也支持 dataURL 图片",
-      "keywords": [
-        "base64",
-        "decode"
-      ],
-      "aliases": [
-        "base64解码"
-      ],
-      "prefix": "/b64d",
-      "matchPattern": "^(data:image/[a-zA-Z0-9.+-]+;base64,)?[A-Za-z0-9+/]*={0,2}$",
-      "acceptsInput": true,
-      "params": {
-        "type": "object",
-        "properties": {
-          "text": {
-            "type": "string",
-            "description": "要处理的文本，直接原样传入"
-          }
-        }
-      },
-      "title_i18n": {
-        "zh-CN": "Base64 解码",
-        "en-US": "Base64 Decode"
-      }
-    },
-    {
-      "id": "url-encode",
-      "title": "URL 编码",
-      "description": "把文本做 URL 百分号编码",
-      "prefix": "/urle",
-      "acceptsInput": true,
-      "params": {
-        "type": "object",
-        "properties": {
-          "text": {
-            "type": "string",
-            "description": "要处理的文本，直接原样传入"
-          }
-        }
-      },
-      "matchPattern": "[\\s\\S]+",
-      "title_i18n": {
-        "zh-CN": "URL 编码",
-        "en-US": "URL Encode"
-      }
-    },
-    {
-      "id": "url-decode",
-      "title": "URL 解码",
-      "description": "把 URL 编码还原成文本",
-      "prefix": "/urld",
-      "acceptsInput": true,
-      "params": {
-        "type": "object",
-        "properties": {
-          "text": {
-            "type": "string",
-            "description": "要处理的文本，直接原样传入"
-          }
-        }
-      },
-      "matchPattern": "[\\s\\S]+",
-      "title_i18n": {
-        "zh-CN": "URL 解码",
-        "en-US": "URL Decode"
-      }
-    },
-    {
-      "id": "html-encode",
-      "title": "HTML 编码",
-      "description": "把文本里的 HTML 字符转成实体",
-      "prefix": "/htmle",
-      "acceptsInput": true,
-      "params": {
-        "type": "object",
-        "properties": {
-          "text": {
-            "type": "string",
-            "description": "要处理的文本，直接原样传入"
-          }
-        }
-      },
-      "matchPattern": "[\\s\\S]+",
-      "title_i18n": {
-        "zh-CN": "HTML 编码",
-        "en-US": "HTML Encode"
-      }
-    },
-    {
-      "id": "html-decode",
-      "title": "HTML 解码",
-      "description": "把 HTML 实体还原成字符",
-      "prefix": "/htmld",
-      "acceptsInput": true,
-      "params": {
-        "type": "object",
-        "properties": {
-          "text": {
-            "type": "string",
-            "description": "要处理的文本，直接原样传入"
-          }
-        }
-      },
-      "matchPattern": "[\\s\\S]+",
-      "title_i18n": {
-        "zh-CN": "HTML 解码",
-        "en-US": "HTML Decode"
-      }
-    },
-    {
-      "id": "md5-hash",
-      "title": "MD5 哈希",
-      "description": "算文本的 MD5",
-      "keywords": [
+        "url",
+        "html",
+        "hash",
         "md5",
-        "hash"
-      ],
-      "aliases": [
-        "md5加密",
-        "md5计算"
-      ],
-      "prefix": "/md5",
-      "acceptsInput": true,
-      "params": {
-        "type": "object",
-        "properties": {
-          "text": {
-            "type": "string",
-            "description": "要处理的文本，直接原样传入"
-          }
-        }
-      },
-      "matchPattern": "[\\s\\S]+",
-      "title_i18n": {
-        "zh-CN": "MD5 哈希",
-        "en-US": "MD5 Hash"
-      }
-    },
-    {
-      "id": "sha256-hash",
-      "title": "SHA256 哈希",
-      "description": "算文本的 SHA256",
-      "keywords": [
         "sha256",
-        "hash"
-      ],
-      "aliases": [
-        "sha256加密"
-      ],
-      "prefix": "/sha256",
-      "acceptsInput": true,
-      "params": {
-        "type": "object",
-        "properties": {
-          "text": {
-            "type": "string",
-            "description": "要处理的文本，直接原样传入"
-          }
-        }
-      },
-      "matchPattern": "[\\s\\S]+",
-      "title_i18n": {
-        "zh-CN": "SHA256 哈希",
-        "en-US": "SHA256 Hash"
-      }
-    },
-    {
-      "id": "sha1-hash",
-      "title": "SHA1 哈希",
-      "description": "算文本的 SHA1",
-      "keywords": [
-        "sha1",
-        "hash"
-      ],
-      "aliases": [
-        "sha1加密"
-      ],
-      "prefix": "/sha1",
-      "acceptsInput": true,
-      "params": {
-        "type": "object",
-        "properties": {
-          "text": {
-            "type": "string",
-            "description": "要处理的文本，直接原样传入"
-          }
-        }
-      },
-      "matchPattern": "[\\s\\S]+",
-      "title_i18n": {
-        "zh-CN": "SHA1 哈希",
-        "en-US": "SHA1 Hash"
-      }
-    },
-    {
-      "id": "sha512-hash",
-      "title": "SHA512 哈希",
-      "description": "算文本的 SHA512",
-      "keywords": [
-        "sha512",
-        "hash"
-      ],
-      "aliases": [
-        "sha512加密"
-      ],
-      "prefix": "/sha512",
-      "acceptsInput": true,
-      "params": {
-        "type": "object",
-        "properties": {
-          "text": {
-            "type": "string",
-            "description": "要处理的文本，直接原样传入"
-          }
-        }
-      },
-      "matchPattern": "[\\s\\S]+",
-      "title_i18n": {
-        "zh-CN": "SHA512 哈希",
-        "en-US": "SHA512 Hash"
-      }
-    },
-    {
-      "id": "convert-case",
-      "title": "变量命名转换",
-      "description": "在 camelCase、snake_case、kebab-case 之间转换命名",
-      "keywords": [
-        "case",
-        "camel",
-        "snake",
-        "kebab",
-        "pascal",
-        "convert"
-      ],
-      "aliases": [
-        "变量命名",
-        "blmm",
-        "命名转换",
-        "驼峰",
-        "下划线",
-        "大小写"
-      ],
-      "matchPattern": "^[a-z]+[_-][a-z]+[a-z_0-9-]*$|^[a-z]+[A-Z][a-z]*[A-Za-z0-9]*$|^[A-Z][a-z]+[A-Z][a-z]*[A-Za-z0-9]*$|^[A-Z]+_[A-Z]+[A-Z_0-9]*$",
-      "acceptsInput": true,
-      "params": {
-        "type": "object",
-        "properties": {
-          "text": {
-            "type": "string",
-            "description": "要处理的文本，直接原样传入"
-          }
-        }
-      },
-      "title_i18n": {
-        "zh-CN": "变量命名转换",
-        "en-US": "Variable Name Conversion"
-      }
-    },
-    {
-      "id": "base-convert",
-      "title": "进制 / 单位转换",
-      "description": "在 2/8/10/16 进制之间换算数字",
-      "keywords": [
-        "base",
+        "编码",
+        "解码",
+        "哈希",
+        "转码",
         "进制",
-        "hex",
-        "二进制",
-        "十六进制",
-        "byte",
-        "字节",
-        "kb",
-        "mb"
+        "文本"
       ],
       "aliases": [
-        "进制转换",
-        "十六进制",
-        "字节换算"
+        "文本编码",
+        "文本解码",
+        "Base64",
+        "文本转换",
+        "编解码"
       ],
       "title_i18n": {
-        "zh-CN": "进制 / 单位转换",
-        "en-US": "Base & Unit Conversion"
-      },
-      "params": {
-        "type": "object",
-        "properties": {
-          "text": {
-            "type": "string",
-            "description": "要处理的文本，直接原样传入"
-          }
-        }
+        "zh-CN": "文本编解码",
+        "en-US": "Text Encoder"
       }
     }
   ],
@@ -359,5 +69,5 @@
     "zh-CN": "Base64 / URL / HTML 编解码，MD5 / SHA1 / SHA256 / SHA512 哈希与 HMAC，Base64 图片预览，2/8/10/16 进制互转与字节单位换算",
     "en-US": "Base64/URL/HTML codec, MD5/SHA1/SHA256/SHA512 hashes & HMAC, Base64 image preview, base-2/8/10/16 conversion & byte-unit conversion."
   },
-  "changelog": "## v1.0.8\n\n- 新增 `commands[].params` 参数声明与 `commands[].description` 命令说明，AI 客户端可照着填 `input`；未传参时行为不变\n\n## v1.0.7\n\n- 修复图标层 icons.css 头部注释未闭合（`/*` 漏写 `*/`）导致 `:root` 与全部 `--qi-*` 变量被注释吞掉、所有图标渲染成实心方块的回归问题；新增 `tools/check_icons.mjs` 注释闭合平衡校验以杜绝此类回归。\n\n## v1.0.6\n\n- 设计系统对齐：UI 图标迁移到共享 SVG 图标层 templates/icons.css（Lucide 描边图标，替代跨平台字形漂移的彩色 emoji）；配色/字号收敛到设计令牌；顶栏统一 44px；文档标签栏改下划线式 .tabs/.tab\n\n## v1.0.5\n\n- 跟随宿主浅色 / 深色主题：监听宿主的 plugin:theme 消息并同步 <html data-theme>（qd-theme.css 的浅色是 html[data-theme=\"light\"] 的变量覆盖）；plugin:init 自带的 theme 也会应用，首屏即对齐。此前主程序切换主题后插件不跟随（本次为全仓库统一修复）\n\n## v1.0.4\n\n- 50 个插件的图形全部按各自功能重新绘制（原先是从老仓库图形迁移过来的通用件）\n- 统一的部分：64 网格 / 安全区 / 最粗一笔 3px / 同色系渐变底色 / 深浅两档主题\n- 浅色档 icon.light.svg 重做：白底贴片 + 品牌色描边圈 + 品牌色字形，与深色档（渐变贴片 + 白字）肉眼可辨地区分（原先两档只差色号，看起来一模一样）\n- 不同的部分：字形本体，逐个对应插件功能（如 mail-check 为信封+对勾、jwt-decoder 为三段的凭证、unit-converter 为标尺+双向箭头）\n- 保留状态语义的强调色：绿 = 可用 / 生效 / 通过，红 = 删除，黄 = 告警\n- 图形源改为 glyphs.py 单点维护，改了重跑 glyphs.py + gen_icons.py --gen 即可\n\n\n## v1.0.3\n\n- 图标改用统一 64 网格满幅圆角贴片 + 白色图形，线宽归一\n- 新增浅色主题图标 `icon.light.svg`，随应用主题自动切换\n\n## v1.0.2\n\n- 新增「进制转换」标签页：2 / 8 / 10 / 16 进制互转 + 字节单位（B/KB/MB/GB）换算\n- 新增 base-convert 命令，支持 Ctrl+K 直达\n\n- 统一前端桥接注入"
+  "changelog": "## v1.1.0\n\n- 命令声明按 MCP 适用性裁剪：12 条编解码命令全部不声明，只保留一条面板入口。这些转换模型自己就能做（且更快），声明出去只是让 AI 多绕一跳\n- 后端 `main.js` 与前端功能完全不变，Ctrl+K 搜「base64 / 编码 / 哈希」仍能打开面板，面板内所有功能照旧\n\n## v1.0.8\n\n- 新增 `commands[].params` 参数声明与 `commands[].description` 命令说明，AI 客户端可照着填 `input`；未传参时行为不变\n\n## v1.0.7\n\n- 修复图标层 icons.css 头部注释未闭合（`/*` 漏写 `*/`）导致 `:root` 与全部 `--qi-*` 变量被注释吞掉、所有图标渲染成实心方块的回归问题；新增 `tools/check_icons.mjs` 注释闭合平衡校验以杜绝此类回归。\n\n## v1.0.6\n\n- 设计系统对齐：UI 图标迁移到共享 SVG 图标层 templates/icons.css（Lucide 描边图标，替代跨平台字形漂移的彩色 emoji）；配色/字号收敛到设计令牌；顶栏统一 44px；文档标签栏改下划线式 .tabs/.tab\n\n## v1.0.5\n\n- 跟随宿主浅色 / 深色主题：监听宿主的 plugin:theme 消息并同步 <html data-theme>（qd-theme.css 的浅色是 html[data-theme=\"light\"] 的变量覆盖）；plugin:init 自带的 theme 也会应用，首屏即对齐。此前主程序切换主题后插件不跟随（本次为全仓库统一修复）\n\n## v1.0.4\n\n- 50 个插件的图形全部按各自功能重新绘制（原先是从老仓库图形迁移过来的通用件）\n- 统一的部分：64 网格 / 安全区 / 最粗一笔 3px / 同色系渐变底色 / 深浅两档主题\n- 浅色档 icon.light.svg 重做：白底贴片 + 品牌色描边圈 + 品牌色字形，与深色档（渐变贴片 + 白字）肉眼可辨地区分（原先两档只差色号，看起来一模一样）\n- 不同的部分：字形本体，逐个对应插件功能（如 mail-check 为信封+对勾、jwt-decoder 为三段的凭证、unit-converter 为标尺+双向箭头）\n- 保留状态语义的强调色：绿 = 可用 / 生效 / 通过，红 = 删除，黄 = 告警\n- 图形源改为 glyphs.py 单点维护，改了重跑 glyphs.py + gen_icons.py --gen 即可\n\n\n## v1.0.3\n\n- 图标改用统一 64 网格满幅圆角贴片 + 白色图形，线宽归一\n- 新增浅色主题图标 `icon.light.svg`，随应用主题自动切换\n\n## v1.0.2\n\n- 新增「进制转换」标签页：2 / 8 / 10 / 16 进制互转 + 字节单位（B/KB/MB/GB）换算\n- 新增 base-convert 命令，支持 Ctrl+K 直达\n\n- 统一前端桥接注入"
 }
