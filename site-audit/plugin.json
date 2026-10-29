@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.site-audit",
   "name": "站点审计箱",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "将 WHOIS 查询、SSL 证书检查、DNS 查询、DNS 传播检查、HTTP 状态码速查、HTTP 安全头审计六个站点工具合并为单一插件，按需切换标签页，共享一个原生子进程",
   "author": "QuickDock",
   "category": "网络工具",
@@ -31,6 +31,7 @@
     {
       "id": "whois-lookup",
       "title": "WHOIS 查询",
+      "description": "打开站点审计的 WHOIS 查询页（域名在界面里填）",
       "keywords": [
         "whois",
         "域名",
@@ -57,5 +58,5 @@
     "zh-CN": "将 WHOIS 查询、SSL 证书检查、DNS 查询、DNS 传播检查、HTTP 状态码速查、HTTP 安全头审计六个站点工具合并为单一插件，按需切换标签页，共享一个原生子进程",
     "en-US": "Combines WHOIS, SSL check, DNS lookup, DNS propagation, HTTP status code lookup and security headers audit into one plugin with tabbed UI, sharing a single native subprocess."
   },
-  "changelog": "## v1.0.6\n\n- 设计系统对齐：UI 图标迁移到共享 SVG 图标层 templates/icons.css（Lucide 描边图标，替代跨平台字形漂移的彩色 emoji）；配色/字号收敛到设计令牌；顶栏统一 44px；文档标签栏改下划线式 .tabs/.tab\n\n## v1.0.5\n\n- 命令面板清理：删除 5 个未监听的面板命令（SSL 检查 / DNS 查询 / DNS 传播 / HTTP 状态码 / 安全头审计）——它们只会打开插件而不会切到对应标签页（前端 plugin:init 不识别这些命令 ID，DNS 传播的后端命令名实为 prop.check 也对不上）。保留 WHOIS 查询作为唯一入口，插件内仍可通过标签页使用全部六个工具\n\n## v1.0.4\n\n- 传播检查跳过解析失败的记录（安全类型断言，避免对 nil/非 bool 断言 panic）\n\n## v1.0.3\n\n- 50 个插件的图形全部按各自功能重新绘制（原先是从老仓库图形迁移过来的通用件）\n- 统一的部分：64 网格 / 安全区 / 最粗一笔 3px / 同色系渐变底色 / 深浅两档主题\n- 浅色档 icon.light.svg 重做：白底贴片 + 品牌色描边圈 + 品牌色字形，与深色档（渐变贴片 + 白字）肉眼可辨地区分（原先两档只差色号，看起来一模一样）\n- 不同的部分：字形本体，逐个对应插件功能（如 mail-check 为信封+对勾、jwt-decoder 为三段的凭证、unit-converter 为标尺+双向箭头）\n- 保留状态语义的强调色：绿 = 可用 / 生效 / 通过，红 = 删除，黄 = 告警\n- 图形源改为 glyphs.py 单点维护，改了重跑 glyphs.py + gen_icons.py --gen 即可\n\n\n## v1.0.2\n\n- 图标改用统一 64 网格满幅圆角贴片 + 白色图形，线宽归一\n- 新增浅色主题图标 `icon.light.svg`，随应用主题自动切换\n\n## v1.0.1\n\n- 将 WHOIS 查询、SSL 证书检查、DNS 查询、DNS 传播检查、HTTP 状态码速查、HTTP 安全头审计六个站点工具合并为单一插件，按需切换标签页，共享一个原生子进程\n\n- 统一前端桥接注入"
+  "changelog": "## v1.0.7\n\n- 新增 `commands[].params` 参数声明与 `commands[].description` 命令说明，AI 客户端可照着填 `input`；未传参时行为不变\n\n## v1.0.6\n\n- 设计系统对齐：UI 图标迁移到共享 SVG 图标层 templates/icons.css（Lucide 描边图标，替代跨平台字形漂移的彩色 emoji）；配色/字号收敛到设计令牌；顶栏统一 44px；文档标签栏改下划线式 .tabs/.tab\n\n## v1.0.5\n\n- 命令面板清理：删除 5 个未监听的面板命令（SSL 检查 / DNS 查询 / DNS 传播 / HTTP 状态码 / 安全头审计）——它们只会打开插件而不会切到对应标签页（前端 plugin:init 不识别这些命令 ID，DNS 传播的后端命令名实为 prop.check 也对不上）。保留 WHOIS 查询作为唯一入口，插件内仍可通过标签页使用全部六个工具\n\n## v1.0.4\n\n- 传播检查跳过解析失败的记录（安全类型断言，避免对 nil/非 bool 断言 panic）\n\n## v1.0.3\n\n- 50 个插件的图形全部按各自功能重新绘制（原先是从老仓库图形迁移过来的通用件）\n- 统一的部分：64 网格 / 安全区 / 最粗一笔 3px / 同色系渐变底色 / 深浅两档主题\n- 浅色档 icon.light.svg 重做：白底贴片 + 品牌色描边圈 + 品牌色字形，与深色档（渐变贴片 + 白字）肉眼可辨地区分（原先两档只差色号，看起来一模一样）\n- 不同的部分：字形本体，逐个对应插件功能（如 mail-check 为信封+对勾、jwt-decoder 为三段的凭证、unit-converter 为标尺+双向箭头）\n- 保留状态语义的强调色：绿 = 可用 / 生效 / 通过，红 = 删除，黄 = 告警\n- 图形源改为 glyphs.py 单点维护，改了重跑 glyphs.py + gen_icons.py --gen 即可\n\n\n## v1.0.2\n\n- 图标改用统一 64 网格满幅圆角贴片 + 白色图形，线宽归一\n- 新增浅色主题图标 `icon.light.svg`，随应用主题自动切换\n\n## v1.0.1\n\n- 将 WHOIS 查询、SSL 证书检查、DNS 查询、DNS 传播检查、HTTP 状态码速查、HTTP 安全头审计六个站点工具合并为单一插件，按需切换标签页，共享一个原生子进程\n\n- 统一前端桥接注入"
 }

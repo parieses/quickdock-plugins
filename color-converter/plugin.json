@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.color-converter",
   "name": "颜色工具",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "颜色格式互转（HEX / RGB / HSL）+ 屏幕取色，支持常见英文色名识别",
   "author": "QuickDock",
   "category": "开发者日常",
@@ -24,6 +24,7 @@
     {
       "id": "color-convert",
       "title": "颜色转换",
+      "description": "打开颜色转换，HEX/RGB/HSL 互转；带文本则先填入",
       "keywords": [
         "color",
         "colour",
@@ -40,6 +41,15 @@
       ],
       "prefix": "/color",
       "acceptsInput": true,
+      "params": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "要处理的文本，直接原样传入"
+          }
+        }
+      },
       "matchPattern": "^(#[0-9a-fA-F]{3,8}|rgb[a]?\\([^)]*\\)|hsl[a]?\\([^)]*\\)|[a-zA-Z]+)$",
       "title_i18n": {
         "zh-CN": "颜色转换",
@@ -49,6 +59,7 @@
     {
       "id": "screen-pick",
       "title": "屏幕取色",
+      "description": "立即取鼠标位置的屏幕颜色并复制色值",
       "keywords": [
         "pick",
         "picker",
@@ -84,5 +95,5 @@
     "zh-CN": "颜色格式互转（HEX / RGB / HSL）+ 屏幕取色，支持常见英文色名识别",
     "en-US": "Convert between color formats (HEX/RGB/HSL) and pick colors from the screen, with common English color name recognition."
   },
-  "changelog": "## v1.0.5\n\n- 设计系统对齐：UI 图标迁移到共享 SVG 图标层 templates/icons.css（Lucide 描边图标，替代跨平台字形漂移的彩色 emoji）；配色/字号收敛到设计令牌；顶栏统一 44px；文档标签栏改下划线式 .tabs/.tab\n\n## v1.0.4\n\n- 修复 hostCall 回调 id 写死（应为自增），避免并发调用串号\n- 屏幕取色复制空值时不再误报已复制\n\n## v1.0.3\n\n- 50 个插件的图形全部按各自功能重新绘制（原先是从老仓库图形迁移过来的通用件）\n- 统一的部分：64 网格 / 安全区 / 最粗一笔 3px / 同色系渐变底色 / 深浅两档主题\n- 浅色档 icon.light.svg 重做：白底贴片 + 品牌色描边圈 + 品牌色字形，与深色档（渐变贴片 + 白字）肉眼可辨地区分（原先两档只差色号，看起来一模一样）\n- 不同的部分：字形本体，逐个对应插件功能（如 mail-check 为信封+对勾、jwt-decoder 为三段的凭证、unit-converter 为标尺+双向箭头）\n- 保留状态语义的强调色：绿 = 可用 / 生效 / 通过，红 = 删除，黄 = 告警\n- 图形源改为 glyphs.py 单点维护，改了重跑 glyphs.py + gen_icons.py --gen 即可\n\n\n## v1.0.2\n\n- 图标改用统一 64 网格满幅圆角贴片 + 白色图形，线宽归一\n- 新增浅色主题图标 `icon.light.svg`，随应用主题自动切换\n\n## v1.0.1\n\n- 屏幕取色体验优化：进入取色模式后立即隐藏窗口，并弹出系统通知提示「移动鼠标到目标颜色按 F8 取色，ESC 取消」\n- 支持独立插件窗口取色时一并隐藏，命令面板（Ctrl+K）选区取色无提示的问题已修复\n\n- 统一前端桥接注入"
+  "changelog": "## v1.0.6\n\n- 新增 `commands[].params` 参数声明与 `commands[].description` 命令说明，AI 客户端可照着填 `input`；未传参时行为不变\n\n## v1.0.5\n\n- 设计系统对齐：UI 图标迁移到共享 SVG 图标层 templates/icons.css（Lucide 描边图标，替代跨平台字形漂移的彩色 emoji）；配色/字号收敛到设计令牌；顶栏统一 44px；文档标签栏改下划线式 .tabs/.tab\n\n## v1.0.4\n\n- 修复 hostCall 回调 id 写死（应为自增），避免并发调用串号\n- 屏幕取色复制空值时不再误报已复制\n\n## v1.0.3\n\n- 50 个插件的图形全部按各自功能重新绘制（原先是从老仓库图形迁移过来的通用件）\n- 统一的部分：64 网格 / 安全区 / 最粗一笔 3px / 同色系渐变底色 / 深浅两档主题\n- 浅色档 icon.light.svg 重做：白底贴片 + 品牌色描边圈 + 品牌色字形，与深色档（渐变贴片 + 白字）肉眼可辨地区分（原先两档只差色号，看起来一模一样）\n- 不同的部分：字形本体，逐个对应插件功能（如 mail-check 为信封+对勾、jwt-decoder 为三段的凭证、unit-converter 为标尺+双向箭头）\n- 保留状态语义的强调色：绿 = 可用 / 生效 / 通过，红 = 删除，黄 = 告警\n- 图形源改为 glyphs.py 单点维护，改了重跑 glyphs.py + gen_icons.py --gen 即可\n\n\n## v1.0.2\n\n- 图标改用统一 64 网格满幅圆角贴片 + 白色图形，线宽归一\n- 新增浅色主题图标 `icon.light.svg`，随应用主题自动切换\n\n## v1.0.1\n\n- 屏幕取色体验优化：进入取色模式后立即隐藏窗口，并弹出系统通知提示「移动鼠标到目标颜色按 F8 取色，ESC 取消」\n- 支持独立插件窗口取色时一并隐藏，命令面板（Ctrl+K）选区取色无提示的问题已修复\n\n- 统一前端桥接注入"
 }

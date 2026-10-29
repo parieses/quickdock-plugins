@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.disk-analyzer",
   "name": "磁盘分析器",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "可视化磁盘空间占用分析工具，类似 SpaceSniffer，支持树图展示目录结构",
   "author": "QuickDock",
   "icon": "icon.svg",
@@ -36,6 +36,7 @@
     {
       "id": "disk-scan",
       "title": "扫描磁盘空间",
+      "description": "扫描某个目录的空间占用，返回各子项大小",
       "keywords": [
         "disk",
         "磁盘",
@@ -54,11 +55,26 @@
       "title_i18n": {
         "zh-CN": "扫描磁盘空间",
         "en-US": "Scan Disk Space"
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "要扫描的目录，如 D:/Downloads；省略扫系统盘根目录"
+          },
+          "limit": {
+            "type": "integer",
+            "description": "每层最多返回多少个子项，默认 60",
+            "default": 60
+          }
+        }
       }
     },
     {
       "id": "disk-scan-root",
       "title": "扫描根目录",
+      "description": "列出各盘符的总量、已用与可用空间",
       "keywords": [
         "root",
         "根目录",
@@ -83,5 +99,5 @@
     "zh-CN": "可视化磁盘空间占用分析工具，类似 SpaceSniffer，支持树图展示目录结构",
     "en-US": "Visualize disk space usage like SpaceSniffer with a treemap of directory structure."
   },
-  "changelog": "## v1.0.7\n\n- 修复图标层 icons.css 头部注释未闭合（`/*` 漏写 `*/`）导致 `:root` 与全部 `--qi-*` 变量被注释吞掉、所有图标渲染成实心方块的回归问题；新增 `tools/check_icons.mjs` 注释闭合平衡校验以杜绝此类回归。\n\n## v1.0.6\n\n- 设计系统对齐：UI 图标迁移到共享 SVG 图标层 templates/icons.css（Lucide 描边图标，替代跨平台字形漂移的彩色 emoji）；配色/字号收敛到设计令牌；顶栏统一 44px；文档标签栏改下划线式 .tabs/.tab\n\n## 1.0.5\n\n- 命令面板清理：移除「打开文件管理器」命令声明——前后端均无对应实现（后端无 case、前端无监听），从 Ctrl+K 选中只会打开插件首页，属于搜得到却点了没反应的死条目。扫描结果行的「打开」按钮不受影响\n\n## v1.0.4\n\n- 扫描状态树按 BFS 裁剪（上限 4000 节点 / 800KB），避免超大目录快照撑爆 JSON-RPC 单帧导致白屏\n\n## v1.0.3\n\n- 重写后端扫描：去掉每层重复整树遍历（dirSize 递归 WalkDir），改为 O(n) 递归后序累加，每个文件只在直接父目录计入一次，深目录树扫描速度大幅提升、不再轻易触发 3 分钟上限\n- 修复目录体积塌缩：之前子目录只统计直接文件大小、丢失下属子目录体积，treemap 大面积失真；现在每个节点 size 严格等于其子节点 size 之和（已端到端校验）\n- 新增 `disk-scan-stop` 真正取消后台扫描（取消 context，goroutine 不再跑满上限空耗 CPU/磁盘）\n- 到达最大深度不再返回 0，改用 dirSize 一次性算出该层完整体积（不丢数据）\n- 方块图升级为递归嵌套 treemap（SpaceSniffer 式：目录里套子目录方块，带层数/块数上限防卡顿），点击内层方块下钻\n- 进度条改用后端真实 progress（已耗时 / 整体上限），去掉无意义的 version%100\n\n## v1.0.2\n\n- 50 个插件的图形全部按各自功能重新绘制（原先是从老仓库图形迁移过来的通用件）\n- 统一的部分：64 网格 / 安全区 / 最粗一笔 3px / 同色系渐变底色 / 深浅两档主题\n- 浅色档 icon.light.svg 重做：白底贴片 + 品牌色描边圈 + 品牌色字形，与深色档（渐变贴片 + 白字）肉眼可辨地区分（原先两档只差色号，看起来一模一样）\n- 不同的部分：字形本体，逐个对应插件功能（如 mail-check 为信封+对勾、jwt-decoder 为三段的凭证、unit-converter 为标尺+双向箭头）\n- 保留状态语义的强调色：绿 = 可用 / 生效 / 通过，红 = 删除，黄 = 告警\n- 图形源改为 glyphs.py 单点维护，改了重跑 glyphs.py + gen_icons.py --gen 即可\n\n\n## v1.0.1\n\n- 图标改用统一 64 网格满幅圆角贴片 + 白色图形，线宽归一\n- 新增浅色主题图标 `icon.light.svg`，随应用主题自动切换\n\n## v1.0.0\n\n- 可视化磁盘空间占用分析工具，类似 SpaceSniffer，支持树图展示目录结构\n\n- 统一前端桥接注入"
+  "changelog": "## v1.0.8\n\n- 新增 `commands[].params` 参数声明与 `commands[].description` 命令说明，AI 客户端可照着填 `input`；未传参时行为不变\n\n## v1.0.7\n\n- 修复图标层 icons.css 头部注释未闭合（`/*` 漏写 `*/`）导致 `:root` 与全部 `--qi-*` 变量被注释吞掉、所有图标渲染成实心方块的回归问题；新增 `tools/check_icons.mjs` 注释闭合平衡校验以杜绝此类回归。\n\n## v1.0.6\n\n- 设计系统对齐：UI 图标迁移到共享 SVG 图标层 templates/icons.css（Lucide 描边图标，替代跨平台字形漂移的彩色 emoji）；配色/字号收敛到设计令牌；顶栏统一 44px；文档标签栏改下划线式 .tabs/.tab\n\n## 1.0.5\n\n- 命令面板清理：移除「打开文件管理器」命令声明——前后端均无对应实现（后端无 case、前端无监听），从 Ctrl+K 选中只会打开插件首页，属于搜得到却点了没反应的死条目。扫描结果行的「打开」按钮不受影响\n\n## v1.0.4\n\n- 扫描状态树按 BFS 裁剪（上限 4000 节点 / 800KB），避免超大目录快照撑爆 JSON-RPC 单帧导致白屏\n\n## v1.0.3\n\n- 重写后端扫描：去掉每层重复整树遍历（dirSize 递归 WalkDir），改为 O(n) 递归后序累加，每个文件只在直接父目录计入一次，深目录树扫描速度大幅提升、不再轻易触发 3 分钟上限\n- 修复目录体积塌缩：之前子目录只统计直接文件大小、丢失下属子目录体积，treemap 大面积失真；现在每个节点 size 严格等于其子节点 size 之和（已端到端校验）\n- 新增 `disk-scan-stop` 真正取消后台扫描（取消 context，goroutine 不再跑满上限空耗 CPU/磁盘）\n- 到达最大深度不再返回 0，改用 dirSize 一次性算出该层完整体积（不丢数据）\n- 方块图升级为递归嵌套 treemap（SpaceSniffer 式：目录里套子目录方块，带层数/块数上限防卡顿），点击内层方块下钻\n- 进度条改用后端真实 progress（已耗时 / 整体上限），去掉无意义的 version%100\n\n## v1.0.2\n\n- 50 个插件的图形全部按各自功能重新绘制（原先是从老仓库图形迁移过来的通用件）\n- 统一的部分：64 网格 / 安全区 / 最粗一笔 3px / 同色系渐变底色 / 深浅两档主题\n- 浅色档 icon.light.svg 重做：白底贴片 + 品牌色描边圈 + 品牌色字形，与深色档（渐变贴片 + 白字）肉眼可辨地区分（原先两档只差色号，看起来一模一样）\n- 不同的部分：字形本体，逐个对应插件功能（如 mail-check 为信封+对勾、jwt-decoder 为三段的凭证、unit-converter 为标尺+双向箭头）\n- 保留状态语义的强调色：绿 = 可用 / 生效 / 通过，红 = 删除，黄 = 告警\n- 图形源改为 glyphs.py 单点维护，改了重跑 glyphs.py + gen_icons.py --gen 即可\n\n\n## v1.0.1\n\n- 图标改用统一 64 网格满幅圆角贴片 + 白色图形，线宽归一\n- 新增浅色主题图标 `icon.light.svg`，随应用主题自动切换\n\n## v1.0.0\n\n- 可视化磁盘空间占用分析工具，类似 SpaceSniffer，支持树图展示目录结构\n\n- 统一前端桥接注入"
 }

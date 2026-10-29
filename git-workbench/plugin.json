@@ -5,7 +5,7 @@
     "zh-CN": "Git 工作台",
     "en-US": "Git Workbench"
   },
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Git 仓库一体化工作台：仓库浏览、二分定位 bug 引入提交、三方合并冲突可视化解决、代码演化时间轴、历史改写（改作者/删敏感文件）、仓库体检与知识孤岛识别。",
   "description_i18n": {
     "zh-CN": "Git 仓库一体化工作台：仓库浏览、二分定位 bug 引入提交、三方合并冲突可视化解决、代码演化时间轴、历史改写（改作者/删敏感文件）、仓库体检与知识孤岛识别。",
@@ -40,53 +40,147 @@
     {
       "id": "repo.open",
       "title": "打开本地仓库",
+      "description": "打开 Git 工作台并载入该仓库（目录在界面里选）",
       "title_i18n": {
         "zh-CN": "打开本地仓库",
         "en-US": "Open Repository"
       },
-      "prefix": "/git",
-      "acceptsInput": true
+      "prefix": "/git"
     },
     {
       "id": "bisect.start",
       "title": "二分定位",
+      "description": "开始二分定位，用 good/bad 两个提交缩小问题区间",
       "title_i18n": {
         "zh-CN": "二分定位",
         "en-US": "Bisect"
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "仓库目录，如 D:/proj/app"
+          },
+          "good": {
+            "type": "string",
+            "description": "已知正常的提交，如 v1.0.0 或 commit hash"
+          },
+          "bad": {
+            "type": "string",
+            "description": "已知出问题的提交，默认 HEAD"
+          }
+        },
+        "required": [
+          "path"
+        ]
       }
     },
     {
       "id": "conflict.list",
       "title": "查看合并冲突",
+      "description": "列出当前仓库的合并冲突文件",
       "title_i18n": {
         "zh-CN": "查看合并冲突",
         "en-US": "List Conflicts"
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "仓库目录，如 D:/proj/app"
+          }
+        },
+        "required": [
+          "path"
+        ]
       }
     },
     {
       "id": "timeline.file",
       "title": "代码演化时间轴",
+      "description": "查看某个文件的演化时间轴",
       "title_i18n": {
         "zh-CN": "代码演化时间轴",
         "en-US": "Code Timeline"
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "仓库目录，如 D:/proj/app"
+          },
+          "file": {
+            "type": "string",
+            "description": "仓库内相对路径，如 src/main.go"
+          }
+        },
+        "required": [
+          "path"
+        ]
       }
     },
     {
       "id": "rewrite.preview",
       "title": "历史改写预览",
+      "description": "预览历史改写（改作者/邮箱）的影响，不落盘",
       "title_i18n": {
         "zh-CN": "历史改写预览",
         "en-US": "Preview Rewrite"
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "仓库目录，如 D:/proj/app"
+          },
+          "oldEmail": {
+            "type": "string",
+            "description": "要替换的旧邮箱"
+          },
+          "newEmail": {
+            "type": "string",
+            "description": "替换成的新邮箱"
+          },
+          "newName": {
+            "type": "string",
+            "description": "替换成的新作者名，省略则不改名"
+          }
+        },
+        "required": [
+          "path"
+        ]
       }
     },
     {
       "id": "stats.start",
       "title": "仓库体检",
+      "description": "统计仓库体检指标：提交分布、文件热度等",
       "title_i18n": {
         "zh-CN": "仓库体检",
         "en-US": "Repo Stats"
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "仓库目录，如 D:/proj/app"
+          },
+          "limit": {
+            "type": "integer",
+            "description": "统计的提交条数上限，默认 800",
+            "default": 800
+          }
+        },
+        "required": [
+          "path"
+        ]
       }
     }
   ],
-  "changelog": "## v1.0.7\n\n- 修复图标层 icons.css 头部注释未闭合（`/*` 漏写 `*/`）导致 `:root` 与全部 `--qi-*` 变量被注释吞掉、所有图标渲染成实心方块的回归问题；新增 `tools/check_icons.mjs` 注释闭合平衡校验以杜绝此类回归。\n\n## v1.0.6\n\n- 设计系统对齐：UI 图标迁移到共享 SVG 图标层 templates/icons.css（Lucide 描边图标，替代跨平台字形漂移的彩色 emoji）；配色/字号收敛到设计令牌；顶栏统一 44px；文档标签栏改下划线式 .tabs/.tab\n\n## v1.0.5\n\n- Ctrl+K 命令直达：命令面板选中的命令此前只会打开插件首页。现在前端接管 plugin:init 下发的 command——「打开本地仓库 / 二分定位 / 冲突解决 / 演化时间轴 / 历史改写 / 仓库体检」分别直达对应标签页（多标签插件，命令即页面）\n\n## v1.0.4\n\n- 新增 pruneTasks：清理 10 分钟前的已完成异步任务，避免任务表无限增长\n\n## v1.0.3\n\n- 50 个插件的图形全部按各自功能重新绘制（原先是从老仓库图形迁移过来的通用件）\n- 统一的部分：64 网格 / 安全区 / 最粗一笔 3px / 同色系渐变底色 / 深浅两档主题\n- 浅色档 icon.light.svg 重做：白底贴片 + 品牌色描边圈 + 品牌色字形，与深色档（渐变贴片 + 白字）肉眼可辨地区分（原先两档只差色号，看起来一模一样）\n- 不同的部分：字形本体，逐个对应插件功能（如 mail-check 为信封+对勾、jwt-decoder 为三段的凭证、unit-converter 为标尺+双向箭头）\n- 保留状态语义的强调色：绿 = 可用 / 生效 / 通过，红 = 删除，黄 = 告警\n- 图形源改为 glyphs.py 单点维护，改了重跑 glyphs.py + gen_icons.py --gen 即可\n\n\n## v1.0.2\n\n- 图标改用统一 64 网格满幅圆角贴片 + 白色图形，线宽归一\n- 新增浅色主题图标 `icon.light.svg`，随应用主题自动切换\n\n## v1.0.1\n\n- Git 仓库一体化工作台：仓库浏览、二分定位 bug 引入提交、三方合并冲突可视化解决、代码演化时间轴、历史改写（改作者/删敏感文件）、仓库体检与知识孤岛识别\n\n- 统一前端桥接注入"
+  "changelog": "## v1.0.8\n\n- 新增 `commands[].params` 参数声明与 `commands[].description` 命令说明，AI 客户端可照着填 `input`；未传参时行为不变\n- 移除 `repo.open` 的 `acceptsInput`：该命令的前端从未接收命令面板文本，属历史遗留的虚假声明\n\n## v1.0.7\n\n- 修复图标层 icons.css 头部注释未闭合（`/*` 漏写 `*/`）导致 `:root` 与全部 `--qi-*` 变量被注释吞掉、所有图标渲染成实心方块的回归问题；新增 `tools/check_icons.mjs` 注释闭合平衡校验以杜绝此类回归。\n\n## v1.0.6\n\n- 设计系统对齐：UI 图标迁移到共享 SVG 图标层 templates/icons.css（Lucide 描边图标，替代跨平台字形漂移的彩色 emoji）；配色/字号收敛到设计令牌；顶栏统一 44px；文档标签栏改下划线式 .tabs/.tab\n\n## v1.0.5\n\n- Ctrl+K 命令直达：命令面板选中的命令此前只会打开插件首页。现在前端接管 plugin:init 下发的 command——「打开本地仓库 / 二分定位 / 冲突解决 / 演化时间轴 / 历史改写 / 仓库体检」分别直达对应标签页（多标签插件，命令即页面）\n\n## v1.0.4\n\n- 新增 pruneTasks：清理 10 分钟前的已完成异步任务，避免任务表无限增长\n\n## v1.0.3\n\n- 50 个插件的图形全部按各自功能重新绘制（原先是从老仓库图形迁移过来的通用件）\n- 统一的部分：64 网格 / 安全区 / 最粗一笔 3px / 同色系渐变底色 / 深浅两档主题\n- 浅色档 icon.light.svg 重做：白底贴片 + 品牌色描边圈 + 品牌色字形，与深色档（渐变贴片 + 白字）肉眼可辨地区分（原先两档只差色号，看起来一模一样）\n- 不同的部分：字形本体，逐个对应插件功能（如 mail-check 为信封+对勾、jwt-decoder 为三段的凭证、unit-converter 为标尺+双向箭头）\n- 保留状态语义的强调色：绿 = 可用 / 生效 / 通过，红 = 删除，黄 = 告警\n- 图形源改为 glyphs.py 单点维护，改了重跑 glyphs.py + gen_icons.py --gen 即可\n\n\n## v1.0.2\n\n- 图标改用统一 64 网格满幅圆角贴片 + 白色图形，线宽归一\n- 新增浅色主题图标 `icon.light.svg`，随应用主题自动切换\n\n## v1.0.1\n\n- Git 仓库一体化工作台：仓库浏览、二分定位 bug 引入提交、三方合并冲突可视化解决、代码演化时间轴、历史改写（改作者/删敏感文件）、仓库体检与知识孤岛识别\n\n- 统一前端桥接注入"
 }

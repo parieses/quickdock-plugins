@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.crypto-toolbox",
   "name": "密码与加密工具箱",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "随机密码 / 口令生成（字符集可配、熵值与强度评估）＋ AES-GCM / AES-CBC 加解密 ＋ RSA-OAEP 密钥对与加解密 ＋ PBKDF2 密钥派生，全部在本机完成，不联网、不上传",
   "author": "QuickDock",
   "icon": "icon.svg",
@@ -30,6 +30,7 @@
     {
       "id": "gen-password",
       "title": "生成随机密码",
+      "description": "生成随机密码；文本给数字则按该长度生成",
       "keywords": [
         "password",
         "passwd",
@@ -49,6 +50,15 @@
       "prefix": "/pwd",
       "matchPattern": "\\d{1,3}",
       "acceptsInput": true,
+      "params": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "密码长度，1–3 位数字如 16；省略用界面当前长度"
+          }
+        }
+      },
       "title_i18n": {
         "zh-CN": "生成随机密码",
         "en-US": "Generate Random Password"
@@ -57,6 +67,7 @@
     {
       "id": "crypto-toolbox",
       "title": "密码与加密工具箱",
+      "description": "打开密码与加密工具箱：哈希、对称加解密、随机串",
       "keywords": [
         "crypto",
         "encrypt",
@@ -90,5 +101,5 @@
     "zh-CN": "随机密码/口令生成 + AES/RSA 加解密 + PBKDF2 派生，全部本机运算",
     "en-US": "Random password & passphrase generation, AES/RSA encryption, PBKDF2 derivation. All local, nothing leaves your machine."
   },
-  "changelog": "## v1.0.4\n\n- 设计系统对齐：UI 图标迁移到共享 SVG 图标层 templates/icons.css（Lucide 描边图标，替代跨平台字形漂移的彩色 emoji）；配色/字号收敛到设计令牌；顶栏统一 44px；文档标签栏改下划线式 .tabs/.tab\n\n## v1.0.3\n\n- Ctrl+K 命令直达：「生成随机密码」命令（/pwd）选中后直接切到密码生成页；带数字输入（/pwd 16）时一并设置长度并生成\n\n## v1.0.2\n\n- 50 个插件的图形全部按各自功能重新绘制（原先是从老仓库图形迁移过来的通用件）\n- 统一的部分：64 网格 / 安全区 / 最粗一笔 3px / 同色系渐变底色 / 深浅两档主题\n- 浅色档 icon.light.svg 重做：白底贴片 + 品牌色描边圈 + 品牌色字形，与深色档（渐变贴片 + 白字）肉眼可辨地区分（原先两档只差色号，看起来一模一样）\n- 不同的部分：字形本体，逐个对应插件功能（如 mail-check 为信封+对勾、jwt-decoder 为三段的凭证、unit-converter 为标尺+双向箭头）\n- 保留状态语义的强调色：绿 = 可用 / 生效 / 通过，红 = 删除，黄 = 告警\n- 图形源改为 glyphs.py 单点维护，改了重跑 glyphs.py + gen_icons.py --gen 即可\n\n\n## v1.0.1\n\n- 图标改用统一 64 网格满幅圆角贴片 + 白色图形，线宽归一\n- 新增浅色主题图标 `icon.light.svg`，随应用主题自动切换\n\n## v1.0.0\n\n- 随机密码 / 口令生成（字符集可配、熵值与强度评估）＋ AES-GCM / AES-CBC 加解密 ＋ RSA-OAEP 密钥对与加解密 ＋ PBKDF2 密钥派生，全部在本机完成，不联网、不上传\n\n- 统一前端桥接注入"
+  "changelog": "## v1.0.5\n\n- 新增 `commands[].params` 参数声明与 `commands[].description` 命令说明，AI 客户端可照着填 `input`；未传参时行为不变\n\n## v1.0.4\n\n- 设计系统对齐：UI 图标迁移到共享 SVG 图标层 templates/icons.css（Lucide 描边图标，替代跨平台字形漂移的彩色 emoji）；配色/字号收敛到设计令牌；顶栏统一 44px；文档标签栏改下划线式 .tabs/.tab\n\n## v1.0.3\n\n- Ctrl+K 命令直达：「生成随机密码」命令（/pwd）选中后直接切到密码生成页；带数字输入（/pwd 16）时一并设置长度并生成\n\n## v1.0.2\n\n- 50 个插件的图形全部按各自功能重新绘制（原先是从老仓库图形迁移过来的通用件）\n- 统一的部分：64 网格 / 安全区 / 最粗一笔 3px / 同色系渐变底色 / 深浅两档主题\n- 浅色档 icon.light.svg 重做：白底贴片 + 品牌色描边圈 + 品牌色字形，与深色档（渐变贴片 + 白字）肉眼可辨地区分（原先两档只差色号，看起来一模一样）\n- 不同的部分：字形本体，逐个对应插件功能（如 mail-check 为信封+对勾、jwt-decoder 为三段的凭证、unit-converter 为标尺+双向箭头）\n- 保留状态语义的强调色：绿 = 可用 / 生效 / 通过，红 = 删除，黄 = 告警\n- 图形源改为 glyphs.py 单点维护，改了重跑 glyphs.py + gen_icons.py --gen 即可\n\n\n## v1.0.1\n\n- 图标改用统一 64 网格满幅圆角贴片 + 白色图形，线宽归一\n- 新增浅色主题图标 `icon.light.svg`，随应用主题自动切换\n\n## v1.0.0\n\n- 随机密码 / 口令生成（字符集可配、熵值与强度评估）＋ AES-GCM / AES-CBC 加解密 ＋ RSA-OAEP 密钥对与加解密 ＋ PBKDF2 密钥派生，全部在本机完成，不联网、不上传\n\n- 统一前端桥接注入"
 }

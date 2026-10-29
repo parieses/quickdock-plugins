@@ -5,7 +5,7 @@
     "zh-CN": "敏感信息扫描",
     "en-US": "Secret Scanner"
   },
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "扫描项目目录，找出意外硬编码的密钥、私钥、token、密码字段与身份证号等敏感信息，防止它们被提交进仓库或泄露",
   "description_i18n": {
     "zh-CN": "扫描项目目录，找出意外硬编码的密钥、私钥、token、密码字段与身份证号等敏感信息，防止它们被提交进仓库或泄露",
@@ -34,46 +34,123 @@
   },
   "permissions": {
     "filesystem": true,
-    "process": ["git"]
+    "process": [
+      "git"
+    ]
   },
   "commands": [
     {
       "id": "scan",
       "title": "扫描目录",
-      "keywords": ["扫描", "敏感信息", "密钥", "secret", "扫描目录"],
+      "description": "扫描目录里的密钥、令牌泄露（跳过二进制与大文件）",
+      "keywords": [
+        "扫描",
+        "敏感信息",
+        "密钥",
+        "secret",
+        "扫描目录"
+      ],
       "title_i18n": {
         "zh-CN": "扫描目录",
         "en-US": "Scan directory"
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "要扫描的目录，如 D:/proj/app"
+          },
+          "gitHistory": {
+            "type": "boolean",
+            "description": "是否连同 git 历史一起扫，默认 false",
+            "default": false
+          },
+          "maxFileSizeMB": {
+            "type": "number",
+            "description": "单文件大小上限（MB），默认 2，最大 64",
+            "default": 2
+          }
+        },
+        "required": [
+          "path"
+        ]
       }
     },
     {
       "id": "scan-poll",
       "title": "轮询扫描进度",
-      "keywords": ["进度", "轮询", "poll"],
+      "description": "轮询扫描进度与已命中的结果",
+      "keywords": [
+        "进度",
+        "轮询",
+        "poll"
+      ],
       "title_i18n": {
         "zh-CN": "轮询扫描进度",
         "en-US": "Poll scan progress"
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "description": "scan 返回的会话 id"
+          }
+        },
+        "required": [
+          "sessionId"
+        ]
       }
     },
     {
       "id": "scan-cancel",
       "title": "取消扫描",
-      "keywords": ["取消", "停止", "cancel"],
+      "description": "取消正在进行的扫描",
+      "keywords": [
+        "取消",
+        "停止",
+        "cancel"
+      ],
       "title_i18n": {
         "zh-CN": "取消扫描",
         "en-US": "Cancel scan"
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "description": "scan 返回的会话 id"
+          }
+        },
+        "required": [
+          "sessionId"
+        ]
       }
     },
     {
       "id": "rules",
       "title": "获取规则列表",
-      "keywords": ["规则", "rules", "检测器"],
+      "description": "列出内置的密钥识别规则",
+      "keywords": [
+        "规则",
+        "rules",
+        "检测器"
+      ],
       "title_i18n": {
         "zh-CN": "获取规则列表",
         "en-US": "List rules"
       }
     }
   ],
-  "keywords": ["敏感信息", "密钥扫描", "secret scanner", "硬编码", "泄露", "安全"],
-  "changelog": "## v0.1.0\n\n- 初始版本（由 plugin-scaffold 生成）\n- 15 条检测规则：AWS / Google / Stripe / Slack / GitHub 密钥、私钥块、JWT、.env 敏感变量、身份证（含校验位）、银行卡（Luhn）、手机号、邮箱\n- 递归扫描目录，自动跳过二进制与 node_modules/.git 等目录，可按规则开关\n- 可选扫描 Git 历史（git log -p），捕捉已提交过的密钥\n- 命中值默认脱敏，可一键导出"
+  "keywords": [
+    "敏感信息",
+    "密钥扫描",
+    "secret scanner",
+    "硬编码",
+    "泄露",
+    "安全"
+  ],
+  "changelog": "## v0.1.1\n\n- 新增 `commands[].params` 参数声明与 `commands[].description` 命令说明，AI 客户端可照着填 `input`；未传参时行为不变\n\n## v0.1.0\n\n- 初始版本（由 plugin-scaffold 生成）\n- 15 条检测规则：AWS / Google / Stripe / Slack / GitHub 密钥、私钥块、JWT、.env 敏感变量、身份证（含校验位）、银行卡（Luhn）、手机号、邮箱\n- 递归扫描目录，自动跳过二进制与 node_modules/.git 等目录，可按规则开关\n- 可选扫描 Git 历史（git log -p），捕捉已提交过的密钥\n- 命中值默认脱敏，可一键导出"
 }

@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.startup-manager",
   "name": "启动项管理",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "查看并启停本机开机启动项，覆盖注册表 Run 键与「启动」文件夹中的快捷方式。",
   "author": "QuickDock",
   "category": "系统工具",
@@ -38,6 +38,7 @@
     {
       "id": "startup-list",
       "title": "列出启动项",
+      "description": "列出开机启动项及启用状态",
       "keywords": [
         "startup",
         "启动项",
@@ -67,5 +68,5 @@
     "zh-CN": "查看并启停注册表 Run 键与启动文件夹的开机项",
     "en-US": "List and toggle registry Run keys and Startup folder shortcuts."
   },
-  "changelog": "## v1.0.3\n\n- 设计系统对齐：UI 图标迁移到共享 SVG 图标层 templates/icons.css（Lucide 描边图标，替代跨平台字形漂移的彩色 emoji）；配色/字号收敛到设计令牌；顶栏统一 44px；文档标签栏改下划线式 .tabs/.tab\n\n## v1.0.2\n\n- 移除命令「startup-list」上虚假的 acceptsInput 声明：前端没有监听 plugin:init，命令面板传入的文本从未被插件接收，该声明不产生任何效果\n\n## v1.0.1\n\n- 【顺带修一个致命 bug】列表渲染脚本少一个右括号，导致整页 JS 解析失败、插件界面完全不工作（与本次主题修复一起发布）\n- 跟随宿主浅色 / 深色主题：监听宿主的 plugin:theme 消息并同步 <html data-theme>；plugin:init 自带的 theme 也会应用。此前主程序切换主题后插件不跟随\n\n## v1.0.0\n\n- 枚举并启停注册表 Run 键与启动文件夹中的开机项\n- 统一前端桥接注入"
+  "changelog": "## v1.0.4\n\n- 新增 `commands[].params` 参数声明与 `commands[].description` 命令说明，AI 客户端可照着填 `input`；未传参时行为不变\n\n## v1.0.3\n\n- 设计系统对齐：UI 图标迁移到共享 SVG 图标层 templates/icons.css（Lucide 描边图标，替代跨平台字形漂移的彩色 emoji）；配色/字号收敛到设计令牌；顶栏统一 44px；文档标签栏改下划线式 .tabs/.tab\n\n## v1.0.2\n\n- 移除命令「startup-list」上虚假的 acceptsInput 声明：前端没有监听 plugin:init，命令面板传入的文本从未被插件接收，该声明不产生任何效果\n\n## v1.0.1\n\n- 【顺带修一个致命 bug】列表渲染脚本少一个右括号，导致整页 JS 解析失败、插件界面完全不工作（与本次主题修复一起发布）\n- 跟随宿主浅色 / 深色主题：监听宿主的 plugin:theme 消息并同步 <html data-theme>；plugin:init 自带的 theme 也会应用。此前主程序切换主题后插件不跟随\n\n## v1.0.0\n\n- 枚举并启停注册表 Run 键与启动文件夹中的开机项\n- 统一前端桥接注入"
 }

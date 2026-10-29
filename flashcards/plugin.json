@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.flashcards",
   "name": "背单词卡",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "本地单词闪卡与间隔重复记忆（SM-2 算法），内置常用词库，支持自定义词单导入。",
   "author": "QuickDock",
   "category": "教育学习",
@@ -24,6 +24,7 @@
     {
       "id": "flashcards",
       "title": "背单词卡",
+      "description": "打开背单词卡片，按卡片复习",
       "keywords": [
         "flashcard",
         "word",
@@ -55,5 +56,5 @@
     "zh-CN": "本地单词闪卡与间隔重复记忆，内置词库可导入",
     "en-US": "Local flashcards with spaced repetition; built-in word lists."
   },
-  "changelog": "## v1.0.6\n\n- 修复图标层 icons.css 头部注释未闭合（`/*` 漏写 `*/`）导致 `:root` 与全部 `--qi-*` 变量被注释吞掉、所有图标渲染成实心方块的回归问题；新增 `tools/check_icons.mjs` 注释闭合平衡校验以杜绝此类回归。\n\n## v1.0.5\n\n- 设计系统对齐：UI 图标迁移到共享 SVG 图标层 templates/icons.css（Lucide 描边图标，替代跨平台字形漂移的彩色 emoji）；配色/字号收敛到设计令牌；顶栏统一 44px；文档标签栏改下划线式 .tabs/.tab\n\n## v1.0.4\n\n- 修复闪卡数据重开丢失：沙箱 iframe（opaque origin）下 localStorage 不可用。词库与学习进度改存宿主 db.*，启动 hydrate 回填后再加载，不再重来\n\n## v1.0.3\n\n- 跟随宿主浅色 / 深色主题：监听宿主的 plugin:theme 消息并同步 <html data-theme>（qd-theme.css 的浅色是 html[data-theme=\"light\"] 的变量覆盖）；plugin:init 自带的 theme 也会应用，首屏即对齐。此前主程序切换主题后插件不跟随（本次为全仓库统一修复）\n\n## v1.0.2\n\n- 修复默认词库判空逻辑缺陷导致进入即提示「复习完成」\n\n## v1.0.1\n\n- 修复评级按钮 dataset 属性导致 SM2 失效\n\n## v1.0.0\n\n- 本地单词闪卡 + SM-2 间隔重复，内置词库可导入\n- 统一前端桥接注入"
+  "changelog": "## v1.0.7\n\n- 新增 `commands[].params` 参数声明与 `commands[].description` 命令说明，AI 客户端可照着填 `input`；未传参时行为不变\n\n## v1.0.6\n\n- 修复图标层 icons.css 头部注释未闭合（`/*` 漏写 `*/`）导致 `:root` 与全部 `--qi-*` 变量被注释吞掉、所有图标渲染成实心方块的回归问题；新增 `tools/check_icons.mjs` 注释闭合平衡校验以杜绝此类回归。\n\n## v1.0.5\n\n- 设计系统对齐：UI 图标迁移到共享 SVG 图标层 templates/icons.css（Lucide 描边图标，替代跨平台字形漂移的彩色 emoji）；配色/字号收敛到设计令牌；顶栏统一 44px；文档标签栏改下划线式 .tabs/.tab\n\n## v1.0.4\n\n- 修复闪卡数据重开丢失：沙箱 iframe（opaque origin）下 localStorage 不可用。词库与学习进度改存宿主 db.*，启动 hydrate 回填后再加载，不再重来\n\n## v1.0.3\n\n- 跟随宿主浅色 / 深色主题：监听宿主的 plugin:theme 消息并同步 <html data-theme>（qd-theme.css 的浅色是 html[data-theme=\"light\"] 的变量覆盖）；plugin:init 自带的 theme 也会应用，首屏即对齐。此前主程序切换主题后插件不跟随（本次为全仓库统一修复）\n\n## v1.0.2\n\n- 修复默认词库判空逻辑缺陷导致进入即提示「复习完成」\n\n## v1.0.1\n\n- 修复评级按钮 dataset 属性导致 SM2 失效\n\n## v1.0.0\n\n- 本地单词闪卡 + SM-2 间隔重复，内置词库可导入\n- 统一前端桥接注入"
 }

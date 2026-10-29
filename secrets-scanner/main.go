@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -151,6 +152,36 @@ func rulesMeta() []map[string]interface{} {
 	return out
 }
 
+// anyBool / anyFloat：容忍 "true"/"1"/"5" 这类字符串形态（见 cmdScan 注释）。
+func anyBool(v interface{}) bool {
+	switch t := v.(type) {
+	case bool:
+		return t
+	case string:
+		s := strings.ToLower(strings.TrimSpace(t))
+		return s == "true" || s == "1" || s == "yes" || s == "on"
+	}
+	return false
+}
+
+func anyFloat(v interface{}) float64 {
+	switch t := v.(type) {
+	case float64:
+		return t
+	case int:
+		return float64(t)
+	case json.Number:
+		if f, err := t.Float64(); err == nil {
+			return f
+		}
+	case string:
+		if f, err := strconv.ParseFloat(strings.TrimSpace(t), 64); err == nil {
+			return f
+		}
+	}
+	return 0
+}
+
 func strArr(v interface{}) []string {
 	a, ok := v.([]interface{})
 	if !ok {
@@ -180,10 +211,12 @@ func cmdScan(in map[string]interface{}) (map[string]interface{}, string) {
 
 	excludes := strArr(in["excludeDirs"])
 	enabled := strArr(in["rules"])
-	gitHist, _ := in["gitHistory"].(bool)
+	// 类型宽容：AI 客户端按 params 声明可能把 true 写成 "true"、把 5 写成 "5"，
+	// 能转就转——静默退回默认值会让「扫了但没生效」变得难以察觉。
+	gitHist := anyBool(in["gitHistory"])
 
 	maxMB := 2.0
-	if v, ok := in["maxFileSizeMB"].(float64); ok && v > 0 {
+	if v := anyFloat(in["maxFileSizeMB"]); v > 0 {
 		maxMB = v
 	}
 	if maxMB > 64 {

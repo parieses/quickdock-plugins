@@ -1,7 +1,7 @@
 {
   "id": "io.github.parieses.geoip",
   "name": "IP 归属地",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "查询 IP 的地理位置、运营商、时区与坐标，支持指定 IP 或查询本机公网 IP。",
   "author": "QuickDock",
   "category": "网络工具",
@@ -27,6 +27,7 @@
     {
       "id": "geoip-lookup",
       "title": "IP 归属地查询",
+      "description": "查 IP 归属地：国家、省市、运营商",
       "keywords": [
         "geoip",
         "ip",
@@ -40,6 +41,19 @@
       ],
       "prefix": "/geoip",
       "acceptsInput": true,
+      "params": {
+        "type": "object",
+        "properties": {
+          "ip": {
+            "type": "string",
+            "description": "要查的 IP，如 8.8.8.8；省略则查本机出口 IP"
+          },
+          "text": {
+            "type": "string",
+            "description": "同 ip；命令面板直接传文本时的入口"
+          }
+        }
+      },
       "title_i18n": {
         "zh-CN": "IP 归属地查询",
         "en-US": "GeoIP Lookup"
@@ -58,5 +72,5 @@
     "zh-CN": "查询 IP 的地理位置、运营商、时区与坐标",
     "en-US": "Look up IP geolocation, ISP, timezone and coordinates."
   },
-  "changelog": "## v1.0.4\n\n- 设计系统对齐：UI 图标迁移到共享 SVG 图标层 templates/icons.css（Lucide 描边图标，替代跨平台字形漂移的彩色 emoji）；配色/字号收敛到设计令牌；顶栏统一 44px；文档标签栏改下划线式 .tabs/.tab\n\n## v1.0.3\n\n- 跟随宿主浅色 / 深色主题：监听宿主的 plugin:theme 消息并同步 <html data-theme>（qd-theme.css 的浅色是 html[data-theme=\"light\"] 的变量覆盖）；plugin:init 自带的 theme 也会应用，首屏即对齐。此前主程序切换主题后插件不跟随（本次为全仓库统一修复）\n\n## v1.0.2\n\n- 标准输入读取改为 bufio.NewReader，避免大请求被截断\n\n## v1.0.1\n\n- 查询状态增加旋转加载动画\n\n## v1.0.0\n\n- 查询 IP 归属地/运营商/时区/坐标，支持指定 IP 或查本机公网 IP\n- 统一前端桥接注入"
+  "changelog": "## v1.0.5\n\n- 新增 `commands[].params` 参数声明与 `commands[].description` 命令说明，AI 客户端可照着填 `input`；未传参时行为不变\n\n## v1.0.4\n\n- 设计系统对齐：UI 图标迁移到共享 SVG 图标层 templates/icons.css（Lucide 描边图标，替代跨平台字形漂移的彩色 emoji）；配色/字号收敛到设计令牌；顶栏统一 44px；文档标签栏改下划线式 .tabs/.tab\n\n## v1.0.3\n\n- 跟随宿主浅色 / 深色主题：监听宿主的 plugin:theme 消息并同步 <html data-theme>（qd-theme.css 的浅色是 html[data-theme=\"light\"] 的变量覆盖）；plugin:init 自带的 theme 也会应用，首屏即对齐。此前主程序切换主题后插件不跟随（本次为全仓库统一修复）\n\n## v1.0.2\n\n- 标准输入读取改为 bufio.NewReader，避免大请求被截断\n\n## v1.0.1\n\n- 查询状态增加旋转加载动画\n\n## v1.0.0\n\n- 查询 IP 归属地/运营商/时区/坐标，支持指定 IP 或查本机公网 IP\n- 统一前端桥接注入"
 }

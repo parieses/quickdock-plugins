@@ -18,6 +18,7 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	_ "golang.org/x/image/bmp"
@@ -265,16 +266,32 @@ func strFrom(input map[string]interface{}, key string) string {
 	return ""
 }
 
+// intFrom / boolFrom 对字符串宽容：AI 客户端按 params 声明填 integer/boolean，
+// 但模型偶尔会把 80 写成 "80"、把 true 写成 "true"。能转就转，别让一次类型笔误
+// 变成「参数被静默忽略」——那是最难查的一类偏差。
 func intFrom(input map[string]interface{}, key string) int {
-	if v, ok := input[key].(float64); ok {
+	switch v := input[key].(type) {
+	case float64:
 		return int(v)
+	case json.Number:
+		if i, err := v.Int64(); err == nil {
+			return int(i)
+		}
+	case string:
+		if i, err := strconv.Atoi(strings.TrimSpace(v)); err == nil {
+			return i
+		}
 	}
 	return 0
 }
 
 func boolFrom(input map[string]interface{}, key string) bool {
-	if v, ok := input[key].(bool); ok {
+	switch v := input[key].(type) {
+	case bool:
 		return v
+	case string:
+		s := strings.ToLower(strings.TrimSpace(v))
+		return s == "true" || s == "1" || s == "yes" || s == "on"
 	}
 	return false
 }

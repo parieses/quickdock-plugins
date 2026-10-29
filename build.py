@@ -50,6 +50,61 @@ def validate_manifest(manifest: dict) -> None:
     if runtime == "native" and not manifest["backend"].get("entry"):
         print("❌ native runtime 必须指定 backend.entry")
         sys.exit(1)
+    validate_command_params(manifest, runtime)
+
+
+# commands[].params 的最小校验（全量规则在 tools/check_plugins.py，两处都要拦：
+# 打包与检查是两条独立入口，只做一处等于另一条路上裸奔）。
+# 宿主不引 JSON Schema 库、加载期只做浅校验并「静默丢弃」不合规字段，
+# 所以写歪的声明不会报错，只会让 AI 客户端看不到参数——必须在这里挡住。
+PARAM_TYPES = ("string", "number", "integer", "boolean")
+PARAM_TOP_KEYS = ("type", "properties", "required")
+PARAM_PROP_KEYS = ("type", "description", "default", "enum")
+
+
+def validate_command_params(manifest: dict, runtime: str) -> None:
+    def bad(msg: str) -> None:
+        print(f"❌ commands[].params 不合规: {msg}")
+        sys.exit(1)
+
+    for idx, c in enumerate(manifest.get("commands") or []):
+        if "params" not in c:
+            continue
+        label = f"commands[{idx}]（{c.get('id', '?')}）"
+        params = c["params"]
+        if not isinstance(params, dict):
+            bad(f"{label} 的 params 必须是对象")
+        for k in params:
+            if k not in PARAM_TOP_KEYS:
+                bad(f"{label} 含不支持的顶层关键字 {k!r}（只允许 {'/'.join(PARAM_TOP_KEYS)}）")
+        if params.get("type") != "object":
+            bad(f'{label} 的 params.type 必须是 "object"')
+        props = params.get("properties")
+        if not isinstance(props, dict) or not props:
+            bad(f"{label} 的 params.properties 必须是非空对象")
+        if runtime == "none":
+            extra = [k for k in props if k != "text"]
+            if extra:
+                bad(f"{label} 是 runtime=none，只能声明 text（宿主只传纯文本），却有 {', '.join(extra)}")
+        for name, spec in props.items():
+            if not isinstance(spec, dict):
+                bad(f"{label} 的属性 {name!r} 必须是对象")
+            for k in spec:
+                if k not in PARAM_PROP_KEYS:
+                    bad(f"{label} 的属性 {name!r} 含不支持的关键字 {k!r}")
+            if "type" not in spec:
+                bad(f"{label} 的属性 {name!r} 缺少 type")
+            if spec["type"] not in PARAM_TYPES:
+                bad(f"{label} 的属性 {name!r} 的 type 非法: {spec['type']!r}")
+            if not str(spec.get("description", "")).strip():
+                bad(f"{label} 的属性 {name!r} 缺少 description")
+            if "enum" in spec:
+                ev = spec["enum"]
+                if not isinstance(ev, list) or not ev or not all(isinstance(x, str) for x in ev):
+                    bad(f"{label} 的属性 {name!r} 的 enum 必须是非空字符串数组")
+        req = params.get("required")
+        if req is not None and (not isinstance(req, list) or any(r not in props for r in req)):
+            bad(f"{label} 的 params.required 必须是 properties 中存在的键名数组")
 
 
 def declared_platforms(manifest: dict) -> list:

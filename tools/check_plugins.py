@@ -49,6 +49,82 @@ def read(path):
         return ""
 
 
+# ---- commands[].params：宿主支持的 JSON Schema 子集 ----
+#
+# 宿主（主程序 internal/plugin/types.go 的 Command.Params）不引 JSON Schema 库，
+# 只在加载期做浅校验：不合规就丢掉该字段并记警告，**不会**让插件装不上。
+# 于是「不合规」会以最坏的方式落地——安装成功、插件一切正常，只有 AI 客户端
+# 看不到参数声明，或者看到一个被悄悄丢掉一半的声明。所以真正的门禁在这里。
+PARAM_TYPES = ("string", "number", "integer", "boolean")
+PARAM_TOP_KEYS = ("type", "properties", "required")
+PARAM_PROP_KEYS = ("type", "description", "default", "enum")
+# runtime=none 的插件没有后端，宿主只能经 plugin:init 把纯文本交给前端
+# （plugin_open 的注入通道就是 {text, command}），因此只允许声明 text 一个键。
+NONE_RUNTIME_KEYS = ("text",)
+
+
+def check_params(d, label, params, runtime):
+    """逐条校验一条 commands[].params（违规一律 error）。"""
+    if not isinstance(params, dict):
+        err(d, f"{label}: params 必须是对象")
+        return
+    for k in params:
+        if k not in PARAM_TOP_KEYS:
+            # oneOf / anyOf / $ref / allOf / additionalProperties 都从这里被拦住
+            err(d, f"{label}: params 含不支持的顶层关键字 {k!r}（只允许 {'/'.join(PARAM_TOP_KEYS)}）")
+    if params.get("type") != "object":
+        err(d, f'{label}: params.type 必须是 "object"（宿主的参数声明只有对象形参这一种）')
+    props = params.get("properties")
+    if not isinstance(props, dict) or not props:
+        err(d, f"{label}: params.properties 必须是非空对象")
+        return
+    if runtime == "none":
+        extra = [k for k in props if k not in NONE_RUNTIME_KEYS]
+        if extra:
+            err(d, f"{label}: runtime=none 的插件只能声明 text（宿主只经 plugin:init 传纯文本），"
+                    f"却声明了 {', '.join(extra)}")
+    for name, spec in props.items():
+        if not isinstance(spec, dict):
+            err(d, f"{label}: 属性 {name!r} 必须是对象")
+            continue
+        for k in spec:
+            if k not in PARAM_PROP_KEYS:
+                err(d, f"{label}: 属性 {name!r} 含不支持的关键字 {k!r}"
+                        f"（只允许 {'/'.join(PARAM_PROP_KEYS)}）")
+        ptype = spec.get("type")
+        if ptype is None:
+            err(d, f"{label}: 属性 {name!r} 缺少 type")
+        elif ptype not in PARAM_TYPES:
+            # 嵌套 object / array 也从这里被拦住：宿主不支持，真要列表就声明 string 并在
+            # description 里写清「逗号分隔」或「JSON 文本」。
+            err(d, f"{label}: 属性 {name!r} 的 type 非法: {ptype!r}（只允许 {'/'.join(PARAM_TYPES)}）")
+        desc = spec.get("description")
+        if not isinstance(desc, str) or not desc.strip():
+            err(d, f"{label}: 属性 {name!r} 缺少 description（模型只能靠它知道该传什么）")
+        if "enum" in spec:
+            ev = spec["enum"]
+            if not isinstance(ev, list) or not ev or not all(isinstance(x, str) for x in ev):
+                err(d, f"{label}: 属性 {name!r} 的 enum 必须是非空字符串数组")
+        if "default" in spec and ptype in PARAM_TYPES:
+            dv = spec["default"]
+            ok = {
+                "string": isinstance(dv, str),
+                "boolean": isinstance(dv, bool),
+                "integer": isinstance(dv, int) and not isinstance(dv, bool),
+                "number": isinstance(dv, (int, float)) and not isinstance(dv, bool),
+            }[ptype]
+            if not ok:
+                err(d, f"{label}: 属性 {name!r} 的 default 与 type={ptype} 不匹配: {dv!r}")
+    req = params.get("required")
+    if req is not None:
+        if not isinstance(req, list) or not all(isinstance(x, str) for x in req):
+            err(d, f"{label}: params.required 必须是字符串数组")
+        else:
+            for k in req:
+                if k not in props:
+                    err(d, f"{label}: params.required 里的 {k!r} 不在 properties 中")
+
+
 def check_manifest(d, plugin_dir):
     p = os.path.join(plugin_dir, "plugin.json")
     if not os.path.isfile(p):
@@ -75,9 +151,15 @@ def check_manifest(d, plugin_dir):
             err(d, "frontend.enabled=true 但没有声明 frontend.entry")
         elif not os.path.isfile(os.path.join(plugin_dir, fe)):
             err(d, f"frontend.entry 指向不存在的文件: {fe}")
-    for c in m.get("commands") or []:
+    for idx, c in enumerate(m.get("commands") or []):
         if not c.get("id"):
             err(d, "commands[] 存在没有 id 的项")
+            continue
+        label = f"commands[{idx}]（{c['id']}）"
+        if "description" in c and not isinstance(c["description"], str):
+            err(d, f"{label}: description 必须是字符串")
+        if "params" in c:
+            check_params(d, label, c["params"], rt)
     return m
 
 
