@@ -120,6 +120,15 @@
     .col-resizer:hover { background:var(--accent); }
     .col-resizer:active { background:var(--accent); }
 
+    /* 列头「批量」按钮：hover 才浮现，不挤占列宽（sticky 的 th 已是包含块，无需 position:relative） */
+    .col-bulk { position:absolute; right:16px; top:50%; transform:translateY(-50%); z-index:3;
+      height:17px; padding:0 5px; font-size:var(--fs-xs); line-height:15px; font-family:inherit;
+      border:1px solid var(--border-strong); border-radius:4px; background:var(--bg-primary);
+      color:var(--text-muted); cursor:pointer; visibility:hidden; opacity:0; transition:opacity .1s ease; }
+    table.grid th.sortable:hover .col-bulk { visibility:visible; opacity:1; }
+    .col-bulk:hover { color:var(--accent); border-color:var(--accent); background:var(--accent-soft); }
+    .bulk-quick { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
+
     /* ===== 多语句结果标签页 ===== */
     .result-tabs { display:flex; align-items:stretch; flex-wrap:wrap; gap:0; background:var(--bg-secondary); border-bottom:1px solid var(--border); flex-shrink:0; max-height:78px; overflow:auto; }
     .rtab { display:flex; align-items:center; gap:6px; padding:5px 12px; border:none; border-right:1px solid var(--border); background:transparent; color:var(--text-muted); font-size:var(--fs-xs); cursor:pointer; white-space:nowrap; }
@@ -456,6 +465,7 @@
               </button>
               <span class="muted" v-if="t.selAllLoading">正在收集…</span>
               <span class="spacer"></span>
+              <button class="btn btn-xxs" @click="openBulkEdit(t, '')" title="把勾选行的某一列统一设为同一个值 / NULL / SQL 表达式">批量修改所选</button>
               <button class="btn btn-xxs" @click="clearSel(t)">清除选择</button>
               <button class="btn btn-xxs" style="background:var(--danger);border-color:var(--danger);color:#fff" @click="deleteSelected(t)">删除所选</button>
             </div>
@@ -572,6 +582,8 @@
                         {{ col }}<span class="arrow" v-if="t.grid.orderBy===col">{{ t.grid.orderDir==='desc' ? '▾' : '▴' }}</span>
                         <span v-if="isPk(t,ci)" class="arrow qi qi-key"></span>
                         <span class="filt-mark" v-if="t.filters[col] && String(t.filters[col]).trim()" title="该列有筛选条件">筛</span>
+                        <button class="col-bulk" v-if="canCrud(t)" @click.stop="openBulkEdit(t, col)"
+                                :title="'批量设置「' + col + '」列：作用于已勾选的行（未勾选时会先选中全部匹配筛选的行）'">批量</button>
                         <span class="col-resizer" @mousedown.stop="startResize(t, col, $event)" @click.stop></span>
                       </th>
                     </tr>
@@ -979,6 +991,57 @@
       </div>
     </div>
 
+    <!-- 批量修改弹窗：把勾选行的某列统一设为值 / NULL / SQL 表达式 -->
+    <div v-if="bulkModal.show" class="modal-mask" @click.self="bulkModal.show=false">
+      <div class="modal modal-compact" style="width:460px">
+        <div class="modal-compact-head">
+          <span>批量修改 · {{ bulkModal.table }}</span>
+          <button class="btn btn-xs" @click="bulkModal.show=false">✕</button>
+        </div>
+        <div class="msg-box muted" style="padding-top:0">
+          将作用于 <b style="color:var(--accent)">{{ bulkModal.count }}</b> 行（按主键 <code>{{ bulkModal.pk }}</code> 定位）。修改不可撤销，建议先备份。
+        </div>
+        <div class="field-row">
+          <label>字段</label>
+          <select class="p-input" v-model="bulkModal.col" @change="onBulkColChange">
+            <option v-for="c in bulkModal.cols" :key="c" :value="c">{{ c }}</option>
+          </select>
+        </div>
+        <div class="field-row">
+          <label>写入方式</label>
+          <select class="p-input" v-model="bulkModal.mode">
+            <option value="value">设为值（参数化，安全）</option>
+            <option value="null">设为 NULL</option>
+            <option value="expr">SQL 表达式（函数调用等）</option>
+          </select>
+        </div>
+        <div class="field-row" v-if="bulkModal.mode !== 'null'">
+          <label>{{ bulkModal.mode === 'expr' ? '表达式' : '值' }}</label>
+          <input class="p-input" v-model="bulkModal.value" :placeholder="bulkModal.mode === 'expr' ? (bulkModal.nowExpr + ' / 0') : '要写入的值'"
+                 @keydown.enter.prevent="execBulkEdit" />
+        </div>
+        <div class="bulk-quick" v-if="bulkModal.mode === 'value'">
+          <span class="muted" style="font-size:var(--fs-xs)">留空即写入空字符串 <code>''</code>；要置 NULL 请把「写入方式」切到 NULL。</span>
+        </div>
+        <div class="bulk-quick" v-if="bulkModal.mode === 'expr'">
+          <button class="btn btn-xxs" :title="bulkModal.nowExpr" @click="bulkModal.value = bulkModal.nowExpr">当前时间</button>
+          <button class="btn btn-xxs" @click="bulkModal.value='NULL'">NULL</button>
+          <button class="btn btn-xxs" @click="bulkModal.value='0'">0</button>
+          <button class="btn btn-xxs" @click="bulkModal.value='\'\''">空字符串</button>
+        </div>
+        <div class="msg-box" style="padding:8px 0 0;color:var(--text-muted);font-size:var(--fs-xs)" v-if="bulkPreview">
+          <code>{{ bulkPreview }}</code>
+        </div>
+        <div class="abar">
+          <div class="spacer"></div>
+          <button class="btn btn-xs" @click="bulkModal.show=false">取消</button>
+          <button class="btn btn-xs btn-primary" :disabled="bulkModal.running" @click="execBulkEdit">
+            {{ bulkModal.running ? '执行中…' : '执行修改' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- 通用确认 -->
     <div v-if="confirmDialog.visible" class="modal-mask" @click.self="confirmCancel">
       <div class="modal modal-compact" style="width:380px">
@@ -1156,6 +1219,9 @@
         showInsertModal: false,
         insertTab: null,
         insertForm: { cols: [] },
+        // 批量修改（按主键批量 SET 同一列）
+        bulkModal: { show:false, tab:null, table:'', pk:'', cols:[], col:'', mode:'value', value:'',
+                     nowLabel:'NOW()', nowExpr:'NOW()', count:0, running:false },
         toasts: [],
         confirmDialog: { visible:false, message:'', onConfirm:null },
         // 设置（持久化到后端 KV）：默认每页行数 / 各连接上次打开的库
@@ -1187,6 +1253,17 @@
         return this.conns.filter(function(c){
           return (c.name||'').toLowerCase().indexOf(f)>=0 || (c.host||'').toLowerCase().indexOf(f)>=0
         })
+      },
+      // 批量修改弹窗里的 SQL 预览：让用户执行前看清「会干什么」
+      bulkPreview: function(){
+        var m = this.bulkModal
+        if(!m || !m.show || !m.col) return ''
+        var val
+        if(m.mode === 'null') val = 'NULL'
+        else if(m.mode === 'expr') val = (String(m.value||'').trim() || '…')
+        else val = "'" + String(m.value == null ? '' : m.value) + "'"
+        return 'UPDATE ' + m.table + ' SET ' + m.col + ' = ' + val +
+               ' WHERE ' + m.pk + ' IN (… ' + m.count + ' 个主键 …)'
       }
     },
     methods: {
@@ -2064,12 +2141,13 @@
       selCount: function(t){ return Object.keys(this.selSetOf(t)).length },
       clearSel: function(t){ t.selSet = {}; t._selAllDone = false },
       fmtTotal: function(t){ var g = t.grid; return (g && g.total >= 0) ? String(g.total) : '?' },
-      // 全选「匹配当前筛选」的全部行（可能跨页）：只把主键收集回来勾上，不拉整表数据
+      // 全选「匹配当前筛选」的全部行（可能跨页）：只把主键收集回来勾上，不拉整表数据。
+      // 返回 Promise（收集完成后 resolve），供「点列头批量」时先收集再打开弹窗。
       selectAllMatching: function(t){
         var g = t.grid, self = this
-        if(!g || !g.editable || !g.primaryKey){ toast('当前结果不可编辑','err'); return }
+        if(!g || !g.editable || !g.primaryKey){ toast('当前结果不可编辑','err'); return Promise.resolve() }
         t.selAllLoading = true
-        send('row.pkList', { id:t.connId, database:t.db, table:t.table, filters: self.activeFilters(t), orderBy:g.orderBy, orderDir:g.orderDir, limit:50000 })
+        return send('row.pkList', { id:t.connId, database:t.db, table:t.table, filters: self.activeFilters(t), orderBy:g.orderBy, orderDir:g.orderDir, limit:50000 })
           .then(function(r){
             t.selAllLoading = false
             var vals = (r && r.values) || []
@@ -2085,6 +2163,121 @@
         var pks = Object.keys(this.selSetOf(t))
         if(!pks.length){ toast('请先勾选要删除的行','err'); return }
         this.askConfirm('确认删除选中的 ' + pks.length + ' 行？此操作不可撤销。', function(){ self.doDeleteMany(t, pks) })
+      },
+      /* ---------- 批量修改：把勾选行的某一列统一设为同一个值 ---------- */
+      // 入口两条：
+      //   1) 勾选若干行 → 选择条上的「批量修改所选」
+      //   2) 直接点列头的「批量」→ 未勾选时自动选中「全部匹配筛选的行」，
+      //      等价于同类客户端里「选中整列批量输入」的用法
+      isTimeColName: function(c){
+        var n = String(c || '').toLowerCase()
+        return /(_at|_time|_date|^created|^updated|^deleted|^modified|^time$|^date$)/.test(n)
+      },
+      // 「当前时间」表达式按库类型给，避免 SQLite 的 CURRENT_TIMESTAMP 写 UTC
+      // 而用户以为存的是本地时间（MySQL 的 NOW() 才是本地时区）。
+      nowExprOf: function(t){
+        var c = this.conns.find(function(x){ return x.id === t.connId })
+        var kind = c ? c.dbType : 'mysql'
+        if(kind === 'sqlite') return { label:"datetime('now','localtime')", expr:"datetime('now','localtime')" }
+        if(kind === 'redis') return { label:'NOW()', expr:'NOW()' }
+        return { label:'NOW()', expr:'NOW()' }
+      },
+      openBulkEdit: function(t, col){
+        var g = t.grid, self = this
+        if(!g || !g.editable || !g.tableName || !g.primaryKey){ toast('当前结果不可编辑','err'); return }
+        function open(){
+          var pks = Object.keys(self.selSetOf(t))
+          if(!pks.length){ toast('请先勾选要修改的行（或用列头的「批量」按钮一键选中全部匹配行）','err'); return }
+          var cols = (g.columns || []).filter(function(c){ return c !== g.primaryKey })
+          if(!cols.length){ toast('该结果除主键外没有可修改的列','err'); return }
+          var pick = (col && cols.indexOf(col) >= 0) ? col : cols[0]
+          // 时间类字段（deleted_at / updated_at …）默认走「表达式 + 当前时间」，省一次输入
+          var now = self.nowExprOf(t)
+          var timey = self.isTimeColName(pick)
+          self.bulkModal = {
+            show: true, tab: t, table: g.tableName, pk: g.primaryKey, cols: cols,
+            col: pick, mode: timey ? 'expr' : 'value',
+            value: timey ? now.expr : '',
+            nowLabel: now.label, nowExpr: now.expr,
+            count: pks.length, running: false
+          }
+        }
+        // 从列头进入且当前没有勾选：先收集「全部匹配筛选的行」，再打开弹窗
+        if(col && !Object.keys(this.selSetOf(t)).length){
+          if(!(g.total > g.rows.length)){ toast('请先勾选要修改的行','err'); return }
+          this.selectAllMatching(t).then(open)
+          return
+        }
+        open()
+      },
+      // 换字段时：若新字段是时间类、且当前是「设为值」还没填内容，自动切到「表达式 + 当前时间」。
+      // 否则用户把字段从 name 换成 deleted_at 后直接点执行，会把时间列写成空字符串。
+      onBulkColChange: function(){
+        var m = this.bulkModal
+        if(!m) return
+        if(m.mode === 'value' && !String(m.value == null ? '' : m.value).trim() && this.isTimeColName(m.col)){
+          m.mode = 'expr'
+          m.value = m.nowExpr
+        }
+      },
+      execBulkEdit: function(){
+        var m = this.bulkModal, self = this
+        if(!m || !m.show || !m.tab || m.running) return
+        var t = m.tab, g = t.grid
+        var pks = Object.keys(this.selSetOf(t))
+        if(!pks.length){ toast('请先勾选要修改的行','err'); return }
+        if(!m.col){ toast('请选择要修改的字段','err'); return }
+        var sets = {}, nulls = [], exprs = {}
+        var isExpr = m.mode === 'expr'
+        if(m.mode === 'null'){
+          nulls.push(m.col)
+        } else if(isExpr){
+          var ex = String(m.value == null ? '' : m.value).trim()
+          if(!ex){ toast('请填写 SQL 表达式','err'); return }
+          exprs[m.col] = ex
+        } else {
+          sets[m.col] = String(m.value == null ? '' : m.value)
+        }
+        m.running = true
+        var affected = 0, failed = 0, downgraded = false
+        var CH = 500
+        function report(unit){
+          m.running = false
+          var parts = []
+          if(downgraded) parts.push('批量命令不可用，已自动逐条修改')
+          parts.push('已修改 ' + affected + ' 行')
+          if(failed) parts.push(failed + ' ' + unit + '失败（请重试）')
+          toast(parts.join('，'), failed ? 'err' : 'ok')
+          m.show = false
+          self.reloadData(t, g.page)
+        }
+        function oneNext(i){
+          if(i >= pks.length){ report('行'); return }
+          send('row.update', {
+            id:t.connId, database:t.db, tableName:g.tableName,
+            pkColumn:g.primaryKey, pkValue:pks[i], sets:sets, nulls:nulls
+          }).then(function(r){ affected += (r && r.affected) || 0; oneNext(i + 1) })
+            .catch(function(){ failed++; oneNext(i + 1) })
+        }
+        function batchNext(i){
+          if(i >= pks.length){ report('批'); return }
+          var part = pks.slice(i, i + CH)
+          send('row.updateMany', {
+            id:t.connId, database:t.db, tableName:g.tableName,
+            pkColumn:g.primaryKey, pkValues:part, sets:sets, nulls:nulls, exprs:exprs
+          }).then(function(r){
+            affected += (r && r.affected) || 0
+            batchNext(i + CH)
+          }).catch(function(e){
+            // 第一批失败：多半是旧二进制没有 row.updateMany——此时一行都没改，可安全降级逐条。
+            // 表达式模式无法逐条降级（row.update 只接受参数化值），直接如实报错。
+            if(i === 0 && !isExpr){ downgraded = true; oneNext(0); return }
+            failed++
+            if(i === 0){ m.running = false; m.show = false; toast('批量修改失败: ' + (e.message || e) + '（若为「未知命令」请重装插件以获取 row.updateMany）', 'err'); return }
+            batchNext(i + CH)
+          })
+        }
+        batchNext(0)
       },
       // 每批 500 个主键调 row.deleteMany，顺序执行避免压垮连接；有失败也继续跑完再汇总。
       // 兜底：后端没有 row.deleteMany（旧二进制未重装）时，第一批就会失败——此时一个值都

@@ -224,6 +224,9 @@ func handleCommand(id int64, p executeParams) {
 			respondError(id, -32000, fmt.Sprintf("internal error: %v", r))
 		}
 	}()
+	// 注意：命令名已统一转小写，下面所有 case 必须写全小写（否则永不命中，返回
+	// "unknown command"）。历史上 redis.keyGet / row.deleteMany 这类驼峰 case 就因为
+	// 漏了这点而长期不可达——批量删除、全选匹配行、Redis 详情页写操作全靠前端兜底降级。
 	cmd := strings.ToLower(strings.TrimSpace(p.Command))
 	switch cmd {
 	// 连接管理
@@ -255,31 +258,31 @@ func handleCommand(id int64, p executeParams) {
 	case "redis.keylist":
 		handleRedisKeyList(id, p.Input)
 	// Redis 可视化管理
-	case "redis.keyGet":
+	case "redis.keyget":
 		redisKeyGet(id, p.Input)
-	case "redis.keySet":
+	case "redis.keyset":
 		redisKeySet(id, p.Input)
-	case "redis.keyDelete":
+	case "redis.keydelete":
 		redisKeyDelete(id, p.Input)
-	case "redis.keyRename":
+	case "redis.keyrename":
 		redisKeyRename(id, p.Input)
-	case "redis.keyExpire":
+	case "redis.keyexpire":
 		redisKeyExpire(id, p.Input)
-	case "redis.hashFieldSet":
+	case "redis.hashfieldset":
 		redisHashFieldSet(id, p.Input)
-	case "redis.hashFieldDel":
+	case "redis.hashfielddel":
 		redisHashFieldDel(id, p.Input)
-	case "redis.listPush":
+	case "redis.listpush":
 		redisListPush(id, p.Input)
-	case "redis.listElemDel":
+	case "redis.listelemdel":
 		redisListElemDel(id, p.Input)
-	case "redis.setMemberAdd":
+	case "redis.setmemberadd":
 		redisSetMemberAdd(id, p.Input)
-	case "redis.setMemberDel":
+	case "redis.setmemberdel":
 		redisSetMemberDel(id, p.Input)
-	case "redis.zsetMemberSet":
+	case "redis.zsetmemberset":
 		redisZSetMemberSet(id, p.Input)
-	case "redis.zsetMemberDel":
+	case "redis.zsetmemberdel":
 		redisZSetMemberDel(id, p.Input)
 	// 行编辑
 	case "row.update":
@@ -288,9 +291,11 @@ func handleCommand(id int64, p executeParams) {
 		handleRowInsert(id, p.Input)
 	case "row.delete":
 		handleRowDelete(id, p.Input)
-	case "row.deleteMany":
+	case "row.deletemany":
 		handleRowDeleteMany(id, p.Input)
-	case "row.pkList":
+	case "row.updatemany":
+		handleRowUpdateMany(id, p.Input)
+	case "row.pklist":
 		handleRowPkList(id, p.Input)
 	// 通用 KV（设置 / 上次打开的库 等前端持久化数据）
 	case "kv.get":

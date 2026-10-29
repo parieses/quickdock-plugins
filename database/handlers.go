@@ -602,3 +602,164 @@ func handleRowDeleteMany(id int64, input map[string]interface{}) {
 		"message":  fmt.Sprintf("OK, %d row(s) deleted", affected),
 	})
 }
+
+// handleRowUpdateMany 按主键批量把若干列设为同一批值（分片 IN + 单事务），
+// 供前端「批量修改所选 / 全选匹配筛选的行」使用。
+//
+// 三种写入方式（可同时出现，同一列以后者优先）：
+//   - sets  : 普通值，参数化绑定（推荐，无注入风险）
+//   - nulls : 置 NULL
+//   - exprs : SQL 表达式原样拼接（如 CURRENT_TIMESTAMP / NOW()），仅当用户在界面上
+//     显式选择「表达式」时才走到这里——这是本地数据库客户端的正常能力，
+//     不是外部不可信输入；仍拒绝空表达式与含分号的多语句。
+func handleRowUpdateMany(id int64, input map[string]interface{}) {
+	cid := strFrom(input, "id")
+	table := strFrom(input, "tableName")
+	pkCol := strFrom(input, "pkColumn")
+	sets := strMapFrom(input, "sets")
+	nulls := strSliceFrom(input, "nulls")
+	exprs := strMapFrom(input, "exprs")
+
+	if cid == "" {
+		respondError(id, -32602, "缺少连接 id")
+		return
+	}
+	if table == "" || pkCol == "" {
+		respondError(id, -32602, "缺少表名或主键列")
+		return
+	}
+
+	raw, _ := input["pkValues"].([]interface{})
+	values := make([]string, 0, len(raw))
+	for _, v := range raw {
+		if v == nil {
+			continue
+		}
+		switch x := v.(type) {
+		case string:
+			values = append(values, x)
+		case []byte:
+			values = append(values, string(x))
+		default:
+			values = append(values, fmt.Sprintf("%v", x))
+		}
+	}
+	if len(values) == 0 {
+		respondError(id, -32602, "pkValues 为空")
+		return
+	}
+	if len(values) > 20000 {
+		respondError(id, -32602, "单次最多修改 20000 行，请分批")
+		return
+	}
+
+	_, conn, err := openSavedWithDB(cid, strFrom(input, "database"))
+	if err != nil {
+		respondError(id, -32000, err.Error())
+		return
+	}
+	defer conn.close()
+	if conn.kind == "redis" {
+		respondError(id, -32000, "Redis 不支持行编辑")
+		return
+	}
+
+	// 组装 SET 片段：同名列只保留最后一次出现（exprs > nulls > sets）
+	type setItem struct {
+		col  string
+		expr string // 非空表示表达式，留空表示参数化值
+		arg  interface{}
+	}
+	byCol := make(map[string]int)
+	var items []setItem
+	push := func(it setItem) {
+		if i, ok := byCol[it.col]; ok {
+			items[i] = it
+			return
+		}
+		byCol[it.col] = len(items)
+		items = append(items, it)
+	}
+	for col, val := range sets {
+		push(setItem{col: col, arg: val})
+	}
+	for _, col := range nulls {
+		if col = strings.TrimSpace(col); col != "" {
+			push(setItem{col: col, expr: "NULL"})
+		}
+	}
+	for col, ex := range exprs {
+		ex = strings.TrimSpace(ex)
+		if ex == "" {
+			respondError(id, -32602, "字段 "+col+" 的表达式为空")
+			return
+		}
+		if strings.Contains(ex, ";") {
+			respondError(id, -32602, "表达式不能包含分号（不支持多条语句）")
+			return
+		}
+		if len(ex) > 500 {
+			respondError(id, -32602, "表达式过长")
+			return
+		}
+		push(setItem{col: col, expr: ex})
+	}
+
+	var setSQL []string
+	var setArgs []interface{}
+	for _, it := range items {
+		if it.expr != "" {
+			setSQL = append(setSQL, quoteIdent(conn.kind, it.col)+" = "+it.expr)
+			continue
+		}
+		setSQL = append(setSQL, quoteIdent(conn.kind, it.col)+" = ?")
+		setArgs = append(setArgs, it.arg)
+	}
+	if len(setSQL) == 0 {
+		respond(id, map[string]interface{}{"affected": 0, "message": "no changes"})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	tx, err := conn.sqlDB.BeginTx(ctx, nil)
+	if err != nil {
+		respondError(id, -32000, "开启事务失败: "+err.Error())
+		return
+	}
+	var affected int64
+	const chunk = 500 // SQLite 默认变量上限 999，留足余量
+	for i := 0; i < len(values); i += chunk {
+		end := i + chunk
+		if end > len(values) {
+			end = len(values)
+		}
+		part := values[i:end]
+		ph := make([]string, len(part))
+		args := make([]interface{}, 0, len(setArgs)+len(part))
+		args = append(args, setArgs...)
+		for j, v := range part {
+			ph[j] = "?"
+			args = append(args, v)
+		}
+		q := "UPDATE " + quoteIdent(conn.kind, table) +
+			" SET " + strings.Join(setSQL, ", ") +
+			" WHERE " + quoteIdent(conn.kind, pkCol) + " IN (" + strings.Join(ph, ",") + ")"
+		r, e := tx.ExecContext(ctx, q, args...)
+		if e != nil {
+			tx.Rollback()
+			respondError(id, -32000, "更新失败: "+e.Error())
+			return
+		}
+		n, _ := r.RowsAffected()
+		affected += n
+	}
+	if err := tx.Commit(); err != nil {
+		respondError(id, -32000, "提交失败: "+err.Error())
+		return
+	}
+	respond(id, map[string]interface{}{
+		"affected": affected,
+		"message":  fmt.Sprintf("OK, %d row(s) updated", affected),
+	})
+}
