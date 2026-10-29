@@ -1599,12 +1599,23 @@
 
   function onDecoded(frame) {
     try {
-      if (els.canvas.width !== frame.displayWidth || els.canvas.height !== frame.displayHeight) {
-        els.canvas.width = frame.displayWidth
-        els.canvas.height = frame.displayHeight
-      }
       setFrameSize(frame.displayWidth, frame.displayHeight)
-      ctx.drawImage(frame, 0, 0)
+      // 性能关键点：画布 backing store 只开到「显示尺寸 × DPR」，而不是解码分辨率。
+      // 旧实现把 canvas.width/height 设成手机真实编码分辨率（常见 3200×1440 ≈ 460 万像素），
+      // 每帧浏览器都要合成/缩放这张巨图——一旦宿主 WebView2 走软件渲染（RDP / 虚拟机 / GPU 被 blocklist）
+      // 这一步就是卡顿元凶。改为把 VideoFrame 一次性 drawImage 缩到显示尺寸：浏览器只需拼一张小纹理。
+      // 点击映射只看画布 CSS 盒（getBoundingClientRect），与 backing store 大小无关，坐标精度不受影响。
+      var rect = els.canvas.getBoundingClientRect()
+      var dpr = Math.min(window.devicePixelRatio || 1, 2)
+      var cssW = rect.width || state.cssW || frame.displayWidth
+      var cssH = rect.height || state.cssH || frame.displayHeight
+      var bw = Math.max(1, Math.round(cssW * dpr))
+      var bh = Math.max(1, Math.round(cssH * dpr))
+      if (els.canvas.width !== bw || els.canvas.height !== bh) {
+        els.canvas.width = bw
+        els.canvas.height = bh
+      }
+      ctx.drawImage(frame, 0, 0, frame.displayWidth, frame.displayHeight, 0, 0, bw, bh)
       state.frames++
       state.lastFrameAt = Date.now()
       if (!state.gotFrame) {
@@ -2740,8 +2751,8 @@
     } catch (e) {}
     // 显示缩放：解码帧被缩到多少显示（几何缩放，与铺满方式无关）。
     // 1440 宽的手机屏在约 360px 宽的画布里就是 25%，小字号界面（微信/QQ 这类）缩到这个比例必然发虚。
-    if (state.cssW && els.canvas.width) {
-      var sc = Math.round(state.cssW / els.canvas.width * 100)
+    if (state.cssW && state.frameW) {
+      var sc = Math.round(state.cssW / state.frameW * 100)
       if (sc) {
         // 铺满模式会裁掉一部分画面，侧栏直接标出来（「横屏显示不全」一眼能看出是裁切而非丢帧）
         var crop = state.cropPct || 0
