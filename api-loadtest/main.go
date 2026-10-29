@@ -378,6 +378,11 @@ func handleExecute(req rpcRequest) {
 		handleExport(req.ID)
 	case "bench-copy", "copy":
 		handleCopy(req.ID, input)
+	case "api-bench":
+		// 面板入口：这条命令只负责打开界面（宿主行为），本身不发起任何压测。
+		// 显式拦下而不是落到 default，是为了给调用方（尤其是 MCP/AI）一句能照做的指路。
+		respondError(req.ID, -32602,
+			"命令 api-bench 只打开压测面板（不发起压测）；执行压测请用 bench-start，看进度用 bench-status")
 	default:
 		respondError(req.ID, -32601, "unknown command: "+params.Command)
 	}

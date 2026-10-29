@@ -5,7 +5,7 @@
     "zh-CN": "数据粉碎",
     "en-US": "Data Shredder"
   },
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "彻底删除敏感文件，让数据无法被恢复：多次覆写文件内容后重命名并删除；另可覆写磁盘空闲空间，清理此前已删除文件留下的数据残片",
   "description_i18n": {
     "zh-CN": "彻底删除敏感文件，让数据无法被恢复：多次覆写文件内容后重命名并删除；另可覆写磁盘空闲空间，清理此前已删除文件留下的数据残片",
@@ -39,7 +39,7 @@
     {
       "id": "shred",
       "title": "数据粉碎",
-      "description": "打开数据粉碎面板，多次覆写后删除（须在界面确认）",
+      "description": "打开粉碎面板（仅界面，不执行）；开始粉碎请用 task-start",
       "keywords": [
         "粉碎",
         "覆写",
@@ -62,7 +62,115 @@
         "zh-CN": "数据粉碎",
         "en-US": "Data Shredder"
       }
+    },
+    {
+      "id": "volumes",
+      "title": "列出磁盘卷",
+      "description": "列出各卷的盘符、类型（SSD/HDD）、容量与剩余空间"
+    },
+    {
+      "id": "preview",
+      "title": "预览将粉碎的文件",
+      "description": "试算指定目录会被粉碎多少文件与字节，不实际删除",
+      "params": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "description": "模式：shred 粉碎文件 / wipe-free 覆写空闲空间",
+            "default": "shred"
+          },
+          "passes": {
+            "type": "integer",
+            "description": "覆写遍数，默认 1",
+            "default": 1
+          },
+          "volume": {
+            "type": "string",
+            "description": "wipe-free 模式要覆写的卷，如 D:（该模式必填）"
+          },
+          "tempDir": {
+            "type": "string",
+            "description": "临时目录，省略用系统默认"
+          }
+        }
+      }
+    },
+    {
+      "id": "task-start",
+      "title": "开始粉碎",
+      "description": "执行覆写并删除，不可撤销；必须传 confirm 确认",
+      "params": {
+        "type": "object",
+        "required": [
+          "mode",
+          "confirm"
+        ],
+        "properties": {
+          "mode": {
+            "type": "string",
+            "description": "模式：shred 粉碎文件 / wipe-free 覆写空闲空间",
+            "default": "shred"
+          },
+          "confirm": {
+            "type": "string",
+            "description": "确认口令，必须传 \"yes\" 表示知悉不可恢复"
+          },
+          "passes": {
+            "type": "integer",
+            "description": "覆写遍数，默认 1",
+            "default": 1
+          },
+          "renames": {
+            "type": "integer",
+            "description": "删除前重命名次数，默认 6",
+            "default": 6
+          },
+          "volume": {
+            "type": "string",
+            "description": "wipe-free 模式要覆写的卷，如 D:"
+          },
+          "tempDir": {
+            "type": "string",
+            "description": "临时目录，省略用系统默认"
+          }
+        }
+      }
+    },
+    {
+      "id": "task-poll",
+      "title": "轮询粉碎进度",
+      "description": "取粉碎任务的进度与错误，done=true 时结束",
+      "params": {
+        "type": "object",
+        "required": [
+          "sessionId"
+        ],
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "description": "task-start 返回的会话 id"
+          }
+        }
+      }
+    },
+    {
+      "id": "task-cancel",
+      "title": "取消粉碎",
+      "description": "中止正在进行的粉碎任务（已处理的文件无法还原）",
+      "params": {
+        "type": "object",
+        "required": [
+          "sessionId"
+        ],
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "description": "task-start 返回的会话 id"
+          }
+        }
+      }
     }
   ],
-  "changelog": "## v1.0.1\n\n- 新增 `commands[].params` 参数声明与 `commands[].description` 命令说明，AI 客户端可照着填 `input`；未传参时行为不变\n\n## v1.0.0\n\n- **文件粉碎**：按选定档位覆写文件内容（保持原大小，避免 NTFS 分配到新簇而原数据不动）→ 随机改名若干次清掉 MFT 里的旧文件名 → Sync 落盘后删除；目录递归处理，最后删空壳\n- **空闲空间覆写**：清此前已删除文件留下的数据残片。在目标卷上建临时大文件写到安全余量为止再删除，语义与 Windows `cipher /w` 一致（覆写的是整个卷，不是某个文件夹），但可中断、留余量、不写满到 0、不限 NTFS\n- **介质判定**：用 IOCTL_STORAGE_QUERY_PROPERTY 问寻道惩罚 / TRIM 判定 SSD 与机械盘（卷句柄不转发时反查物理磁盘号再问），判不出就如实说未知——SSD 上覆写本来就未必有效，这一点必须让用户知道\n- **三道闸门**：后端硬拒绝设备路径 / 卷根 / 系统目录 / 回收站；启动要求 confirm（粉碎须输入 DELETE、覆写须输入卷名）；UI 强制先预览，并明说 SSD 无效、小文件常驻 MFT、卷影副本不受影响、多遍覆写无额外收益\n"
+  "changelog": "## v1.0.2\n\n- 补暴露真实动作命令 `volumes`, `preview`, `task-start`, `task-poll`, `task-cancel`（带 params），并为面板入口命令补引导性报错；未传参时行为不变\n\n## v1.0.1\n\n- 新增 `commands[].params` 参数声明与 `commands[].description` 命令说明，AI 客户端可照着填 `input`；未传参时行为不变\n\n## v1.0.0\n\n- **文件粉碎**：按选定档位覆写文件内容（保持原大小，避免 NTFS 分配到新簇而原数据不动）→ 随机改名若干次清掉 MFT 里的旧文件名 → Sync 落盘后删除；目录递归处理，最后删空壳\n- **空闲空间覆写**：清此前已删除文件留下的数据残片。在目标卷上建临时大文件写到安全余量为止再删除，语义与 Windows `cipher /w` 一致（覆写的是整个卷，不是某个文件夹），但可中断、留余量、不写满到 0、不限 NTFS\n- **介质判定**：用 IOCTL_STORAGE_QUERY_PROPERTY 问寻道惩罚 / TRIM 判定 SSD 与机械盘（卷句柄不转发时反查物理磁盘号再问），判不出就如实说未知——SSD 上覆写本来就未必有效，这一点必须让用户知道\n- **三道闸门**：后端硬拒绝设备路径 / 卷根 / 系统目录 / 回收站；启动要求 confirm（粉碎须输入 DELETE、覆写须输入卷名）；UI 强制先预览，并明说 SSD 无效、小文件常驻 MFT、卷影副本不受影响、多遍覆写无额外收益\n"
 }

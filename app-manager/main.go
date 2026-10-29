@@ -107,7 +107,10 @@ func handleExecute(req RPCRequest) {
 	case strings.HasPrefix(p.Command, "apps."):
 		handleApps(req.ID, p.Command, input)
 	case p.Command == "app-manager":
-		respond(req.ID, map[string]interface{}{"ok": true})
+		// 面板入口：这条命令只负责打开界面（宿主行为），不扫任何应用。
+		// 早先返回 {"ok":true} 是假成功——MCP/AI 会误以为已经拿到应用列表。
+		respondError(req.ID, -32602,
+			"命令 app-manager 只打开应用管理面板（不返回列表）；列已装应用请用 apps.list")
 	default:
 		respondError(req.ID, -32601, "unknown command: "+p.Command)
 	}

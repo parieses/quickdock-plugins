@@ -857,6 +857,11 @@ func dispatch(raw string) {
 			handlePoll(req.ID, params.Input)
 		case "stop":
 			handleStop(req.ID, params.Input)
+		case "enum":
+			// 面板入口：这条命令只负责打开枚举面板（宿主行为），不发起枚举。
+			// 显式拦下而不是落到 default，是为了给 MCP/AI 一句能照做的指路。
+			respondError(req.ID, -32602,
+				"命令 enum 只打开枚举面板（不发起枚举）；开始枚举请用 start，取结果用 poll")
 		default:
 			respondError(req.ID, -32601, "unknown command: "+params.Command)
 		}

@@ -147,6 +147,11 @@ func dispatchCommand(id json.RawMessage, p executeParams) {
 		handleTaskCancel(id, in)
 	case "backend-ping":
 		respond(id, map[string]interface{}{"ok": true})
+	case "shred":
+		// 面板入口：这条命令只负责打开粉碎面板（宿主行为），不做任何覆写。
+		// 显式拦下而不是落到 default，是为了给 MCP/AI 一句能照做的指路。
+		respondError(id, -32602,
+			"命令 shred 只打开粉碎面板（不执行粉碎）；列出磁盘卷请用 volumes，开始粉碎请用 task-start（需传 confirm）")
 	default:
 		respondError(id, -32601, "unknown command: "+p.Command)
 	}

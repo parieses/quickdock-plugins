@@ -5,7 +5,7 @@
     "zh-CN": "局域网设备扫描",
     "en-US": "LAN Scanner"
   },
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "扫描你所在局域网里的在线设备：自动识别网段，并发探测存活、主机名、MAC 与厂商、开放端口，用于查陌生设备和找 NAS / 打印机地址。只读，只扫你自己的网段",
   "description_i18n": {
     "zh-CN": "扫描你所在局域网里的在线设备：自动识别网段，并发探测存活、主机名、MAC 与厂商、开放端口，用于查陌生设备和找 NAS / 打印机地址。只读，只扫你自己的网段",
@@ -43,7 +43,7 @@
     {
       "id": "lan-scan",
       "title": "局域网设备扫描",
-      "description": "扫描局域网在线设备：IP、MAC、主机名",
+      "description": "打开局域网扫描面板（仅界面，不扫描）；扫描请用 scan-start",
       "keywords": [
         "lan",
         "局域网",
@@ -63,7 +63,89 @@
         "zh-CN": "局域网设备扫描",
         "en-US": "LAN Scanner"
       }
+    },
+    {
+      "id": "net-list",
+      "title": "网卡列表",
+      "description": "列出本机网卡的 IP、网段与网关，用于确认可扫网段"
+    },
+    {
+      "id": "scan-start",
+      "title": "开始扫描局域网",
+      "description": "扫描指定网段的内存活设备，返回 sessionId；进度用 scan-poll 轮询",
+      "params": {
+        "type": "object",
+        "properties": {
+          "cidr": {
+            "type": "string",
+            "description": "网段，如 192.168.1.0/24；省略则按网卡自动推断"
+          },
+          "concurrency": {
+            "type": "integer",
+            "description": "并发探测数，8–512，默认 128",
+            "default": 128
+          },
+          "probeMs": {
+            "type": "integer",
+            "description": "单地址存活探测超时毫秒，100–2000，默认 300",
+            "default": 300
+          },
+          "portMs": {
+            "type": "integer",
+            "description": "端口探测超时毫秒，100–3000，默认 600",
+            "default": 600
+          },
+          "ports": {
+            "type": "string",
+            "description": "要探测的端口，逗号分隔，如 80,443；省略用预设"
+          },
+          "preset": {
+            "type": "string",
+            "description": "端口预设：common 常用 / full 全量，默认 common",
+            "default": "common"
+          },
+          "names": {
+            "type": "boolean",
+            "description": "是否解析主机名，默认 true",
+            "default": true
+          }
+        }
+      }
+    },
+    {
+      "id": "scan-poll",
+      "title": "轮询扫描进度",
+      "description": "取扫描进度与已发现设备，done=true 时结束",
+      "params": {
+        "type": "object",
+        "required": [
+          "sessionId"
+        ],
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "description": "scan-start 返回的会话 id"
+          }
+        }
+      }
+    },
+    {
+      "id": "scan-stop",
+      "title": "停止扫描",
+      "description": "提前结束正在进行的局域网扫描",
+      "params": {
+        "type": "object",
+        "required": [
+          "sessionId"
+        ],
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "description": "scan-start 返回的会话 id"
+          }
+        }
+      }
     }
   ],
-  "changelog": "## v1.0.1\n\n- 新增 `commands[].params` 参数声明与 `commands[].description` 命令说明，AI 客户端可照着填 `input`；未传参时行为不变\n\n## v1.0.0\n\n- 扫描你所在的局域网，列出在线设备：IP、主机名、MAC、厂商、类型推断、开放端口\n- **存活判定同时接受「握手成功」和「被拒绝」**：只看连得上的话，开着防火墙的手机 / 打印机 / IoT 会整片漏掉；对方明确回 RST 说明机器一定开着，只是端口没开\n- **ARP 缓存兜底**：完全不响应 TCP 的设备（手机息屏、IoT 休眠）从系统邻居表里认出来，标「仅 ARP 缓存」——它可能已经离线，所以如实标注而不是混进在线列表\n- **主机名双通道**：先问 NetBIOS（Windows 系），没答再问 mDNS（Mac / Linux / 打印机 / NAS / 手机），两条都空就留空，不瞎猜\n- **厂商识别**：内置常见 OUI 表；识别不出厂牌时，若 MAC 是本地管理地址（手机开了随机 MAC），明确写「随机 MAC（设备隐藏了真实网卡地址）」而不是留白让人以为是插件没认出来\n- **设备类型推断**：按强特征端口（631/9100 打印、554 摄像头、5000/5001 群晖、62078 iPhone 等）→ 主机名关键词 → 通用端口 → 厂商的优先级推断，猜不出就显示「未知」\n- 网段自动识别（默认选私网 /24），可手动填；端口三档预设（只探存活 / 常用 / 完整）+ 自定义端口\n- 异步会话模型：start 立即返回、前端轮询进度与增量结果，不受 20 秒命令超时限制；/24 网段实测约 6~8 秒扫完\n- 只读：不发任何修改请求、不写文件、不动系统设置\n\n- 统一前端桥接注入"
+  "changelog": "## v1.0.2\n\n- 补暴露真实动作命令 `net-list`, `scan-start`, `scan-poll`, `scan-stop`（带 params），并为面板入口命令补引导性报错；未传参时行为不变\n\n## v1.0.1\n\n- 新增 `commands[].params` 参数声明与 `commands[].description` 命令说明，AI 客户端可照着填 `input`；未传参时行为不变\n\n## v1.0.0\n\n- 扫描你所在的局域网，列出在线设备：IP、主机名、MAC、厂商、类型推断、开放端口\n- **存活判定同时接受「握手成功」和「被拒绝」**：只看连得上的话，开着防火墙的手机 / 打印机 / IoT 会整片漏掉；对方明确回 RST 说明机器一定开着，只是端口没开\n- **ARP 缓存兜底**：完全不响应 TCP 的设备（手机息屏、IoT 休眠）从系统邻居表里认出来，标「仅 ARP 缓存」——它可能已经离线，所以如实标注而不是混进在线列表\n- **主机名双通道**：先问 NetBIOS（Windows 系），没答再问 mDNS（Mac / Linux / 打印机 / NAS / 手机），两条都空就留空，不瞎猜\n- **厂商识别**：内置常见 OUI 表；识别不出厂牌时，若 MAC 是本地管理地址（手机开了随机 MAC），明确写「随机 MAC（设备隐藏了真实网卡地址）」而不是留白让人以为是插件没认出来\n- **设备类型推断**：按强特征端口（631/9100 打印、554 摄像头、5000/5001 群晖、62078 iPhone 等）→ 主机名关键词 → 通用端口 → 厂商的优先级推断，猜不出就显示「未知」\n- 网段自动识别（默认选私网 /24），可手动填；端口三档预设（只探存活 / 常用 / 完整）+ 自定义端口\n- 异步会话模型：start 立即返回、前端轮询进度与增量结果，不受 20 秒命令超时限制；/24 网段实测约 6~8 秒扫完\n- 只读：不发任何修改请求、不写文件、不动系统设置\n\n- 统一前端桥接注入"
 }

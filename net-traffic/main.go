@@ -100,8 +100,10 @@ func handleExecute(req RPCRequest) {
 	case strings.HasPrefix(p.Command, "traffic."):
 		handleTraffic(req.ID, p.Command)
 	case p.Command == "net-traffic":
-		// 命令面板入口：宿主会直接拉起前端窗口，这里只需确认命令可用。
-		respond(req.ID, map[string]interface{}{"ok": true})
+		// 面板入口：这条命令只负责打开界面（宿主行为），本身不产任何数据。
+		// 早先这里返回 {"ok":true}，等于假成功——AI 会以为拿到了流量数据。
+		respondError(req.ID, -32602,
+			"命令 net-traffic 只用于打开面板；取流量数据请用 traffic.snapshot，清零统计请用 traffic.reset")
 	default:
 		respondError(req.ID, -32601, "unknown command: "+p.Command)
 	}

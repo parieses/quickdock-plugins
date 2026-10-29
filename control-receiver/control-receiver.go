@@ -3658,6 +3658,11 @@ func (a *app) handleExecute(input map[string]interface{}, cmd string) (interface
 	case "pair":
 		return a.handlePair(input)
 
+	case "file.browse":
+		// 面板入口：这条命令只负责打开手机文件浏览界面（宿主行为），本身不列目录。
+		// 显式拦下，是为了给 MCP/AI 一句能照做的指路，而不是笼统的 unknown command。
+		return nil, errors.New("命令 file.browse 只打开手机文件浏览界面（不返回列表）；列目录请用 file.list")
+
 	case "file.list", "filelist":
 		return a.handleFileList(input)
 

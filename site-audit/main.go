@@ -1022,6 +1022,11 @@ func dispatch(raw string) {
 			handleAudit(req.ID, params.Input)
 		case "status.lookup":
 			handleStatus(req.ID, params.Input)
+		case "whois-lookup":
+			// 面板入口：这条命令只负责打开站点审计面板（宿主行为），不发起查询。
+			// 显式拦下而不是落到 default，是为了给 MCP/AI 一句能照做的指路。
+			respondError(req.ID, -32602,
+				"命令 whois-lookup 只打开站点审计面板（不发起查询）；查 WHOIS 请用 whois.lookup")
 		default:
 			respondError(req.ID, -32601, "unknown command: "+params.Command)
 		}

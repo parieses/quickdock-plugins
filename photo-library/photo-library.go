@@ -179,6 +179,11 @@ func handleExecute(req rpcRequest) {
 		handleSession(req.ID, params.Input)
 	case "config":
 		handleConfig(req.ID, params.Input)
+	case "browse":
+		// 面板入口：这条命令只负责打开照片库界面（宿主行为），不建任何索引。
+		// 显式拦下而不是落到 default，是为了给 MCP/AI 一句能照做的指路。
+		respondError(req.ID, -32602,
+			"命令 browse 只打开照片库界面（不扫描）；扫描目录请用 scan（library=true 可扫整个库）")
 	default:
 		respondError(req.ID, -32601, "unknown command: "+params.Command)
 	}
@@ -1273,6 +1278,27 @@ func strSlice(m map[string]interface{}, key string) []string {
 		for _, e := range v {
 			if s, ok := e.(string); ok {
 				out = append(out, s)
+			}
+		}
+		return out
+	}
+	// 字符串形式：逗号分隔或 JSON 数组文本。宿主 params 不支持 array，
+	// AI 只能传 string，故在插件侧补一层宽容解析（数组写法不受影响）。
+	if s, ok := m[key].(string); ok {
+		s = strings.TrimSpace(s)
+		if s == "" {
+			return nil
+		}
+		if strings.HasPrefix(s, "[") {
+			var arr []string
+			if err := json.Unmarshal([]byte(s), &arr); err == nil {
+				return arr
+			}
+		}
+		out := []string{}
+		for _, p := range strings.Split(s, ",") {
+			if p = strings.TrimSpace(p); p != "" {
+				out = append(out, p)
 			}
 		}
 		return out

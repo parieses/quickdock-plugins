@@ -135,6 +135,11 @@ func dispatchCommand(id int64, p executeParams) {
 		handleScanStop(id, in)
 	case "clip-copy":
 		handleClipCopy(id, in)
+	case "lan-scan":
+		// 面板入口：这条命令只负责打开扫描面板（宿主行为），不发起扫描。
+		// 显式拦下而不是落到 default，是为了给 MCP/AI 一句能照做的指路。
+		respondError(id, -32602,
+			"命令 lan-scan 只打开扫描面板（不发起扫描）；开始扫描请用 scan-start，取结果用 scan-poll")
 	default:
 		respondError(id, -32601, "unknown command: "+p.Command)
 	}

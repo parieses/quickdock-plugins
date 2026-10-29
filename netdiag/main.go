@@ -1951,6 +1951,15 @@ func fpHandleStop(id int64, input map[string]interface{}) {
 
 /* ==================== 统一分发 ==================== */
 
+// moduleActions 面板入口命令（模块名本身）与真实动作命令的对照，仅用于报错指路。
+var moduleActions = map[string]string{
+	"ping":  "ping.start / ping.poll / ping.stop",
+	"trace": "trace.start / trace.poll / trace.stop",
+	"lan":   "lan.interfaces / lan.start / lan.poll / lan.stop",
+	"geo":   "geo.lookup",
+	"fp":    "fp.start / fp.poll / fp.stop",
+}
+
 func dispatch(raw string) {
 	var req rpcRequest
 	if err := json.Unmarshal([]byte(raw), &req); err != nil {
@@ -1975,6 +1984,15 @@ func dispatch(raw string) {
 		if idx := strings.Index(cmd, "."); idx >= 0 {
 			mod = cmd[:idx]
 			sub = cmd[idx+1:]
+		}
+		// 面板入口：命令面板注册的是模块名本身（ping / trace / lan / geo / fp），
+		// 后端只认「<模块>.<动作>」。显式拦下，给调用方一句能照做的指路。
+		if sub == "" {
+			if actions, ok := moduleActions[mod]; ok {
+				respondError(req.ID, -32602, fmt.Sprintf(
+					"命令 %s 只打开对应面板（不发起探测）；实际动作用 %s", mod, actions))
+				return
+			}
 		}
 		switch mod {
 		case "ping":

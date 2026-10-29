@@ -239,13 +239,45 @@ func strFrom(input map[string]interface{}, key string) string {
 	return ""
 }
 
+// intFrom 宽容取整数：模型容易把 integer 写成字符串 "8787"，直接失败不如转一次。
+func intFrom(input map[string]interface{}, key string, def int) int {
+	switch v := input[key].(type) {
+	case float64:
+		if v > 0 {
+			return int(v)
+		}
+	case string:
+		var n int
+		if _, err := fmt.Sscanf(strings.TrimSpace(v), "%d", &n); err == nil && n > 0 {
+			return n
+		}
+	}
+	return def
+}
+
+// routeItems 归一化路由表参数：既接受数组，也接受 JSON 数组文本。
+// 宿主的 params 不支持 array 类型，AI 只能传 string，故在插件侧补一层宽容解析。
+func routeItems(v interface{}) []interface{} {
+	switch x := v.(type) {
+	case []interface{}:
+		return x
+	case string:
+		s := strings.TrimSpace(x)
+		if s == "" {
+			return nil
+		}
+		var arr []interface{}
+		if err := json.Unmarshal([]byte(s), &arr); err == nil {
+			return arr
+		}
+	}
+	return nil
+}
+
 func handleExec(id int64, cmd string, input map[string]interface{}) {
 	switch cmd {
 	case "start":
-		port := 8787
-		if p, ok := input["port"].(float64); ok && p > 0 {
-			port = int(p)
-		}
+		port := intFrom(input, "port", 8787)
 		if err := startServer(port); err != nil {
 			respondError(id, -1, "启动失败: "+err.Error())
 			return
@@ -271,7 +303,7 @@ func handleExec(id int64, cmd string, input map[string]interface{}) {
 		respond(id, map[string]interface{}{"routes": cp})
 	case "set-routes":
 		var newRoutes []Route
-		if arr, ok := input["routes"].([]interface{}); ok {
+		if arr := routeItems(input["routes"]); arr != nil {
 			for _, item := range arr {
 				if m, ok := item.(map[string]interface{}); ok {
 					rt := Route{Enabled: true, StatusCode: 200, ContentType: "application/json"}
@@ -316,6 +348,11 @@ func handleExec(id int64, cmd string, input map[string]interface{}) {
 		copy(cp, logBuf)
 		mu.RUnlock()
 		respond(id, map[string]interface{}{"logs": cp})
+	case "mock":
+		// 面板入口：这条命令只负责打开界面（宿主行为），不启停任何服务。
+		// 显式拦下而不是落到 default，是为了给 MCP/AI 一句能照做的指路。
+		respondError(id, -32602,
+			"命令 mock 只打开 Mock 面板（不启停服务）；启动服务请用 start，配置路由用 set-routes")
 	default:
 		respondError(id, -32601, "unknown command: "+cmd)
 	}

@@ -281,6 +281,11 @@ func handleExecute(req rpcRequest) {
 		handleOpenFolder(req.ID, params.Input)
 	case "task-status", "任务状态":
 		handleTaskStatus(req.ID, params.Input)
+	case "pdf-open":
+		// 面板入口：这条命令只负责打开 PDF 工具面板（宿主行为），不处理任何文件。
+		// 显式拦下而不是落到 default，是为了给 MCP/AI 一句能照做的指路。
+		respondError(req.ID, -32602,
+			"命令 pdf-open 只打开 PDF 工具面板（不处理文件）；合并用 merge，拆分用 split，压缩用 compress")
 	default:
 		respondError(req.ID, -32601, "unknown command: "+params.Command)
 	}
@@ -296,24 +301,10 @@ func handleMerge(id int64, input map[string]interface{}) {
 		return
 	}
 
-	fileList, ok := files.([]interface{})
-	if !ok {
-		respondError(id, -32602, "files 必须是数组")
+	paths := strList(files)
+	if len(paths) < 2 {
+		respondError(id, -32602, "合并至少需要 2 个 PDF 文件（files 可传数组，也可传逗号分隔的路径）")
 		return
-	}
-	if len(fileList) < 2 {
-		respondError(id, -32602, "合并至少需要 2 个 PDF 文件")
-		return
-	}
-
-	paths := make([]string, len(fileList))
-	for i, f := range fileList {
-		if s, ok := f.(string); ok {
-			paths[i] = s
-		} else {
-			respondError(id, -32602, "file 必须是字符串路径")
-			return
-		}
 	}
 
 	// 输出为目录 + 自动命名（避免让用户手输文件名）
@@ -361,12 +352,8 @@ func handleSplit(id int64, input map[string]interface{}) {
 	os.MkdirAll(outDir, 0755)
 
 	var pageRanges []string
-	if p, ok := pages.([]interface{}); ok {
-		for _, pg := range p {
-			if s, ok := pg.(string); ok {
-				pageRanges = append(pageRanges, s)
-			}
-		}
+	if p := strList(pages); len(p) > 0 {
+		pageRanges = p
 	}
 	if len(pageRanges) == 0 {
 		pageRanges = []string{"all"}
@@ -944,6 +931,42 @@ func strFrom(m map[string]interface{}, key string, def ...string) string {
 		return def[0]
 	}
 	return ""
+}
+
+// strList 归一化列表参数：接受数组，或逗号分隔 / JSON 数组文本。
+// 宿主的 params 不支持 array 类型，AI 只能传 string，故在插件侧补一层宽容解析
+// （只新增接受形式，原有数组写法与解析结果完全不变）。
+func strList(v interface{}) []string {
+	switch x := v.(type) {
+	case []interface{}:
+		out := make([]string, 0, len(x))
+		for _, it := range x {
+			if s, ok := it.(string); ok && strings.TrimSpace(s) != "" {
+				out = append(out, strings.TrimSpace(s))
+			}
+		}
+		return out
+	case string:
+		s := strings.TrimSpace(x)
+		if s == "" {
+			return nil
+		}
+		if strings.HasPrefix(s, "[") {
+			var arr []string
+			if err := json.Unmarshal([]byte(s), &arr); err == nil {
+				return arr
+			}
+		}
+		parts := strings.Split(s, ",")
+		out := make([]string, 0, len(parts))
+		for _, p := range parts {
+			if p = strings.TrimSpace(p); p != "" {
+				out = append(out, p)
+			}
+		}
+		return out
+	}
+	return nil
 }
 
 func intFrom(m map[string]interface{}, key string, def int) int {

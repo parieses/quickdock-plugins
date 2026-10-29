@@ -704,6 +704,11 @@ func handleExecute(req rpcRequest) {
 		handleCleanEmpty(req.ID, params.Input)
 	case "task-status":
 		handleTaskStatus(req.ID, params.Input)
+	case "junk-clean":
+		// 面板入口：这条命令只负责打开清理面板（宿主行为），不扫也不删。
+		// 显式拦下而不是落到 default，是为了给 MCP/AI 一句能照做的指路。
+		respondError(req.ID, -32602,
+			"命令 junk-clean 只打开清理面板（不扫描不删除）；扫描请用 scan，清理请用 clean（categories 取值来自 categories 命令）")
 	default:
 		respondError(req.ID, -32601, "unknown command: "+params.Command)
 	}
@@ -795,6 +800,18 @@ func parseKeys(input map[string]interface{}) ([]string, bool) {
 			}
 		}
 		return keys, true
+	case string:
+		// 逗号分隔的 key 列表：宿主 params 不支持数组，AI 只能传 string，
+		// 在插件侧补一层宽容解析（不改变原有数组/映射两种写法）。
+		keys := []string{}
+		for _, p := range strings.Split(v, ",") {
+			if p = strings.TrimSpace(p); p != "" {
+				keys = append(keys, p)
+			}
+		}
+		if len(keys) > 0 {
+			return keys, true
+		}
 	}
 	return nil, false
 }
