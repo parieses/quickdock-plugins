@@ -55,6 +55,8 @@
   table.nt-tbl td { padding: 5px 10px; border-bottom: 1px solid var(--border); color: var(--text-secondary); font-family: var(--font-mono); white-space: nowrap; }
   table.nt-tbl tr:hover td { background: var(--bg-hover); }
   table.nt-tbl td.proc { color: var(--text-primary); font-family: var(--font); max-width: 190px; overflow: hidden; text-overflow: ellipsis; }
+  table.nt-tbl td.d { color: var(--accent); }
+  table.nt-tbl td.u { color: var(--warning); }
   table.nt-tbl td.remote { cursor: pointer; }
   table.nt-tbl td.remote:hover { color: var(--accent); }
   .nt-badge { display: inline-block; padding: 1px 6px; border-radius: var(--radius-pill); font-size: var(--fs-xs); font-family: var(--font); }
@@ -133,7 +135,7 @@
   <div class="p-statusbar">
     <span id="status">正在连接后端…</span>
     <span class="p-spacer"></span>
-    <span class="nt-hint">仅统计 IPv4 · 速率按 1 秒采样计算</span>
+    <span class="nt-hint">仅统计 IPv4 · 连接级上传/下载仅 TCP · 速率按 1 秒采样计算</span>
   </div>
 </div>
 
@@ -196,7 +198,7 @@
 
   /* ---------- DOM ---------- */
   var $ = function (id) { return document.getElementById(id) }
-  var paused = false, showIdle = false, keyword = '', lastConns = [], timer = null, failures = 0
+  var paused = false, showIdle = false, keyword = '', lastConns = [], perConn = false, timer = null, failures = 0
 
   function drawChart(hist) {
     var svg = $('chart')
@@ -279,10 +281,15 @@
       return
     }
     $('connCount').textContent = rows.length + ' / ' + list.length
-    var html = '<table class="nt-tbl"><thead><tr><th>协议</th><th>进程</th><th>PID</th><th>本地</th><th>远端</th><th>状态</th></tr></thead><tbody>'
+    var html = '<table class="nt-tbl"><thead><tr><th>协议</th><th>进程</th><th>PID</th><th>本地</th><th>远端</th><th>状态</th><th>下载</th><th>上传</th></tr></thead><tbody>'
     rows.forEach(function (c) {
       var cls = c.proto === 'TCP' ? 'tcp' : 'udp'
       var stCls = c.state === 'ESTABLISHED' ? 'est' : (c.state === 'LISTEN' ? 'listen' : '')
+      // 速率列：0 显示 —，UDP / 无权限时自然全是 —
+      var dRate = perConn && c.inRate > 0 ? rateText(c.inRate) : '—'
+      var uRate = perConn && c.outRate > 0 ? rateText(c.outRate) : '—'
+      var dCls = c.inRate > 0 ? ' class="d"' : ''
+      var uCls = c.outRate > 0 ? ' class="u"' : ''
       html += '<tr>' +
         '<td><span class="nt-badge ' + cls + '">' + esc(c.proto) + '</span></td>' +
         '<td class="proc" title="' + esc(c.proc || '未知进程') + '">' + esc(c.proc || '系统') + '</td>' +
@@ -290,6 +297,8 @@
         '<td>' + esc(c.local) + '</td>' +
         '<td class="remote" title="点击复制">' + esc(c.remote) + '</td>' +
         '<td><span class="nt-badge ' + stCls + '">' + esc(c.state) + '</span></td>' +
+        '<td' + dCls + '>' + dRate + '</td>' +
+        '<td' + uCls + '>' + uRate + '</td>' +
       '</tr>'
     })
     wrap.innerHTML = html + '</tbody></table>'
@@ -312,7 +321,10 @@
       $('sumIn').textContent = bytes(d.inTotal)
       $('sumOut').textContent = bytes(d.outTotal)
       $('clock').textContent = d.sampledAt || '--:--:--'
-      $('status').textContent = '连接表更新于 ' + (d.connAt || '-') + (d.error ? ' · ' + d.error : '')
+      perConn = !!d.perConn
+      $('status').textContent = '连接表更新于 ' + (d.connAt || '-') +
+        (perConn ? ' · 连接级上传/下载仅统计 TCP' : ' · 连接级上传/下载不可用（需管理员权限）') +
+        (d.error ? ' · ' + d.error : '')
       drawChart(d.history)
       renderIfaces(d.interfaces || [])
       lastConns = d.conns || []

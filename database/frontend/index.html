@@ -159,8 +159,8 @@
     .filt-help-btn:hover { border-color:var(--accent); color:var(--accent); }
     .filt-help-btn.on { border-color:var(--accent); color:#fff; background:var(--accent); }
 
-    /* 筛选条件 chips 条：集中展示 / 定位 / 移除各列条件 */
-    .filtbar { display:flex; align-items:center; gap:6px; flex-wrap:wrap; padding:5px 9px; background:var(--bg-secondary); border-bottom:1px solid var(--border); flex-shrink:0; font-size:var(--fs-xs); }
+    /* 筛选条件 chips 条：集中展示 / 定位 / 移除各列条件；＋条件按钮常驻 */
+    .filtbar { position:relative; display:flex; align-items:center; gap:6px; flex-wrap:wrap; padding:5px 9px; background:var(--bg-secondary); border-bottom:1px solid var(--border); flex-shrink:0; font-size:var(--fs-xs); }
     .filtbar-lb { color:var(--text-muted); font-weight:var(--fw-semibold); flex-shrink:0; }
     .filtbar .spacer { flex:1; }
     .fchip { display:inline-flex; align-items:center; gap:5px; max-width:360px; padding:2px 3px 2px 8px; border:1px solid var(--accent); border-radius:var(--radius-pill); background:var(--accent-soft); color:var(--accent); cursor:pointer; transition:background .12s, color .12s; }
@@ -169,6 +169,15 @@
     .fchip i { font-style:normal; font-family:var(--font-mono); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .fchip-x { flex-shrink:0; border:none; background:none; color:inherit; cursor:pointer; font-size: var(--fs-xs); line-height:1; padding:2px 4px; border-radius:50%; opacity:.7; }
     .fchip-x:hover { opacity:1; background:rgba(0,0,0,.18); }
+
+    /* 「＋条件」弹出的条件编辑面板：选字段 → 选运算符 → 填值 */
+    .filt-builder { position:absolute; top:calc(100% + 4px); left:52px; z-index:40; min-width:250px; padding:9px 10px 8px; border:1px solid var(--border-strong); border-radius:6px; background:var(--bg-primary); box-shadow:0 6px 20px rgba(0,0,0,.25); display:flex; flex-direction:column; gap:6px; }
+    .fb-row { display:flex; align-items:center; gap:7px; }
+    .fb-row label { width:32px; flex-shrink:0; color:var(--text-muted); text-align:right; }
+    .fb-row select, .fb-row input { flex:1; min-width:0; height:24px; padding:0 7px; border:1px solid var(--border); border-radius:4px; background:var(--bg-secondary); color:var(--text-primary); font-size:var(--fs-xs); outline:none; }
+    .fb-row select:focus-visible, .fb-row input:focus-visible { border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-soft); }
+    .fb-row input { font-family:var(--font-mono); }
+    .fb-foot { display:flex; justify-content:flex-end; gap:6px; margin-top:2px; }
 
     /* 筛选语法帮助条 */
     .filt-help { flex-shrink:0; padding:7px 11px 8px; background:var(--bg-tertiary); border-bottom:1px solid var(--border); font-size:var(--fs-xs); color:var(--text-secondary); }
@@ -536,15 +545,43 @@
 
             <!-- 数据 -->
             <div class="struct-scroll pane-data" v-show="t.sub==='data'" style="display:flex;flex-direction:column;">
-              <!-- 筛选条件 chips：点击定位到列，✕ 移除该条件 -->
-              <div class="filtbar" v-if="filterChips(t).length">
+              <!-- 筛选条件条：＋条件按钮（选字段+填值）常驻；chips 点击定位到列，✕ 移除该条件 -->
+              <div class="filtbar" v-if="t.grid.columns.length">
                 <span class="filtbar-lb">筛选</span>
+                <button class="btn btn-xxs" :class="{ 'btn-primary': t.filtOpen }" @click="toggleFiltBuilder(t)" title="添加筛选条件：选择字段、填入值（表头下方各列的筛选框也可直接输入）">＋ 条件</button>
                 <span class="fchip" v-for="c in filterChips(t)" :key="c.col" @click="focusFilterInput(t, c.col)" :title="'点击定位到「' + c.col + '」列的筛选框'">
                   <b>{{ c.col }}</b><i>{{ c.label }}</i>
                   <button class="fchip-x" @click.stop="removeFilter(t, c.col)" title="移除该筛选条件">✕</button>
                 </span>
                 <span class="spacer"></span>
-                <button class="btn btn-xxs" @click="clearFilter(t)">全部清除</button>
+                <button class="btn btn-xxs" v-if="filterChips(t).length" @click="clearFilter(t)">全部清除</button>
+                <!-- 条件编辑面板：字段 → 运算符 → 值，确认后写入对应列的筛选框并查询 -->
+                <div class="filt-builder" v-if="t.filtOpen" @keydown.esc="t.filtOpen = false">
+                  <div class="fb-row">
+                    <label>字段</label>
+                    <select v-model="t.filtDraft.col">
+                      <option v-for="col in t.grid.columns" :key="col" :value="col">{{ col }}</option>
+                    </select>
+                  </div>
+                  <div class="fb-row">
+                    <label>条件</label>
+                    <select v-model="t.filtDraft.op">
+                      <option v-for="o in filtOps" :key="o.v" :value="o.v">{{ o.label }}</option>
+                    </select>
+                  </div>
+                  <div class="fb-row" v-if="filtNeedsValue(t.filtDraft.op)">
+                    <label>值</label>
+                    <input v-model="t.filtDraft.v" :placeholder="t.filtDraft.op === 'in' ? '多值用英文逗号分隔，如 1,2,3' : '筛选值'" @keydown.enter.prevent="confirmFiltBuilder(t)" />
+                  </div>
+                  <div class="fb-row" v-if="t.filtDraft.op === 'between'">
+                    <label>至</label>
+                    <input v-model="t.filtDraft.v2" placeholder="右值（区间）" @keydown.enter.prevent="confirmFiltBuilder(t)" />
+                  </div>
+                  <div class="fb-foot">
+                    <button class="btn btn-xxs btn-primary" @click="confirmFiltBuilder(t)">筛选</button>
+                    <button class="btn btn-xxs" @click="t.filtOpen = false">取消</button>
+                  </div>
+                </div>
               </div>
               <!-- 筛选语法帮助 -->
               <div class="filt-help" v-if="t.filtHelp">
@@ -1207,6 +1244,21 @@
         activeTabId: '',
         tabSeq: 0,
         connFilter: '',
+        // 「＋条件」面板的运算符选项（v 与后端 filter.go 白名单一一对应）
+        filtOps: [
+          { v:'like', label:'包含' },
+          { v:'nlike', label:'不包含' },
+          { v:'eq', label:'等于' },
+          { v:'ne', label:'不等于' },
+          { v:'gt', label:'大于' },
+          { v:'gte', label:'不小于' },
+          { v:'lt', label:'小于' },
+          { v:'lte', label:'不大于' },
+          { v:'between', label:'区间 BETWEEN' },
+          { v:'in', label:'多值 IN' },
+          { v:'isnull', label:'为 NULL' },
+          { v:'notnull', label:'非 NULL' }
+        ],
         // 连接弹窗
         showConnModal: false,
         testing: false,
@@ -1503,6 +1555,8 @@
         var t = Object.assign({ id:id, filter:'', sel:'', loading:false, _stale:false,
           // 多结果（多条 SQL）、列宽、列名补全、数据页筛选、SQL 预览
           multiResults:null, activeResult:0, colWidths:{}, tableCols:{}, filters:{}, filtHelp:false,
+          // 「＋条件」编辑面板：filtOpen 开关 + 草稿（op 为后端 filter.go 白名单运算符）
+          filtOpen:false, filtDraft:{ col:'', op:'like', v:'', v2:'' },
           showSql:false, sqlOmitPage:false, selSet:{}, _lastSelIdx:-1, _selAllDone:false }, o)
         if(t.kind==='table' || t.kind==='query'){
           if(!t.grid) t.grid = blankGrid()
@@ -1803,6 +1857,8 @@
         // LIKE / NOT LIKE：~值 / !~值
         if(s.charAt(0) === '!' && s.charAt(1) === '~') return { op:'nlike', v:s.slice(2).trim(), v2:'' }
         if(s.charAt(0) === '~') return { op:'like', v:s.slice(1).trim(), v2:'' }
+        // 等于：=值（必须在 BETWEEN 之前判：值本身含 .. 时（如 =1..9 等于字面值）不能再落进区间分支）
+        if(s.charAt(0) === '=' && s.length > 1) return { op:'eq', v:s.slice(1).trim(), v2:'' }
         // BETWEEN：值1..值2
         var dot = s.indexOf('..')
         if(dot > 0){
@@ -1909,6 +1965,57 @@
       removeFilter: function(t, col){
         t.filters[col] = ''
         this.applyFilter(t)
+      },
+      /* ---------- 「＋条件」编辑面板 ---------- */
+      // isnull / notnull 不需要值
+      filtNeedsValue: function(op){ return op !== 'isnull' && op !== 'notnull' },
+      toggleFiltBuilder: function(t){
+        if(t.filtOpen){ t.filtOpen = false; return }
+        // 面板一次只开一个；字段默认记住上次选择，失效则回落到第一列
+        this.tabs.forEach(function(x){ if(x !== t) x.filtOpen = false })
+        var d = t.filtDraft
+        if(!d.col || t.grid.columns.indexOf(d.col) < 0) d.col = t.grid.columns[0] || ''
+        if(!d.op) d.op = 'like'
+        t.filtOpen = true
+        this.$nextTick(function(){
+          var box = document.querySelector('[data-gw-data="' + t.id + '"] .filt-builder input')
+          if(box){ box.focus(); box.select() }
+        })
+      },
+      // 把面板里的 op + 值序列化成筛选框的表达式文本（与 parseFilterExpr 互逆），
+      // 复用既有链路：filters[col] → parseFilterExpr → 后端参数化 WHERE
+      buildFilterExpr: function(op, v, v2){
+        v = String(v == null ? '' : v).trim()
+        v2 = String(v2 == null ? '' : v2).trim()
+        switch(op){
+          case 'isnull': return 'null'
+          case 'notnull': return '!=null'
+          case 'like': return v ? ('~' + v) : ''
+          case 'nlike': return v ? ('!~' + v) : ''
+          case 'eq': return v ? ('=' + v) : ''
+          case 'ne': return v ? ('!=' + v) : ''
+          case 'gt': return v ? ('>' + v) : ''
+          case 'gte': return v ? ('>=' + v) : ''
+          case 'lt': return v ? ('<' + v) : ''
+          case 'lte': return v ? ('<=' + v) : ''
+          case 'between': return (v && v2) ? (v + '..' + v2) : ''
+          case 'in': {
+            var parts = v.split(',').map(function(s){ return s.trim() }).filter(Boolean)
+            if(!parts.length) return ''
+            // 单值 IN 等价于 =，避免「abc」被默认解析成包含匹配
+            return parts.length === 1 ? ('=' + parts[0]) : parts.join(',')
+          }
+        }
+        return ''
+      },
+      confirmFiltBuilder: function(t){
+        var d = t.filtDraft
+        if(!d.col){ toast('请选择字段','err'); return }
+        var expr = this.buildFilterExpr(d.op, d.v, d.v2)
+        if(!expr){ toast('请填写筛选值','err'); return }
+        t.filters[d.col] = expr
+        t.filtOpen = false
+        this.applyFilter(t, true)
       },
       // expandSql：仅用户显式触发（Enter）时才展开 SQL 预览
       applyFilter: function(t, expandSql){

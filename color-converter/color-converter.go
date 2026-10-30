@@ -59,9 +59,6 @@ var stdout = bufio.NewWriter(os.Stdout)
 // JSON-RPC 每行一个对象，交错写入会损坏协议
 var stdoutMu sync.Mutex
 
-// cbSeq 插件主动回调的自增 id，从大数起步与宿主请求 id 空间隔离
-var cbSeq int64 = 1_000_000_000
-
 func main() {
 	qdLogStart()
 	defer qdLogExit()
@@ -97,26 +94,6 @@ func main() {
 			handleRequest(req)
 		}()
 	}
-}
-
-// hostCall 向宿主发起回调请求（如 host.clipboard.write / host.notify）。
-// 不等待响应：结果帧由主循环静默丢弃。每次调用自增 cbSeq 以区分不同回调。
-func hostCall(method string, params map[string]interface{}) {
-	cbSeq++
-	payload, err := json.Marshal(map[string]interface{}{
-		"jsonrpc": "2.0",
-		"id":      cbSeq,
-		"method":  method,
-		"params":  params,
-	})
-	if err != nil {
-		return
-	}
-	stdoutMu.Lock()
-	defer stdoutMu.Unlock()
-	stdout.Write(payload)
-	stdout.WriteByte('\n')
-	stdout.Flush()
 }
 
 func handleRequest(req rpcRequest) {
@@ -344,7 +321,7 @@ func rgbToHSL(r, g, b int) (int, int, int) {
 		}
 		switch mx {
 		case rf:
-			h = (gf-bf)/d
+			h = (gf - bf) / d
 			if gf < bf {
 				h += 6
 			}

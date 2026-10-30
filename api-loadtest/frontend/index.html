@@ -82,7 +82,7 @@ canvas{display:block;width:100%}
 <body>
 <div class="p-app">
   <div class="p-head">
-    <span class="p-head-title" data-orig="<span class="qi qi-rocket"></span> 接口压测"><span class="qi qi-rocket"></span> 接口压测</span>
+    <span class="p-head-title"><span class="qi qi-rocket"></span> <span data-orig="接口压测">接口压测</span></span>
     <span id="statusTag" class="p-tag p-tag-neutral">空闲</span>
     <span class="p-spacer"></span>
     <button class="btn p-btn-primary" id="btnStart" data-orig="▶ 开始压测">▶ 开始压测</button>
@@ -199,7 +199,7 @@ canvas{display:block;width:100%}
       <button class="btn p-btn-sm" id="btnDownload" data-orig="下载">下载</button>
       <button class="btn p-btn-sm" id="btnClose" data-orig="关闭">关闭</button>
     </div>
-    <div class="modal-body"><pre id="exportText" data-orig="（点击"导出"后显示）">（点击"导出"后显示）</pre></div>
+    <div class="modal-body"><pre id="exportText" data-orig="（点击&quot;导出&quot;后显示）">（点击"导出"后显示）</pre></div>
     <div class="modal-foot"><span class="p-hint" data-orig="包含完整配置与统计快照">包含完整配置与统计快照</span></div>
   </div>
 </div>
@@ -212,7 +212,6 @@ function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;
 // ===== 自包含页面 i18n（样板同 pdf-toolkit，key=中文原文，经 <html lang> 判定语言）=====
 var L10N={'en-US':{
   '接口压测':'API Load Test',
-  '<span class="qi qi-rocket"></span> 接口压测':'<span class="qi qi-rocket"></span> API Load Test',
   '空闲':'Idle',
   '▶ 开始压测':'▶ Start Test',
   '⏹ 停止':'⏹ Stop',

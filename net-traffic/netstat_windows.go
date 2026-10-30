@@ -32,6 +32,10 @@ var (
 	procSnap    = kernel32.NewProc("CreateToolhelp32Snapshot")
 	procFirst   = kernel32.NewProc("Process32FirstW")
 	procNext    = kernel32.NewProc("Process32NextW")
+
+	// 每条 TCP 连接的字节数（estats）：采集默认关闭，要先 Set 启用（需管理员权限）
+	procGetTcpEstats = iphlpapi.NewProc("GetPerTcpConnectionEStats")
+	procSetTcpEstats = iphlpapi.NewProc("SetPerTcpConnectionEStats")
 )
 
 // mibIfRow 对应 Windows 的 MIB_IFROW（bDescr 是单字节 ANSI，不是 WCHAR）。
@@ -74,6 +78,13 @@ const (
 	errInsufficientBuffer = 122
 	th32csSnapProcess     = 0x00000002
 	maxPath               = 260
+
+	// TCP_ESTATS_TYPE 里的 TcpConnectionEstatsData（枚举第 2 项）
+	tcpEstatsData = 1
+	// TCP_BOOLEAN_OPTIONAL 里的 TcpBoolOptEnabled
+	tcpBoolOptEnabled = 1
+	// sizeof(TCP_ESTATS_DATA_ROD_v0)：6×ULONG64 + 5×ULONG + 4 填充 + ULONG64 + ULONG + 4 填充 + ULONG64
+	tcpEstatsRodSize = 96
 )
 
 // tcpRow / udpRow 对应 MIB_TCPROW_OWNER_PID / MIB_UDPROW_OWNER_PID。
@@ -245,11 +256,15 @@ func collectConns() ([]rawConn, error) {
 	if err == nil {
 		for _, r := range tcp {
 			out = append(out, rawConn{
-				proto:  "TCP",
-				local:  fmt.Sprintf("%s:%d", int2ip(r.localAddr), ntohs(r.localPort)),
-				remote: fmt.Sprintf("%s:%d", int2ip(r.remoteAddr), ntohs(r.remotePort)),
-				state:  r.state,
-				pid:    r.pid,
+				proto:      "TCP",
+				local:      fmt.Sprintf("%s:%d", int2ip(r.localAddr), ntohs(r.localPort)),
+				remote:     fmt.Sprintf("%s:%d", int2ip(r.remoteAddr), ntohs(r.remotePort)),
+				state:      r.state,
+				pid:        r.pid,
+				localAddr:  r.localAddr,
+				localPort:  r.localPort,
+				remoteAddr: r.remoteAddr,
+				remotePort: r.remotePort,
 			})
 		}
 	} else {
@@ -421,4 +436,56 @@ func int2ip(v uint32) string {
 // ntohs 端口是网络字节序（大端），Windows 直接给了原始值，需要翻转高低字节。
 func ntohs(v uint32) uint32 {
 	return ((v & 0xff) << 8) | ((v >> 8) & 0xff)
+}
+
+// ---------- 每连接字节统计（TCP estats）----------
+
+// TCP_ESTATS_DATA_ROD_v0，布局以 tcpestats.h 为准（总 96 字节，改前先复验）：
+//   DataBytesOut@0 / DataSegsOut@8 / DataBytesIn@16 / DataSegsIn@24，
+//   其余字段（Segs/SoftErrors/SndUna/…）本插件用不到。
+// DataBytesIn/Out 是 ULONG64，无 32 位回绕问题。
+type tcpEstatsRod struct {
+	DataBytesOut uint64
+	DataSegsOut  uint64
+	DataBytesIn  uint64
+	DataSegsIn   uint64
+	_            [tcpEstatsRodSize - 32]byte
+}
+
+// mibTcpRow 对应 MIB_TCPROW（20 字节）：estats 两个 API 都以它定位连接，
+// 布局与 tcpRow 前 5 个字段一致（addr 小端、port 网络序的原始值）。
+type mibTcpRow struct {
+	state      uint32
+	localAddr  uint32
+	localPort  uint32
+	remoteAddr uint32
+	remotePort uint32
+}
+
+// tcpEstatsEnable 打开一条连接的 Data 统计采集。
+// 需要管理员权限（继承宿主进程令牌）；失败返回 false 与错误码（通常是
+// ERROR_ACCESS_DENIED=5），调用方记一次标志后不再重试。
+func tcpEstatsEnable(row mibTcpRow) (ok bool, code uint32) {
+	rw := uint32(tcpBoolOptEnabled)
+	ret, _, _ := procSetTcpEstats.Call(
+		uintptr(unsafe.Pointer(&row)), tcpEstatsData,
+		uintptr(unsafe.Pointer(&rw)), 0, 4, 0)
+	return ret == 0, uint32(ret)
+}
+
+// tcpEstatsBytes 读一条连接的累计收发字节数（含重传，不含 TCP 头）。
+//
+// 注意：只对「启用成功」的连接调用——未启用采集时该 API 会成功返回但
+// 结构体内容是未初始化的垃圾值，直接差分会得到天文数字速率。
+func tcpEstatsBytes(row mibTcpRow) (in, out uint64, ok bool) {
+	var rod tcpEstatsRod
+	ret, _, _ := procGetTcpEstats.Call(
+		uintptr(unsafe.Pointer(&row)), tcpEstatsData,
+		0, 0, 0, // Rw（只读不写）
+		0, 0, 0, // Ros（只读不取）
+		uintptr(unsafe.Pointer(&rod)), 0, tcpEstatsRodSize)
+	if ret != 0 {
+		return 0, 0, false
+	}
+	return rod.DataBytesIn, rod.DataBytesOut, true
 }

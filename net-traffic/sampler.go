@@ -3,6 +3,7 @@ package main
 // 采样器：常驻 goroutine 按固定间隔采集，前端只取快照。
 
 import (
+	"fmt"
 	"runtime"
 	"sort"
 	"sync"
@@ -34,6 +35,11 @@ type rawConn struct {
 	remote string
 	state  uint32
 	pid    uint32
+	// 原始四元组（地址小端、端口网络序原始值），用于 estats 定位连接
+	localAddr  uint32
+	localPort  uint32
+	remoteAddr uint32
+	remotePort uint32
 }
 
 type ifaceState struct {
@@ -71,12 +77,14 @@ type ifaceInfo struct {
 }
 
 type connInfo struct {
-	Proto  string `json:"proto"`
-	Local  string `json:"local"`
-	Remote string `json:"remote"`
-	State  string `json:"state"`
-	PID    uint32 `json:"pid"`
-	Proc   string `json:"proc"`
+	Proto   string  `json:"proto"`
+	Local   string  `json:"local"`
+	Remote  string  `json:"remote"`
+	State   string  `json:"state"`
+	PID     uint32  `json:"pid"`
+	Proc    string  `json:"proc"`
+	InRate  float64 `json:"inRate"`  // 该连接的下载速率 B/s（仅 TCP，UDP 无法按连接归属）
+	OutRate float64 `json:"outRate"` // 该连接的上传速率 B/s
 }
 
 type snapshot struct {
@@ -91,10 +99,20 @@ type snapshot struct {
 	PeakOut    float64     `json:"peakOut"`
 	InTotal    uint64      `json:"inTotal"`
 	OutTotal   uint64      `json:"outTotal"`
+	PerConn    bool        `json:"perConn"` // 连接级上传/下载是否可用（需管理员权限开启 estats）
 	Interfaces []ifaceInfo `json:"interfaces"`
 	History    []histPoint `json:"history"`
 	Conns      []connInfo  `json:"conns"`
 	ConnTotal  int         `json:"connTotal"`
+}
+
+// connBytesState 一条 TCP 连接的 estats 字节基线。
+type connBytesState struct {
+	prevIn  uint64
+	prevOut uint64
+	hasPrev bool
+	enabled bool // estats 采集启用成功（未启用时读到的计数是垃圾值，绝不使用）
+	seen    bool
 }
 
 type samplerState struct {
@@ -108,6 +126,13 @@ type samplerState struct {
 	connAt    time.Time
 	sampledAt time.Time
 
+	// 每连接字节统计（TCP estats）。key = 本地地址:端口>远端地址:端口 的原始值。
+	// estats 采集默认关闭，首见连接时 Set 启用（需管理员）；被拒后不再重试。
+	connBytes    map[string]*connBytesState
+	connPrevAt   time.Time
+	estatsTried  bool
+	estatsDenied bool
+
 	inRate   float64
 	outRate  float64
 	peakIn   float64
@@ -118,7 +143,7 @@ type samplerState struct {
 
 var (
 	stMu sync.Mutex
-	st   = &samplerState{ifaces: map[string]*ifaceState{}}
+	st   = &samplerState{ifaces: map[string]*ifaceState{}, connBytes: map[string]*connBytesState{}}
 )
 
 func startSampler() {
@@ -244,23 +269,84 @@ func sampleConns() {
 		return
 	}
 	names := procNames()
+
+	// 两次连接采样的实际间隔（异常大间隔说明线程被挂起过，差分不可信，本轮只建基线）
+	secs := -1.0
+	if !st.connPrevAt.IsZero() {
+		if d := now.Sub(st.connPrevAt).Seconds(); d > 0 && d <= 30 {
+			secs = d
+		}
+	}
+
+	estatsDenied := st.estatsTried && st.estatsDenied
 	list := make([]connInfo, 0, len(raws))
 	for _, r := range raws {
-		list = append(list, connInfo{
+		ci := connInfo{
 			Proto:  r.proto,
 			Local:  r.local,
 			Remote: r.remote,
 			State:  connStateName(r.proto, r.state),
 			PID:    r.pid,
 			Proc:   names[r.pid],
-		})
+		}
+		// 仅已建立的 TCP 连接有字节计数；UDP 没有按连接归属的计数接口
+		if r.proto == "TCP" && r.state == 5 {
+			key := fmt.Sprintf("%08x:%04x>%08x:%04x", r.localAddr, r.localPort, r.remoteAddr, r.remotePort)
+			bs := st.connBytes[key]
+			if bs == nil {
+				bs = &connBytesState{}
+				st.connBytes[key] = bs
+				// 新连接首见：打开 estats 采集，从现在开始计数（之前的流量追不回来）
+				if !estatsDenied {
+					st.estatsTried = true
+					if ok, code := tcpEstatsEnable(mibTcpRow{state: r.state, localAddr: r.localAddr, localPort: r.localPort, remoteAddr: r.remoteAddr, remotePort: r.remotePort}); ok {
+						bs.enabled = true
+					} else {
+						st.estatsDenied = true
+						estatsDenied = true
+						qdLogWarn("estats 采集启用失败 code=%d（需管理员权限），连接级上传/下载不可用", code)
+					}
+				}
+			}
+			bs.seen = true
+			if bs.enabled {
+				if in, out, ok := tcpEstatsBytes(mibTcpRow{state: r.state, localAddr: r.localAddr, localPort: r.localPort, remoteAddr: r.remoteAddr, remotePort: r.remotePort}); ok {
+					// 计数合理性守卫：256TB 以上的「计数」必是未初始化垃圾
+					if in > 1<<48 || out > 1<<48 {
+						bs.hasPrev = false
+					} else if !bs.hasPrev || secs <= 0 {
+						bs.prevIn, bs.prevOut, bs.hasPrev = in, out, true
+					} else if in < bs.prevIn || out < bs.prevOut {
+						// 计数回退：四元组被新连接复用，重建基线，本轮不计速率
+						bs.prevIn, bs.prevOut = in, out
+					} else {
+						ci.InRate = float64(in-bs.prevIn) / secs
+						ci.OutRate = float64(out-bs.prevOut) / secs
+						bs.prevIn, bs.prevOut = in, out
+					}
+				}
+			}
+		}
+		list = append(list, ci)
+	}
+	// 摘掉本轮没再出现的连接（连接关闭 / 四元组复用后重建基线）
+	for k, bs := range st.connBytes {
+		if !bs.seen {
+			delete(st.connBytes, k)
+			continue
+		}
+		bs.seen = false
 	}
 	sort.Slice(list, func(i, j int) bool {
-		// 已建立连接优先（LISTEN / TIME_WAIT 之类对「谁在传数据」没有参考价值），
-		// 其次是拿得到进程名的条目，最后按进程名 / 远端地址稳定排序。
+		// 已建立连接优先（LISTEN / TIME_WAIT 之类对「谁在传数据」没有参考价值）；
+		// 同级按速率（正在传的排前面，方便盯某个软件）、再按进程名 / 远端地址稳定排序。
 		ei, ej := rankConn(list[i]), rankConn(list[j])
 		if ei != ej {
 			return ei < ej
+		}
+		ri, rj := list[i].InRate+list[i].OutRate, list[j].InRate+list[j].OutRate
+		if ri != rj {
+			return ri > rj
 		}
 		if list[i].Proc != list[j].Proc {
 			return list[i].Proc < list[j].Proc
@@ -270,6 +356,7 @@ func sampleConns() {
 	st.conns = list
 	st.connTotal = len(list)
 	st.connAt = now
+	st.connPrevAt = now
 }
 
 // rankConn 越小越靠前：0=已建立的 TCP，1=其它 TCP，2=有进程名的 UDP，3=其它。
@@ -290,6 +377,7 @@ func resetStats() {
 	stMu.Lock()
 	defer stMu.Unlock()
 	st.ifaces = map[string]*ifaceState{}
+	st.connBytes = map[string]*connBytesState{}
 	st.history = nil
 	st.inRate, st.outRate = 0, 0
 	st.peakIn, st.peakOut = 0, 0
@@ -313,6 +401,7 @@ func buildSnapshot() snapshot {
 		PeakOut:    st.peakOut,
 		InTotal:    st.inTotal,
 		OutTotal:   st.outTotal,
+		PerConn:    st.supported && !st.estatsDenied,
 		Interfaces: make([]ifaceInfo, 0, len(st.ifaces)),
 		History:    append([]histPoint(nil), st.history...),
 		ConnTotal:  st.connTotal,

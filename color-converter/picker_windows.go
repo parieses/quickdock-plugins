@@ -92,15 +92,11 @@ func waitPickLoop(epoch int) {
 				markPickErr(epoch, err.Error())
 				return
 			}
-			hex := fmt.Sprintf("#%02X%02X%02X", r, g, b)
-			copied := clipboardWriteHex(hex)
-			markPick(epoch, "done", r, g, b, copied)
-			if copied {
-				hostCall("host.notify", map[string]interface{}{
-					"title":   "屏幕取色",
-					"message": "已取色 " + hex + " 并复制到剪贴板",
-				})
-			}
+			// 复制交由前端经宿主桥接完成：后端 host.clipboard.write 是 fire-and-forget 回调，
+			// 无法确认是否真的写入系统剪贴板（实测此路径在取色场景下不可靠，且 copied 标志会
+			// 被谎报为 true）。前端 plugin:copy 桥接已在本插件「复制」按钮上验证可用，并会
+			// 据真实回包反馈「已复制 / 复制失败」。故后端只负责采样颜色，copied 置 false。
+			markPick(epoch, "done", r, g, b, false)
 			return
 		}
 		f8WasDown = isKeyDown(vkF8)
@@ -114,16 +110,4 @@ func waitPickLoop(epoch int) {
 		time.Sleep(30 * time.Millisecond)
 	}
 	markPick(epoch, "cancelled", 0, 0, 0, false) // 超时视为取消
-}
-
-// clipboardWriteHex 经宿主 host.clipboard.write 回调写剪贴板（fire-and-forget）。
-// 返回是否确实发出了一次带有效颜色的复制请求：宿主回调是 fire-and-forget，
-// 无法获知最终是否写入成功，故只能以「有有效颜色」作为已尝试的依据，
-// 避免无条件返回 true 让前端永远谎报「已复制」。
-func clipboardWriteHex(hex string) bool {
-	if hex == "" {
-		return false
-	}
-	hostCall("host.clipboard.write", map[string]interface{}{"text": hex})
-	return true
 }
