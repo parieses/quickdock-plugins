@@ -71,8 +71,8 @@ func qdEmit(level, msg string) {
 
 	qdStateMu.Lock()
 	qdPending[id] = struct{}{}
-	if len(qdPending) > 4096 { // 宿主长期不回包时的兜底，防止无界增长
-		qdPending = make(map[int64]struct{}, 32)
+	if len(qdPending) > 4096 { // 宿主长期不回包时的兜底，打印日志但不清空，避免等待回包的请求变成孤儿
+		qdLogError("qdPending overflow: %d entries pending, may cause memory growth", len(qdPending))
 	}
 	qdStateMu.Unlock()
 
