@@ -57,7 +57,8 @@ def collect():
         if not entry.is_dir() or entry.name.startswith(".") or not mf.exists():
             continue
         try:
-            m = json.load(open(mf, encoding="utf-8"))
+            with open(mf, encoding="utf-8") as f:
+                m = json.load(f)
         except Exception as e:
             print(f"⚠️  {entry.name}/plugin.json 解析失败: {e}")
             continue

@@ -928,7 +928,7 @@
       },
       copyResponse: function(){
         if(!this.response) return
-        var text = this.responseTab==='body' ? this.responseBodyText : Object.keys(this.response.headers).map(function(k){ return k+': '+this.response.headers[k] }.bind(this)).join('\n')
+        var text = this.responseTab==='body' ? this.responseBodyText : Object.keys(this.response.headers).map(k => k + ': ' + this.response.headers[k]).join('\n')
         if(navigator.clipboard) navigator.clipboard.writeText(text).then(function(){ toast('已复制','ok') }).catch(function(){})
       },
       // 首屏加载：必须在宿主桥接就绪后执行，否则最初一批 plugin:execute 会丢失，

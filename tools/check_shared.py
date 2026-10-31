@@ -108,7 +108,8 @@ def check_qtheme(stats: bool) -> list[str]:
             bad.append(str(f.relative_to(ROOT)))
     if stats:
         total = len(family_qtheme())
-        print(f"[qd-theme.css] 检查 {total} 份（fork 豁免 {len(QTHEME_FORKS & {plugin_name(f) for f in family_qtheme()})} 份），漂移 {len(bad)} 份")
+        fork_count = len(QTHEME_FORKS & {plugin_name(f) for f in family_qtheme()})
+        print(f"[qd-theme.css] 检查 {total} 份（fork 豁免 {fork_count} 份），漂移 {len(bad)} 份")
     return bad
 
 

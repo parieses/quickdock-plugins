@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 
 	"system-tools/sysutil"
 )
@@ -127,6 +128,8 @@ func handleExecute(req RPCRequest) {
 	}
 }
 
+var outMu sync.Mutex
+
 func respond(id int64, result interface{}) {
 	defer qdFinishRequest(id, 0, "")
 	data, _ := json.Marshal(RPCResponse{
@@ -135,7 +138,9 @@ func respond(id int64, result interface{}) {
 		Result:  mustMarshal(result),
 	})
 	data = append(data, '\n')
+	outMu.Lock()
 	os.Stdout.Write(data)
+	outMu.Unlock()
 }
 
 func respondError(id int64, code int, msg string) {
@@ -146,7 +151,9 @@ func respondError(id int64, code int, msg string) {
 		Error:   &RPCError{Code: code, Message: msg},
 	})
 	data = append(data, '\n')
+	outMu.Lock()
 	os.Stdout.Write(data)
+	outMu.Unlock()
 }
 
 func mustMarshal(v interface{}) json.RawMessage {

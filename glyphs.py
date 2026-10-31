@@ -622,12 +622,27 @@ GLYPH["lan-scanner"] = """
 
 def main():
     made = []
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--force", action="store_true", help="覆盖已有文件")
+    args, _ = ap.parse_known_args()
     for name, body in sorted(GLYPH.items()):
         d = ROOT / name
         if not d.is_dir():
             print(f"  !! {name}: 没有这个插件目录")
             continue
-        (d / "icon.svg").write_text(HEAD + body + "</svg>\n", encoding="utf-8")
+        target = d / "icon.svg"
+        new_content = HEAD + body + "</svg>\n"
+        if target.exists():
+            old_content = target.read_text(encoding="utf-8")
+            if old_content == new_content:
+                print(f"  = {name}/icon.svg (无变化，跳过)")
+                continue
+            if not args.force:
+                print(f"  ~ {name}/icon.svg (已有内容且不同，跳过；用 --force 覆盖)")
+                continue
+            print(f"  ! {name}/icon.svg (强制覆盖)")
+        target.write_text(new_content, encoding="utf-8")
         made.append(name)
     print(f"写入 {len(made)} 个字形源")
 

@@ -83,7 +83,7 @@ function render(){
     var html=marked.parse(text)
     // marked 不消毒：原始 HTML、javascript: 链接、<img onerror> 会被注入执行到沙箱 iframe。
     // 用 DOMPurify 净化后再写入（保留代码高亮的 <pre><code> 等安全标签）。
-    mdPreview.innerHTML=(window.DOMPurify?DOMPurify.sanitize(html,{ADD_ATTR:['target']}):html)
+    if(window.DOMPurify){mdPreview.innerHTML=DOMPurify.sanitize(html,{ADD_ATTR:['target']})}else{mdPreview.innerHTML='<p style="color:var(--text-danger)">安全组件未加载，预览已禁用</p>'}
   }else{
     mdPreview.innerHTML='<p style="color:var(--text-muted);font-size: var(--fs-md)">Markdown 库未加载，请重装插件</p>'
   }

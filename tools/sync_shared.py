@@ -66,9 +66,9 @@ def process(plugin: Path, dry: bool) -> bool:
     if plugin.name in QTHEME_FORKS:
         if theme.exists():
             print(f"  ~ {theme.relative_to(ROOT)}  (fork，跳过；如需更新请手工合并 :root)")
-        return changed
-    if theme.exists():
-        changed |= sync_file(theme, TPL / "qd-theme.css", dry)
+    else:
+        if theme.exists():
+            changed |= sync_file(theme, TPL / "qd-theme.css", dry)
     return changed
 
 

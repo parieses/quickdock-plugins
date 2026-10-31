@@ -29,8 +29,9 @@ import subprocess
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent
-CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe"
-NODE = "C:/Users/16956/.workbuddy/binaries/node/versions/22.12.0/node.exe"
+import shutil
+CHROME = shutil.which("chrome") or shutil.which("google-chrome") or "C:/Program Files/Google/Chrome/Application/chrome.exe"
+NODE = shutil.which("node") or shutil.which("node.exe") or "node"
 
 # ---------------------------------------------------------------- 几何常量
 GRID = 64
@@ -849,7 +850,12 @@ def cmd_check():
                 if val.lower() not in allow:
                     errs.append(f"{n}/{fname}: 图形颜色 {val} 既非白色也非声明的锚点/强调色")
             for sw in set(STROKE_W.findall(text)):
-                if abs(float(sw) - 1.0) > 1e-6 and float(sw) > 40:
+                try:
+                    sw_val = float(sw)
+                except ValueError:
+                    errs.append(f"{n}/{fname}: stroke-width 值无法解析: {sw}")
+                    continue
+                if abs(sw_val - 1.0) > 1e-6 and sw_val > 40:
                     errs.append(f"{n}/{fname}: stroke-width {sw} 异常")
             # 残留的「嵌套卡底」：art 里还有一块两轴都 >= 半幅的实心 rect，
             # 它被涂成白色后会整块盖住贴片（图形读不出来）。

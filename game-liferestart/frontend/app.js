@@ -43,7 +43,8 @@
     els.hp = document.getElementById('hp');
     els.money = document.getElementById('money');
     els.happy = document.getElementById('happy');
-    if (!els.start) throw new Error('缺少 #start');
+    var reqs = ['setup','play','end','talents','attrs','pool','start','log','age','hp','money','happy'];
+    for(var i=0;i<reqs.length;i++){if(!els[reqs[i]]){console.warn('game-liferestart: 缺少 DOM 元素 #'+reqs[i]);throw new Error('缺少 #'+reqs[i])}}
 
     // 天赋
     els.talents.innerHTML = TALENTS.map(function (t) {

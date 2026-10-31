@@ -7,6 +7,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"sync"
 
 	"system-tools/sysutil"
 )
@@ -183,7 +184,7 @@ try {
   Write-Error $_.Exception.Message
   exit 1
 }
-`, name, action)
+`, name, strings.ReplaceAll(action, "'", "''"))
 	out, err := sysutil.PowerShell(script)
 	if err != nil {
 		respondError(id, -1, "操作失败: "+err.Error())
@@ -198,17 +199,23 @@ try {
 	respond(id, res)
 }
 
+var outMu sync.Mutex
+
 func respond(id int64, result interface{}) {
 	defer qdFinishRequest(id, 0, "")
 	data, _ := json.Marshal(RPCResponse{JSONRPC: "2.0", ID: id, Result: mustMarshal(result)})
 	data = append(data, '\n')
+	outMu.Lock()
 	os.Stdout.Write(data)
+	outMu.Unlock()
 }
 func respondError(id int64, code int, msg string) {
 	defer qdFinishRequest(id, code, msg)
 	data, _ := json.Marshal(RPCResponse{JSONRPC: "2.0", ID: id, Error: &RPCError{Code: code, Message: msg}})
 	data = append(data, '\n')
+	outMu.Lock()
 	os.Stdout.Write(data)
+	outMu.Unlock()
 }
 func mustMarshal(v interface{}) json.RawMessage {
 	d, _ := json.Marshal(v)

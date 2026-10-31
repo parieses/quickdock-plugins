@@ -826,7 +826,11 @@ func findPDFCPU() (string, error) {
 	// 3) Go bin 目录
 	goPath := os.Getenv("GOPATH")
 	if goPath == "" {
-		goPath = filepath.Join(os.Getenv("HOME"), "go")
+		home := os.Getenv("HOME")
+		if home == "" {
+			home = os.Getenv("USERPROFILE")
+		}
+		goPath = filepath.Join(home, "go")
 	}
 	candidate := filepath.Join(goPath, "bin", "pdfcpu"+exeSuffix())
 	if _, err := os.Stat(candidate); err == nil {

@@ -84,8 +84,8 @@ function fbKey(pw,s){var sb='';for(var i=0;i<s.length;i++)sb+=(s[i]>>>0).toStrin
 // 「主密码错误」显示成「出错：Unexpected token...」，且极端情况下可能解出合法但错误的 JSON。
 function fbCheck(pw,s){return fbKey(pw,s).toString(16)}
 function xorCrypt(str,ks){var out='';for(var i=0;i<str.length;i++)out+=String.fromCharCode(str.charCodeAt(i)^ks.charCodeAt(i%ks.length));return out}
-function fbEncrypt(plain,pw,s){return btoa(unescape(encodeURIComponent(xorCrypt(plain,pw+':'+fbKey(pw,s)))))}
-function fbDecrypt(b64,pw,s){try{return xorCrypt(decodeURIComponent(escape(atob(b64))),pw+':'+fbKey(pw,s))}catch(e){return null}}
+function fbObfuscate(plain,pw,s){return btoa(unescape(encodeURIComponent(xorCrypt(plain,pw+':'+fbKey(pw,s)))))}
+function fbDeobfuscate(b64,pw,s){try{return xorCrypt(decodeURIComponent(escape(atob(b64))),pw+':'+fbKey(pw,s))}catch(e){return null}}
 async function derive(pw,s){lastPw=pw;if(!useSubtle)return {fb:true};var enc=new TextEncoder();var k=await crypto.subtle.importKey('raw',enc.encode(pw),'PBKDF2',false,['deriveKey']);return crypto.subtle.deriveKey({name:'PBKDF2',salt:s,iterations:100000,hash:'SHA-256'},k,{name:'AES-GCM',length:256},false,['encrypt','decrypt'])}
 
 async function unlock(){
@@ -106,7 +106,7 @@ async function unlock(){
     // 有校验位就先比校验位，一错即返回；没有校验位的老数据退回「解析成功后判错」
     if(parts.check&&parts.check!==fbCheck(pw,salt)){setMsg('主密码错误');return}
     key={fb:true};
-    var plain=fbDecrypt(parts.data,pw,salt);
+    var plain=fbDeobfuscate(parts.data,pw,salt);
     if(plain==null){setMsg('主密码错误');return}
     try{entries=JSON.parse(plain)}catch(e){setMsg('主密码错误');key=null;return}
     buildUI();return;
@@ -120,7 +120,7 @@ async function unlock(){
 
 async function save(){
   if(!key)return;
-  if(key.fb){saveRaw(JSON.stringify({mode:'fb',salt:Array.from(salt),check:fbCheck(lastPw,salt),data:fbEncrypt(JSON.stringify(entries),lastPw,salt)}));return}
+  if(key.fb){saveRaw(JSON.stringify({mode:'fb',salt:Array.from(salt),check:fbCheck(lastPw,salt),data:fbObfuscate(JSON.stringify(entries),lastPw,salt)}));return}
   var iv=crypto.getRandomValues(new Uint8Array(12));
   var buf=await crypto.subtle.encrypt({name:'AES-GCM',iv:iv},key,new TextEncoder().encode(JSON.stringify(entries)));
   saveRaw(JSON.stringify({mode:'subtle',salt:Array.from(salt),iv:Array.from(iv),data:Array.from(new Uint8Array(buf))}))

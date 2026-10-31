@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 
 	_ "golang.org/x/image/bmp"
 	"golang.org/x/image/draw"
@@ -297,11 +298,16 @@ func boolFrom(input map[string]interface{}, key string) bool {
 }
 
 // answered 标记当前请求是否已回包，用于 dispatch 层 panic recover 避免重复回包。
-var answered bool
+var (
+	answered bool
+	outMu    sync.Mutex
+)
 
 func respond(id int64, result interface{}) {
 	defer qdFinishRequest(id, 0, "")
 	out, _ := json.Marshal(map[string]interface{}{"jsonrpc": "2.0", "id": id, "result": result})
+	outMu.Lock()
+	defer outMu.Unlock()
 	answered = true
 	fmt.Println(string(out))
 }
@@ -312,6 +318,8 @@ func respondError(id int64, code int, msg string) {
 		"jsonrpc": "2.0", "id": id,
 		"error": map[string]interface{}{"code": code, "message": msg},
 	})
+	outMu.Lock()
+	defer outMu.Unlock()
 	answered = true
 	fmt.Println(string(out))
 }

@@ -568,18 +568,24 @@ def _integrate(repo: Path, dir_name: str, category: str) -> list:
     # 1) glyphs.py 追加 GLYPH 字形源
     glyphs = repo / "glyphs.py"
     if glyphs.exists():
-        block = '\nGLYPH["%s"] = """%s"""\n' % (dir_name, DEFAULT_GLYPH)
-        with glyphs.open("a", encoding="utf-8") as f:
-            f.write(block)
-        steps.append("glyphs.py 追加 GLYPH[%s]" % dir_name)
+        if dir_name not in glyphs.read_text(encoding="utf-8"):
+            block = '\nGLYPH["%s"] = """%s"""\n' % (dir_name, DEFAULT_GLYPH)
+            with glyphs.open("a", encoding="utf-8") as f:
+                f.write(block)
+            steps.append("glyphs.py 追加 GLYPH[%s]" % dir_name)
+        else:
+            steps.append("glyphs.py 已存在 GLYPH[%s]，跳过" % dir_name)
 
     # 2) gen_icons.py 追加语义色（在 PALETTE 构建完成后注入 GROUP）
     gicons = repo / "gen_icons.py"
     if gicons.exists():
-        block = '\n# plugin-scaffold 注入\nGROUP["%s"] = "%s"\n' % (dir_name, color)
-        with gicons.open("a", encoding="utf-8") as f:
-            f.write(block)
-        steps.append("gen_icons.py 追加 GROUP[%s]=%s" % (dir_name, color))
+        if ('GROUP["%s"]' % dir_name) not in gicons.read_text(encoding="utf-8"):
+            block = '\n# plugin-scaffold 注入\nGROUP["%s"] = "%s"\n' % (dir_name, color)
+            with gicons.open("a", encoding="utf-8") as f:
+                f.write(block)
+            steps.append("gen_icons.py 追加 GROUP[%s]=%s" % (dir_name, color))
+        else:
+            steps.append("gen_icons.py 已存在 GROUP[%s]，跳过" % dir_name)
 
     # 3) 跑流水线
     for script, args in (

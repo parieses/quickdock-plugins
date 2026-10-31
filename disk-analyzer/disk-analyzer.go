@@ -129,7 +129,10 @@ const (
 	maxStatusTreeNodes = 4000
 )
 
-var stdout = bufio.NewWriter(os.Stdout)
+var (
+	stdout = bufio.NewWriter(os.Stdout)
+	outMu  sync.Mutex
+)
 
 // walkSem 限制同时进行的目录遍历 goroutine 数量，防止扇出爆炸把句柄/内存打爆。
 var walkSem = make(chan struct{}, walkSemSize)
@@ -1015,6 +1018,8 @@ func respondError(id int64, code int, msg string) {
 // writeResponse 统一出口：成功与失败都必须 Flush，
 // 否则响应滞留在 bufio 缓冲区，宿主收不到任何字节，只会等到超时。
 func writeResponse(resp rpcResponse) {
+	outMu.Lock()
+	defer outMu.Unlock()
 	data, err := json.Marshal(resp)
 	if err != nil {
 		return

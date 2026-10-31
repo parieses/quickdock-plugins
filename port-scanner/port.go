@@ -4,6 +4,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"unsafe"
 )
@@ -272,10 +273,15 @@ func getProcessName(pid int) string {
 	return ""
 }
 
-var processNameCache map[int]string
-var processNameCacheDone bool
+var (
+	processNameCache     map[int]string
+	processNameCacheDone bool
+	processMu            sync.Mutex
+)
 
 func getAllProcessNames() map[int]string {
+	processMu.Lock()
+	defer processMu.Unlock()
 	if processNameCacheDone {
 		return processNameCache
 	}

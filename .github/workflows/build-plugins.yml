@@ -131,10 +131,10 @@ jobs:
           built=""
           failed=""
           mkdir -p dist
-          rm -f dist/*.zip 2>/dev/null || true
           if [ -z "$changed" ]; then
             echo "无插件变更，跳过打包"
           else
+            rm -f dist/*.zip 2>/dev/null || true
             stage_root="$(mktemp -d)"
             for dir in $changed; do
               if [ ! -f "$dir/plugin.json" ]; then

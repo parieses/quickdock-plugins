@@ -327,7 +327,7 @@ func (s *Session) scanGitHistory(root string, enabled []Rule) {
 	if len(enabled) == 0 {
 		return
 	}
-	cmd := exec.Command("git", "-C", root, "log", "--all", "-p", "--format=", "--no-color", "-I")
+	cmd := exec.Command("git", "-C", root, "log", "--all", "-p", "--format=", "--no-color")
 	out, err := cmd.StdoutPipe()
 	if err != nil {
 		return
