@@ -213,6 +213,14 @@ function fmtDur(s){
   /* ---------- 状态 ---------- */
   var mode='shred', running=false, sid=null, timer=null
   var targets=[], lastPreview=null
+  /* ---------- 按钮闸门（曾经的"要等一会才能点"） ----------
+     旧逻辑：点「预览」→ 等后端返回 → 再改一次确认词才会重新评估 disabled。
+     因为解锁判断只挂在 input 事件上，预览回来之后没人重新算一遍，于是按钮一直
+     灰着，用户只能再动一下输入框"唤醒"它 —— 看起来就是"得等一会才能点"。
+     现在：确认词一输对就自动跑预览（并给出「正在预览」提示），预览回来立刻解锁；
+     目标 / 覆写档位变了自动作废重跑；预览失败则记下签名，不再自动重试（避免死循环）。 */
+  var pvSig='', pvBusy=false, pvFailSig=''                 // 粉碎预览：签名 / 进行中 / 失败签名
+  var pvWSig='', pvWOk=false, pvWBusy=false, pvWFailSig='' // 覆写预览
 
   function renderStatic(){
     el('m-shred').textContent=L('粉碎文件')
@@ -235,7 +243,12 @@ function fmtDur(s){
     el('m-wipe').className='modebtn'+(m==='wipe'?' on':'')
     el('pane-shred').className=m==='shred'?'':'hidden'
     el('pane-wipe').className=m==='wipe'?'':'hidden'
-    if(m==='wipe'&&!el('vol').options.length) loadVolumes()
+    if(m==='wipe'){
+      if(!el('vol').options.length) loadVolumes()
+      else { if(!pvWOk&&el('vol').value) doPreviewWipe(); syncWipeGate() }
+    }else{
+      syncShredGate()
+    }
   }
   el('m-shred').addEventListener('click',function(){setMode('shred')})
   el('m-wipe').addEventListener('click',function(){setMode('wipe')})
@@ -251,10 +264,36 @@ function fmtDur(s){
   }
   function resetConfirm(){
     el('confirmShred').value=''
-    el('go').disabled=true
     el('cf-shred').className='confirmbar'
+    invalidateShredPreview()
+  }
+  /* 目标 / 档位变了 → 旧预览作废（写多少 GB、预计多久都不作数了） */
+  function invalidateShredPreview(){
+    lastPreview=null; pvSig=''
     el('pv-shred').className='previewbox hidden'
-    lastPreview=null
+    el('go').disabled=true
+    syncShredGate()
+  }
+  function shredSig(){
+    return targets.map(function(t){return t.path}).join('\n')+'#'+el('passes').value
+  }
+  function shredReady(){
+    return !!lastPreview && pvSig===shredSig() && (lastPreview.items||[]).length>0
+  }
+  /* 唯一的解锁判断入口：确认词 + 目标 + 预览是否已对齐当前签名 */
+  function syncShredGate(){
+    var ok=el('confirmShred').value.trim().toUpperCase()==='DELETE'
+    var need=targets.length>0
+    var ready=shredReady()
+    el('go').disabled=!(ok&&need&&ready&&!running)
+    el('cf-shred').className='confirmbar'+((ok&&need)?' hot':'')
+    if(running) return
+    if(ok&&need&&!ready){
+      setHint(pvBusy?'正在预览目标，跑完即可开始…':'正在预览目标，跑完即可开始…')
+      if(!pvBusy && pvFailSig!==shredSig()) doPreview()
+      return
+    }
+    if(el('hint').textContent.indexOf('正在预览')===0) setHint('')
   }
   function renderTargets(){
     var box=el('targets')
@@ -306,11 +345,36 @@ function fmtDur(s){
     var v=el('vol').value||''
     el('cfvol').textContent=v.replace(/\\$/,'')
     el('confirmWipe').value=''
-    el('goW').disabled=true
     el('cf-wipe').className='confirmbar'
-    el('pv-wipe').className='previewbox hidden'
+    invalidateWipePreview()
+    if(v) doPreviewWipe()   // 选卷即预跑：之后输对卷名就能立刻点「开始覆写」
   }
   el('vol').addEventListener('change',onVolChange)
+
+  function wipeSig(){
+    return [el('vol').value, el('wpasses').value, el('reserve').value, el('tempDir').value.trim()].join('|')
+  }
+  function invalidateWipePreview(){
+    pvWOk=false; pvWSig=''
+    el('pv-wipe').className='previewbox hidden'
+    el('goW').disabled=true
+    syncWipeGate()
+  }
+  function syncWipeGate(){
+    var want=(el('vol').value||'').replace(/\\$/,'')
+    var got=el('confirmWipe').value.trim().replace(/\\$/,'')
+    var ok=!!want&&!!got&&want.toLowerCase()===got.toLowerCase()
+    var ready=pvWOk&&pvWSig===wipeSig()
+    el('goW').disabled=!(ok&&ready&&!running)
+    el('cf-wipe').className='confirmbar'+(ok?' hot':'')
+    if(running) return
+    if(ok&&!ready){
+      setHint('正在预览卷，跑完即可开始…')
+      if(!pvWBusy && pvWFailSig!==wipeSig()) doPreviewWipe()
+      return
+    }
+    if(el('hint').textContent.indexOf('正在预览')===0) setHint('')
+  }
 
   /* ---------- 预览 ---------- */
   function warnHtml(ws){
@@ -323,12 +387,14 @@ function fmtDur(s){
     return h+'</div>'
   }
   function doPreview(){
-    setHint('')
+    if(pvBusy) return
     if(!targets.length){ setHint('请先添加要粉碎的文件或文件夹',true); return }
-    el('preview').disabled=true
+    pvBusy=true
+    el('preview').disabled=true; el('preview').textContent='预览中…'
+    var sig=shredSig()
     send('preview',{mode:'shred',paths:targets.map(function(t){return t.path}),passes:parseInt(el('passes').value,10)||1})
       .then(function(r){
-        lastPreview=r
+        lastPreview=r; pvSig=sig; pvFailSig=''
         var items=r.items||[], rej=r.rejected||[]
         var h='<div class="pvhead"><span>文件 <b>'+r.totalFiles+'</b> 个</span>'+
           '<span>合计 <b>'+fmtBytes(r.totalBytes)+'</b></span>'+
@@ -351,15 +417,25 @@ function fmtDur(s){
         el('pv-shred').className='previewbox'
         if(!items.length) setHint('没有可处理的目标（全部被拒绝）',true)
       })
-      .catch(function(e){ setHint('预览失败：'+e.message,true) })
-      .then(function(){ el('preview').disabled=false })
+      .catch(function(e){
+        lastPreview=null; pvSig=''; pvFailSig=sig
+        el('pv-shred').className='previewbox hidden'
+        setHint('预览失败：'+e.message,true)
+      })
+      .then(function(){
+        pvBusy=false
+        el('preview').disabled=false; el('preview').textContent=L('预览')
+        syncShredGate()   // 预览回来立刻重新评估按钮，不再等用户去动一下输入框
+      })
   }
   function mediaText(m){ return m==='ssd'?'SSD / 闪存':(m==='hdd'?'机械硬盘':'未知') }
   function doPreviewWipe(){
-    setHint('')
+    if(pvWBusy) return
     var v=el('vol').value
     if(!v){ setHint('请选择卷',true); return }
-    el('previewW').disabled=true
+    pvWBusy=true
+    el('previewW').disabled=true; el('previewW').textContent='预览中…'
+    var sig=wipeSig()
     send('preview',{mode:'wipe-free',volume:v,passes:parseInt(el('wpasses').value,10)||1,
                     reserveBytes:parseInt(el('reserve').value,10)||0,tempDir:el('tempDir').value.trim()})
       .then(function(r){
@@ -375,27 +451,33 @@ function fmtDur(s){
         h+=warnHtml(r.warnings)
         el('pv-wipe').innerHTML=h
         el('pv-wipe').className='previewbox'
-        el('goW').disabled = !r.tempDir || r.target<=0
+        pvWOk = !!(r.tempDir && r.target>0)
+        pvWSig = pvWOk ? sig : ''
+        pvWFailSig=''
+        if(!pvWOk) setHint('这个卷现在不能覆写：需要可写的临时目录且空闲空间大于保留余量',true)
       })
-      .catch(function(e){ setHint('预览失败：'+e.message,true) })
-      .then(function(){ el('previewW').disabled=false })
+      .catch(function(e){
+        pvWOk=false; pvWSig=''; pvWFailSig=sig
+        el('pv-wipe').className='previewbox hidden'
+        setHint('预览失败：'+e.message,true)
+      })
+      .then(function(){
+        pvWBusy=false
+        el('previewW').disabled=false; el('previewW').textContent=L('预览')
+        syncWipeGate()
+      })
   }
-  el('preview').addEventListener('click',doPreview)
-  el('previewW').addEventListener('click',doPreviewWipe)
+  // 手动点「预览」= 允许重试上次失败的那种目标
+  el('preview').addEventListener('click',function(){ pvFailSig=''; doPreview() })
+  el('previewW').addEventListener('click',function(){ pvWFailSig=''; doPreviewWipe() })
+  el('passes').addEventListener('change',invalidateShredPreview)
+  el('wpasses').addEventListener('change',invalidateWipePreview)
+  el('reserve').addEventListener('change',invalidateWipePreview)
+  el('tempDir').addEventListener('change',invalidateWipePreview)
 
   /* ---------- 确认闸门：不输入就不给按钮 ---------- */
-  el('confirmShred').addEventListener('input',function(){
-    var ok=this.value.trim().toUpperCase()==='DELETE'
-    el('go').disabled=!(ok&&lastPreview&&(lastPreview.items||[]).length>0)
-    el('cf-shred').className='confirmbar'+(ok?' hot':'')
-  })
-  el('confirmWipe').addEventListener('input',function(){
-    var want=(el('vol').value||'').replace(/\\$/,'')
-    var got=this.value.trim().replace(/\\$/,'')
-    var ok=!!want&&!!got&&want.toLowerCase()===got.toLowerCase()
-    el('goW').disabled=!ok
-    el('cf-wipe').className='confirmbar'+(ok?' hot':'')
-  })
+  el('confirmShred').addEventListener('input',function(){ syncShredGate() })
+  el('confirmWipe').addEventListener('input',function(){ syncWipeGate() })
 
   /* ---------- 执行与轮询 ---------- */
   function start(){
@@ -423,7 +505,7 @@ function fmtDur(s){
       el('list').innerHTML=''
       timer=setInterval(poll,600)
       poll()
-    }).catch(function(e){ setHint(e.message,true) })
+    }).catch(function(e){ setHint(e.message,true); running=false; syncShredGate(); syncWipeGate() })
   }
   el('go').addEventListener('click',start)
   el('goW').addEventListener('click',start)
@@ -458,6 +540,7 @@ function fmtDur(s){
         if(s.error) msg+='（'+s.error+'）'
         setHint(msg,s.status!=='done')
         if(mode==='shred'){ targets=[]; renderTargets(); resetConfirm() }
+        else syncWipeGate()
       }
     }).catch(function(e){
       clearInterval(timer); timer=null; running=false

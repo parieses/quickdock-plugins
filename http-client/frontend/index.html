@@ -78,7 +78,7 @@
     .hc-status.err { background:var(--danger-soft); color:var(--danger); }
     .hc-resp-tabs { display:flex; gap:2px; margin-left:auto; }
     .hc-resp-body { flex:1; overflow:auto; padding:var(--sp-3); }
-    .hc-resp-body pre { margin:0; white-space:pre-wrap; word-break:break-all; font-family:var(--font-mono); font-size:var(--fs-xs); color:var(--text-secondary); }
+    .hc-resp-body pre { margin:0; white-space:pre-wrap; overflow-wrap:anywhere; font-family:var(--font-mono); font-size:var(--fs-xs); color:var(--text-secondary); }
     table.hc-headers { width:100%; border-collapse:collapse; font-size:var(--fs-xs); }
     table.hc-headers td { padding:5px 8px; border-bottom:1px solid var(--border); vertical-align:top; font-family:var(--font-mono); }
     table.hc-headers td.k { color:var(--text-muted); width:200px; word-break:break-all; }
@@ -156,18 +156,37 @@
     .hc-status-4xx { background: rgba(217, 146, 10, 0.12); color: var(--warning); }
     .hc-status-5xx { background: var(--danger-soft); color: var(--danger); }
 
-    /* JSON 树形预览（可折叠） */
-    .jt { font-family:var(--font-mono); font-size:var(--fs-xs); line-height:1.7; color:var(--text-secondary); }
-    .jt-row { display:flex; align-items:flex-start; flex-wrap:wrap; }
-    .jt-toggle { cursor:pointer; user-select:none; width:14px; flex-shrink:0; color:var(--text-muted); }
-    .jt-key { color:var(--text-secondary); margin-right:2px; }
-    .jt-bracket { cursor:pointer; color:var(--text-muted); }
-    .jt-children { padding-left:16px; border-left:1px solid var(--border); margin-left:7px; }
+    /* JSON 视图（树形 / 原始）——对齐 Postman / Insomnia 的响应面板：
+       键名与标点分色、叶子与容器共用同一缩进栅格（叶子也占一个箭头位）、
+       层级用左侧细线引导，长字符串只在必要时换行。 */
+    .jt { font-family:var(--font-mono); font-size:var(--fs-sm); line-height:1.7; color:var(--text-secondary); padding:2px 0; }
+    .jt-line { display:flex; align-items:flex-start; min-height:19px; padding-right:6px; border-radius:var(--radius-xs); }
+    .jt-line:hover { background:var(--bg-hover); }
+    .jt-caret { flex:0 0 16px; width:16px; text-align:center; color:var(--text-muted); cursor:pointer; user-select:none; line-height:19px; font-size:var(--fs-xs); }
+    .jt-caret.blank { cursor:default; }
+    .jt-key { color:var(--accent); white-space:pre; }
+    .jt-idx { color:var(--text-disabled); min-width:16px; text-align:right; margin-right:6px; flex-shrink:0; }
+    .jt-colon { color:var(--text-muted); margin-right:5px; }
+    .jt-punc { color:var(--text-muted); }
+    .jt-count { color:var(--text-disabled); font-size:var(--fs-xs); margin:0 5px; }
+    .jt-children { margin-left:8px; padding-left:11px; border-left:1px solid var(--border); }
+    .jt-val { white-space:pre-wrap; overflow-wrap:anywhere; }
+    .jt-val.more { cursor:pointer; border-bottom:1px dotted var(--text-disabled); }
     .jt-string { color:var(--success); }
     .jt-number { color:var(--warning); }
     .jt-boolean { color:var(--accent); }
-    .jt-null { color:var(--text-disabled); }
-    .jt-comma { color:var(--text-disabled); }
+    .jt-null { color:var(--text-disabled); font-style:italic; }
+    .jt-comma { color:var(--text-muted); }
+    /* 原始 JSON 高亮：与树形共用同一套配色 */
+    pre.json-hl { white-space:pre-wrap; overflow-wrap:anywhere; font-family:var(--font-mono); font-size:var(--fs-sm); line-height:1.7; color:var(--text-secondary); }
+    pre.json-hl .jt-key { color:var(--accent); }
+    pre.json-hl .jt-colon { margin-right:0; }
+    /* 浅色主题下 --success / --warning 是给徽章底色用的亮色，当 12px 代码文字对比度不够
+       （绿字压白底只有 2 点几比一），这里按同一色相压暗一档。 */
+    html[data-theme="light"] .jt-string { color:#0f7a3d; }
+    html[data-theme="light"] .jt-number { color:#9a5a08; }
+    html[data-theme="light"] .jt-key,
+    html[data-theme="light"] .jt-boolean { color:#2f63c8; }
 </style>
 </head>
 <body>
@@ -251,7 +270,9 @@
                 <option v-for="m in methods" :key="m">{{ m }}</option>
               </select>
               <input class="p-input hc-name" v-model="name" placeholder="请求名称（可选）" title="给请求起个名字，方便在列表中区分">
-              <input class="p-input hc-url" v-model="url" placeholder="https://api.example.com/v1/resource" @keyup.ctrl.enter="send" @keyup.meta.enter="send">
+              <input class="p-input hc-url" :value="url" placeholder="https://api.example.com/v1/resource"
+                     @input="onUrlInput" @keydown="onUrlKeydown" @paste="onUrlPaste"
+                     @keyup.ctrl.enter="send" @keyup.meta.enter="send">
               <button class="p-btn p-btn-primary" :disabled="sending" @click="send">{{ sending ? '发送中…' : '发送' }}</button>
               <button class="p-btn" @click="save">保存</button>
               <button class="p-btn" @click="copyCurl" title="复制为 curl">curl</button>
@@ -284,10 +305,15 @@
             </div>
 
             <div class="hc-pane" :class="{active: activeTab==='body'}">
-              <div style="display:flex; gap:6px; margin-bottom:8px;">
+              <div style="display:flex; gap:6px; margin-bottom:8px; align-items:center;">
                 <select class="hc-method" v-model="bodyType">
                   <option v-for="b in bodyTypes" :key="b" :value="b">{{ b }}</option>
                 </select>
+                <template v-if="bodyType==='json'">
+                  <button class="p-btn p-btn-sm" @click="formatBody">格式化</button>
+                  <button class="p-btn p-btn-sm" @click="minifyBody">压缩</button>
+                  <span class="ht-empty" style="padding:0;text-align:left" v-pre>可用 {{变量}} 引用环境变量</span>
+                </template>
               </div>
               <template v-if="bodyType==='form'">
                 <div class="kv-row" v-for="(r,i) in formRows" :key="'f'+i">
@@ -329,19 +355,27 @@
               <span>{{ formatSize(response.size) }}</span>
               <span v-if="response.truncated" style="color:var(--warning)">（已截断）</span>
               <div class="tabs-sm">
-                <template v-if="responseTab==='body' && parsedJson">
-                  <button class="tab-sm" :class="{active: jsonView==='tree'}" @click="jsonView='tree'">树形</button>
-                  <button class="tab-sm" :class="{active: jsonView==='raw'}" @click="jsonView='raw'">原始</button>
-                </template>
                 <button class="tab-sm" :class="{active: responseTab==='body'}" @click="responseTab='body'">Body</button>
                 <button class="tab-sm" :class="{active: responseTab==='headers'}" @click="responseTab='headers'">Headers</button>
-                <button class="ht-act" title="复制" @click="copyResponse">复制</button>
+                <template v-if="responseTab==='body' && parsedJson">
+                  <span class="p-sep"></span>
+                  <button class="tab-sm" :class="{active: jsonView==='tree'}" @click="jsonView='tree'">树形</button>
+                  <button class="tab-sm" :class="{active: jsonView==='raw'}" @click="jsonView='raw'">原始</button>
+                  <template v-if="jsonView==='tree'">
+                    <span class="p-sep"></span>
+                    <button class="p-btn p-btn-sm p-btn-ghost" @click="expandAll(true)" title="展开全部节点">展开</button>
+                    <button class="p-btn p-btn-sm p-btn-ghost" @click="expandAll(false)" title="折叠全部节点">收起</button>
+                  </template>
+                </template>
+                <span class="p-sep"></span>
+                <button class="p-btn p-btn-sm p-btn-ghost" @click="copyResponse" title="复制响应内容">复制</button>
               </div>
             </div>
             <div class="hc-resp-head" v-else><span class="ht-empty">发送请求后在此查看响应</span></div>
             <div class="hc-resp-body" v-if="response">
               <template v-if="responseTab==='body'">
-                <div class="jt" v-if="jsonView==='tree' && parsedJson"><json-node :node="parsedJson" :depth="0" :is-last="true"></json-node></div>
+                <div class="jt" v-if="jsonView==='tree' && parsedJson"><json-node :node="parsedJson" :depth="0" :is-last="true" :signal="treeSignal"></json-node></div>
+                <pre class="json-hl" v-else-if="jsonView==='raw' && parsedJson" v-html="responseBodyHtml"></pre>
                 <pre v-else>{{ responseBodyText }}</pre>
               </template>
               <table class="hc-headers" v-else>
@@ -589,21 +623,36 @@
     }
   }
 
-  /* ---------- JSON 树形预览（可折叠） ---------- */
-  // 递归组件：对象 / 数组可点击折叠，深层默认折叠，便于浏览超大 JSON。
+  /* ---------- JSON 树形预览（可折叠） ----------
+     对齐 Postman / Insomnia 的响应面板，修掉旧版的几处硬伤：
+       1) 叶子行没有折叠箭头位，键名比同级容器左移 16px，整棵树看着是歪的；
+       2) 容器之间没有逗号，数组里连着几个对象时不像合法 JSON；
+       3) 空对象 / 空数组画成两行（{ 换行 }），应该就地显示 {}；
+       4) 字符串里的引号、换行、超长内容直接原样铺开，把布局撑坏。
+     折叠态用 { … 12 项 } 收口，双击箭头以外的位置也可点。 */
   var JsonNode = {
     name: 'json-node',
     props: {
       node: { default: null },
       keyName: { default: '' },
+      idx: { default: null },
       depth: { default: 0 },
-      isLast: { default: true }
+      isLast: { default: true },
+      signal: { default: null }   // {open:Boolean, n:Number} —— 父级「展开 / 收起」信号
     },
-    data: function(){ return { open: this.depth < 1 } }, // 顶层展开，深层默认折叠
+    data: function(){
+      var init = this.depth < 2   // 顶层展开两层，更深的默认折叠
+      var sg = this.signal
+      if(sg && sg.n > 0 && typeof sg.open === 'boolean') init = sg.open
+      return { open: init, expanded: false }   // expanded：超长字符串点开看全文
+    },
+    watch: {
+      signal: function(v){ if(v && typeof v.open === 'boolean') this.open = v.open }
+    },
     computed: {
       type: function(){
         var v = this.node
-        if(v === null) return 'null'
+        if(v === null || v === undefined) return 'null'
         if(Array.isArray(v)) return 'array'
         if(typeof v === 'object') return 'object'
         return typeof v
@@ -611,44 +660,88 @@
       isContainer: function(){ var t = this.type; return t === 'array' || t === 'object' },
       entries: function(){
         var v = this.node
-        if(Array.isArray(v)) return v.map(function(it){ return { k: '', v: it } })
-        return Object.keys(v).map(function(k){ return { k: k, v: v[k] } })
+        if(Array.isArray(v)) return v.map(function(it,i){ return { k:'', v:it, i:i } })
+        return Object.keys(v).map(function(k,i){ return { k:k, v:v[k], i:i } })
       },
-      count: function(){
-        return this.isContainer ? (Array.isArray(this.node) ? this.node.length : Object.keys(this.node).length) : 0
-      },
-      preview: function(){
-        if(this.type === 'array') return '[' + this.count + ']'
-        if(this.type === 'object') return '{' + this.count + '}'
-        return ''
-      },
-      displayVal: function(){
+      count: function(){ return this.isContainer ? this.entries.length : 0 },
+      empty: function(){ return this.isContainer && this.entries.length === 0 },
+      openB: function(){ return this.type === 'array' ? '[' : '{' },
+      closeB: function(){ return this.type === 'array' ? ']' : '}' },
+      keyText: function(){ return this.keyName === '' ? '' : JSON.stringify(this.keyName) },
+      fullVal: function(){
         var t = this.type
-        if(t === 'string') return '"' + this.node + '"'
+        if(t === 'string') return this.node
         if(t === 'null') return 'null'
         return String(this.node)
-      }
+      },
+      displayVal: function(){
+        if(this.type !== 'string') return this.fullVal
+        var s = this.node
+        var cut = (this.valLong && !this.expanded) ? 160 : s.length
+        return JSON.stringify(s.length > cut ? s.slice(0, cut) + '…' : s)
+      },
+      valLong: function(){ return this.type === 'string' && this.node.length > 160 },
+      valTitle: function(){ return this.valLong ? (this.expanded ? '点击收起' : '点击展开全文') : '' }
+    },
+    methods: {
+      toggle: function(){ this.open = !this.open }
     },
     template: [
-      '<div>',
-      '  <div class="jt-row" v-if="isContainer">',
-      '    <span class="jt-toggle" @click="open=!open">{{ open ? "▾" : "▸" }}</span>',
-      '    <span class="jt-key" v-if="keyName!==\'\'">{{ keyName }}:</span>',
-      '    <span class="jt-bracket" @click="open=!open">{{ open ? (type===\'array\' ? \'[\' : \'{\') : preview }}</span>',
+      '<div class="jt-node">',
+      // 缩进栅格：箭头位(16px) + 数组序号位(22px，仅数组元素) + 键名/值。
+      // 每一行（含闭合括号行）都走同一套前缀，否则同级会左右错开一两格。
+      // ---- 非空容器 ----
+      '  <div class="jt-line" v-if="isContainer && !empty">',
+      '    <span class="jt-caret" @click="toggle">{{ open ? "▾" : "▸" }}</span>',
+      '    <span class="jt-idx" v-if="keyName===\'\' && idx!==null">{{ idx }}</span>',
+      '    <span class="jt-key" v-if="keyName!==\'\'">{{ keyText }}</span>',
+      '    <span class="jt-colon" v-if="keyName!==\'\'">:</span>',
+      '    <span class="jt-punc">{{ openB }}</span>',
+      '    <span class="jt-count" v-if="!open">{{ count }} 项</span>',
+      '    <span class="jt-punc" v-if="!open">{{ closeB }}</span>',
+      '    <span class="jt-comma" v-if="!open && !isLast">,</span>',
       '  </div>',
       '  <div class="jt-children" v-if="open && isContainer">',
-      '    <json-node v-for="(e,i) in entries" :key="i" :node="e.v" :key-name="e.k" :depth="depth+1" :is-last="i===entries.length-1"></json-node>',
+      '    <json-node v-for="e in entries" :key="e.i" :node="e.v" :key-name="e.k" :idx="e.i" :depth="depth+1" :is-last="e.i===entries.length-1" :signal="signal"></json-node>',
       '  </div>',
-      '  <div class="jt-row" v-if="open && isContainer">',
-      '    <span class="jt-bracket">{{ type===\'array\' ? \']\' : \'}\' }}</span>',
+      '  <div class="jt-line" v-if="open && isContainer && !empty">',
+      '    <span class="jt-caret blank"></span>',
+      '    <span class="jt-idx" v-if="keyName===\'\' && idx!==null"></span>',
+      '    <span class="jt-punc">{{ closeB }}</span>',
+      '    <span class="jt-comma" v-if="!isLast">,</span>',
       '  </div>',
-      '  <div class="jt-row" v-if="!isContainer">',
-      '    <span class="jt-key" v-if="keyName!==\'\'">{{ keyName }}:</span>',
-      '    <span class="jt-val" :class="\'jt-\'+type">{{ displayVal }}</span>',
+      // ---- 空容器：就地 {} / [] ----
+      '  <div class="jt-line" v-if="empty">',
+      '    <span class="jt-caret blank"></span>',
+      '    <span class="jt-idx" v-if="keyName===\'\' && idx!==null">{{ idx }}</span>',
+      '    <span class="jt-key" v-if="keyName!==\'\'">{{ keyText }}</span>',
+      '    <span class="jt-colon" v-if="keyName!==\'\'">:</span>',
+      '    <span class="jt-punc">{{ openB }}{{ closeB }}</span>',
+      '    <span class="jt-comma" v-if="!isLast">,</span>',
+      '  </div>',
+      // ---- 叶子 ----
+      '  <div class="jt-line" v-if="!isContainer">',
+      '    <span class="jt-caret blank"></span>',
+      '    <span class="jt-idx" v-if="keyName===\'\' && idx!==null">{{ idx }}</span>',
+      '    <span class="jt-key" v-if="keyName!==\'\'">{{ keyText }}</span>',
+      '    <span class="jt-colon" v-if="keyName!==\'\'">:</span>',
+      '    <span class="jt-val" :class="[\'jt-\'+type, {more: valLong}]" :title="valTitle" @click="valLong && (expanded = !expanded)">{{ displayVal }}</span>',
       '    <span class="jt-comma" v-if="!isLast">,</span>',
       '  </div>',
       '</div>'
     ].join('\n')
+  }
+
+  /* 原始 JSON 语法高亮：先转义再做词法着色，避免 v-html 注入 */
+  function highlightJson(text){
+    return escapeHtml(text).replace(
+      /("(?:\\u[0-9a-fA-F]{4}|\\[^u]|[^\\"])*")(\s*:)?|\b(true|false|null)\b|(-?\d+(?:\.\d+)?(?:[eE][+\-]?\d+)?)/g,
+      function(m, str, colon, kw, num){
+        if(str) return '<span class="jt-key">' + str + '</span>' + (colon ? '<span class="jt-colon">' + colon + '</span>' : '')
+        if(kw) return '<span class="' + (kw === 'null' ? 'jt-null' : 'jt-boolean') + '">' + kw + '</span>'
+        return '<span class="jt-number">' + num + '</span>'
+      }
+    )
   }
 
   var app = createApp({
@@ -664,6 +757,8 @@
         name: '', method: 'GET', url: '', paramRows: [], headerRows: [{enabled:true,key:'Content-Type',value:'application/json'}],
         bodyType: 'none', body: '', formRows: [], authType: 'none', authToken: '', authUser: '', authPass: '',
         activeTab: 'headers', responseTab: 'body', jsonView: 'tree', sending: false, response: null,
+        treeSignal: { open: true, n: 0 },  // JSON 树「全部展开 / 全部收起」信号
+        urlReplacing: false,               // 地址栏是否刚被整段替换（决定是否丢弃旧 Params）
         methods: ['GET','POST','PUT','DELETE','PATCH','HEAD','OPTIONS'],
         bodyTypes: ['none','json','form','text','xml'],
         authTypes: ['none','bearer','basic'],
@@ -695,6 +790,12 @@
         if(!this.response || !this.response.body) return null
         try { return JSON.parse(this.response.body) } catch(e){ return null }
       },
+      // 原始 JSON 的着色文本（v-html，内部已转义）。优先用解析后的对象重新缩进，
+      // 这样即便后端返回的 Content-Type 不是 application/json 也能美化。
+      responseBodyHtml: function(){
+        if(!this.parsedJson) return ''
+        try { return highlightJson(JSON.stringify(this.parsedJson, null, 2)) } catch(e){ return '' }
+      },
       docPreview: function(){
         if(!this.editingDoc || !this.editingDoc.content) return ''
         return renderMarkdown(this.editingDoc.content)
@@ -709,6 +810,60 @@
     methods: {
       methodClass: function(m){ return (m||'GET').toLowerCase() },
       formatSize: function(n){ if(n<1024) return n+' B'; if(n<1024*1024) return (n/1024).toFixed(1)+' KB'; return (n/1024/1024).toFixed(1)+' MB' },
+      expandAll: function(open){ this.treeSignal = { open: !!open, n: (this.treeSignal.n||0)+1 } },
+      /* ---------- 地址栏 ↔ Params 双向同步 ----------
+         以前 Params 只在「打开已保存请求 / 从历史打开」时解析一次，用户把新 URL
+         粘进地址栏，Params 里还是上一个请求的参数，发送时又被拼回地址后面 ——
+         等于请求打到了「新 URL + 旧查询串」。现在地址栏是唯一入口：
+           · 粘贴整条 URL（含 ?a=1&b=2）→ 按它重建 Params，旧数据一律丢弃；
+           · 手打/编辑出 ? 也当场拆进 Params，地址栏只留 base；
+           · Ctrl+A 后整段替换、或把地址清空 → Params 清空（等价于换了个新请求）。 */
+      rowsFromQuery: function(qs){
+        var rows = queryToForm(qs)
+        return rows.length ? rows : [{enabled:true, key:'', value:''}]
+      },
+      applyUrl: function(full, reset){
+        var qi = full.indexOf('?')
+        var base = qi >= 0 ? full.slice(0, qi) : full
+        var rows = qi >= 0 ? queryToForm(full.slice(qi+1)) : []
+        this.url = base.trim()
+        if(reset || rows.length) this.paramRows = rows.length ? rows : [{enabled:true, key:'', value:''}]
+      },
+      onUrlKeydown: function(e){
+        var el = e.target
+        var whole = el.selectionStart === 0 && el.selectionEnd === el.value.length
+        var k = e.key || ''
+        var editing = k.length === 1 || k === 'Backspace' || k === 'Delete'
+          || ((e.ctrlKey || e.metaKey) && (k === 'v' || k === 'V' || k === 'x' || k === 'X'))
+        if(editing && whole) this.urlReplacing = true
+      },
+      onUrlInput: function(e){
+        var v = e.target.value
+        var qi = v.indexOf('?')
+        if(qi >= 0 && v.length > qi + 1){ this.applyUrl(v, true); this.urlReplacing = false; return }
+        this.url = v
+        if(this.urlReplacing || v.trim() === ''){
+          this.urlReplacing = false
+          this.paramRows = [{enabled:true, key:'', value:''}]
+        }
+      },
+      onUrlPaste: function(e){
+        var cd = e.clipboardData || window.clipboardData
+        var text = cd && cd.getData ? cd.getData('text') : ''
+        if(!text) return
+        var box = e.target
+        // 粘进来的是完整地址（带 scheme）→ 整条替换，不跟旧地址拼在一起。
+        // 复制粘贴一条新 URL 是最常见的换请求动作，光标恰好停在末尾时拼接会得到
+        // 「https://a.com/xhttps://b.com/y」这种垃圾地址。粘的若是路径片段则按插入处理。
+        var pasted = text.trim()
+        var whole = /^[a-zA-Z][a-zA-Z0-9+.\-]*:\/\//.test(pasted)
+        var full = whole ? pasted
+                         : (box.value.slice(0, box.selectionStart) + text + box.value.slice(box.selectionEnd))
+        e.preventDefault()
+        this.urlReplacing = false
+        this.applyUrl(full, true)
+        this.$nextTick(function(){ box.focus(); try{ box.setSelectionRange(box.value.length, box.value.length) }catch(err){} })
+      },
       // 树筛选
       topFolders: function(pid){ return this.folders.filter(function(f){ return f.projectId===pid && !f.parentId }) },
       topRequests: function(pid){ return this.requests.filter(function(r){ return r.projectId===pid && !r.folderId }) },
@@ -749,15 +904,17 @@
         this.editingDoc = null
         this.currentId = ''; this.currentProjectId = pid||''; this.currentFolderId = folderId||''
         this.name=''; this.method='GET'; this.url=''
-        this.paramRows = []; this.headerRows = [{enabled:true,key:'Content-Type',value:'application/json'}]
+        this.paramRows = [{enabled:true,key:'',value:''}]; this.headerRows = [{enabled:true,key:'Content-Type',value:'application/json'}]
         this.bodyType='none'; this.body=''; this.formRows=[]; this.authType='none'; this.authToken=''; this.authUser=''; this.authPass=''
-        this.response = null; this.activeTab='headers'
+        this.response = null; this.activeTab='headers'; this.urlReplacing = false
       },
       loadRequest: function(r){
         this.editingDoc = null
         this.currentId = r.id; this.currentProjectId = r.projectId||''; this.currentFolderId = r.folderId||''
         this.name = r.name||''; this.method = r.method||'GET'
-        var pq = parseQuery(r.url); this.url = pq.base; this.paramRows = pq.rows
+        var pq = parseQuery(r.url); this.url = pq.base
+        this.paramRows = pq.rows.length ? pq.rows : [{enabled:true,key:'',value:''}]
+        this.urlReplacing = false
         this.headerRows = jsonToKV(r.headers)
         this.bodyType = r.bodyType||'none'
         if(this.bodyType==='form') this.formRows = queryToForm(r.body); else this.body = r.body||''
@@ -766,7 +923,10 @@
       },
       buildInput: function(){
         var q = kvToQuery(this.paramRows)
-        var fullUrl = q ? this.url + (this.url.indexOf('?')>=0 ? '&' : '?') + q : this.url
+        // 地址栏可能残留尾部 ? 或 &（用户正在手打查询串），先削掉再接 Params，
+        // 否则会拼出 https://x/api?&a=1 这种畸形 URL。
+        var base = String(this.url||'').replace(/[?&]+$/,'')
+        var fullUrl = q ? base + (base.indexOf('?') >= 0 ? '&' : '?') + q : base
         var finalBody = this.body
         if(this.bodyType==='form') finalBody = formToQuery(this.formRows)
         return {
@@ -791,6 +951,19 @@
           if(resp && !resp.ok) toast('状态码 ' + resp.status, 'err')
           else if(resp) toast('请求成功 ' + resp.status, 'ok')
         }).catch(function(e){ toast('发送失败: '+(e.message||e),'err') }).finally(function(){ self.sending = false })
+      },
+      // JSON 正文的格式化 / 压缩：省得手写缩进，也顺手当一次合法性校验
+      formatBody: function(){
+        var t = String(this.body||'').trim()
+        if(!t) return
+        try { this.body = JSON.stringify(JSON.parse(t), null, 2) }
+        catch(e){ toast('JSON 解析失败：' + e.message, 'err'); return }
+      },
+      minifyBody: function(){
+        var t = String(this.body||'').trim()
+        if(!t) return
+        try { this.body = JSON.stringify(JSON.parse(t)) }
+        catch(e){ toast('JSON 解析失败：' + e.message, 'err') }
       },
       copyCurl: function(){
         if(!this.url.trim()){ toast('请填写 URL','err'); return }
@@ -901,7 +1074,9 @@
         this.editingDoc = null
         this.currentId=''; this.currentProjectId = h.projectId||''; this.currentFolderId = h.folderId||''
         this.name = h.name||''; this.method = h.method||'GET'
-        var pq = parseQuery(h.url); this.url = pq.base; this.paramRows = pq.rows
+        var pq = parseQuery(h.url); this.url = pq.base
+        this.paramRows = pq.rows.length ? pq.rows : [{enabled:true,key:'',value:''}]
+        this.urlReplacing = false
         this.headerRows = jsonToKV(h.headers)
         this.bodyType = h.bodyType||'none'
         if(this.bodyType==='form') this.formRows = queryToForm(h.body); else this.body = h.body||''
@@ -958,8 +1133,8 @@
           // 形如 "POST https://…" 的前缀同时选中对应方法；随后聚焦 URL 输入框
           if(text){
             var m = text.match(/^(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\s+(\S+)/i)
-            if(m){ this.method = m[1].toUpperCase(); this.url = m[2] }
-            else { this.url = text }
+            if(m){ this.method = m[1].toUpperCase(); this.applyUrl(m[2], true) }
+            else { this.applyUrl(text, true) }
           }
           this.$nextTick(function(){
             var el = document.querySelector('.hc-url')
