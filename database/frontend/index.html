@@ -672,6 +672,7 @@
                 <span class="muted">{{ pageInfo(t) }}</span>
                 <span class="badge badge-accent" v-if="canEdit(t)">可编辑（双击单元格）</span>
                 <span class="badge badge-warning" v-else-if="t.grid.editReason" :title="t.grid.editReason">只读</span>
+                <span class="muted" title="F5 重新拉取本表数据（保留筛选 / 排序 / 页码）；Ctrl+S 提交正在编辑的单元格">F5 刷新数据 · Ctrl+S 保存</span>
                 <div class="spacer"></div>
                 <select class="input input-sm input-auto" v-model.number="t.grid.pageSize" @change="reloadData(t,1)">
                   <option :value="50">50 条/页</option>
@@ -888,6 +889,7 @@
                         title="单次最多返回 1000 行；请加 LIMIT 或 WHERE 缩小范围">仅显示前 1000 行</span>
                   <span class="badge badge-accent" v-if="canEdit(t)">可编辑（双击单元格）</span>
                   <span class="muted" v-else-if="t.grid.editReason">{{ t.grid.editReason }}</span>
+                  <span class="muted" title="Ctrl+S 提交正在编辑的单元格；F5 只在表的「数据」页刷新数据">Ctrl+S 保存</span>
                 </template>
                 <span class="muted" v-else>尚未执行</span>
               </div>
@@ -3175,6 +3177,41 @@
         toast('已复制','ok')
       },
 
+      /* ---------- 快捷键：F5 刷新 / Ctrl+S 保存 ---------- */
+      // F5：只在表「数据」页重查一次——典型场景是筛选条件没动、库里的数据被别人改了，
+      // 想按一下看最新值。reloadData 会原样带上当前筛选 / 排序 / 页码，并还原滚动位置。
+      // 其他页面不接管刷新（按 F5 更不该把整个插件刷回初始页），只给一句说明。
+      refreshActive: function(){
+        var t = this.activeTab
+        if(t && t.kind === 'table' && t.sub === 'data' && t.grid){
+          if(t.grid.edit && t.grid.edit.r >= 0){
+            toast('正在编辑单元格：先回车提交或 Esc 取消，再刷新','err')
+            return
+          }
+          this.reloadData(t, t.grid.page)
+          return
+        }
+        toast('F5 只在表的「数据」页刷新数据')
+      },
+      // Ctrl+S：保存「当前正在编辑的东西」——打开着的弹窗优先，其次是表格里还没回车的单元格。
+      // 数据库没有「整表暂存」的概念，所以没有可保存对象时直说，不做假动作。
+      saveActive: function(){
+        if(this.showSettings){ this.saveSettings(); return }
+        if(this.showConnModal){ this.saveConn(); return }
+        if(this.showNewKey){ this.saveNewKey(); return }
+        if(this.showInsertModal){ this.saveInsert(); return }
+        if(this.bulkModal && this.bulkModal.show){
+          if(!this.bulkModal.running) this.execBulkEdit()
+          return
+        }
+        var t = this.activeTab
+        if(t && t.grid && t.grid.edit && t.grid.edit.r >= 0){
+          this.commitEdit(t, t.grid.edit.r, t.grid.edit.c)
+          return
+        }
+        toast('没有待保存的修改：单元格回车即写入，连接与设置请在弹窗里保存','err')
+      },
+
       /* ---------- 其它 ---------- */
       askConfirm: function(msg, cb){ this.confirmDialog = { visible:true, message:msg, onConfirm:cb } },
       confirmOk: function(){ var cb=this.confirmDialog.onConfirm; this.confirmDialog.visible=false; this.confirmDialog.onConfirm=null; if(cb) cb() },
@@ -3191,6 +3228,18 @@
       var self = this
       document.addEventListener('keydown', function(e){
         if(e.key==='Escape' && self.tabMenu.show) self.closeTabMenu()
+        // F5 = 刷新当前标签的数据；Ctrl/⌘+S = 保存当前编辑。
+        // 两者都要 preventDefault：否则 F5 会把插件跑回初始页（状态全丢），Ctrl+S 会弹浏览器的「保存网页」。
+        if(e.key === 'F5' || e.keyCode === 116){
+          e.preventDefault()
+          self.refreshActive()
+          return
+        }
+        if((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (e.key === 's' || e.key === 'S' || e.keyCode === 83)){
+          e.preventDefault()
+          self.saveActive()
+          return
+        }
       })
       // 正常路径由 plugin:init 触发 bootNow；这里只是兜底
       setTimeout(function(){ bootNow({}) }, 1000)
