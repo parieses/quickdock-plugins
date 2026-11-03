@@ -21,7 +21,8 @@ spec 字段（均由 CLI 表单或插件 UI 收集）：
   author      作者（默认 QuickDock）
   width,height 前端窗口尺寸（默认 960x600）
   permissions 字典：clipboard/network/filesystem/shell/process/processKill 布尔开关
-  commands    命令列表，每项 {id, title_zh, title_en, keywords:[]}
+  commands    命令列表，每项 {id, title_zh, title_en, keywords:[]}；
+              可选 match_pattern（Ctrl+K 内容匹配正则，见下）与 accepts_input
   integrate   是否接入仓库流水线（CLI 自行决定，不走 spec）
 """
 import json
@@ -96,6 +97,13 @@ def build_permissions(spec: dict) -> dict:
 
 
 def build_commands(spec: dict) -> list:
+    """生成 commands[]。
+
+    match_pattern 是 Ctrl+K 的「内容匹配」正则：宿主会把它包成 `^(?:…)$` 按**整串**
+    校验，所以需要「包含」语义时必须自己写 `[\\s\\S]*$` 收尾，否则那段正则只能命中
+    完整短输入（`^https?://` 这种前缀写法等于只认 `http://` 七个字符）。
+    要「命中后直接把文本带进插件」还得同时给 accepts_input=true。
+    """
     cmds = spec.get("commands") or []
     if not cmds:
         cmds = [{"id": spec["dir"], "title_zh": spec["name_zh"],
@@ -107,6 +115,10 @@ def build_commands(spec: dict) -> list:
             "title": c.get("title_zh", spec["name_zh"]),
             "keywords": c.get("keywords", []),
         }
+        if c.get("match_pattern"):
+            item["matchPattern"] = c["match_pattern"]
+        if c.get("accepts_input"):
+            item["acceptsInput"] = True
         if c.get("title_en"):
             item["title_i18n"] = {"zh-CN": c.get("title_zh", spec["name_zh"]),
                                   "en-US": c["title_en"]}

@@ -125,6 +125,44 @@ def check_params(d, label, params, runtime):
                     err(d, f"{label}: params.required 里的 {k!r} 不在 properties 中")
 
 
+# ---- commands[].matchPattern：Ctrl+K 的内容匹配正则 ----
+#
+# 宿主（frontend/src/composables/usePluginIndex.ts）统一按「整串」语义编译：
+#     regex = new RegExp('^(?:' + matchPattern + ')$')
+# 于是「包含」意图必须自己用 [\s\S]* 包络。写成 ^https?:// 这种前缀语义时，
+# 只有输入恰好等于 "http://" 才命中，粘贴真实 URL 一律不命中——login-tester、
+# formatter 的两条正则就是这么静默失效的（2026-11-03 修复）。这里把三条真实
+# 踩过的坑做成门禁，避免同类写法再进来。
+ANY_TAIL = re.compile(r"\[\\s\\S\]|\.\*|\.\+")
+
+
+def check_match_pattern(d, label, cmd):
+    """校验一条 commands[].matchPattern（非法正则记 error，其余记 warning）。"""
+    pat = cmd.get("matchPattern")
+    if pat is None:
+        return
+    if not isinstance(pat, str) or not pat.strip():
+        err(d, f"{label}: matchPattern 必须是非空字符串")
+        return
+    try:
+        re.compile(pat)
+    except re.error as e:
+        # \p{L} / \u{1F600} 是 JS 专有语法，Python 编译不了但在宿主侧合法，跳过
+        if re.search(r"\\[pP]\{|\\u\{", pat):
+            warn(d, f"{label}: matchPattern 含 JS 专有语法，Python 无法预编译，请人工确认")
+        else:
+            err(d, f"{label}: matchPattern 不是合法正则: {e}")
+            return
+    if not ANY_TAIL.search(pat) and not pat.rstrip().endswith("$"):
+        warn(d, f"{label}: matchPattern 既没有 [\\s\\S]* 包络也不以 $ 结尾——宿主按整串匹配，"
+                f"这种写法只能命中完整的短输入，粘贴整段内容不会生效"
+                f"（需要「包含」语义请补 [\\s\\S]*$）")
+    props = (cmd.get("params") or {}).get("properties") or {}
+    if "text" in props and not cmd.get("acceptsInput"):
+        warn(d, f"{label}: 声明了 params.text 却没开 acceptsInput——Ctrl+K 命中后文本不会带进插件"
+                f"（要么开 acceptsInput，要么删掉 params.text 免生歧义）")
+
+
 def check_manifest(d, plugin_dir):
     p = os.path.join(plugin_dir, "plugin.json")
     if not os.path.isfile(p):
@@ -160,6 +198,7 @@ def check_manifest(d, plugin_dir):
             err(d, f"{label}: description 必须是字符串")
         if "params" in c:
             check_params(d, label, c["params"], rt)
+        check_match_pattern(d, label, c)
     return m
 
 
