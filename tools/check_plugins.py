@@ -339,6 +339,33 @@ def check_process_decl(d, plugin_dir, manifest):
                 "（执行程序需显式授权，否则授权契约与实现不符）")
 
 
+def check_prefix_unique(dirs):
+    """斜杠前缀必须跨插件唯一。
+
+    真实踩过：`/fc` 同时被 compare（open-file-compare）与 flashcards 占用 ——
+    敲 `/fc` 两条命令都是 95 分，谁排第一完全看组内频次，用户点了哪个都算「意外」。
+    改成 `/card` 之后前缀表才是一对一的。
+
+    同一插件内允许共用前缀：`/wifi` 下的 list / status 是同一个入口的两个动作，
+    敲 `/wifi` 并列两条让用户选是有意义的，不算冲突。
+    """
+    owner = {}
+    for name, p in dirs:
+        try:
+            m = json.loads(read(os.path.join(p, "plugin.json")))
+        except (json.JSONDecodeError, FileNotFoundError):
+            continue  # 清单本身的问题由 check_manifest 报，这里不重复
+        for c in m.get("commands") or []:
+            px = (c.get("prefix") or "").strip()
+            if not px:
+                continue
+            key = px.lower()
+            prev = owner.setdefault(key, (name, c.get("id")))
+            if prev[0] != name:
+                err(name, f"斜杠前缀 {px} 与插件 {prev[0]} 的 {prev[1]} 重复："
+                          f"敲 {px} 会同时命中两家的命令，谁的位次靠前只取决于频次")
+
+
 def check_design_gate(dirs):
     """设计系统门禁：插件不得在本地内联样式里顶层重定义共享组件类，
     且字号必须走排版刻度内的令牌值。
@@ -384,6 +411,7 @@ def main():
         check_process_decl(d, p, m)
 
     check_design_gate(dirs)
+    check_prefix_unique(dirs)
 
     for line in errors + warnings:
         print(line)

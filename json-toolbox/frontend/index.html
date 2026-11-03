@@ -305,7 +305,10 @@ window.copyViaHost=function(t,cb){var id='cp_'+(++window.__cpSeq),done=false;fun
   // 统一消息分发：plugin:result / plugin:theme / plugin:init
   var cmdToTab = { 'json-format': 'editor', 'json-to-ts': 'tsgo', 'json-to-go': 'tsgo', 'convert-data': 'converter' }
   function routeInit(pd) {
-    var tab = cmdToTab[pd.command] || null
+    // 兜底：命令 id 不在 cmdToTab 里（本插件唯一命令就叫 'json-toolbox'）但带来了文本时，
+    // 一律落到编辑器 —— 这是宿主 Ctrl+K「粘贴 JSON → 回车打开」那条内容通道的落点。
+    // 少了这一句，text 已经送到 plugin:init 了，编辑器却是空的。
+    var tab = cmdToTab[pd.command] || (pd.text ? 'editor' : null)
     if (tab) jtShowTab(tab)
     if (tab && window.jtInitHandlers[tab]) window.jtInitHandlers[tab](pd)
   }
