@@ -216,8 +216,19 @@
     pre.ddl { margin:0; padding:12px 14px; font-family:var(--font-mono); font-size:var(--fs-xs); line-height:1.65; color:var(--text-secondary); white-space:pre-wrap; word-break:break-all; }
     .struct-scroll { flex:1; overflow:auto; min-height:0; }
 
-    /* ===== 查询编辑器 ===== */
-    textarea.sql { width:100%; height:158px; min-height:80px; resize:vertical; padding:10px 12px; border:none; border-bottom:1px solid var(--border); background:var(--bg-primary); color:var(--text-primary); font-family:var(--font-mono); font-size:var(--fs-sm); line-height:1.6; outline:none; flex-shrink:0; }
+    /* ===== 查询编辑器（透明 textarea + 语法高亮 pre 叠加） ===== */
+    .sql-editor { position:relative; height:158px; min-height:80px; resize:vertical; overflow:hidden; border-bottom:1px solid var(--border); background:var(--bg-primary); flex-shrink:0; }
+    .sql-hl { position:absolute; inset:0; z-index:1; margin:0; padding:10px 12px; overflow:hidden;
+      color:var(--text-primary); font-family:var(--font-mono); font-size:var(--fs-sm); line-height:1.6;
+      white-space:pre-wrap; word-break:break-all; pointer-events:none; }
+    .sql-hl .hl-k { color:var(--accent); font-weight:var(--fw-semibold,600); }
+    .sql-hl .hl-s { color:var(--success); }
+    .sql-hl .hl-n { color:var(--warning); }
+    .sql-hl .hl-c { color:var(--text-disabled); font-style:italic; }
+    .sql-hl .hl-i { color:var(--text-primary); }
+    textarea.sql { position:absolute; inset:0; z-index:2; width:100%; height:100%; resize:none; padding:10px 12px; border:none; background:transparent; color:transparent; caret-color:var(--text-primary); font-family:var(--font-mono); font-size:var(--fs-sm); line-height:1.6; outline:none; }
+    textarea.sql::placeholder { color:var(--text-placeholder); }
+    textarea.sql::selection { background:var(--accent-soft); color:transparent; }
     .sqlwrap { display:flex; flex-direction:column; flex:1; min-height:0; position:relative; }
     /* SQL 自动提示下拉 */
     .suggest { position:absolute; top:158px; left:0; right:0; z-index:50; background:var(--bg-secondary); border:1px solid var(--border-strong); border-radius:var(--radius-sm); box-shadow:var(--shadow-2); max-height:224px; overflow:auto; }
@@ -366,7 +377,7 @@
 
         <div class="empty" v-if="!tabs.length">
           <div class="big qi qi-database"></div>
-          <div>点击左侧的库，右侧会列出该库的全部表<br>再点表名即可查看建表信息与数据</div>
+          <div>点击左侧的库，右侧会列出该库的全部表<br>单击选中，再点一次看结构，双击直接看数据</div>
           <div class="muted">也可以点工具条上的「＋ 新建查询」直接写 SQL</div>
         </div>
 
@@ -444,7 +455,7 @@
               <div class="empty" v-if="!filteredObjects(t).length"><div>{{ t.loading ? '加载中…' : '没有表或视图' }}</div></div>
             </div>
             <div class="pager">
-              <span class="muted" v-if="t.kind==='objects'">单击表名看「建表信息」，双击直接看「数据」（默认 200 行，可在设置里改）</span>
+              <span class="muted" v-if="t.kind==='objects'">单击第一次只选中，再点同一行看「结构」；双击直接看「数据」（默认 200 行，可在设置里改）</span>
               <span class="muted" v-else>单击 key 查看详情{{ t.truncated ? '（结果已截断，请用过滤缩小范围）' : '' }}</span>
             </div>
           </template>
@@ -846,14 +857,18 @@
               </template>
             </div>
             <div class="sqlwrap">
-              <textarea class="sql" ref="sqlArea" :value="t.sql"
-                        @input="onSqlInput(t, $event)"
-                        @keydown="onSqlKey(t, $event)"
-                        @blur="onSqlBlur(t)"
-                        @focus="onSqlFocus(t, $event)"
-                        @mouseup="onSqlSelect(t, $event)"
-                        @keyup="onSqlSelect(t, $event)"
-                        placeholder="SELECT * FROM users LIMIT 100;   -- 选中一段再点「执行」可只跑选中的那条；输入 se/表名前缀会有提示"></textarea>
+              <div class="sql-editor">
+                <pre class="sql-hl" aria-hidden="true"><code v-html="highlightSql(t.sql)"></code></pre>
+                <textarea class="sql" ref="sqlArea" :value="t.sql"
+                          @input="onSqlInput(t, $event)"
+                          @keydown="onSqlKey(t, $event)"
+                          @blur="onSqlBlur(t)"
+                          @focus="onSqlFocus(t, $event)"
+                          @mouseup="onSqlSelect(t, $event)"
+                          @keyup="onSqlSelect(t, $event)"
+                          @scroll="onSqlScroll(t, $event)"
+                          placeholder="SELECT * FROM users LIMIT 100;   -- 选中一段再点「执行」可只跑选中的那条；输入 se/表名前缀会有提示"></textarea>
+              </div>
               <div class="suggest" v-if="suggest.open && suggest.tabId===t.id" @mousedown.prevent>
                 <div class="sg-item" v-for="(s,si) in suggest.items" :key="si"
                      :class="{active: si===suggest.index}" @mousedown.prevent="acceptSuggest(t, s)">
@@ -1746,15 +1761,21 @@
         for(var i=0;i<s.length;i++){ h = (h*31 + s.charCodeAt(i)) & 0x7fffffff }
         return 'hsl(' + (h % 360) + ', 60%, 52%)'
       },
-      // 对象列表行：单击→结构（短延迟，给双击让路）；双击→数据
+      // 对象列表行：单击分两段——第一次点只选中（不跳转），对已选中的行再点才进「结构」页；
+      // 双击进「数据」页。延迟 220ms 再开结构，是为了给 dblclick 让路（否则双击会先开结构再开数据，多出一个标签页）。
       onObjRowClick: function(t, o){
-        var self = this
+        var wasSel = (t.sel === o.name)
         t.sel = o.name
+        if(!wasSel) return
+        var self = this
         if(this._clickTimer) clearTimeout(this._clickTimer)
-        this._clickTimer = setTimeout(function(){ self.openTableTab(t, o, 'struct') }, 200)
+        this._clickTimer = setTimeout(function(){
+          self._clickTimer = null
+          self.openTableTab(t, o, 'struct')
+        }, 220)
       },
       onObjRowDblClick: function(t, o){
-        if(this._clickTimer) clearTimeout(this._clickTimer)
+        if(this._clickTimer){ clearTimeout(this._clickTimer); this._clickTimer = null }
         this.openTableTab(t, o, 'data')
       },
 
@@ -2691,40 +2712,135 @@
         if(!t) return
         t.sql = this.beautifySql(t.sql || '')
       },
+      // 括号感知的 SQL 美化：只按「词法 token + 括号深度」排版，
+      // 不再用裸正则全局替换子句关键字 —— 旧实现会把 IN (SELECT …) / COUNT(*)
+      // / VALUES (…) 这类括号里的内容也当顶层子句换行，排出来是乱的。
+      // 规则：
+      //   顶层与子查询内的主句关键字（SELECT/FROM/WHERE/JOIN…）各自换行，按深度缩进；
+      //   SELECT 列表里的逗号换行，IN/VALUES/函数括号里的逗号保持同行；
+      //   AND / OR 换行并多缩进一级；括号组内没出现子句时保持内联（COUNT(*) 不拆行）。
       beautifySql: function(sql){
         if(!sql) return sql
         var ph = []
         sql = sql.replace(/'(?:[^'\\]|\\.|'')*'/g, function(m){ ph.push(m); return '\u0001'+(ph.length-1)+'\u0001' })
         sql = sql.replace(/--[^\n]*/g, function(m){ ph.push(m); return '\u0001'+(ph.length-1)+'\u0001' })
         sql = sql.replace(/\/\*[\s\S]*?\*\//g, function(m){ ph.push(m); return '\u0001'+(ph.length-1)+'\u0001' })
-        sql = sql.replace(/\s+/g, ' ').trim()
+        // 关键字统一大写（字符串/注释已占位保护）
         var kws = ['select','from','where','group by','order by','having','limit','offset','inner join','left join','right join','full join','cross join','join','on','and','or','union all','union','insert into','values','update','set','delete from','as','distinct','case','when','then','else','end','between','in','is not null','is null','like','not','desc','asc']
         kws.sort(function(a,b){ return b.length - a.length })
         kws.forEach(function(k){
           var re = new RegExp('\\b'+k.replace(/ /g,'\\s+')+'\\b','gi')
           sql = sql.replace(re, function(mm){ return k.toUpperCase() })
         })
-        var clauses = ['SELECT','FROM','WHERE','GROUP BY','ORDER BY','HAVING','LIMIT','OFFSET','UNION ALL','UNION','LEFT JOIN','RIGHT JOIN','INNER JOIN','FULL JOIN','CROSS JOIN','JOIN','INSERT INTO','VALUES','UPDATE','SET','DELETE FROM']
-        clauses.sort(function(a,b){ return b.length - a.length })
-        clauses.forEach(function(c){
-          var re = new RegExp('\\s+'+c.replace(/ /g,'\\s+')+'\\b','g')
-          sql = sql.replace(re, '\n'+c)
-        })
-        sql = sql.replace(/\nSELECT([\s\S]*?)\nFROM/, function(mm, cols){
-          if(/\bSELECT\b|\(/.test(cols)) return mm
-          var out = ''
-          for(var i=0;i<cols.length;i++){ var ch = cols[i]; out += (ch === ',') ? '\n  ' : ch }
-          return '\nSELECT'+out+'\nFROM'
-        })
-        sql = sql.replace(/\s+(AND|OR)\b/g, '\n  $1')
-        sql = sql.replace(/\u0001(\d+)\u0001/g, function(mm,i){ return ph[+i] })
-        return sql.replace(/\n{3,}/g, '\n\n').trim()
+        // 分词：括号、逗号与词分开，换行由排版阶段决定
+        var tokens = sql.replace(/\s+/g,' ').trim()
+          .replace(/\(/g,' ( ').replace(/\)/g,' ) ')
+          .replace(/,/g,' , ').split(/\s+/)
+        var CLAUSE1 = { SELECT:1, FROM:1, WHERE:1, HAVING:1, LIMIT:1, OFFSET:1, VALUES:1, SET:1, UPDATE:1, DELETE:1, INSERT:1, UNION:1, GROUP:1, ORDER:1 }
+        var JOINPRE = { LEFT:1, RIGHT:1, INNER:1, OUTER:1, CROSS:1, FULL:1 }
+        // 这些关键字后面出现 '(' 时留空格（IN (…）/ VALUES (…)）；
+        // 普通标识符后的 '(' 紧贴（COUNT(*) / NOW()）
+        var SPACE_BEFORE_PAREN = { IN:1, VALUES:1, AND:1, OR:1, ON:1, WHERE:1, SELECT:1, FROM:1, HAVING:1, GROUP:1, ORDER:1, BY:1, UNION:1, JOIN:1, SET:1, UPDATE:1, DELETE:1, LIMIT:1, OFFSET:1, WHEN:1, THEN:1, ELSE:1, END:1, CASE:1, NOT:1, LIKE:1, BETWEEN:1, IS:1, EXISTS:1, AS:1 }
+        var depth = 0, lines = [], cur = ''
+        var inSel = {}, grpClause = []
+        var lastWord = '', joinPreLast = false
+        function ind(d){ var s=''; for(var i=0;i<d;i++) s+='  '; return s }
+        function newline(extra){
+          if(cur.trim()) lines.push(cur)
+          cur = ind(depth + (extra||0))
+        }
+        for(var i=0;i<tokens.length;i++){
+          var tk = tokens[i], up = tk.toUpperCase()
+          if(tk === '('){
+            var isFn = lastWord && !SPACE_BEFORE_PAREN[lastWord.toUpperCase()]
+            if(cur && !isFn && cur.slice(-1) !== '(') cur += ' '
+            cur += '('
+            depth++
+            grpClause[depth] = false
+            joinPreLast = false
+            continue
+          }
+          if(tk === ')'){
+            if(grpClause[depth]){
+              newline(); depth--; cur = ind(depth) + ')'
+            } else {
+              depth--
+              cur = cur.replace(/\s+$/,'') + ')'
+            }
+            joinPreLast = false
+            continue
+          }
+          if(tk === ','){
+            if(inSel[depth]){ newline(1); cur += ',' }
+            else cur += ','
+            joinPreLast = false
+            continue
+          }
+          // JOIN 前置词（LEFT/RIGHT/…）+ JOIN 合成一行子句
+          if((JOINPRE[up] && tokens[i+1] && tokens[i+1].toUpperCase() === 'JOIN') || up === 'JOIN'){
+            if(up === 'JOIN' && joinPreLast){ cur += ' ' + tk; joinPreLast = false }
+            else { newline(); cur = ind(depth) + tk; joinPreLast = (up !== 'JOIN') }
+            grpClause[depth] = true
+            continue
+          }
+          if(CLAUSE1[up]){
+            newline(); cur = ind(depth) + tk
+            if(up === 'SELECT') inSel[depth] = true
+            else if(up !== 'UNION') inSel[depth] = false
+            grpClause[depth] = true
+            joinPreLast = false
+            continue
+          }
+          if(up === 'AND' || up === 'OR'){ newline(1); cur = ind(depth + 1) + tk; joinPreLast = false; continue }
+          if(cur && cur.slice(-1) !== '(') cur += ' '
+          cur += tk
+          lastWord = tk
+          joinPreLast = false
+        }
+        if(cur.trim()) lines.push(cur)
+        var out = lines.join('\n')
+        out = out.replace(/\u0001(\d+)\u0001/g, function(mm,i){ return ph[+i] })
+        return out.replace(/\n{3,}/g, '\n\n').trim()
       },
       // 在多条 SQL 的结果之间切换
       switchResult: function(t, i){
         if(!t.multiResults || !t.multiResults[i]) return
         t.activeResult = i
         t.grid = t.multiResults[i]
+      },
+      /* ---------- SQL 语法高亮（离线词法着色，供叠加层渲染） ---------- */
+      hlEscape: function(s){
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      },
+      highlightSql: function(sql){
+        var esc = this.hlEscape
+        var s = sql == null ? '' : String(sql)
+        if(!s) return ''
+        var out = ''
+        var re = /(--[^\n]*|#[^\n]*|\/\*[\s\S]*?\*\/)|('(?:[^'\\]|\\.|'')*'|`[^`]*`|"[^"]*")|(\b\d+(?:\.\d+)?\b)|([A-Za-z_][A-Za-z0-9_$]*)/g
+        var m, last = 0
+        var KW = {}
+        ;('select from where group by order having limit offset join inner left right full outer cross on as distinct insert into values update set delete create table drop alter and or not null is like in between exists union case when then else end primary key auto_increment desc asc show databases use truncate count sum avg min max').split(' ').forEach(function(k){ KW[k] = 1 })
+        while((m = re.exec(s))){
+          if(m.index > last) out += esc(s.slice(last, m.index))
+          last = m.index + m[0].length
+          if(m[1]) out += '<span class="hl-c">' + esc(m[1]) + '</span>'
+          else if(m[2]) out += '<span class="hl-' + (m[2].charAt(0) === "'" ? 's' : 'i') + '">' + esc(m[2]) + '</span>'
+          else if(m[3]) out += '<span class="hl-n">' + esc(m[3]) + '</span>'
+          else if(m[4] && KW[m[4].toLowerCase()]) out += '<span class="hl-k">' + esc(m[4]) + '</span>'
+          else if(m[4]) out += esc(m[4])
+        }
+        if(last < s.length) out += esc(s.slice(last))
+        // 末行补一个换行，保证滚动高度与 textarea 一致（textarea 末行下方有留白）
+        return out + '\n'
+      },
+      // 叠加层跟随 textarea 滚动
+      onSqlScroll: function(t, e){
+        var pre = e.target.previousElementSibling
+        if(pre && pre.classList && pre.classList.contains('sql-hl')){
+          pre.scrollTop = e.target.scrollTop
+          pre.scrollLeft = e.target.scrollLeft
+        }
       },
       /* ---------- SQL 自动提示 ---------- */
       onSqlInput: function(t, e){
@@ -2853,7 +2969,7 @@
         return cols
       },
       acceptSuggest: function(t, s){
-        var el = this._sqlEl
+        var el = t._sqlEl || this.$refs.sqlArea
         var start = this.suggest.start
         var end = start + this.suggest.token.length
         t.sql = t.sql.slice(0, start) + s.text + t.sql.slice(end)

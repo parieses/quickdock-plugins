@@ -186,7 +186,12 @@ func toDbConn(input DbConnectionInput) (*dbConnAdapter, error) {
 		mc.Net = "tcp"
 		mc.Addr = net.JoinHostPort(input.Host, strconv.Itoa(port))
 		mc.DBName = input.Database
-		mc.ParseTime = true
+		// ParseTime 必须关：开着时 DATETIME 列被驱动转成 time.Time，
+		// database/sql 再把它以 RFC3339Nano 格式写回 RawBytes（2026-01-29T13:22:16Z），
+		// 网格照原样展示，用户回车提交这条值 MySQL 直接报 Error 1292
+		// （Incorrect datetime value）。关掉后拿到的是原始文本 '2026-01-29 13:22:16'，
+		// 展示与回写天然一致；本插件没有依赖 time.Time 的扫描路径。
+		mc.ParseTime = false
 		mc.Timeout = 10 * time.Second
 		mc.ReadTimeout = 30 * time.Second
 		mc.AllowNativePasswords = true
