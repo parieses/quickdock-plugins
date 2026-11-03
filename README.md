@@ -25,6 +25,8 @@
 
 > 以下日期取自真实提交记录。更早的变更见 [Releases](https://github.com/parieses/quickdock-plugins/releases) 与各插件 `plugin.json` 的 `changelog`。
 
+- **2026-11-03 · database 结果区横向滚动条被窗口缩放手柄吃掉（1.9.1）**：查询出宽表后想左右拖动数据，鼠标一移到底部就变成「调整窗口大小」的箭头，滚动条根本点不动。原因是宿主给无边框窗口在最外圈盖了一层 5px 透明的缩放手柄（`.pw-rs`，z-index 高于 iframe），而查询结果区正好是整窗最后一个元素，6px 的横向滚动条整条落在手柄底下。现在把结果区往上收 8px，滚动条整体落在手柄内侧，可以正常拖拽；背景同色，视觉上无变化。同一原因也会让贴右边缘的竖向滚动条被吃掉大半，竖向滚轮可用但拖滑块不行，需要时同样内缩 8px 即可。
+- **2026-11-03 · 按钮解锁时序与 URL/JSON 视图修复（disk-shredder 1.0.4 / http-client 1.1.4）**：数据粉碎的「开始粉碎 / 覆写」此前要求「`DELETE` 已输入且预览已返回」，但解锁判断只挂在输入框的 input 事件上，于是必须「点预览 → 再改一次输入框」才亮，表现为按钮要等一会才能点；现收敛为 `syncShredGate` / `syncWipeGate` 统一重算，输入后自动跑预览、返回即解锁，目标或档位变化按签名让旧预览失效。HTTP 客户端此前只在打开已保存请求/历史时解析一次 query，粘贴新 URL 后 Params 不重建、甚至被拼成 `https://a.com/xhttps://b.com/y`；现在地址栏是唯一入口，粘贴完整 URL 整条替换并重建参数，手动输入出 `?a=1` 当场拆行，Ctrl+A 整段替换或清空则清参。结果 JSON 树也重做了缩进栅格（叶子行比同级容器左移 16px、容器间缺逗号、空容器画两行、长字符串把布局撑坏），并补上展开/收起、原始视图语法高亮、Body 面板格式化/压缩。
 - **2026-10-29 · 按 MCP 适用性裁剪命令声明（6 个插件 / 31 条命令）**：`plugin_list` 会把 `commands[]` 原样交给模型，于是「模型根本做不到的事」也成了噪音与误调来源。本轮按三条判据收口：① 需要手机/外部设备实时在线或人肉操作（qpm 接收端的配对码、屏幕坐标点击、推文件）；② 模型自己就能算完（Base64 / URL / HTML 编解码、文本哈希、JSON → TS/Go、颜色互转、UUID 与假数据、随机密码）；③ 结果只能渲染在界面上给人看。这些命令不再声明，但**后端实现一行未删**，插件界面里的功能完全照旧。每个插件保留一条面板入口并补齐搜索词（`control-receiver` 收口到只读的 `status`，搜 qpm / 投屏 / 屏幕镜像都可打开；`color-converter` 收口到 `screen-pick`；`text-encoder` / `json-toolbox` 新增同名的面板入口命令），Ctrl+K 仍能搜到。命令总数 196 → 165，`plugin_list` 命令段体积 40.5K → 34.1K 字符。
 - **2026-10-29 · 打通「面板入口」与「可执行命令」（13 个插件）**：上一轮盘点发现 13 组命令的 `id` 与后端 `switch` 对不上——`api-bench`、`mock`、`junk-clean`、`browse`、`shred`、`lan-scan`、`net-traffic`、`netdiag` 的 `ping`/`trace`/`lan`/`geo`/`fp`、`pdf-open`、`whois-lookup`、`enum`、`file.browse`、`app-manager`，人点了是开界面，AI 经 `plugin_execute` 调却只会收到 `unknown command`；其中 `app-manager` 与 `net-traffic` 更糟，后端回 `{"ok":true}` 假成功。本轮把这些入口命令显式拦下并返回**能照做的指路**（`命令 shred 只打开粉碎面板；列出磁盘卷请用 volumes，开始粉碎请用 task-start（需传 confirm）`），同时把真正干活的命令登记进 `commands[]`（共 60 条，含异步任务的 `poll`/`stop`），带 `description` 与 `params`。列表参数（`files`/`paths`/`categories`/`routes`）因宿主不支持 `array`，统一声明为 `string`，并在插件侧补了「数组 / 逗号分隔 / JSON 数组文本」三种形式的宽容解析。
 - **2026-10-29 · 全仓命令补齐参数声明（80 个插件 / 137 条命令）**：`commands[]` 新增 `description` 与 `params`，让命令面板之外的应用内 AI 客户端知道每条命令认哪些参数——此前 `ExecuteCommand` 收的是任意 JSON，模型只能靠猜键名，猜错就是一次沉默的行为偏差。逐条对着后端/前端代码核过：36 条命令声明了结构化参数（如 `ocr-image` 的 `path`/`data`、`secrets-scanner scan` 的 `path`/`gitHistory`、`control-receiver control.swipe` 的四个坐标与时长），32 条只要一段文本因此只声明 `text`，其余 69 条（打开界面类、以及后端分发根本接不到该 command id 的）如实不声明。顺手清掉 3 条「虚假 `acceptsInput`」（`calcsheet open-calc`、`login-tester test.start`、`git-workbench repo.open`：前端从未接收命令面板文本）。`tools/check_plugins.py` 与 `build.py` 双入口新增 params 子集校验，写歪的声明挡在打包前而不是被宿主静默丢弃。
@@ -72,7 +74,7 @@
 | [Crontab 解释器](./cron-explainer/) | 1.0.8 | 解析 cron 表达式（含义/下次执行/小时分布），并可可视化生成表达式、实时预览下次执行时间 |
 | [Emoji 搜索](./emoji-search/) | 1.0.6 | 搜索 Emoji 并一键复制到剪贴板 |
 | [Git 工作台](./git-workbench/) | 1.0.8 | Git 仓库一体化工作台：仓库浏览、二分定位 bug 引入提交、三方合并冲突可视化解决、代码演化时间轴、历史改写（改作者/删敏感文件）、仓库体检与知识孤岛识别。 |
-| [HTTP 客户端](./http-client/) | 1.1.3 | 轻量 HTTP 请求调试客户端：项目管理请求、目录与文档树、环境变量与 {{var}} 替换、请求历史重放、Postman 集合导入。数据独立存储。 |
+| [HTTP 客户端](./http-client/) | 1.1.4 | 轻量 HTTP 请求调试客户端：项目管理请求、目录与文档树、环境变量与 {{var}} 替换、请求历史重放、Postman 集合导入。数据独立存储。 |
 | [JSON 工具箱](./json-toolbox/) | 1.2.0 | JSON 编辑器（格式化/折叠/编辑）、JSON → TypeScript / Go、JSON ↔ YAML / TOML / XML 互转 |
 | [JWT 解码器](./jwt-decoder/) | 1.0.5 | 解码 JWT Token，查看 Header/Payload，验证过期时间 |
 | [Markdown 渲染](./markdown-preview/) | 1.0.5 | 实时渲染 Markdown（GFM：标题/列表/表格/任务列表/引用）+ 代码高亮，一键复制为 HTML |
@@ -85,7 +87,7 @@
 | [对比工具](./compare/) | 1.0.6 | 文件/图片对比（元数据 + 图片预览 + 文本内容差异）与文本块逐行 Diff 合二为一 |
 | [打字练习](./type-trainer/) | 1.0.6 | 开发者向打字训练器：英文 / 中文 / 代码 / 导入四种模式，支持导入 TXT 字库，实时统计 WPM 与准确率，本地记录历史与最佳成绩 |
 | [插件脚手架](./plugin-scaffold/) | 0.1.1 | 可视化生成 QuickDock 插件骨架：填表即产出 plugin.json / 前端 / 后端样板，并自动接入图标与索引流水线 |
-| [数据库客户端](./database/) | 1.9.0 | 轻量数据库连接与查询工具：MySQL / SQLite / Redis 连接管理、SQL 与 Redis 命令执行、库表浏览器（库→表/视图→字段、Redis 键树）、Redis 键类型感知详情与增删改（string/hash/list/set/zset）、TTL 与 DB 管理、结果网格内联行编辑、智能列筛选（运算符/区间/多值/判空，回车或失焦即滤）、勾选批量修改字段（值 / NULL / 表达式）与勾选批量删除（均支持全选匹配筛选的行）。数据独立存储。 |
+| [数据库客户端](./database/) | 1.9.1 | 轻量数据库连接与查询工具：MySQL / SQLite / Redis 连接管理、SQL 与 Redis 命令执行、库表浏览器（库→表/视图→字段、Redis 键树）、Redis 键类型感知详情与增删改（string/hash/list/set/zset）、TTL 与 DB 管理、结果网格内联行编辑、智能列筛选（运算符/区间/多值/判空，回车或失焦即滤）、勾选批量修改字段（值 / NULL / 表达式）与勾选批量删除（均支持全选匹配筛选的行）。数据独立存储。 |
 | [文件哈希](./hash-calc/) | 1.0.9 | 计算文件的 MD5/SHA1/SHA256/SHA512 摘要，结果一键复制 |
 | [文本工具箱](./text-encoder/) | 1.1.0 | Base64 / URL / HTML 编解码，MD5 / SHA1 / SHA256 / SHA512 哈希与 HMAC 签名，Base64 图片识别预览，2/8/10/16 进制互转与字节单位换算 |
 | [时间转换](./time-converter/) | 1.0.5 | Unix 时间戳 / ISO 8601 / 中文日期 / 相对时间互转，支持任意时区偏移输出 |
@@ -153,7 +155,7 @@
 | [密码与加密工具箱](./crypto-toolbox/) | 1.1.0 | 随机密码 / 口令生成（字符集可配、熵值与强度评估）＋ AES-GCM / AES-CBC 加解密 ＋ RSA-OAEP 密钥对与加解密 ＋ PBKDF2 密钥派生，全部在本机完成，不联网、不上传 |
 | [密码库](./vault/) | 1.0.6 | 本地加密密码库：主密码解锁，AES-GCM 加密存储，支持导出/导入加密备份文件。数据不出本机。 |
 | [敏感信息扫描](./secrets-scanner/) | 0.1.1 | 扫描项目目录，找出意外硬编码的密钥、私钥、token、密码字段与身份证号等敏感信息，防止它们被提交进仓库或泄露 |
-| [数据粉碎](./disk-shredder/) | 1.0.3 | 彻底删除敏感文件，让数据无法被恢复：多次覆写文件内容后重命名并删除；另可覆写磁盘空闲空间，清理此前已删除文件留下的数据残片 |
+| [数据粉碎](./disk-shredder/) | 1.0.4 | 彻底删除敏感文件，让数据无法被恢复：多次覆写文件内容后重命名并删除；另可覆写磁盘空闲空间，清理此前已删除文件留下的数据残片 |
 | [泄露查询](./breach-check/) | 1.0.5 | 基于 Have I Been Pwned 检查密码是否出现在泄露库中（k-匿名，密码不出本机）；邮箱泄露需自备 API Key。 |
 | [登录爆破测试器](./login-tester/) | 1.0.6 | 对自身网站登录接口进行密码库撞库/爆破安全自检，支持并发、限速与锁定检测。仅用于你拥有或已授权的站点。 |
 

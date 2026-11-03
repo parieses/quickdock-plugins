@@ -78,6 +78,11 @@
 
     /* ===== 网格 ===== */
     .gridwrap { flex:1; overflow:auto; min-height:0; position:relative; }
+    /* 查询结果区是整窗最后一个元素，横向滚动条正好压在窗口最底下 6px。
+       而宿主在窗口最外圈盖了一层 5px 透明缩放手柄（.pw-rs，z-index 高于 iframe），
+       滚动条整条被它吃掉：鼠标移上去变成「调整窗口大小」的箭头，滑块既点不了也拖不动。
+       这里往上收 8px，让滚动条整体落在手柄内侧（滚动条占 8~14px，手柄占 0~5px）。 */
+    .sqlwrap > .gridwrap { margin-bottom:8px; }
     table.grid { width:100%; border-collapse:separate; border-spacing:0; font-size:var(--fs-sm); }
     table.grid th { position:sticky; top:0; z-index:2; background:var(--bg-tertiary); color:var(--text-muted); font-size:var(--fs-xs); font-weight:var(--fw-medium); text-align:left; padding:0 9px; height:27px; white-space:nowrap; border-bottom:1px solid var(--border); border-right:1px solid var(--border); }
     table.grid th.sortable { cursor:pointer; }
