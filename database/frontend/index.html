@@ -157,8 +157,21 @@
     .col-filter:focus-visible { border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-soft); }
     /* 已生效的列：输入框高亮，一眼看出哪几列在筛选 */
     tr.filter-row th.filtered .col-filter { border-color:var(--accent); background:var(--accent-soft); color:var(--accent); font-weight:var(--fw-semibold); }
+    /* 列筛选单元的「启停勾选框 + 输入框」横排；勾掉 = 值保留但不参与 WHERE（临时查全量） */
+    .fcol { display:flex; align-items:center; gap:3px; }
+    .fcol-on { -webkit-appearance:none; appearance:none; flex-shrink:0; width:12px; height:12px; margin:0; padding:0; position:relative; border:1px solid var(--border-strong); border-radius:3px; background:var(--bg-primary); cursor:pointer; transition:border-color .12s, background .12s, opacity .12s; }
+    .fcol-on:hover:not(:disabled) { border-color:var(--accent); }
+    .fcol-on:checked { background:var(--accent); border-color:var(--accent); }
+    .fcol-on:checked::after { content:''; position:absolute; left:3px; top:1px; width:4px; height:7px; border:solid #fff; border-width:0 1.5px 1.5px 0; transform:rotate(45deg); }
+    /* 没有条件可停用的列：勾选框淡化并禁用 */
+    .fcol-on:disabled { opacity:.22; cursor:default; }
+    .fcol .col-filter { flex:1; min-width:0; width:auto; }
+    /* 有值但被勾掉的列：虚线灰框、内容淡化，明确「条件还在、只是没生效」 */
+    tr.filter-row th.filter-off .col-filter { border-style:dashed; border-color:var(--border-strong); background:var(--bg-secondary); color:var(--text-muted); font-weight:normal; opacity:.75; }
     /* 表头「筛」角标：标记该列当前有筛选条件 */
     .filt-mark { display:inline-flex; align-items:center; margin-left:5px; padding:0 4px; border-radius:3px; background:var(--accent); color:#fff; font-size: var(--fs-xs); line-height:14px; font-weight:var(--fw-semibold); vertical-align:middle; }
+    /* 已停用的条件：灰色「停」角标 */
+    .filt-mark.off { background:var(--bg-active); color:var(--text-muted); }
     /* 筛选行左上角「?」：开关语法帮助 */
     .filt-help-btn { width:16px; height:16px; padding:0; border:1px solid var(--border); border-radius:50%; background:var(--bg-primary); color:var(--text-muted); font-size: var(--fs-xs); line-height:1; cursor:pointer; transition:border-color .12s, color .12s, background .12s; }
     .filt-help-btn:hover { border-color:var(--accent); color:var(--accent); }
@@ -174,6 +187,13 @@
     .fchip i { font-style:normal; font-family:var(--font-mono); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .fchip-x { flex-shrink:0; border:none; background:none; color:inherit; cursor:pointer; font-size: var(--fs-xs); line-height:1; padding:2px 4px; border-radius:50%; opacity:.7; }
     .fchip-x:hover { opacity:1; background:rgba(0,0,0,.18); }
+    /* 已停用的条件 chip：灰显 + 值加删除线，和生效中的条件区分开 */
+    .fchip.off { border-color:var(--border-strong); border-style:dashed; background:var(--bg-tertiary); color:var(--text-muted); }
+    .fchip.off:hover { background:var(--bg-active); color:var(--text-primary); }
+    .fchip.off i { text-decoration:line-through; opacity:.85; }
+    /* chips 条上的「停用全部 / 恢复停用」小按钮 */
+    .fbar-tgl { display:inline-flex; align-items:center; gap:3px; padding:1px 7px; border:1px solid var(--border); border-radius:var(--radius-pill); background:var(--bg-primary); color:var(--text-secondary); cursor:pointer; font-size:var(--fs-xs); line-height:16px; transition:border-color .12s, color .12s, background .12s; }
+    .fbar-tgl:hover { border-color:var(--accent); color:var(--accent); background:var(--accent-soft); }
 
     /* 「＋条件」弹出的条件编辑面板：选字段 → 选运算符 → 填值 */
     .filt-builder { position:absolute; top:calc(100% + 4px); left:52px; z-index:40; min-width:250px; padding:9px 10px 8px; border:1px solid var(--border-strong); border-radius:6px; background:var(--bg-primary); box-shadow:0 6px 20px rgba(0,0,0,.25); display:flex; flex-direction:column; gap:6px; }
@@ -569,11 +589,18 @@
               <div class="filtbar" v-if="t.grid.columns.length">
                 <span class="filtbar-lb">筛选</span>
                 <button class="btn btn-xxs" :class="{ 'btn-primary': t.filtOpen }" @click="toggleFiltBuilder(t)" title="添加筛选条件：选择字段、填入值（表头下方各列的筛选框也可直接输入）">＋ 条件</button>
-                <span class="fchip" v-for="c in filterChips(t)" :key="c.col" @click="focusFilterInput(t, c.col)" :title="'点击定位到「' + c.col + '」列的筛选框'">
+                <span class="fchip" v-for="c in filterChips(t)" :key="c.col" :class="{off: c.off}" @click="focusFilterInput(t, c.col)" :title="c.off ? ('「' + c.col + '」条件已停用（值保留），点击定位到筛选框') : ('点击定位到「' + c.col + '」列的筛选框')">
                   <b>{{ c.col }}</b><i>{{ c.label }}</i>
-                  <button class="fchip-x" @click.stop="removeFilter(t, c.col)" title="移除该筛选条件">✕</button>
+                  <button class="fchip-x" @click.stop="removeFilter(t, c.col)" title="移除该筛选条件（连同填写的值）">✕</button>
                 </span>
                 <span class="spacer"></span>
+                <!-- 一键临时停用全部条件：值全部保留，只查全量；再点恢复 -->
+                <button class="fbar-tgl" v-if="activeFilterCount(t)" @click="pauseAllFilters(t)" title="临时停用全部筛选条件：输入框里的值全部保留，本次查询不带 WHERE">
+                  <span>⏸</span><span>停用全部（{{ activeFilterCount(t) }}）</span>
+                </button>
+                <button class="fbar-tgl" v-else-if="offFilterCount(t)" @click="resumeAllFilters(t)" title="恢复所有被停用的筛选条件并重新查询">
+                  <span>▶</span><span>恢复停用（{{ offFilterCount(t) }}）</span>
+                </button>
                 <button class="btn btn-xxs" v-if="filterChips(t).length" @click="clearFilter(t)">全部清除</button>
                 <!-- 条件编辑面板：字段 → 运算符 → 值，确认后写入对应列的筛选框并查询 -->
                 <div class="filt-builder" v-if="t.filtOpen" @keydown.esc="t.filtOpen = false">
@@ -606,6 +633,7 @@
               <!-- 筛选语法帮助 -->
               <div class="filt-help" v-if="t.filtHelp">
                 <div class="fh-tip">在表头下方的筛选框输入后按 Enter 应用（Esc 清空本列）；多列之间为 AND。</div>
+                <div class="fh-tip">每列筛选框左侧的勾选框可<b>临时停用</b>该条件：取消勾选后条件值仍留在框里，只是不参与本次查询；重新勾上即恢复。勾选框旁边的「⏸ 停用全部」可一键不带筛选查全量。</div>
                 <div class="fh-grid">
                   <span><code>abc</code> 包含 abc</span>
                   <span><code>=abc</code> 等于</span>
@@ -638,7 +666,7 @@
                       <th v-for="(col,ci) in t.grid.columns" :key="ci" class="sortable" @click="sortBy(t, col)">
                         {{ col }}<span class="arrow" v-if="t.grid.orderBy===col">{{ t.grid.orderDir==='desc' ? '▾' : '▴' }}</span>
                         <span v-if="isPk(t,ci)" class="arrow qi qi-key"></span>
-                        <span class="filt-mark" v-if="t.filters[col] && String(t.filters[col]).trim()" title="该列有筛选条件">筛</span>
+                        <span class="filt-mark" :class="{off: filtOff(t, col)}" v-if="filtHasValue(t, col)" :title="filtOff(t, col) ? '该列有筛选条件，但已临时停用（不参与查询）' : '该列有筛选条件'">{{ filtOff(t, col) ? '停' : '筛' }}</span>
                         <button class="col-bulk" v-if="canCrud(t)" @click.stop="openBulkEdit(t, col)"
                                 :title="'批量设置「' + col + '」列：作用于已勾选的行（未勾选时会先选中全部匹配筛选的行）'">批量</button>
                         <span class="col-resizer" @mousedown.stop="startResize(t, col, $event)" @click.stop></span>
@@ -647,11 +675,16 @@
                     <tr class="filter-row">
                       <th class="corner"><button class="filt-help-btn" :class="{on: t.filtHelp}" @click="t.filtHelp = !t.filtHelp" title="筛选语法帮助">?</button></th>
                       <th class="corner"></th>
-                      <th v-for="(col,ci) in t.grid.columns" :key="'f'+ci" :class="{filtered: t.filters[col] && String(t.filters[col]).trim()}">
-                        <input class="col-filter" :value="t.filters[col] || ''" :data-filt="col"
-                               @keydown="onFilterKey(t, col, $event)"
-                               @change="onFilterCommit(t, col, $event)"
-                               :placeholder="'筛选 ' + col + ' ⏎'" :title="filterTitle(col)" />
+                      <th v-for="(col,ci) in t.grid.columns" :key="'f'+ci" :class="{filtered: filtActive(t, col), 'filter-off': filtOff(t, col)}">
+                        <div class="fcol">
+                          <input type="checkbox" class="fcol-on" :checked="!filtOff(t, col)" :disabled="!filtHasValue(t, col)"
+                                 @change="toggleFilterOff(t, col)"
+                                 :title="!filtHasValue(t, col) ? '该列暂无筛选条件' : (filtOff(t, col) ? '已停用：值保留但不参与查询，勾选可恢复' : '取消勾选可临时停用本列条件（值不删除）')" />
+                          <input class="col-filter" :value="t.filters[col] || ''" :data-filt="col"
+                                 @keydown="onFilterKey(t, col, $event)"
+                                 @change="onFilterCommit(t, col, $event)"
+                                 :placeholder="'筛选 ' + col + ' ⏎'" :title="filterTitle(col)" />
+                        </div>
                       </th>
                     </tr>
                   </thead>
@@ -1580,7 +1613,7 @@
         if(exist){ this.activeTabId = exist.id; return exist }
         var t = Object.assign({ id:id, filter:'', sel:'', loading:false, _stale:false,
           // 多结果（多条 SQL）、列宽、列名补全、数据页筛选、SQL 预览
-          multiResults:null, activeResult:0, colWidths:{}, tableCols:{}, filters:{}, filtHelp:false,
+          multiResults:null, activeResult:0, colWidths:{}, tableCols:{}, filters:{}, filtersOff:{}, filtHelp:false,
           // 「＋条件」编辑面板：filtOpen 开关 + 草稿（op 为后端 filter.go 白名单运算符）
           filtOpen:false, filtDraft:{ col:'', op:'like', v:'', v2:'' },
           showSql:false, sqlOmitPage:false, selSet:{}, _lastSelIdx:-1, _selAllDone:false }, o)
@@ -1912,10 +1945,12 @@
         return { op:'like', v:s, v2:'' }
       },
       // 当前生效的筛选条件：{ 列名: {op,v,v2} }，直接作为 filters 载荷下发后端
+      // 被「取消勾选」临时停用的列（filtersOff[col]）值仍保留，但不进 WHERE。
       activeFilters: function(t){
         var out = {}, filters = t.filters || {}
         for(var col in filters){
           if(!Object.prototype.hasOwnProperty.call(filters, col)) continue
+          if(this.filtOff(t, col)) continue
           var c = this.parseFilterExpr(filters[col])
           if(c) out[col] = c
         }
@@ -1923,6 +1958,59 @@
       },
       hasFilter: function(t){
         return Object.keys(this.activeFilters(t)).length > 0
+      },
+      /* ---------- 条件启停：值保留、可临时不参与查询 ---------- */
+      // 该列是否填了条件（不管启用与否）
+      filtHasValue: function(t, col){
+        var v = (t.filters || {})[col]
+        return !!(v && String(v).trim())
+      },
+      // 是否被显式停用（只有「有值 + 被勾掉」才算）
+      filtOff: function(t, col){
+        return this.filtHasValue(t, col) && !!(t.filtersOff && t.filtersOff[col])
+      },
+      // 生效中（有值且未被勾掉）
+      filtActive: function(t, col){
+        return this.filtHasValue(t, col) && !this.filtOff(t, col)
+      },
+      activeFilterCount: function(t){ return Object.keys(this.activeFilters(t)).length },
+      offFilterCount: function(t){
+        var n = 0, filters = t.filters || {}
+        for(var col in filters){
+          if(!Object.prototype.hasOwnProperty.call(filters, col)) continue
+          if(this.filtOff(t, col)) n++
+        }
+        return n
+      },
+      _setFiltOff: function(t, col, off){
+        if(!t.filtersOff) t.filtersOff = {}
+        if(off) t.filtersOff[col] = true
+        else delete t.filtersOff[col]
+      },
+      // 单列勾选框：勾掉 → 该列条件临时不生效（值留在框里）；勾上 → 立刻恢复
+      toggleFilterOff: function(t, col){
+        if(!this.filtHasValue(t, col)) return
+        this._setFiltOff(t, col, !this.filtOff(t, col))
+        this.applyFilter(t)
+      },
+      // 一键停用全部：保留所有输入值，只查全量
+      pauseAllFilters: function(t){
+        if(!t) return
+        var filters = t.filters || {}
+        if(!t.filtersOff) t.filtersOff = {}
+        for(var col in filters){
+          if(!Object.prototype.hasOwnProperty.call(filters, col)) continue
+          if(this.filtHasValue(t, col)) t.filtersOff[col] = true
+        }
+        this.applyFilter(t)
+        toast('已临时停用筛选（值已保留）', 'ok')
+      },
+      // 一键恢复全部被停用的条件
+      resumeAllFilters: function(t){
+        if(!t) return
+        t.filtersOff = {}
+        this.applyFilter(t)
+        toast('已恢复筛选条件', 'ok')
       },
       // 条件的人类可读描述（chips 上用）
       filterCondLabel: function(c){
@@ -1942,12 +2030,14 @@
         }
         return ''
       },
-      // chips 条数据（按列名排序，渲染稳定）
+      // chips 条数据（按列名排序，渲染稳定）；off=该条件已勾掉停用，chip 灰显
       filterChips: function(t){
-        var af = this.activeFilters(t), chips = []
-        for(var col in af){
-          if(!Object.prototype.hasOwnProperty.call(af, col)) continue
-          chips.push({ col: col, label: this.filterCondLabel(af[col]) })
+        var filters = t.filters || {}, chips = []
+        for(var col in filters){
+          if(!Object.prototype.hasOwnProperty.call(filters, col)) continue
+          var c = this.parseFilterExpr(filters[col])
+          if(!c) continue
+          chips.push({ col: col, label: this.filterCondLabel(c), off: this.filtOff(t, col) })
         }
         chips.sort(function(a, b){ return a.col < b.col ? -1 : (a.col > b.col ? 1 : 0) })
         return chips
@@ -1959,9 +2049,11 @@
           // 合成中回车是「确认选词」，交给 IME；选完再按一次回车即筛选
           if(e.isComposing || e.keyCode === 229) return
           t.filters[col] = e.target.value
+          if(String(e.target.value).trim()) this._setFiltOff(t, col, false) // 改了值即视为启用该列
           this.applyFilter(t, true)
         } else if(e.key === 'Escape'){
           t.filters[col] = ''
+          this._setFiltOff(t, col, false)
           e.target.value = ''
           this.applyFilter(t)
         }
@@ -1976,6 +2068,7 @@
         var v = e.target.value
         if((t.filters[col] || '') === v) return
         t.filters[col] = v
+        this._setFiltOff(t, col, false) // 值变了（含清空）就去掉停用标记：清空即不筛选，填值即启用
         this.applyFilter(t)
       },
       filterTitle: function(col){
@@ -1983,7 +2076,8 @@
           '直接输入 = 包含匹配；=值 等于；!=值 不等于\n' +
           '>值 / >=值 / <值 / <=值 比较；值1..值2 区间；1,2,3 多值\n' +
           'null 为 NULL；!=null 非 NULL；~值 LIKE；!~值 NOT LIKE\n' +
-          'Enter 立即应用，Esc 清空本列'
+          'Enter 立即应用，Esc 清空本列（值清空后自然不筛选）\n' +
+          '左侧勾选框：取消勾选可临时停用本列条件（值保留在框里），勾上即恢复'
       },
       // 点击 chips 定位到对应列的筛选框
       focusFilterInput: function(t, col){
@@ -1996,6 +2090,7 @@
       },
       removeFilter: function(t, col){
         t.filters[col] = ''
+        this._setFiltOff(t, col, false)
         this.applyFilter(t)
       },
       /* ---------- 「＋条件」编辑面板 ---------- */
@@ -2046,6 +2141,7 @@
         var expr = this.buildFilterExpr(d.op, d.v, d.v2)
         if(!expr){ toast('请填写筛选值','err'); return }
         t.filters[d.col] = expr
+        this._setFiltOff(t, d.col, false) // 新加/改了条件，默认启用
         t.filtOpen = false
         this.applyFilter(t, true)
       },
@@ -2058,6 +2154,7 @@
       clearFilter: function(t){
         if(!t) return
         t.filters = {}
+        t.filtersOff = {}
         this.reloadData(t, 1)
       },
       // 把数据页当前 SQL（已含筛选/排序）开到查询页，便于继续编辑
