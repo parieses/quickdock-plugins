@@ -221,12 +221,16 @@
     .sql-hl { position:absolute; inset:0; z-index:1; margin:0; padding:10px 12px; overflow:hidden;
       color:var(--text-primary); font-family:var(--font-mono); font-size:var(--fs-sm); line-height:1.6;
       white-space:pre-wrap; word-break:break-all; pointer-events:none; }
+    /* 关键：UA 默认给 code 指定 font-family:monospace，会脱离 --font-mono 造成字宽错位，必须继承 */
+    .sql-hl code { font: inherit; }
     .sql-hl .hl-k { color:var(--accent); font-weight:var(--fw-semibold,600); }
     .sql-hl .hl-s { color:var(--success); }
     .sql-hl .hl-n { color:var(--warning); }
     .sql-hl .hl-c { color:var(--text-disabled); font-style:italic; }
     .sql-hl .hl-i { color:var(--text-primary); }
-    textarea.sql { position:absolute; inset:0; z-index:2; width:100%; height:100%; resize:none; padding:10px 12px; border:none; background:transparent; color:transparent; caret-color:var(--text-primary); font-family:var(--font-mono); font-size:var(--fs-sm); line-height:1.6; outline:none; }
+    textarea.sql { position:absolute; inset:0; z-index:2; width:100%; height:100%; resize:none; padding:10px 12px; border:none; background:transparent; color:transparent; caret-color:var(--text-primary); font-family:var(--font-mono); font-size:var(--fs-sm); line-height:1.6; outline:none; white-space:pre-wrap; word-break:break-all; scrollbar-width:none; }
+    /* 隐藏滚动条：出现滚动条会让 textarea 内容区比叠加层窄 ~17px，换行错位（滚轮仍可滚动） */
+    textarea.sql::-webkit-scrollbar { width:0; height:0; }
     textarea.sql::placeholder { color:var(--text-placeholder); }
     textarea.sql::selection { background:var(--accent-soft); color:transparent; }
     .sqlwrap { display:flex; flex-direction:column; flex:1; min-height:0; position:relative; }
@@ -672,7 +676,7 @@
                 <span class="muted">{{ pageInfo(t) }}</span>
                 <span class="badge badge-accent" v-if="canEdit(t)">可编辑（双击单元格）</span>
                 <span class="badge badge-warning" v-else-if="t.grid.editReason" :title="t.grid.editReason">只读</span>
-                <span class="muted" title="F5 重新拉取本表数据（保留筛选 / 排序 / 页码）；Ctrl+S 提交正在编辑的单元格">F5 刷新数据 · Ctrl+S 保存</span>
+                <span class="muted" title="F5 / Ctrl+R 重新拉取本表数据（保留筛选 / 排序 / 页码）；Ctrl+S 提交正在编辑的单元格">F5 / Ctrl+R 刷新数据 · Ctrl+S 保存</span>
                 <div class="spacer"></div>
                 <select class="input input-sm input-auto" v-model.number="t.grid.pageSize" @change="reloadData(t,1)">
                   <option :value="50">50 条/页</option>
@@ -889,7 +893,7 @@
                         title="单次最多返回 1000 行；请加 LIMIT 或 WHERE 缩小范围">仅显示前 1000 行</span>
                   <span class="badge badge-accent" v-if="canEdit(t)">可编辑（双击单元格）</span>
                   <span class="muted" v-else-if="t.grid.editReason">{{ t.grid.editReason }}</span>
-                  <span class="muted" title="Ctrl+S 提交正在编辑的单元格；F5 只在表的「数据」页刷新数据">Ctrl+S 保存</span>
+                  <span class="muted" title="Ctrl+S 提交正在编辑的单元格；F5 / Ctrl+R 只在表的「数据」页刷新数据">Ctrl+S 保存</span>
                 </template>
                 <span class="muted" v-else>尚未执行</span>
               </div>
@@ -3228,9 +3232,14 @@
       var self = this
       document.addEventListener('keydown', function(e){
         if(e.key==='Escape' && self.tabMenu.show) self.closeTabMenu()
-        // F5 = 刷新当前标签的数据；Ctrl/⌘+S = 保存当前编辑。
+        // F5 / Ctrl+R = 刷新当前标签的数据；Ctrl/⌘+S = 保存当前编辑。
         // 两者都要 preventDefault：否则 F5 会把插件跑回初始页（状态全丢），Ctrl+S 会弹浏览器的「保存网页」。
         if(e.key === 'F5' || e.keyCode === 116){
+          e.preventDefault()
+          self.refreshActive()
+          return
+        }
+        if((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (e.key === 'r' || e.key === 'R' || e.keyCode === 82)){
           e.preventDefault()
           self.refreshActive()
           return
