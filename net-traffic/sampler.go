@@ -142,6 +142,30 @@ type snapshot struct {
 	ProcTotal   int         `json:"procTotal"`
 }
 
+// estatsCodeNote 把 Windows 返回码翻译成「能照着做」的说明。
+//
+// 5 / 1784 的区别是本函数存在的主要原因：5 才是权限不足，1784 是缓冲区
+// 格式错误（ERROR_INVALID_USER_BUFFER），与管理员令牌无关；1168 只是连接
+// 在采样瞬间关闭，属正常瞬态，不该让用户以为功能坏了。
+func estatsCodeNote(code uint32) string {
+	switch code {
+	case 0:
+		return "本轮没有可计量的已建立 IPv4 TCP 连接"
+	case 5: // ERROR_ACCESS_DENIED
+		return "插件进程不是提升令牌，请用「以管理员身份运行」启动 QuickDock 宿主并重新打开本插件"
+	case 50: // ERROR_NOT_SUPPORTED
+		return "当前 Windows 版本不支持该统计类型"
+	case 87: // ERROR_INVALID_PARAMETER
+		return "连接定位参数无效（内部调用问题，可反馈此错误码）"
+	case 1168: // ERROR_NOT_FOUND
+		return "连接已关闭或四元组已变化，属正常瞬态，新连接会自动重试"
+	case 1784: // ERROR_INVALID_USER_BUFFER
+		return "系统不接受统计缓冲区格式（ERROR_INVALID_USER_BUFFER），插件已自动改用另一种尺寸重试；这与管理员权限无关，反复提权无效，如仍失败请反馈此错误码"
+	default:
+		return fmt.Sprintf("Windows 返回错误码 %d", code)
+	}
+}
+
 // connBytesState 一条 TCP 连接的 estats 字节基线。
 type connBytesState struct {
 	prevIn  uint64
@@ -435,13 +459,14 @@ func sampleConns() {
 	}
 
 	// estats 能力判定：只在真的探过连接时更新，避免「当前恰好没有已建立连接」
-	// 被误报成「需管理员权限」。
+	// 被误报成「需管理员权限」。错误码要如实翻译：以前一律提示提权，导致 1784
+	// 这类缓冲区错误让人反复重启管理员却毫无变化。
 	if okCount+failCount > 0 {
 		st.perConn = okCount > 0
 		st.estatsCode = failCode
 		if okCount == 0 {
-			st.perConnNote = fmt.Sprintf("estats 启用全部失败 code=%d（需以管理员身份运行宿主，或连接已关闭）", failCode)
-			qdLogWarn("estats 采集启用全部失败 code=%d ok=0 fail=%d（通常需管理员权限）", failCode, failCount)
+			st.perConnNote = "estats 启用全部失败 code=" + fmt.Sprint(failCode) + "：" + estatsCodeNote(failCode)
+			qdLogWarn("estats 采集启用全部失败 code=%d ok=0 fail=%d（%s）", failCode, failCount, estatsCodeNote(failCode))
 		} else {
 			st.perConnNote = ""
 		}

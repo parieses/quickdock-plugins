@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"sync/atomic"
 	"syscall"
 	"unsafe"
 )
@@ -489,15 +490,69 @@ type mibTcpRow struct {
 	remotePort uint32
 }
 
+// estatsRwSize 缓存「本机实际能用的 Rw 缓冲区尺寸」，0 = 尚未探测成功。
+// 采样每秒对上百条连接调用一次，探测成功后就不再重复试错。
+// 用 atomic 是因为快照请求与后台采样可能落在不同 goroutine。
+var estatsRwSize atomic.Uint32
+
 // tcpEstatsEnable 打开一条连接的 Data 统计采集。
-// 需要管理员权限（继承宿主进程令牌）；失败返回 false 与错误码（通常是
-// ERROR_ACCESS_DENIED=5），调用方记一次标志后不再重试。
+//
+// 这里必须做尺寸自适应，不能写死 4 字节：TCP_ESTATS_DATA_RW_v0 只有
+// 一个 1 字节的 BOOLEAN EnableCollection，而 MSDN 示例又传 4 字节的
+// TCP_BOOLEAN_OPTIONAL 枚举值。两种写法在不同 Windows 版本上都有人踩坑，
+// 传错时 SetPerTcpConnectionEStats 返回 1784 ERROR_INVALID_USER_BUFFER
+// （「提供给请求操作的用户缓冲区无效」）——这是缓冲区格式问题，**不是权限
+// 不足**（权限不足返回 5 ERROR_ACCESS_DENIED）。本机实测：未提权时任意尺寸
+// 都返回 5，说明权限检查在参数校验之前；因此提权后仍拿到 1784，就一定是
+// Rw 尺寸/格式没对上，再怎么重启管理员都没用。
+//
+// 按 1 字节 → 4 字节的顺序试，哪个成功就缓存哪个；某天缓存的尺寸失效
+// （系统更新、连接类型不同）会自动重新探测。
 func tcpEstatsEnable(row mibTcpRow) (ok bool, code uint32) {
-	rw := uint32(tcpBoolOptEnabled)
+	var enable byte = byte(tcpBoolOptEnabled)   // 1 字节 BOOLEAN
+	var flag uint32 = tcpBoolOptEnabled          // 4 字节枚举值
+
+	// 快路径：复用已验证的尺寸
+	if cached := estatsRwSize.Load(); cached != 0 {
+		var rc uintptr
+		if cached == 1 {
+			rc, _, _ = procSetTcpEstats.Call(
+				uintptr(unsafe.Pointer(&row)), tcpEstatsData,
+				uintptr(unsafe.Pointer(&enable)), 0, 1, 0)
+		} else {
+			rc, _, _ = procSetTcpEstats.Call(
+				uintptr(unsafe.Pointer(&row)), tcpEstatsData,
+				uintptr(unsafe.Pointer(&flag)), 0, 4, 0)
+		}
+		if rc == 0 {
+			return true, 0
+		}
+		estatsRwSize.Store(0) // 缓存失效，下面重新探测
+		code = uint32(rc)
+	}
+
+	// 探测路径：先 1 字节，再 4 字节
 	ret, _, _ := procSetTcpEstats.Call(
 		uintptr(unsafe.Pointer(&row)), tcpEstatsData,
-		uintptr(unsafe.Pointer(&rw)), 0, 4, 0)
-	return ret == 0, uint32(ret)
+		uintptr(unsafe.Pointer(&enable)), 0, 1, 0)
+	if ret == 0 {
+		estatsRwSize.Store(1)
+		return true, 0
+	}
+	if code == 0 {
+		code = uint32(ret)
+	}
+	ret, _, _ = procSetTcpEstats.Call(
+		uintptr(unsafe.Pointer(&row)), tcpEstatsData,
+		uintptr(unsafe.Pointer(&flag)), 0, 4, 0)
+	if ret == 0 {
+		estatsRwSize.Store(4)
+		return true, 0
+	}
+	if code == 0 {
+		code = uint32(ret)
+	}
+	return false, code
 }
 
 // tcpEstatsBytes 读一条连接的累计收发字节数（含重传，不含 TCP 头）。

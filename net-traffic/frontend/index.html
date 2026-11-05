@@ -292,6 +292,10 @@
     } else {
       msg = 'TCP 扩展统计未能启用' + (estatsCode ? '（错误码 ' + estatsCode + '）' : '') +
             '，本轮所有连接都没有计量数据。' + (perConnNote ? ' ' + perConnNote : '')
+      // 1784 是缓冲区格式错误，不是权限问题。明确点破，避免用户反复提权重启。
+      if (estatsCode === 1784) {
+        msg += ' 注意：这不是权限不足，重复以管理员身份运行宿主不会有帮助。'
+      }
     }
     return '<div class="nt-alert">' + esc(msg) + '</div>'
   }
