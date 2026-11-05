@@ -465,7 +465,7 @@ window.copyViaHost=function(t,cb){var id='cp_'+(++window.__cpSeq),done=false;fun
   }
   function parseNow() {
     var text = readText(); state.text = text
-    if (!text.trim()) { state.parsed = null; state.error = null; hideError(); setStatus('等待输入…'); jeEditorMeta.textContent = ''; jeHint.hidden = false; return false }
+    if (!text.trim()) { state.parsed = null; state.error = null; hideError(); setStatus('等待输入…'); jeEditorMeta.textContent = ''; jeHint.hidden = false; positionHint(); return false }
     jeHint.hidden = true
     try {
       var parsed = JSON.parse(text); state.parsed = parsed; state.error = null; hideError()
@@ -505,8 +505,10 @@ window.copyViaHost=function(t,cb){var id='cp_'+(++window.__cpSeq),done=false;fun
       } else { var sp = document.createElement('span'); sp.className = 'je-fold-spacer'; cell.appendChild(sp) }
       var num = document.createElement('span'); num.className = 'je-ln'; num.textContent = i; cell.appendChild(num); frag.appendChild(cell)
     }
-    jeGutter.appendChild(frag)
+    jeGutter.appendChild(frag); positionHint()
   }
+  // 占位提示跟随行号槽实际宽度，避免硬编码 56px 在某些字体/缩放下与槽重叠或留缝
+  function positionHint() { if (jeHint && jeGutter) jeHint.style.left = jeGutter.offsetWidth + 'px' }
   function applyFold() {
     var els = lineEls(); for (var i = 0; i < els.length; i++) els[i].style.display = ''
     state.folded.forEach(function (start) { var r = findRange(start); if (!r) return; for (var ln = start + 1; ln <= r.endLine; ln++) { var el = els[ln - 1]; if (el) el.style.display = 'none' } })
@@ -724,6 +726,7 @@ window.copyViaHost=function(t,cb){var id='cp_'+(++window.__cpSeq),done=false;fun
   })
   jeCode.addEventListener('keydown', function (e) { if (e.key === 'Tab') { e.preventDefault(); document.execCommand('insertText', false, '  ') } })
   jeGutter.addEventListener('click', function (e) { var t = e.target; if (t && t.classList && t.classList.contains('je-fold')) toggleFold(parseInt(t.getAttribute('data-start'), 10)) })
+  window.addEventListener('resize', positionHint)
 
   // 查找栏交互
   document.getElementById('jeBtnFind').addEventListener('click', openFind)
