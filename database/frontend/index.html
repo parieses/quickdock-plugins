@@ -279,6 +279,24 @@
     .err-box { margin:10px 12px; padding:10px 12px; border:1px solid var(--danger); border-radius:var(--radius-sm); background:var(--danger-soft); color:var(--danger); font-family:var(--font-mono); font-size:var(--fs-xs); line-height:1.6; white-space:pre-wrap; word-break:break-all; }
     .msg-box { padding:14px; color:var(--text-secondary); font-size:var(--fs-sm); }
 
+    /* ===== 结构 · 设计模式 ===== */
+    .pane-ddl { display:flex; flex-direction:column; overflow:hidden; }
+    .design-grid .cell { width:100%; height:26px; padding:0 6px; font-size:var(--fs-sm); }
+    .design-grid td { vertical-align:middle; padding:3px 6px; }
+    .design-grid .ctr { text-align:center; }
+    .row-act { display:flex; align-items:center; gap:2px; justify-content:center; white-space:nowrap; }
+    .row-act .act { width:22px; height:22px; line-height:20px; text-align:center; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg-tertiary); color:var(--text-muted); cursor:pointer; font-size:var(--fs-xs); padding:0; }
+    .row-act .act:hover { background:var(--bg-hover); color:var(--text-primary); }
+    .row-act .act.del:hover { background:var(--danger-soft); color:var(--danger); border-color:var(--danger); }
+    .sql-preview { border-bottom:1px solid var(--border); }
+    pre.ddl-edit { margin:0; padding:12px 14px; font-family:var(--font-mono); font-size:var(--fs-xs); line-height:1.7; color:var(--success); background:var(--bg-primary); white-space:pre-wrap; word-break:break-all; border-top:1px solid var(--border); }
+    .hint-bar { padding:8px 12px; font-size:var(--fs-xs); line-height:1.7; color:var(--text-muted); border-top:1px solid var(--border); }
+    /* 建表语句页美化 */
+    .ddl-bar { display:flex; align-items:center; gap:8px; padding:0 10px; height:34px; flex-shrink:0; border-bottom:1px solid var(--border); background:var(--bg-secondary); }
+    .ddl-title { display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-sm); font-weight:var(--fw-semibold); color:var(--text-secondary); }
+    .ddl-wrap { flex:1; overflow:auto; min-height:0; background:var(--bg-primary); }
+    pre.ddl { margin:0; padding:14px 16px; font-family:var(--font-mono); font-size:var(--fs-sm); line-height:1.75; color:var(--text-primary); white-space:pre-wrap; word-break:break-all; background:var(--bg-primary); border-left:3px solid var(--accent); }
+
     /* ===== Redis key 详情 ===== */
     .kd { padding:10px 12px; display:flex; flex-direction:column; gap:9px; overflow:auto; flex:1; min-height:0; }
     .kd-actions { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
@@ -500,10 +518,13 @@
               </div>
               <span class="muted" v-if="t.struct && t.struct.engine">{{ t.struct.engine }}<template v-if="t.struct.collation"> · {{ t.struct.collation }}</template></span>
               <span class="spacer"></span>
-              <button class="btn btn-xs" @click="openInsert(t)" :disabled="!canCrud(t)">＋ 新增</button>
-              <button class="btn btn-xs" @click="deleteRow(t)" :disabled="!canCrud(t) || t.grid.selRow<0">删除行</button>
-              <button class="btn btn-xs" @click="exportCsv(t)" :disabled="!t.grid.rows.length">导出 CSV</button>
+              <button class="btn btn-xs" v-if="!t.designing" @click="openInsert(t)" :disabled="!canCrud(t)">＋ 新增</button>
+              <button class="btn btn-xs" v-if="!t.designing" @click="deleteRow(t)" :disabled="!canCrud(t) || t.grid.selRow<0">删除行</button>
+              <button class="btn btn-xs" v-if="!t.designing" @click="exportCsv(t)" :disabled="!t.grid.rows.length">导出 CSV</button>
               <button class="btn btn-xs" @click="reloadTableTab(t)">刷新</button>
+              <button class="btn btn-xs" v-if="!t.designing && !t.isView && t.struct" @click="startDesign(t)">设计表</button>
+              <button class="btn btn-xs btn-primary" v-if="t.designing" @click="saveDesign(t)" :disabled="!genStructSQL(t).trim()">保存</button>
+              <button class="btn btn-xs" v-if="t.designing" @click="cancelDesign(t)">退出设计</button>
             </div>
 
             <!-- 行勾选操作条（批量删除，仅数据页） -->
@@ -523,6 +544,89 @@
             <div class="struct-scroll pane-struct" v-show="t.sub==='struct'">
               <div v-if="!t.struct" class="empty"><div>{{ t.loading ? '加载结构…' : '暂无结构信息' }}</div></div>
               <template v-else>
+                <!-- 设计模式：可编辑 + 实时 SQL -->
+                <template v-if="t.designing">
+                  <div class="sect">
+                    <div class="sect-head">
+                      <span>字段（{{ t.draft.columns.length }}）</span>
+                      <div class="spacer"></div>
+                      <button class="btn btn-xs" @click="addDesignColumn(t)">＋ 新增字段</button>
+                    </div>
+                    <table class="grid design-grid">
+                      <thead><tr>
+                        <th style="width:34px">#</th><th style="width:20%">字段名</th><th style="width:24%">类型</th>
+                        <th style="width:54px">可空</th><th style="width:18%">默认值</th><th style="width:18%">注释</th>
+                        <th style="width:70px">键</th><th style="width:64px">操作</th>
+                      </tr></thead>
+                      <tbody>
+                        <tr v-for="(c,ci) in t.draft.columns" :key="'c'+ci">
+                          <td class="dim">{{ ci+1 }}</td>
+                          <td><input class="input input-sm cell" v-model="c.name" placeholder="字段名"></td>
+                          <td><input class="input input-sm cell" v-model="c.type" placeholder="如 varchar(255)"></td>
+                          <td class="ctr"><label class="je-check"><input type="checkbox" v-model="c.nullable"> 可空</label></td>
+                          <td><input class="input input-sm cell" v-model="c.default" placeholder="NULL 留空"></td>
+                          <td><input class="input input-sm cell" v-model="c.comment" placeholder="注释"></td>
+                          <td class="ctr"><span v-if="c.key" class="badge badge-square badge-muted" :class="keyClass(c.key)">{{ c.key }}</span><span v-else class="dim">—</span></td>
+                          <td class="row-act">
+                            <button class="act" title="上移" @click="moveDesignColumn(t, ci, -1)">↑</button>
+                            <button class="act" title="下移" @click="moveDesignColumn(t, ci, 1)">↓</button>
+                            <button class="act del" title="删除字段" @click="removeDesignColumn(t, ci)">✕</button>
+                          </td>
+                        </tr>
+                        <tr v-if="!t.draft.columns.length"><td colspan="8" class="msg-box muted">暂无字段，点上方「＋ 新增字段」</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div class="sect">
+                    <div class="sect-head">
+                      <span>索引（{{ t.draft.indexes.length }}）</span>
+                      <div class="spacer"></div>
+                      <button class="btn btn-xs" @click="addDesignIndex(t)">＋ 新增索引</button>
+                    </div>
+                    <table class="grid design-grid" v-if="t.draft.indexes.length">
+                      <thead><tr><th style="width:22%">索引名</th><th style="width:50px">唯一</th><th style="width:20%">类型</th><th>字段（逗号分隔）</th><th style="width:64px">操作</th></tr></thead>
+                      <tbody>
+                        <tr v-for="(ix,ii) in t.draft.indexes" :key="'i'+ii">
+                          <td><input class="input input-sm cell" v-model="ix.name" placeholder="idx_name"></td>
+                          <td class="ctr"><label class="je-check"><input type="checkbox" v-model="ix.unique"> 唯一</label></td>
+                          <td><input class="input input-sm cell" v-model="ix.type" placeholder="BTREE" :disabled="ix.isPrimary"></td>
+                          <td><input class="input input-sm cell" v-model="ix.columnsText" placeholder="col1, col2"></td>
+                          <td class="row-act"><button class="act del" title="删除索引" @click="removeDesignIndex(t, ii)">✕</button></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                    <div v-else class="msg-box muted">无索引，点上方「＋ 新增索引」</div>
+                  </div>
+
+                  <div class="sect" v-if="t.struct.fks && t.struct.fks.length">
+                    <div class="sect-head"><span>外键（{{ t.struct.fks.length }} · 只读）</span></div>
+                    <table class="grid">
+                      <thead><tr><th style="width:24%">字段</th><th style="width:24%">引用表</th><th style="width:24%">引用字段</th><th>更新 / 删除</th></tr></thead>
+                      <tbody>
+                        <tr v-for="(f,fi) in t.struct.fks" :key="fi" class="no-hover">
+                          <td style="color:var(--text-primary)">{{ f.column }}</td>
+                          <td>{{ f.refTable }}</td>
+                          <td>{{ f.refColumn }}</td>
+                          <td>{{ f.onUpdate || '—' }} / {{ f.onDelete || '—' }}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div class="sect sql-preview">
+                    <div class="sect-head">
+                      <span>实时 SQL（{{ connTypeOf(t) }}）</span>
+                      <div class="spacer"></div>
+                      <button class="btn btn-xs" @click="copyText(genStructSQL(t))">复制</button>
+                    </div>
+                    <pre class="ddl-edit">{{ genStructSQL(t) || '（无改动）' }}</pre>
+                    <div class="hint-bar muted">修改字段 / 索引后，这里实时生成对应的 ALTER TABLE 语句；点右上「保存」会逐条执行并刷新结构。SQLite 暂不支持修改列类型，会自动提示重建。</div>
+                  </div>
+                </template>
+
+                <!-- 只读视图 -->
+                <template v-else>
                 <div class="sect">
                   <div class="sect-head">
                     <span>字段（{{ t.struct.columns.length }}）</span>
@@ -580,6 +684,7 @@
                     </tbody>
                   </table>
                 </div>
+                </template>
               </template>
             </div>
 
@@ -747,12 +852,15 @@
 
             <!-- 建表语句 -->
             <div class="struct-scroll pane-ddl" v-show="t.sub==='ddl'">
-              <div class="subbar" style="border-bottom:1px solid var(--border);background:transparent;">
-                <span class="muted">CREATE 语句</span>
-                <div class="spacer"></div>
+              <div class="subbar ddl-bar">
+                <span class="ddl-title"><span class="qi qi-file-code"></span> CREATE TABLE 语句</span>
+                <span class="spacer"></span>
+                <span v-if="t.struct && t.struct.engine" class="badge badge-square badge-muted">{{ t.struct.engine }}</span>
                 <button class="btn btn-xs" @click="copyText(t.struct && t.struct.ddl)">复制</button>
               </div>
-              <pre class="ddl">{{ t.struct && t.struct.ddl ? t.struct.ddl : '（无 DDL）' }}</pre>
+              <div class="ddl-wrap">
+                <pre class="ddl">{{ t.struct && t.struct.ddl ? t.struct.ddl : '（无 DDL）' }}</pre>
+              </div>
             </div>
           </template>
 
@@ -1849,6 +1957,172 @@
           t.struct = r
         }).catch(function(e){ toast('读取结构失败: '+(e.message||e),'err') })
         .finally(function(){ t.loading = false })
+      },
+      /* ---------- 结构编辑（设计表）---------- */
+      // 进入设计模式：把当前结构深拷贝成可编辑草稿（字段 / 索引）。
+      startDesign: function(t){
+        if(!t.struct) return
+        var cols = (t.struct.columns||[]).map(function(c){
+          return { name:c.name, origName:c.name, type:c.type||'', nullable:!!c.nullable,
+                   default:(c.default==null?'':c.default), comment:c.comment||'',
+                   key:c.key||'', extra:c.extra||'' }
+        })
+        var idxs = (t.struct.indexes||[]).map(function(ix){
+          return { name:ix.name, origName:ix.name, unique:!!ix.unique, type:ix.type||'',
+                   columnsText:(ix.columns||[]).join(', '), isPrimary:(ix.type==='PRIMARY') }
+        })
+        t.draft = { columns: cols, indexes: idxs, comment: t.struct.comment||'' }
+        t.designing = true
+        t.sub = 'struct'
+      },
+      cancelDesign: function(t){ t.designing = false; t.draft = null },
+      addDesignColumn: function(t){
+        t.draft.columns.push({ name:'', type:'', nullable:true, default:'', comment:'', key:'', extra:'' })
+      },
+      removeDesignColumn: function(t, ci){ t.draft.columns.splice(ci, 1) },
+      moveDesignColumn: function(t, ci, dir){
+        var a = t.draft.columns, j = ci + dir
+        if(j < 0 || j >= a.length) return
+        var tmp = a[ci]; a[ci] = a[j]; a[j] = tmp
+      },
+      addDesignIndex: function(t){
+        t.draft.indexes.push({ name:'', unique:false, type:'BTREE', columnsText:'', isPrimary:false })
+      },
+      removeDesignIndex: function(t, ii){ t.draft.indexes.splice(ii, 1) },
+      // 标识符引用：MySQL 反引号；SQLite 双引号（与后端 quoteIdent 保持一致风格）
+      qident: function(name, kind){
+        name = String(name||'').trim()
+        if(kind==='sqlite') return '"' + name.replace(/"/g,'""') + '"'
+        return '`' + String(name).replace(/`/g,'``') + '`'
+      },
+      // 生成列定义片段
+      colBody: function(c, kind){
+        var s = (c.type||'').trim()
+        if(c.nullable) s += ' NULL'; else s += ' NOT NULL'
+        var d = String(c.default==null?'':c.default).trim()
+        if(d !== '') s += ' DEFAULT ' + d
+        if(c.comment) s += " COMMENT '" + String(c.comment).replace(/'/g,"''") + "'"
+        return s
+      },
+      colDef: function(c, kind){ return this.qident(c.name, kind) + ' ' + this.colBody(c, kind) },
+      createIndexSQL: function(tbl, ix, idxDef, kind){
+        if(ix.isPrimary) return 'ALTER TABLE ' + tbl + ' ADD PRIMARY KEY ' + idxDef + ';'
+        var u = ix.unique ? 'UNIQUE ' : ''
+        if(kind==='sqlite') return 'CREATE ' + u + 'INDEX ' + this.qident(ix.name,kind) + ' ON ' + tbl + ' ' + idxDef + ';'
+        return 'ALTER TABLE ' + tbl + ' ADD ' + u + 'INDEX ' + this.qident(ix.name,kind) + ' ' + idxDef + ';'
+      },
+      dropIndexSQL: function(tbl, name, ix, kind){
+        if(ix && ix.type==='PRIMARY') return 'ALTER TABLE ' + tbl + ' DROP PRIMARY KEY;'
+        if(kind==='sqlite') return 'DROP INDEX ' + this.qident(name,kind) + ';'
+        return 'DROP INDEX ' + this.qident(name,kind) + ' ON ' + tbl + ';'
+      },
+      // 实时生成 ALTER TABLE 差异语句（方言感知）。模板里直接调用，随草稿变化重算。
+      genStructSQL: function(t){
+        if(!t.designing || !t.draft || !t.struct) return ''
+        var self = this
+        var kind = this.connTypeOf(t)
+        var tbl = this.qident(t.table, kind)
+        var oldCols = t.struct.columns||[]
+        var newCols = t.draft.columns||[]
+        var oldByName = {}; oldCols.forEach(function(c,i){ oldByName[c.name] = { c:c, i:i } })
+        // 改名判定：draft 列带 origName 标记原始名，与当前名不同即视为改名；无 origName 为新增
+        var newNames = {}; newCols.forEach(function(c){ if(c.name) newNames[c.name] = 1 })
+        var renamedOld = {}; newCols.forEach(function(c){ if(c.origName!==undefined && c.origName!==c.name) renamedOld[c.origName] = 1 })
+        var lines = []
+        var colChanges = false
+        newCols.forEach(function(c, ni){
+          if(!c.name) return
+          if(c.origName === undefined){
+            // 新增字段
+            colChanges = true
+            var def = self.colDef(c, kind)
+            var pos = ''
+            if(kind==='mysql'){
+              if(ni===0) pos = ' FIRST'
+              else if(newCols[ni-1] && newCols[ni-1].name) pos = ' AFTER ' + self.qident(newCols[ni-1].name, kind)
+            }
+            lines.push('ALTER TABLE ' + tbl + ' ADD COLUMN ' + def + pos + ';')
+          } else if(c.origName === c.name){
+            var oc = oldByName[c.name].c
+            var changed = (c.type||'') !== (oc.type||'')
+              || !!c.nullable !== !!oc.nullable
+              || String(c.default==null?'':c.default) !== String(oc.default==null?'':oc.default)
+              || (c.comment||'') !== (oc.comment||'')
+            if(changed){
+              colChanges = true
+              if(kind==='sqlite'){
+                if((c.type||'') !== (oc.type||'')){
+                  lines.push('-- SQLite 不支持修改列定义（类型/约束），请导出建表语句改后重建表: ' + oc.name)
+                } else {
+                  lines.push('-- SQLite 跳过该列修改（不支持 MODIFY）: ' + oc.name)
+                }
+              } else {
+                var def = self.colDef(c, kind)
+                var pos = (ni===0) ? ' FIRST' : (newCols[ni-1] && newCols[ni-1].name ? ' AFTER ' + self.qident(newCols[ni-1].name, kind) : '')
+                lines.push('ALTER TABLE ' + tbl + ' MODIFY COLUMN ' + def + pos + ';')
+              }
+            }
+          } else {
+            // 改名 origName -> name
+            colChanges = true
+            if(kind==='sqlite'){
+              lines.push('ALTER TABLE ' + tbl + ' RENAME COLUMN ' + self.qident(c.origName,kind) + ' TO ' + self.qident(c.name,kind) + ';')
+            } else {
+              var posr = (ni===0) ? ' FIRST' : (newCols[ni-1] && newCols[ni-1].name ? ' AFTER ' + self.qident(newCols[ni-1].name, kind) : '')
+              lines.push('ALTER TABLE ' + tbl + ' CHANGE ' + self.qident(c.origName,kind) + ' ' + self.qident(c.name,kind) + ' ' + self.colBody(c, kind) + posr + ';')
+            }
+          }
+        })
+        oldCols.forEach(function(oc){
+          if(newNames[oc.name] || renamedOld[oc.name]) return
+          colChanges = true
+          lines.push('ALTER TABLE ' + tbl + ' DROP COLUMN ' + self.qident(oc.name, kind) + ';')
+        })
+        if(colChanges) lines.unshift('-- 字段变更')
+        // 索引
+        var oldIdx = {}; ;(t.struct.indexes||[]).forEach(function(ix){ oldIdx[ix.name] = ix })
+        var newIdx = {}; t.draft.indexes.forEach(function(ix){ if(ix.name) newIdx[ix.name] = ix })
+        var idxLines = []
+        t.draft.indexes.forEach(function(ix){
+          if(!ix.name) return
+          var cols = ix.columnsText.split(',').map(function(s){return s.trim()}).filter(Boolean)
+          var idxDef = '(' + cols.map(function(c){return self.qident(c,kind)}).join(', ') + ')'
+          var old = oldIdx[ix.name]
+          if(!old){
+            idxLines.push(self.createIndexSQL(tbl, ix, idxDef, kind))
+          } else {
+            var sameCols = (old.columns||[]).join(',').replace(/\s+/g,'') === cols.join(',').replace(/\s+/g,'')
+            var same = (!!old.unique===!!ix.unique) && sameCols && ((old.type||'')===(ix.type||''))
+            if(!same){
+              idxLines.push(self.dropIndexSQL(tbl, ix.name, old, kind))
+              idxLines.push(self.createIndexSQL(tbl, ix, idxDef, kind))
+            }
+          }
+        })
+        ;(t.struct.indexes||[]).forEach(function(ix){
+          if(ix.name && !newIdx[ix.name]) idxLines.push(self.dropIndexSQL(tbl, ix.name, ix, kind))
+        })
+        if(idxLines.length){ lines.push('-- 索引变更'); lines = lines.concat(idxLines) }
+        return lines.join('\n')
+      },
+      saveDesign: function(t){
+        var self = this
+        var sql = this.genStructSQL(t)
+        var stmts = sql.split('\n').map(function(s){return s.trim()}).filter(function(s){return s && s.indexOf('--')!==0})
+        if(!stmts.length){ toast('没有检测到改动','warn'); return }
+        this.askConfirm('即将对表 ' + t.table + ' 执行 ' + stmts.length + ' 条 DDL，确认保存？\n\n' + stmts.join('\n'), function(){
+          self.applyDesignSQL(t, stmts, 0)
+        })
+      },
+      applyDesignSQL: function(t, stmts, i){
+        var self = this
+        if(i >= stmts.length){
+          toast('结构已更新','ok'); t.designing = false; t.draft = null; self.loadStructure(t); return
+        }
+        send('query.run', { id:t.connId, database:t.db, query: stmts[i] }).then(function(r){
+          if(r && r.success === false){ toast('执行失败：' + stmts[i] + ' → ' + (r.error||''), 'err'); return }
+          self.applyDesignSQL(t, stmts, i+1)
+        }).catch(function(e){ toast('执行失败：' + (e.message||e), 'err') })
       },
       ensureData: function(t){
         t.grid = t.grid || blankGrid()
