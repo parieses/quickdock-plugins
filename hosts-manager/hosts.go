@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net"
 	"os"
@@ -9,7 +10,7 @@ import (
 	"strings"
 )
 
-func handleHostsCommand(id int64, cmd string, input map[string]interface{}) {
+func handleHostsCommand(id json.RawMessage, cmd string, input map[string]interface{}) {
 	switch cmd {
 	case "hosts-list":
 		hostsList(id)
@@ -43,40 +44,48 @@ func uncommentHostsLine(line string) string {
 	return strings.TrimLeft(s, " \t") // 去掉 '#' 后的空白
 }
 
-// writeHostsFile 以"备份 + 原子替换"的方式写回 hosts（系统关键文件，禁止裸 os.WriteFile）。
-// 流程：先把现有内容备份成 hosts.bak，再写入同目录临时文件、sync 落盘，最后 os.Rename 原子覆盖。
-// 这样即使中途崩溃/断电，也不会把 hosts 写成半截损坏内容。
+// writeHostsFile 以「备份 + 原地截断写入」的方式写回 hosts。
+//
+// 曾经用「同目录临时文件 + os.Rename 原子替换」，但那在 Windows 上恰好是
+// 最不可靠的一条路：替换 system32\drivers\etc\hosts 需要目标文件的 DELETE
+// 权限，而该文件常被 Defender / DNS 客户端 / 安全软件以不允许删除的共享
+// 模式打开——即使宿主已用管理员身份运行，os.Rename 仍会返回
+// "rename ... hosts: Access is denied"，功能完全不可用。同仓库的
+// port-scanner / wifi-manager 一直是 os.WriteFile 原地写，没有这个问题。
+//
+// 原地 O_TRUNC 只要求已有文件的 WRITE 权限，不删除、不重命名，因此原文件的
+// ACL / 属性 / 硬链接全部保持不变。原子性改用 hosts.bak 兜底：hosts 通常
+// 只有几 KB，写一半崩溃时可直接从备份恢复。
 func writeHostsFile(path, content string) error {
-	// 1. 备份原文件（尽力而为，失败不阻断——首次可能不存在 .bak 目录权限等）
+	// 1. 备份原文件（尽力而为，失败不阻断）
 	if data, rerr := os.ReadFile(path); rerr == nil {
 		_ = os.WriteFile(path+".bak", data, 0644)
 	}
-	// 2. 同目录临时文件，保证 rename 在同一卷内是原子操作
-	tmp := path + ".qdtmp"
-	f, err := os.OpenFile(tmp, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
+
+	// 2. 只读属性兜底：部分安全软件会把 hosts 设成只读。Go 在 Windows 上的
+	//    Chmod 只处理 FILE_ATTRIBUTE_READONLY，不会动 ACL，写完恢复原状。
+	if fi, serr := os.Stat(path); serr == nil && fi.Mode().Perm()&0200 == 0 {
+		restoreMode := fi.Mode()
+		if cerr := os.Chmod(path, restoreMode|0200); cerr != nil {
+			return fmt.Errorf("hosts 文件为只读且无法解除只读属性: %w", cerr)
+		}
+		defer func() { _ = os.Chmod(path, restoreMode) }()
+	}
+
+	// 3. 原地截断写入并落盘，不产生临时文件、不做 rename
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
-		return err
+		return fmt.Errorf("打开 hosts 文件失败（需以管理员身份运行宿主，或被安全软件占用）: %w", err)
 	}
 	if _, err = f.WriteString(content); err != nil {
 		f.Close()
-		os.Remove(tmp)
 		return err
 	}
 	if err = f.Sync(); err != nil {
 		f.Close()
-		os.Remove(tmp)
 		return err
 	}
-	if err = f.Close(); err != nil {
-		os.Remove(tmp)
-		return err
-	}
-	// 3. 原子替换
-	if err = os.Rename(tmp, path); err != nil {
-		os.Remove(tmp)
-		return err
-	}
-	return nil
+	return f.Close()
 }
 
 type HostsEntry struct {
@@ -87,7 +96,7 @@ type HostsEntry struct {
 	Comment string `json:"comment,omitempty"`
 }
 
-func hostsList(id int64) {
+func hostsList(id json.RawMessage) {
 	path := hostsPath()
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -132,7 +141,7 @@ func hostsList(id int64) {
 	})
 }
 
-func hostsToggle(id int64, input map[string]interface{}) {
+func hostsToggle(id json.RawMessage, input map[string]interface{}) {
 	lv, ok := input["line"]
 	if !ok {
 		respondError(id, -1, "缺少 line 参数")
@@ -175,7 +184,7 @@ func hostsToggle(id int64, input map[string]interface{}) {
 	})
 }
 
-func hostsAdd(id int64, input map[string]interface{}) {
+func hostsAdd(id json.RawMessage, input map[string]interface{}) {
 	ip, _ := input["ip"].(string)
 	host, _ := input["host"].(string)
 
@@ -225,7 +234,7 @@ func hostsAdd(id int64, input map[string]interface{}) {
 	respond(id, map[string]interface{}{"success": true, "ip": ip, "host": host})
 }
 
-func hostsSave(id int64, input map[string]interface{}) {
+func hostsSave(id json.RawMessage, input map[string]interface{}) {
 	entriesRaw, ok := input["entries"].([]interface{})
 	if !ok {
 		respondError(id, -1, "缺少 entries 参数")

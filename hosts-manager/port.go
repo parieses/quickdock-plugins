@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
 	"strconv"
 	"strings"
@@ -14,7 +15,7 @@ type PortInfo struct {
 	Process  string `json:"process,omitempty"`
 }
 
-func handlePortCommand(id int64, cmd string, input map[string]interface{}) {
+func handlePortCommand(id json.RawMessage, cmd string, input map[string]interface{}) {
 	switch cmd {
 	case "port-list":
 		portList(id)
@@ -27,7 +28,7 @@ func handlePortCommand(id int64, cmd string, input map[string]interface{}) {
 	}
 }
 
-func portList(id int64) {
+func portList(id json.RawMessage) {
 	// Use `netstat -ano` to list all listening ports
 	out, err := hiddenCmd("netstat", "-ano").Output()
 	if err != nil {
@@ -126,7 +127,7 @@ func resolvePositiveInt(input map[string]interface{}, keys ...string) (int, bool
 	return 0, false
 }
 
-func portCheck(id int64, input map[string]interface{}) {
+func portCheck(id json.RawMessage, input map[string]interface{}) {
 	targetPort, ok := resolvePositiveInt(input, "port")
 	if !ok {
 		respondError(id, -1, "需要有效的 port 参数")
@@ -254,7 +255,7 @@ func getAllProcessNames() map[int]string {
 	return processNameCache
 }
 
-func portKill(id int64, input map[string]interface{}) {
+func portKill(id json.RawMessage, input map[string]interface{}) {
 	pid, ok := resolvePositiveInt(input, "pid")
 	if !ok {
 		respondError(id, -1, "需要有效的 pid 参数")

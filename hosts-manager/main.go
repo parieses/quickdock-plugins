@@ -13,16 +13,19 @@ import (
 
 // ---- JSON-RPC structures ----
 
+// ID 必须是 json.RawMessage：宿主前端桥接发的是 "1700000000_ab12" 这类
+// 字符串 id，用 int64 接收会让整条 json.Unmarshal 失败、请求被静默丢弃
+// （UI 侧表现为 20 秒超时）。响应原样回显，宿主才能对回对应的 Promise。
 type RPCRequest struct {
 	JSONRPC string          `json:"jsonrpc"`
-	ID      int64           `json:"id"`
+	ID      json.RawMessage `json:"id"`
 	Method  string          `json:"method"`
 	Params  json.RawMessage `json:"params,omitempty"`
 }
 
 type RPCResponse struct {
 	JSONRPC string          `json:"jsonrpc"`
-	ID      int64           `json:"id,omitempty"`
+	ID      json.RawMessage `json:"id,omitempty"`
 	Result  json.RawMessage `json:"result,omitempty"`
 	Error   *RPCError       `json:"error,omitempty"`
 }
@@ -66,8 +69,8 @@ func main() {
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
-					qdLogPanic(fmt.Sprintf("hosts-manager dispatch panic: method=%s id=%d", req.Method, req.ID), r)
-					if !answered && req.ID != 0 {
+					qdLogPanic(fmt.Sprintf("hosts-manager dispatch panic: method=%s id=%s", req.Method, string(req.ID)), r)
+					if !answered && len(req.ID) > 0 {
 						respondError(req.ID, -32603, fmt.Sprintf("internal panic: %v", r))
 					}
 				}
@@ -133,8 +136,8 @@ func handleExecute(req RPCRequest) {
 // answered 标记当前请求是否已回包，用于 dispatch 层 panic recover 避免重复回包。
 var answered bool
 
-func respond(id int64, result interface{}) {
-	defer qdFinishRequest(id, 0, "")
+func respond(id json.RawMessage, result interface{}) {
+	defer qdFinishRequest(idToInt(id), 0, "")
 	data, _ := json.Marshal(RPCResponse{
 		JSONRPC: "2.0",
 		ID:      id,
@@ -145,8 +148,8 @@ func respond(id int64, result interface{}) {
 	os.Stdout.Write(data)
 }
 
-func respondError(id int64, code int, msg string) {
-	defer qdFinishRequest(id, code, msg)
+func respondError(id json.RawMessage, code int, msg string) {
+	defer qdFinishRequest(idToInt(id), code, msg)
 	data, _ := json.Marshal(RPCResponse{
 		JSONRPC: "2.0",
 		ID:      id,

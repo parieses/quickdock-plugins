@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"strings"
 )
 
@@ -19,7 +20,7 @@ type WifiStatus struct {
 	Signal    string `json:"signal,omitempty"`
 }
 
-func handleWifiCommand(id int64, cmd string, input map[string]interface{}) {
+func handleWifiCommand(id json.RawMessage, cmd string, input map[string]interface{}) {
 	switch cmd {
 	case "wifi-list", "wifi-scan":
 		wifiList(id)
@@ -32,7 +33,7 @@ func handleWifiCommand(id int64, cmd string, input map[string]interface{}) {
 	}
 }
 
-func wifiList(id int64) {
+func wifiList(id json.RawMessage) {
 	out, err := hiddenCmd("netsh", "wlan", "show", "networks", "mode=Bssid").Output()
 	if err != nil {
 		respondError(id, -1, "执行 netsh 失败: "+err.Error())
@@ -82,7 +83,7 @@ func wifiList(id int64) {
 	})
 }
 
-func wifiStatus(id int64) {
+func wifiStatus(id json.RawMessage) {
 	out, err := hiddenCmd("netsh", "wlan", "show", "interfaces").Output()
 	if err != nil {
 		respondError(id, -1, "获取 WiFi 状态失败: "+err.Error())
@@ -119,7 +120,7 @@ func wifiStatus(id int64) {
 	respond(id, status)
 }
 
-func wifiPassword(id int64, input map[string]interface{}) {
+func wifiPassword(id json.RawMessage, input map[string]interface{}) {
 	ssid, _ := input["ssid"].(string)
 	if ssid == "" {
 		respondError(id, -1, "需要 ssid 参数")
