@@ -24,15 +24,6 @@
 .p-hex-input{width:100%;box-sizing:border-box;padding:10px 12px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:var(--fs-lg);font-family:var(--font-mono);text-transform:uppercase;outline:none;transition:border-color var(--transition),box-shadow var(--transition)}
 .p-hex-input:focus-visible{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
 
-/* ===== 屏幕取色（热键冻结模式 v0.3.1） ===== */
-.cc-btn{display:inline-flex;align-items:center;padding:8px 14px;background:var(--accent);border:none;border-radius:var(--radius);color:#fff;font-size:var(--fs-sm);font-weight:var(--fw-semibold);cursor:pointer;transition:filter var(--transition),transform var(--transition)}
-.cc-btn:hover{filter:brightness(1.1)}
-.cc-btn:active{transform:scale(.97)}
-.cc-btn:disabled{opacity:.5;cursor:not-allowed}
-.cc-banner{display:none;position:fixed;top:0;left:0;right:0;z-index:999;align-items:center;gap:var(--sp-3);padding:10px 14px;background:var(--accent-soft);border-bottom:1px solid var(--accent);color:var(--text-primary);font-size:var(--fs-sm)}
-.cc-banner.on{display:flex}
-.cc-cancel{margin-left:auto;padding:4px 12px;background:transparent;border:1px solid var(--border);border-radius:var(--radius);color:var(--text-muted);font-size:var(--fs-sm);cursor:pointer;transition:border-color var(--transition),color var(--transition)}
-.cc-cancel:hover{border-color:var(--accent);color:var(--text-primary)}
 </style>
 <script>
 /* QuickDock sandbox 剪贴板桥接：iframe 内 navigator.clipboard 被 Permissions-Policy 禁用 */
@@ -62,11 +53,6 @@ window.copyViaHost=function(t,cb){var id='cp_'+(++window.__cpSeq),done=false;fun
       <span class="p-muted">拖动选取任意颜色，下方三栏实时同步</span>
     </div>
 
-    <div class="p-picker-row">
-      <button class="cc-btn" id="pickScreen">屏幕取色</button>
-      <span class="p-muted">进入取色模式后窗口自动隐藏，按 F8 取色，HEX 自动复制</span>
-    </div>
-
     <div class="p-section">
       <div class="p-section-label"><span>HEX</span><span class="p-spacer"></span><button class="p-copy" id="copyHex">复制</button></div>
       <input type="text" class="p-hex-input" id="hexInput" spellcheck="false" placeholder="#RRGGBB">
@@ -92,11 +78,6 @@ window.copyViaHost=function(t,cb){var id='cp_'+(++window.__cpSeq),done=false;fun
   </div>
 </div>
 
-<div class="cc-banner" id="pickBanner">
-  <span>取色中 — 把鼠标停在目标颜色上，按 F8 取色 · ESC 取消</span>
-  <button class="cc-cancel" id="pickCancel">取消</button>
-</div>
-
 <script>
 // ==================== 页面 i18n（自包含样板，同 pdf-toolkit） ====================
 var L10N = {
@@ -104,16 +85,6 @@ var L10N = {
     '颜色工具': 'Color Tools',
     '拾色器': 'Picker',
     '拖动选取任意颜色，下方三栏实时同步': 'Drag to pick any color; all three formats below sync in real time',
-    '屏幕取色': 'Screen Picker',
-    '进入取色模式后窗口自动隐藏，按 F8 取色，HEX 自动复制': 'Window auto-hides on pick; press F8 to grab, HEX copies automatically',
-    '取色中 — 把鼠标停在目标颜色上，按 F8 取色 · ESC 取消': 'Picking — rest the cursor on the target color and press F8 · ESC to cancel',
-    '取消': 'Cancel',
-    '已取消': 'Cancelled',
-    '启动取色失败': 'Failed to start picking',
-    ' · 已复制到剪贴板': ' · Copied to clipboard',
-    '取色失败': 'Pick failed',
-    '已取色 ': 'Picked ',
-    '已进入屏幕取色，移动鼠标到目标颜色按 F8 取色，ESC 取消': 'Screen picking started — move cursor to target color and press F8, ESC to cancel',
     '复制': 'Copy',
     '色名: ': 'Name: ',
     '已复制 ': 'Copied ',
@@ -131,7 +102,7 @@ function L(key) {
 }
 // 静态文本应用：data-orig 缓存原文防重复翻译
 function applyStaticL10n() {
-  document.querySelectorAll('.p-head-title, .p-label, .p-muted, .p-copy, .cc-btn, .cc-banner span, .cc-cancel').forEach(function (el) {
+  document.querySelectorAll('.p-head-title, .p-label, .p-muted, .p-copy').forEach(function (el) {
     var src = el.getAttribute('data-orig');
     if (!src) { src = el.textContent.trim(); el.setAttribute('data-orig', src); }
     if (src) el.textContent = L(src);
@@ -295,130 +266,17 @@ $('copyHsl').addEventListener('click', function () {
   copyText('hsl(' + hsl.h + ', ' + hsl.s + '%, ' + hsl.l + '%)')
 })
 
-// ---- 宿主窗口显隐（取色时隐藏主面板，避免遮挡取样区域）----
-// 走 iframe 通用宿主代发 qdHostCall（与 host.notify / host.clipboard.write 同源），
-// 失败静默降级——即便 host 方法不可用，取色核心流程仍可用（仅不隐藏窗口）。
-function hostCall(method, params) {
-  if (typeof window.qdHostCall === 'function') {
-    return window.qdHostCall(method, params || {}).catch(function () {})
-  }
-  return Promise.resolve()
-}
-
 // ---- 宿主传入初始值 ----
 window.addEventListener('message', function (e) {
   if (e.data && e.data.type === 'plugin:init') {
     var text = e.data.data && e.data.data.text
-    var cmd = (e.data.data && e.data.data.command) || ''
     if (text) {
       var rgb = hexToRgb(text.trim())
       if (rgb) setFromRgb(rgb.r, rgb.g, rgb.b)
     }
-    // 从命令面板选中「屏幕取色」命令时直接进入取色模式，省去再点按钮的一步
-    if (cmd === 'screen-pick' || cmd === 'screen-pick-start' || cmd === 'pick-color') {
-      startPick()
-    }
-    // 「颜色转换」命令：打开插件首页即转换器主界面，无需额外跳转（显式说明，避免被当成漏监听）
+    // 命令面板入口（color-panel）打开插件首页即转换器主界面，无需额外跳转
   }
 })
-
-// ---- 屏幕取色：热键冻结模式（F8 取色 / ESC 取消），轮询 pick-status 回填 ----
-var _seq = 0
-var pickPolling = false
-var pickPollTimer = null
-
-$('pickScreen').addEventListener('click', startPick)
-$('pickCancel').addEventListener('click', cancelPick)
-document.addEventListener('keydown', function (e) {
-  if (e.key === 'Escape' && pickPolling) cancelPick()
-})
-
-// 通用执行：宿主 plugin:result 回包结构为 {type, id, data | error}，
-// 结果在 e.data.data（与 pdf-toolkit/disk-analyzer 一致）；README 写的 result 字段不存在
-function sendExec(command, input, onOk, onErr) {
-  var id = ++_seq
-  var settled = false   // 回调只允许执行一次：响应与超时定时器竞态时后到者丢弃
-  var timer = null
-  var handler = function (e) {
-    var d = e.data
-    if (d && d.type === 'plugin:result' && d.id === id) {
-      window.removeEventListener('message', handler)
-      if (timer) { clearTimeout(timer); timer = null }  // 收到响应必须清掉超时定时器
-      if (settled) return
-      settled = true
-      if (d.error) { onErr(d.error.message || d.error); return }
-      onOk(d.data || {})
-    }
-  }
-  window.addEventListener('message', handler)
-  window.parent.postMessage({ type: 'plugin:execute', id: id, command: command, input: input }, '*')
-  timer = setTimeout(function () {
-    window.removeEventListener('message', handler)
-    if (settled) return
-    settled = true
-    onErr('timeout')
-  }, 5000)
-}
-
-function startPick() {
-  if (pickPolling || !window.parent || window.parent === window) return
-  sendExec('screen-pick-start', {}, function () {
-    pickPolling = true
-    $('pickScreen').disabled = true
-    $('pickBanner').classList.add('on') // 仅作兜底：窗口未隐藏（降级场景）时给出可见提示
-    // 进入取色立即隐藏窗口，清理遮挡；提示完全交给桌面通知（toast 独立于窗口，藏掉照样弹）
-    hostCall('host.window.hide')
-    hostCall('host.notify', {
-      title: L('屏幕取色'),
-      message: L('已进入屏幕取色，移动鼠标到目标颜色按 F8 取色，ESC 取消')
-    })
-    pollPick()
-  }, function (err) {
-    flash(L('启动取色失败'))
-  })
-}
-
-function pollPick() {
-  pickPollTimer = setInterval(function () {
-    sendExec('pick-status', {}, function (res) {
-      var st = res && res.status
-      if (st === 'done') {
-        endPick()
-        setFromRgb(res.r, res.g, res.b)
-        // 经前端宿主桥接（plugin:copy）写剪贴板：与「复制」按钮同一套已验证链路，
-        // 会据真实回包反馈「已复制 X」或「复制失败」，不再依赖后端 fire-and-forget 的 host.clipboard.write
-        copyText(String(res.hex || '').toUpperCase())
-      } else if (st === 'cancelled') {
-        endPick()
-        flash(L('已取消'))
-      } else if (st === 'error') {
-        endPick()
-        flash(String(res.errMsg || L('取色失败')))
-      }
-      // running → 继续轮询
-    }, function () {
-      endPick()
-      flash(L('取色失败'))
-    })
-  }, 300)
-}
-
-function endPick() {
-  clearInterval(pickPollTimer)
-  pickPollTimer = null
-  pickPolling = false
-  $('pickBanner').classList.remove('on')
-  $('pickScreen').disabled = false
-  // 取色结束（完成 / 取消 / 失败）后恢复主面板，让结果可见、可继续操作
-  hostCall('host.window.show')
-}
-
-function cancelPick() {
-  sendExec('screen-pick-cancel', {}, function () {
-    endPick()
-    flash(L('已取消'))
-  }, function () { endPick() })
-}
 
 render()
 </script>
