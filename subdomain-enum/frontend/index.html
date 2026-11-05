@@ -13,25 +13,25 @@
 .input { flex: 1; min-width: 200px; font-family: var(--font-mono); }
 .chk{display:flex;align-items:center;gap:4px;font-size: var(--fs-sm);color:var(--text-secondary);cursor:pointer}
 .hint{font-size: var(--fs-sm);color:var(--text-muted);min-height:16px}
-.hint.err{color:var(--danger,#e24b4a)}
+.hint.err{color:var(--danger)}
 .srcbar{display:flex;gap:6px;flex-wrap:wrap}
 .src{font-size: var(--fs-xs);padding:3px 8px;border-radius:var(--radius);background:var(--bg-secondary);border:1px solid var(--border);color:var(--text-muted);font-family:ui-monospace,Consolas,monospace}
 .src.done{color:#5ac05a;border-color:rgba(90,192,90,.4)}
-.src.running{color:var(--accent,#4a9eff);border-color:var(--accent,#4a9eff)}
-.src.error{color:var(--danger,#e24b4a);border-color:rgba(226,75,74,.4)}
+.src.running{color:var(--accent);border-color:var(--accent)}
+.src.error{color:var(--danger);border-color:rgba(226,75,74,.4)}
 .filters{display:flex;gap:8px;align-items:center}
 .wrap{flex:1;overflow:auto;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-lg)}
 table{width:100%;border-collapse:collapse;font-family:ui-monospace,Consolas,monospace;font-size: var(--fs-sm)}
 th{position:sticky;top:0;background:var(--bg-secondary);text-align:left;color:var(--text-muted);font-weight:500;font-size: var(--fs-xs);padding:7px 8px;border-bottom:1px solid var(--border);z-index:1}
 td{padding:5px 8px;color:var(--text-primary);border-bottom:1px solid var(--border)}
-tr:hover td{background:var(--bg-hover,rgba(255,255,255,.03))}
+tr:hover td{background:var(--bg-hover)}
 .name{color:var(--text-primary)}
-.alive .name{color:var(--accent,#4a9eff);font-weight:600}
+.alive .name{color:var(--accent);font-weight:600}
 .ips{color:var(--text-secondary)}
 .src-tag{font-size: var(--fs-xs);padding:1px 5px;border-radius:3px;background:var(--bg-primary);color:var(--text-muted);margin-right:3px}
 .wc{font-size: var(--fs-xs);padding:1px 5px;border-radius:3px;background:rgba(232,131,58,.15);color:#e8833a}
 .empty{color:var(--text-muted);font-size: var(--fs-sm);padding:24px;text-align:center}
-.spin{display:inline-block;width:12px;height:12px;border:2px solid var(--border);border-top-color:var(--accent,#4a9eff);border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px;margin-right:6px}
+.spin{display:inline-block;width:12px;height:12px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px;margin-right:6px}
 @keyframes sp{to{transform:rotate(360deg)}}
 </style>
 </head>

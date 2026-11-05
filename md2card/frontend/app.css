@@ -13,7 +13,7 @@
 /* 模式分段控件 */
 .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
 .seg-btn { border: none; background: transparent; color: var(--text-secondary); font-size: 12px; padding: 5px 12px; cursor: pointer; transition: background .12s; }
-.seg-btn:hover { background: var(--bg-hover, rgba(127,127,127,.08)); }
+.seg-btn:hover { background: var(--bg-hover); }
 .seg-btn.active { background: var(--accent); color: #fff; }
 /* 文字模式下才显示模板 */
 .toolbar.hide-template #selTemplate,
@@ -40,11 +40,11 @@
 .md-card {
   position: relative;
   box-sizing: border-box;
-  border-radius: var(--card-radius, 16px);
+  border-radius: var(--card-radius);
   overflow: hidden;
   color: var(--card-fg);
   background: var(--card-bg);
-  font-family: var(--card-font, "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", system-ui, sans-serif);
+  font-family: var(--card-font);
   box-shadow: var(--card-shadow, 0 12px 40px rgba(0, 0, 0, .14));
 }
 .md-card-inner { padding: var(--card-pad, 36px 40px); }
