@@ -2,6 +2,7 @@ package main
 
 // 文件系统侧痕迹：Prefetch、Recent LNK、Jump Lists、回收站 $I、SetupAPI 设备日志。
 // 只读，不修改任何文件；所有时间都按本地时区归一化。
+// Prefetch 的真实程序名 / 完整路径解析见 prefetch.go。
 
 import (
 	"encoding/binary"
@@ -37,6 +38,7 @@ func collectPrefetch(c CollectContext, emit func(TimelineEvent)) SourceStatus {
 		return src("程序运行痕迹（Prefetch）", 0, err, "")
 	}
 	count := 0
+	resolved := 0
 	for _, de := range entries {
 		if de.IsDir() || !strings.HasSuffix(strings.ToLower(de.Name()), ".pf") {
 			continue
@@ -45,20 +47,72 @@ func collectPrefetch(c CollectContext, emit func(TimelineEvent)) SourceStatus {
 		if ierr != nil {
 			continue
 		}
-		exe := strings.Split(de.Name(), "-")[0]
-		first := fileCreationTime(info)
-		detail := "程序 " + exe
-		if !first.IsZero() {
-			detail += " · 首次记录 " + first.Local().Format("2006-01-02 15:04")
+		prefix, hash := splitPFName(de.Name())
+		pf := readPrefetch(filepath.Join(dir, de.Name()), prefix)
+
+		// 优先用 .pf 内部字符串区里的完整路径；读不到时再按前缀在本机反查 exe。
+		exe, where := "", ""
+		if pf.FullPath != "" {
+			exe, where = pfBaseName(pf.FullPath), pf.FullPath
+			resolved++
+		} else if hit := lookupExeByPrefix(prefix); hit != "" {
+			exe, where = filepath.Base(hit), hit
+			pf.Note = appendNote(pf.Note, "完整路径来自本机 exe 反查")
 		}
-		detail += " · .pf 修改时间 ≈ 最近一次运行"
+
+		first := fileCreationTime(info)
+		runNote := ".pf 修改时间 ≈ 最近一次运行"
+		if len(pf.RunTimes) > 0 {
+			runNote = "最近运行 " + pf.RunTimes[0].Local().Format("2006-01-02 15:04:05") +
+				"（.pf 内 FILETIME，精确）"
+			if len(pf.RunTimes) > 1 {
+				runNote += fmt.Sprintf(" · 另有 %d 次历史运行记录", len(pf.RunTimes)-1)
+			}
+			runNote += " · 事件时间仍取 .pf 修改时间（近似）"
+		}
+
+		var detail string
+		if exe != "" {
+			detail = "程序 " + exe
+			detail += " · " + truncStr(where, 170)
+			if !first.IsZero() {
+				detail += " · 首次记录 " + first.Local().Format("2006-01-02 15:04")
+			}
+			detail += " · " + runNote
+		} else {
+			// 解析不出来时绝不把截断片段伪装成程序名，把命名规则讲清楚。
+			detail = "程序名片段「" + truncStr(prefix, 40) + "…」不是程序全名：" +
+				"Windows 把 .pf 文件名截断到 29 个字符（连 .EXE 都被截掉）"
+			if hash != "" {
+				detail += "；" + hash + " 是「完整 exe 路径」的 8 位哈希，同名程序从不同目录运行会生成不同 .pf"
+			}
+			if !first.IsZero() {
+				detail += " · 首次记录 " + first.Local().Format("2006-01-02 15:04")
+			}
+			detail += " · " + runNote
+			detail += " · 本机未反查到对应 exe（可能已卸载/被清理）"
+			if pf.Note != "" {
+				detail += "；pf 解析：" + pf.Note
+			}
+		}
+
+		raw := de.Name()
+		if hash != "" {
+			raw += " · 路径哈希 " + hash
+		}
+		if where != "" {
+			raw += " · 完整路径 " + where
+		}
+		if pf.ExeName != "" {
+			raw += " · pf 头部名 " + pf.ExeName
+		}
 		count++
 		emit(ev(info.ModTime(), TypeProgram, LevelCorroborated, "程序运行（Prefetch）", detail,
-			`C:\Windows\Prefetch\*.pf`, de.Name()))
+			`C:\Windows\Prefetch\*.pf`, raw))
 	}
 	st := src("程序运行痕迹（Prefetch）", count, nil, "无 Prefetch 记录（可能被清理或已禁用）")
 	if count > 0 {
-		st.Note = "Prefetch 目录上限约 1024 个文件，旧记录会被挤掉"
+		st.Note = fmt.Sprintf("Prefetch 目录上限约 1024 个文件，旧记录会被挤掉；%d/%d 条解析出完整 exe 路径", resolved, count)
 	}
 	return st
 }
