@@ -277,18 +277,11 @@ textarea.input {
 .select:focus,
 .textarea:focus {
   outline: none;
-  border-color: var(--accent);
+  border-color: var(--focus-border);
 }
 
-/* 键盘焦点环：仅 :focus-visible（鼠标点击不显示，Tab 导航才显示）。
-   工具套件的重度用户是键盘用户，焦点环缺失会让 Tab 导航"失明"。 */
-.input:focus-visible,
-.select:focus-visible,
-.textarea:focus-visible {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-soft);
-}
+/* 键盘 Tab 聚焦输入框与鼠标点击走同一套：只换 1px 中性边框，不外扩光环。
+   按钮的 :focus-visible outline 见「按钮体系」，无障碍需要，仍然保留。 */
 
 .input::placeholder,
 .textarea::placeholder {
@@ -301,17 +294,8 @@ textarea.input {
   border-color: var(--danger);
 }
 
-.input.error:focus,
-.textarea.error:focus {
-  box-shadow: 0 0 0 2px var(--danger-soft);
-}
-
 .input.success {
   border-color: var(--success);
-}
-
-.input.success:focus {
-  box-shadow: 0 0 0 2px var(--success-soft);
 }
 
 /* 禁用态同样「文字下沉」，不整块变淡 */
@@ -362,7 +346,7 @@ textarea.input {
 .input-xxs:focus,
 .select-xxs:focus,
 .textarea-xxs:focus {
-  box-shadow: 0 0 0 2px var(--accent-soft);
+  border-color: var(--focus-border);
 }
 
 .select {

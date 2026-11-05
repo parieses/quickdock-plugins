@@ -54,7 +54,7 @@
 .je-findbar{display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--bg-tertiary);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap}
 .je-findbar[hidden]{display:none}
 .je-find-input{flex:1;min-width:160px;height:28px;padding:0 9px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-primary);color:var(--text-primary);font-family:var(--font-mono);font-size:var(--fs-sm);outline:none}
-.je-find-input:focus{border-color:var(--accent)}
+.je-find-input:focus{border-color:var(--focus-border)}
 .je-find-input::placeholder{color:var(--text-placeholder)}
 .je-find-count{font-size:var(--fs-xs);color:var(--text-muted);font-family:var(--font-mono);min-width:42px;text-align:center}
 .je-find-count.zero{color:var(--danger)}
@@ -83,10 +83,10 @@ html[data-theme="light"] .je-hit-active{color:#1f242c}
 .p-body{flex:1;display:flex;overflow:hidden;gap:1px;background:var(--border)}
 .p-pane{flex:1;display:flex;flex-direction:column;background:var(--bg-primary);min-width:0}
 .p-pane-header{display:flex;align-items:center;justify-content:space-between;padding:6px 10px;font-size: var(--fs-xs);color:var(--text-muted);background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0;text-transform:uppercase;letter-spacing:.5px}
-.p-textarea{flex:1;resize:none;padding:10px;border:none;outline:none;background:var(--bg-primary);color:var(--text-primary);font-family:var(--font-mono);font-size: var(--fs-md);line-height:1.5;tab-size:2}
-.p-textarea:focus-visible{background:var(--bg-tertiary)}
+.p-textarea{flex:1;resize:none;padding:10px;border:1px solid transparent;outline:none;background:var(--bg-primary);color:var(--text-primary);font-family:var(--font-mono);font-size: var(--fs-md);line-height:1.5;tab-size:2}
+.p-textarea:focus-visible{border-color:var(--focus-border)}
 .p-textarea::placeholder{color:var(--text-placeholder)}
-.p-textarea-input:focus-visible{background:var(--bg-tertiary)}
+.p-textarea-input:focus-visible{border-color:var(--focus-border)}
 .p-textarea-output{background:var(--bg-tertiary)}
 .p-output{flex:1;overflow:auto;padding:10px;font-family:var(--font-mono);font-size: var(--fs-sm);line-height:1.6;white-space:pre-wrap;word-break:break-all;color:var(--text-primary);background:var(--bg-tertiary)}
 .p-empty{display:flex;align-items:center;justify-content:center;flex:1;color:var(--text-muted);font-size: var(--fs-md)}

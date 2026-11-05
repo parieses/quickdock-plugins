@@ -41,7 +41,7 @@ html,body,#app { height: 100%; width: 100%; overflow: hidden; background: var(--
 .cs-modal-box { width: 320px; max-width: 88%; background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; box-shadow: 0 12px 40px rgba(0,0,0,.45); }
 .cs-modal-title { font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 12px; }
 .cs-modal-input { width: 100%; box-sizing: border-box; padding: 9px 12px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-primary); font-size: 13px; font-family: var(--font); outline: none; }
-.cs-modal-input:focus { border-color: var(--accent); }
+.cs-modal-input:focus { border-color: var(--focus-border); }
 .cs-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
 .cs-modal-btn { padding: 7px 16px; border-radius: var(--radius); font-size: 13px; cursor: pointer; border: 1px solid var(--border); background: var(--bg-secondary); color: var(--text-primary); font-family: var(--font); }
 .cs-modal-btn:hover { background: var(--bg-hover); }

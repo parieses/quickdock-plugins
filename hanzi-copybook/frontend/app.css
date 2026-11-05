@@ -27,7 +27,7 @@
   font-size: var(--fs-md); line-height: 1.6; outline: none;
   font-family: var(--font);
 }
-.cp-textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.cp-textarea:focus { border-color: var(--focus-border); }
 
 .cp-hint { font-size: var(--fs-xs); color: var(--text-muted); line-height: 1.6; }
 .cp-count { font-size: var(--fs-xs); color: var(--text-secondary); }

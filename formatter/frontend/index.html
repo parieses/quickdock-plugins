@@ -19,8 +19,8 @@
 .p-body{display:flex;flex:1;min-height:0;gap:1px}
 .p-pane{display:flex;flex-direction:column;flex:1;min-width:0;background:var(--bg-secondary)}
 .p-pane-header{padding:6px 10px;flex-shrink:0;font-size: var(--fs-xs);color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;background:var(--bg-secondary);border-bottom:1px solid var(--border)}
-.p-textarea{flex:1;resize:none;padding:10px;border:none;outline:none;background:var(--bg-primary);color:var(--text-primary);font-family:var(--font-mono);font-size: var(--fs-md);line-height:1.5;tab-size:2}
-.p-textarea::placeholder{color:var(--text-placeholder)}.p-textarea-input:focus-visible{background:var(--bg-tertiary)}.p-textarea-output{background:var(--bg-tertiary)}
+.p-textarea{flex:1;resize:none;padding:10px;border:1px solid transparent;outline:none;background:var(--bg-primary);color:var(--text-primary);font-family:var(--font-mono);font-size: var(--fs-md);line-height:1.5;tab-size:2}
+.p-textarea::placeholder{color:var(--text-placeholder)}.p-textarea-input:focus-visible{border-color:var(--focus-border)}.p-textarea-output{background:var(--bg-tertiary)}
 .p-statusbar{padding:4px 10px;font-size: var(--fs-xs);color:var(--text-muted);background:var(--bg-secondary);border-top:1px solid var(--border);flex-shrink:0;min-height:24px}
 </style>
 <script>
