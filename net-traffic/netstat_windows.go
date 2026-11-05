@@ -25,6 +25,7 @@ import (
 var (
 	iphlpapi    = syscall.NewLazyDLL("iphlpapi.dll")
 	kernel32    = syscall.NewLazyDLL("kernel32.dll")
+	advapi32    = syscall.NewLazyDLL("advapi32.dll")
 	procIfTable = iphlpapi.NewProc("GetIfTable")
 	procTcpTbl  = iphlpapi.NewProc("GetExtendedTcpTable")
 	procUdpTbl  = iphlpapi.NewProc("GetExtendedUdpTable")
@@ -36,6 +37,12 @@ var (
 	// 每条 TCP 连接的字节数（estats）：采集默认关闭，要先 Set 启用（需管理员权限）
 	procGetTcpEstats = iphlpapi.NewProc("GetPerTcpConnectionEStats")
 	procSetTcpEstats = iphlpapi.NewProc("SetPerTcpConnectionEStats")
+
+	// 自检当前进程令牌是否已提升：estats 需要「Administrators 组 + UAC 完整令牌」，
+	// 宿主声明自己是管理员不等于插件子进程真的拿到了提升令牌，直接测最可靠。
+	procGetCurProcess  = kernel32.NewProc("GetCurrentProcess")
+	procOpenProcessTok = advapi32.NewProc("OpenProcessToken")
+	procGetTokenInfo   = advapi32.NewProc("GetTokenInformation")
 )
 
 // mibIfRow 对应 Windows 的 MIB_IFROW（bDescr 是单字节 ANSI，不是 WCHAR）。
@@ -85,6 +92,9 @@ const (
 	tcpBoolOptEnabled = 1
 	// sizeof(TCP_ESTATS_DATA_ROD_v0)：6×ULONG64 + 5×ULONG + 4 填充 + ULONG64 + ULONG + 4 填充 + ULONG64
 	tcpEstatsRodSize = 96
+	// TOKEN_QUERY / TokenElevation（TOKEN_INFORMATION_CLASS 第 20 项）
+	tokenQuery    = 0x0008
+	tokenElevated = 20
 )
 
 // tcpRow / udpRow 对应 MIB_TCPROW_OWNER_PID / MIB_UDPROW_OWNER_PID。
@@ -117,6 +127,23 @@ type processEntry32 struct {
 }
 
 func platformSupported() bool { return true }
+
+// isElevated 读 TOKEN_ELEVATION（不是简单查 Administrators 组成员）：
+// UAC 下管理员账户拿到的默认仍是筛选令牌，SetPerTcpConnectionEStats 会返回
+// ERROR_ACCESS_DENIED；只有「以管理员身份运行」得到的完整令牌才算数。
+func isElevated() bool {
+	h, _, _ := procGetCurProcess.Call()
+	var tok syscall.Handle
+	ret, _, _ := procOpenProcessTok.Call(h, tokenQuery, uintptr(unsafe.Pointer(&tok)))
+	if ret == 0 || tok == syscall.InvalidHandle {
+		return false
+	}
+	defer syscall.CloseHandle(tok)
+	var val, n uint32
+	ret, _, _ = procGetTokenInfo.Call(uintptr(tok), tokenElevated,
+		uintptr(unsafe.Pointer(&val)), 4, uintptr(unsafe.Pointer(&n)))
+	return ret != 0 && val != 0
+}
 
 // collectIfaces 读网卡计数，并按物理网卡去重后返回。
 //

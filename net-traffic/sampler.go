@@ -1,6 +1,22 @@
 package main
 
 // 采样器：常驻 goroutine 按固定间隔采集，前端只取快照。
+//
+// 每进程速率的来源：GetExtendedTcpTable 给出每条 TCP 连接的 PID，
+// GetPerTcpConnectionEStats(TcpConnectionEstatsData) 给出该连接累计的应用层
+// 收发字节数（DataBytesIn / DataBytesOut）；两次采样做差分再按 PID 相加，
+// 就是「这个程序此刻上传/下载了多少」。这是精确计数，不是估算。
+//
+// 两个必须牢记的前提（都是踩过的坑）：
+//  1. Data 计数器默认不采集，必须先对该连接 SetPerTcpConnectionEStats 打开
+//     EnableCollection，否则 Get 会返回 NO_ERROR 但内容是未初始化的垃圾值。
+//     且启用状态会被系统重置，因此每一轮都要先 Set 再 Get，不能只在首见时 Set 一次。
+//  2. 计数从「启用采集那一刻」起算，插件启动前已存在连接的既往流量追不回来；
+//     存活短于一个采样周期的连接可能完全采不到。
+//
+// 能力边界：Windows 只为 TCP 提供按连接的字节统计，UDP（QUIC/HTTP3、BT、DNS、
+// 微信/网盘传输等）没有等价接口，只能给到连接归属，速率一律为 0 并在 UI 标注。
+// 想覆盖 UDP 必须走 ETW Microsoft-Windows-Kernel-Network 实时会话，那是另一套实现。
 
 import (
 	"fmt"
@@ -77,33 +93,53 @@ type ifaceInfo struct {
 }
 
 type connInfo struct {
-	Proto   string  `json:"proto"`
-	Local   string  `json:"local"`
-	Remote  string  `json:"remote"`
-	State   string  `json:"state"`
-	PID     uint32  `json:"pid"`
-	Proc    string  `json:"proc"`
-	InRate  float64 `json:"inRate"`  // 该连接的下载速率 B/s（仅 TCP，UDP 无法按连接归属）
-	OutRate float64 `json:"outRate"` // 该连接的上传速率 B/s
+	Proto    string  `json:"proto"`
+	Local    string  `json:"local"`
+	Remote   string  `json:"remote"`
+	State    string  `json:"state"`
+	PID      uint32  `json:"pid"`
+	Proc     string  `json:"proc"`
+	InRate   float64 `json:"inRate"`   // 该连接的下载速率 B/s（仅 TCP ESTABLISHED）
+	OutRate  float64 `json:"outRate"`  // 该连接的上传速率 B/s
+	Measured bool    `json:"measured"` // 本轮是否拿到了 estats 计数（区分「0 B/s」与「无计量」）
+}
+
+// procInfo 按 PID 聚合后的「每个程序的上传/下载」。
+type procInfo struct {
+	PID      uint32  `json:"pid"`
+	Proc     string  `json:"proc"`
+	InRate   float64 `json:"inRate"`
+	OutRate  float64 `json:"outRate"`
+	InTotal  uint64  `json:"inTotal"`
+	OutTotal uint64  `json:"outTotal"`
+	TCPConns int     `json:"tcpConns"`
+	UDPConns int     `json:"udpConns"`
+	Measured int     `json:"measured"` // 有多少条连接拿到了 estats 计数
 }
 
 type snapshot struct {
-	Supported  bool        `json:"supported"`
-	Error      string      `json:"error,omitempty"`
-	SampledAt  string      `json:"sampledAt"`
-	ConnAt     string      `json:"connAt"`
-	IntervalMs int         `json:"intervalMs"`
-	InRate     float64     `json:"inRate"`
-	OutRate    float64     `json:"outRate"`
-	PeakIn     float64     `json:"peakIn"`
-	PeakOut    float64     `json:"peakOut"`
-	InTotal    uint64      `json:"inTotal"`
-	OutTotal   uint64      `json:"outTotal"`
-	PerConn    bool        `json:"perConn"` // 连接级上传/下载是否可用（需管理员权限开启 estats）
-	Interfaces []ifaceInfo `json:"interfaces"`
-	History    []histPoint `json:"history"`
-	Conns      []connInfo  `json:"conns"`
-	ConnTotal  int         `json:"connTotal"`
+	Supported   bool        `json:"supported"`
+	Error       string      `json:"error,omitempty"`
+	SampledAt   string      `json:"sampledAt"`
+	ConnAt      string      `json:"connAt"`
+	IntervalMs  int         `json:"intervalMs"`
+	ConnEveryMs int         `json:"connEveryMs"`
+	InRate      float64     `json:"inRate"`
+	OutRate     float64     `json:"outRate"`
+	PeakIn      float64     `json:"peakIn"`
+	PeakOut     float64     `json:"peakOut"`
+	InTotal     uint64      `json:"inTotal"`
+	OutTotal    uint64      `json:"outTotal"`
+	PerConn     bool        `json:"perConn"`           // TCP 连接级计量是否可用（需管理员权限开启 estats）
+	PerConnNote string      `json:"perConnNote,omitempty"`
+	EstatsCode  uint32      `json:"estatsCode,omitempty"`
+	Elevated    bool        `json:"elevated"`          // 插件进程令牌是否已提升（宿主管理员是否传导过来）
+	Interfaces  []ifaceInfo `json:"interfaces"`
+	History     []histPoint `json:"history"`
+	Conns       []connInfo  `json:"conns"`
+	ConnTotal   int         `json:"connTotal"`
+	Processes   []procInfo  `json:"processes"`
+	ProcTotal   int         `json:"procTotal"`
 }
 
 // connBytesState 一条 TCP 连接的 estats 字节基线。
@@ -111,8 +147,14 @@ type connBytesState struct {
 	prevIn  uint64
 	prevOut uint64
 	hasPrev bool
-	enabled bool // estats 采集启用成功（未启用时读到的计数是垃圾值，绝不使用）
+	enabled bool // 本轮 Set 是否成功（未启用时读到的计数是垃圾值，绝不使用）
 	seen    bool
+}
+
+// procTotal 一个进程本次会话内由 TCP 连接差分累加出来的收发字节。
+type procTotal struct {
+	in  uint64
+	out uint64
 }
 
 type samplerState struct {
@@ -127,11 +169,16 @@ type samplerState struct {
 	sampledAt time.Time
 
 	// 每连接字节统计（TCP estats）。key = 本地地址:端口>远端地址:端口 的原始值。
-	// estats 采集默认关闭，首见连接时 Set 启用（需管理员）；被拒后不再重试。
-	connBytes    map[string]*connBytesState
-	connPrevAt   time.Time
-	estatsTried  bool
-	estatsDenied bool
+	connBytes   map[string]*connBytesState
+	connPrevAt  time.Time
+	perConn     bool // 初始假定可用；只有真的出现「所有连接都启用失败」才置 false
+	perConnNote string
+	estatsCode  uint32
+
+	// 按进程聚合
+	procs      []procInfo
+	procTotal  int
+	procTotals map[uint32]*procTotal
 
 	inRate   float64
 	outRate  float64
@@ -143,8 +190,21 @@ type samplerState struct {
 
 var (
 	stMu sync.Mutex
-	st   = &samplerState{ifaces: map[string]*ifaceState{}, connBytes: map[string]*connBytesState{}}
+	st   = &samplerState{
+		ifaces:     map[string]*ifaceState{},
+		connBytes:  map[string]*connBytesState{},
+		procTotals: map[uint32]*procTotal{},
+		perConn:    true,
+	}
+	elevatedOnce sync.Once
+	elevatedFlag bool
 )
+
+// currentElevated 令牌状态不会在进程生命周期内变化，测一次就够。
+func currentElevated() bool {
+	elevatedOnce.Do(func() { elevatedFlag = isElevated() })
+	return elevatedFlag
+}
 
 func startSampler() {
 	if !platformSupported() {
@@ -278,7 +338,13 @@ func sampleConns() {
 		}
 	}
 
-	estatsDenied := st.estatsTried && st.estatsDenied
+	agg := make(map[uint32]*procInfo, 32)
+	if st.procTotals == nil {
+		st.procTotals = map[uint32]*procTotal{}
+	}
+
+	var okCount, failCount int
+	var failCode uint32
 	list := make([]connInfo, 0, len(raws))
 	for _, r := range raws {
 		ci := connInfo{
@@ -289,46 +355,76 @@ func sampleConns() {
 			PID:    r.pid,
 			Proc:   names[r.pid],
 		}
+		p := agg[r.pid]
+		if p == nil {
+			p = &procInfo{PID: r.pid, Proc: names[r.pid]}
+			agg[r.pid] = p
+		}
+		if r.proto == "TCP" {
+			p.TCPConns++
+		} else {
+			p.UDPConns++
+		}
+
 		// 仅已建立的 TCP 连接有字节计数；UDP 没有按连接归属的计数接口
 		if r.proto == "TCP" && r.state == 5 {
 			key := fmt.Sprintf("%08x:%04x>%08x:%04x", r.localAddr, r.localPort, r.remoteAddr, r.remotePort)
+			row := mibTcpRow{state: r.state, localAddr: r.localAddr, localPort: r.localPort,
+				remoteAddr: r.remoteAddr, remotePort: r.remotePort}
 			bs := st.connBytes[key]
 			if bs == nil {
 				bs = &connBytesState{}
 				st.connBytes[key] = bs
-				// 新连接首见：打开 estats 采集，从现在开始计数（之前的流量追不回来）
-				if !estatsDenied {
-					st.estatsTried = true
-					if ok, code := tcpEstatsEnable(mibTcpRow{state: r.state, localAddr: r.localAddr, localPort: r.localPort, remoteAddr: r.remoteAddr, remotePort: r.remotePort}); ok {
-						bs.enabled = true
-					} else {
-						st.estatsDenied = true
-						estatsDenied = true
-						qdLogWarn("estats 采集启用失败 code=%d（需管理员权限），连接级上传/下载不可用", code)
-					}
-				}
 			}
 			bs.seen = true
-			if bs.enabled {
-				if in, out, ok := tcpEstatsBytes(mibTcpRow{state: r.state, localAddr: r.localAddr, localPort: r.localPort, remoteAddr: r.remoteAddr, remotePort: r.remotePort}); ok {
+			// 每轮先启用再读取：EnableCollection 会被系统重置，且新连接可能晚几帧才具备条件。
+			// 单条连接失败只影响它自己，绝不全局熔断（否则一次瞬时错误会让整个功能直到重启都废掉）。
+			if ok, code := tcpEstatsEnable(row); ok {
+				okCount++
+				bs.enabled = true
+				if in, out, got := tcpEstatsBytes(row); got {
 					// 计数合理性守卫：256TB 以上的「计数」必是未初始化垃圾
 					if in > 1<<48 || out > 1<<48 {
 						bs.hasPrev = false
 					} else if !bs.hasPrev || secs <= 0 {
 						bs.prevIn, bs.prevOut, bs.hasPrev = in, out, true
+						ci.Measured = true
 					} else if in < bs.prevIn || out < bs.prevOut {
 						// 计数回退：四元组被新连接复用，重建基线，本轮不计速率
 						bs.prevIn, bs.prevOut = in, out
+						ci.Measured = true
 					} else {
-						ci.InRate = float64(in-bs.prevIn) / secs
-						ci.OutRate = float64(out-bs.prevOut) / secs
+						dIn, dOut := in-bs.prevIn, out-bs.prevOut
+						ci.InRate = float64(dIn) / secs
+						ci.OutRate = float64(dOut) / secs
+						ci.Measured = true
 						bs.prevIn, bs.prevOut = in, out
+						t := st.procTotals[r.pid]
+						if t == nil {
+							t = &procTotal{}
+							st.procTotals[r.pid] = t
+						}
+						t.in += dIn
+						t.out += dOut
 					}
 				}
+			} else {
+				failCount++
+				if code != 0 {
+					failCode = code
+				}
+				bs.enabled = false
+				bs.hasPrev = false // 恢复后重新建基线，避免拿旧值差分
 			}
+		}
+		p.InRate += ci.InRate
+		p.OutRate += ci.OutRate
+		if ci.Measured {
+			p.Measured++
 		}
 		list = append(list, ci)
 	}
+
 	// 摘掉本轮没再出现的连接（连接关闭 / 四元组复用后重建基线）
 	for k, bs := range st.connBytes {
 		if !bs.seen {
@@ -337,6 +433,55 @@ func sampleConns() {
 		}
 		bs.seen = false
 	}
+
+	// estats 能力判定：只在真的探过连接时更新，避免「当前恰好没有已建立连接」
+	// 被误报成「需管理员权限」。
+	if okCount+failCount > 0 {
+		st.perConn = okCount > 0
+		st.estatsCode = failCode
+		if okCount == 0 {
+			st.perConnNote = fmt.Sprintf("estats 启用全部失败 code=%d（需以管理员身份运行宿主，或连接已关闭）", failCode)
+			qdLogWarn("estats 采集启用全部失败 code=%d ok=0 fail=%d（通常需管理员权限）", failCode, failCount)
+		} else {
+			st.perConnNote = ""
+		}
+	}
+
+	// 按 PID 生成进程视图；累计只保留当前仍在的进程，避免已退出进程无限堆积。
+	procs := make([]procInfo, 0, len(agg))
+	keep := make(map[uint32]*procTotal, len(agg))
+	for pid, p := range agg {
+		if t := st.procTotals[pid]; t != nil {
+			p.InTotal, p.OutTotal = t.in, t.out
+			keep[pid] = t
+		}
+		procs = append(procs, *p)
+	}
+	st.procTotals = keep
+	sort.Slice(procs, func(i, j int) bool {
+		ri, rj := procs[i].InRate+procs[i].OutRate, procs[j].InRate+procs[j].OutRate
+		if ri != rj {
+			return ri > rj
+		}
+		if procs[i].InTotal+procs[i].OutTotal != procs[j].InTotal+procs[j].OutTotal {
+			return procs[i].InTotal+procs[i].OutTotal > procs[j].InTotal+procs[j].OutTotal
+		}
+		// 没有进程名的（PID 0 的系统连接 / TIME_WAIT）排到末尾，别把空行顶在最前面
+		ni, nj := procs[i].Proc, procs[j].Proc
+		if ni == "" {
+			ni = "\uffff"
+		}
+		if nj == "" {
+			nj = "\uffff"
+		}
+		if ni != nj {
+			return ni < nj
+		}
+		return procs[i].PID < procs[j].PID
+	})
+	st.procs = procs
+	st.procTotal = len(procs)
+
 	sort.Slice(list, func(i, j int) bool {
 		// 已建立连接优先（LISTEN / TIME_WAIT 之类对「谁在传数据」没有参考价值）；
 		// 同级按速率（正在传的排前面，方便盯某个软件）、再按进程名 / 远端地址稳定排序。
@@ -378,6 +523,12 @@ func resetStats() {
 	defer stMu.Unlock()
 	st.ifaces = map[string]*ifaceState{}
 	st.connBytes = map[string]*connBytesState{}
+	st.procTotals = map[uint32]*procTotal{}
+	st.procs = nil
+	st.procTotal = 0
+	st.perConn = true
+	st.perConnNote = ""
+	st.estatsCode = 0
 	st.history = nil
 	st.inRate, st.outRate = 0, 0
 	st.peakIn, st.peakOut = 0, 0
@@ -390,21 +541,27 @@ func buildSnapshot() snapshot {
 	defer stMu.Unlock()
 
 	s := snapshot{
-		Supported:  st.supported,
-		Error:      st.err,
-		SampledAt:  st.sampledAt.Format("15:04:05"),
-		ConnAt:     st.connAt.Format("15:04:05"),
-		IntervalMs: int(sampleInterval.Milliseconds()),
-		InRate:     st.inRate,
-		OutRate:    st.outRate,
-		PeakIn:     st.peakIn,
-		PeakOut:    st.peakOut,
-		InTotal:    st.inTotal,
-		OutTotal:   st.outTotal,
-		PerConn:    st.supported && !st.estatsDenied,
-		Interfaces: make([]ifaceInfo, 0, len(st.ifaces)),
-		History:    append([]histPoint(nil), st.history...),
-		ConnTotal:  st.connTotal,
+		Supported:   st.supported,
+		Error:       st.err,
+		SampledAt:   st.sampledAt.Format("15:04:05"),
+		ConnAt:      st.connAt.Format("15:04:05"),
+		IntervalMs:  int(sampleInterval.Milliseconds()),
+		ConnEveryMs: int(connInterval.Milliseconds()),
+		InRate:      st.inRate,
+		OutRate:     st.outRate,
+		PeakIn:      st.peakIn,
+		PeakOut:     st.peakOut,
+		InTotal:     st.inTotal,
+		OutTotal:    st.outTotal,
+		PerConn:     st.perConn,
+		PerConnNote: st.perConnNote,
+		EstatsCode:  st.estatsCode,
+		Elevated:    currentElevated(),
+		Interfaces:  make([]ifaceInfo, 0, len(st.ifaces)),
+		History:     append([]histPoint(nil), st.history...),
+		ConnTotal:   st.connTotal,
+		Processes:   append([]procInfo(nil), st.procs...),
+		ProcTotal:   st.procTotal,
 	}
 	for k, v := range st.ifaces {
 		s.Interfaces = append(s.Interfaces, ifaceInfo{
@@ -439,6 +596,9 @@ func buildSnapshot() snapshot {
 	}
 	if s.Conns == nil {
 		s.Conns = []connInfo{}
+	}
+	if s.Processes == nil {
+		s.Processes = []procInfo{}
 	}
 	return s
 }

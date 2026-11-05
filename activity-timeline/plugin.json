@@ -1,0 +1,104 @@
+{
+  "id": "io.github.parieses.activity-timeline",
+  "name": "电脑活动痕迹",
+  "name_i18n": {
+    "zh-CN": "电脑活动痕迹",
+    "en-US": "Activity Timeline"
+  },
+  "version": "1.0.0",
+  "description": "按日期段还原电脑使用痕迹：登录解锁、软件启动、U 盘接入、文件打开、删除与系统变更",
+  "description_i18n": {
+    "zh-CN": "按日期段还原电脑使用痕迹：登录解锁、软件启动、U 盘接入、文件打开、删除与系统变更",
+    "en-US": "Reconstruct PC activity from a date range: logon/unlock, app execution, USB devices, opened files, deletions and system changes"
+  },
+  "author": "QuickDock",
+  "icon": "icon.svg",
+  "category": "安全工具",
+  "platforms": [
+    "windows"
+  ],
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "backend": {
+    "runtime": "native",
+    "entry": "activity-timeline",
+    "args": [],
+    "timeout": 120
+  },
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 900,
+    "height": 600
+  },
+  "permissions": {
+    "filesystem": true,
+    "process": [
+      "wevtutil",
+      "reg",
+      "auditpol",
+      "fsutil"
+    ]
+  },
+  "commands": [
+    {
+      "id": "activity-scan",
+      "title": "查询电脑活动痕迹",
+      "description": "按日期段还原登录解锁、软件启动、U 盘接入、文件打开与删除等系统痕迹，只读扫描",
+      "keywords": [
+        "活动",
+        "痕迹",
+        "取证",
+        "解锁",
+        "U盘",
+        "timeline",
+        "forensics",
+        "activity"
+      ],
+      "aliases": [
+        "电脑被谁用过",
+        "查操作记录"
+      ],
+      "title_i18n": {
+        "zh-CN": "查询电脑活动痕迹",
+        "en-US": "Query PC Activity Timeline"
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "description": "起始日期，格式 YYYY-MM-DD；省略时默认近 7 天"
+          },
+          "to": {
+            "type": "string",
+            "description": "结束日期，格式 YYYY-MM-DD；省略时默认今天"
+          },
+          "types": {
+            "type": "string",
+            "description": "事件类型，逗号分隔：session/program/device/file/delete/change/network/tamper；留空表示全部"
+          }
+        }
+      }
+    },
+    {
+      "id": "activity-status",
+      "title": "证据完整度体检",
+      "description": "查看本机哪些取证源可用、审核策略是否开启、安全日志能追溯到哪天",
+      "keywords": [
+        "体检",
+        "审核策略",
+        "审计",
+        "日志覆盖",
+        "audit"
+      ],
+      "title_i18n": {
+        "zh-CN": "证据完整度体检",
+        "en-US": "Evidence Coverage Check"
+      }
+    }
+  ],
+  "changelog": "## v1.0.0\n\n- 新增「日期段时间轴」：并发聚合 16 类只读取证源，按时间倒序还原会话/程序/设备/文件/删除/变更/网络/异常事件\n- 每条事件标注证据强度（确证 / 交叉印证 / 推断）与原始来源，推断项不伪装成确证\n- 新增「证据完整度体检」：审核策略现状、日志最早可追溯时间、Security 日志上限、LastAccessTime 可信度、各证据源可用性\n- 支持导出 CSV 与自包含 HTML 报告\n- 全程只读：不开启审计、不修改系统设置、不常驻；开启审计的建议命令只展示不执行\n- 前端按 900×600 窗口收敛，滚动区离窗口边缘 10px 避开宿主缩放手柄\n"
+}

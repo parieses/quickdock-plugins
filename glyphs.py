@@ -670,3 +670,11 @@ GLYPH["secrets-scanner"] = """
   <circle cx="15.5" cy="8.5" r="3.2"/>
   <path d="M18 11l3 3"/>
 """
+
+GLYPH["activity-timeline"] = """
+  <path d="M5.5 3.5v17"/>
+  <circle cx="5.5" cy="7" r="1.7"/>
+  <circle cx="5.5" cy="12" r="1.7"/>
+  <circle cx="5.5" cy="17" r="1.7"/>
+  <path d="M10 7h9M10 12h6M10 17h8.5" opacity="0.55"/>
+"""

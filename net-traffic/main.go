@@ -3,8 +3,9 @@ package main
 // net-traffic —— 实时流量监控
 //
 // 后端常驻采样：每秒读一次网卡字节计数（iphlpapi GetIfTable），每 3 秒读一次
-// TCP/UDP 连接表（GetExtendedTcpTable / GetExtendedUdpTable）并解析 PID → 进程名。
-// 前端只做一件事：定时取快照（traffic.snapshot），把曲线与列表画出来。
+// TCP/UDP 连接表（GetExtendedTcpTable / GetExtendedUdpTable）并解析 PID → 进程名，
+// 同时用 GetPerTcpConnectionEStats 读每条 TCP 连接的累计字节数并按 PID 聚合成
+// 「每个程序的上传/下载」。前端只做一件事：定时取快照（traffic.snapshot）。
 //
 // 为什么不在请求时临时采样：速率必须由「两次采样的差值 ÷ 间隔」得到，
 // 采样器必须常驻；同时常驻采样也让前端无论何时打开都立刻有历史曲线。
@@ -19,15 +20,18 @@ import (
 
 const pluginID = "io.github.parieses.net-traffic"
 
+// ID 必须是 json.RawMessage：宿主前端桥接发的是 "nt_1" 这类字符串 id，
+// 用 int64 接收会让 json.Unmarshal 整条失败、请求被静默丢弃（UI 15s 超时）。
+// 响应也原样回显，宿主才能把结果对回对应的 Promise。
 type RPCRequest struct {
 	JSONRPC string          `json:"jsonrpc"`
-	ID      int64           `json:"id"`
+	ID      json.RawMessage `json:"id"`
 	Method  string          `json:"method"`
 	Params  json.RawMessage `json:"params,omitempty"`
 }
 type RPCResponse struct {
 	JSONRPC string          `json:"jsonrpc"`
-	ID      int64           `json:"id,omitempty"`
+	ID      json.RawMessage `json:"id,omitempty"`
 	Result  json.RawMessage `json:"result,omitempty"`
 	Error   *RPCError       `json:"error,omitempty"`
 }
@@ -57,6 +61,7 @@ func main() {
 		}
 		var req RPCRequest
 		if err := json.Unmarshal([]byte(line), &req); err != nil {
+			qdLogWarn("请求解析失败 err=%v line=%s", err, qdTrunc(line, 200))
 			continue
 		}
 		func() {
@@ -109,7 +114,7 @@ func handleExecute(req RPCRequest) {
 	}
 }
 
-func handleTraffic(id int64, cmd string) {
+func handleTraffic(id json.RawMessage, cmd string) {
 	switch cmd {
 	case "traffic.snapshot":
 		respond(id, buildSnapshot())
@@ -121,15 +126,15 @@ func handleTraffic(id int64, cmd string) {
 	}
 }
 
-func respond(id int64, result interface{}) {
-	defer qdFinishRequest(id, 0, "")
+func respond(id json.RawMessage, result interface{}) {
+	defer qdFinishRequest(idToInt(id), 0, "")
 	data, _ := json.Marshal(RPCResponse{JSONRPC: "2.0", ID: id, Result: mustMarshal(result)})
 	data = append(data, '\n')
 	os.Stdout.Write(data)
 }
 
-func respondError(id int64, code int, msg string) {
-	defer qdFinishRequest(id, code, msg)
+func respondError(id json.RawMessage, code int, msg string) {
+	defer qdFinishRequest(idToInt(id), code, msg)
 	data, _ := json.Marshal(RPCResponse{JSONRPC: "2.0", ID: id, Error: &RPCError{Code: code, Message: msg}})
 	data = append(data, '\n')
 	os.Stdout.Write(data)

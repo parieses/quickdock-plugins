@@ -1460,9 +1460,10 @@ native 侧的关键设计（改之前先看 `qdlog.go` 顶部注释）：
 | word-count | 实时统计文本的字数、词数、行数、段落数、字节数与阅读时长，支持中英文混合。 | 纯前端 |
 | xiangqi | 单机中国象棋，完整走子与吃子规则，含基于局面评估的简易 AI 对手。 | 纯前端 |
 
-**Native 插件（`runtime: native`，自带 Go 源码 + 编译产物）** — 共 37 个
+**Native 插件（`runtime: native`，自带 Go 源码 + 编译产物）** — 共 38 个
 | 插件 ID | 功能 |
 |---|---|
+| activity-timeline | 按日期段还原电脑使用痕迹：登录解锁、软件启动、U 盘接入、文件打开、删除与系统变更 |
 | api-loadtest | 功能丰富的 HTTP 接口压测工具：支持并发/时长双模式、自定义 Header 与 Body、实时 QPS 与延迟分布(p50/p90/p95/p99)、状态码分布、错误率统计与结果一键导出 |
 | api-mock | 本地 HTTP 接口 Mock 服务：可视化配置路由规则（方法/路径/状态码/响应体/延迟），一键启动本地服务，实时查看请求日志，联调前端与第三方对接无需真实后端 |
 | app-manager | 本机已安装应用一览：名称 / 版本 / 发布者 / 占用体积 / 安装日期 / 安装范围（所有用户 / 当前用户 / 32 位），支持搜索与按体积、安装日期排序。MSI 程序可直接唤起卸载，自带卸载器的程序提供命令复制、安装目录直达与系统卸载页入口。 |
@@ -1501,7 +1502,7 @@ native 侧的关键设计（改之前先看 `qdlog.go` 顶部注释）：
 | wifi-manager | 查看网络列表、WiFi 密码、连接状态 |
 | ws-tester | 连接 ws/wss 服务，发送消息并实时查看返回的帧，支持多连接与历史 |
 
-> 以上 83 个插件均在本仓库根目录各有独立子目录（ID 为 `io.github.parieses.*`），代码可直接复用。goja/none 插件演示「零宿主依赖、纯 JS 自包含」的外部化样板；native 插件演示「Go 源码 vendor + 自编译 entry exe」模式（`build.py` 直接在插件目录 `go build`）。完整 goja 模板见上文「完整示例」。
+> 以上 84 个插件均在本仓库根目录各有独立子目录（ID 为 `io.github.parieses.*`），代码可直接复用。goja/none 插件演示「零宿主依赖、纯 JS 自包含」的外部化样板；native 插件演示「Go 源码 vendor + 自编译 entry exe」模式（`build.py` 直接在插件目录 `go build`）。完整 goja 模板见上文「完整示例」。
 
 <!--DEVGUIDE_PLUGINS_END-->
 

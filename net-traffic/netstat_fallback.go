@@ -10,6 +10,8 @@ import "errors"
 
 func platformSupported() bool { return false }
 
+func isElevated() bool { return false }
+
 func collectIfaces() ([]rawIface, error) {
 	return nil, errors.New("仅支持 Windows")
 }

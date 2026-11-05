@@ -65,6 +65,15 @@
   .nt-badge.est { background: var(--success-soft); color: var(--success); }
   .nt-badge.listen { background: var(--warning-soft); color: var(--warning); }
 
+  /* 视图切换：按程序 / 按连接 */
+  .nt-tabs { display: flex; gap: 2px; flex-shrink: 0; }
+  .nt-tab { border: 0; background: transparent; color: var(--text-muted); font-family: var(--font); font-size: var(--fs-xs); padding: 4px 10px; border-radius: var(--radius); cursor: pointer; white-space: nowrap; }
+  .nt-tab:hover { color: var(--text-primary); }
+  .nt-tab.active { background: var(--accent-soft); color: var(--accent); font-weight: var(--fw-medium); }
+  .nt-alert { padding: 8px 12px; background: var(--warning-soft); color: var(--warning); font-size: var(--fs-xs); border-bottom: 1px solid var(--border); line-height: 1.5; }
+  /* 右列滚动区贴窗口右/下边缘，宿主 5px 缩放手柄会吃掉滚动条；用 margin 推离边缘 */
+  .nt-scroll-edge { margin-right: 8px; margin-bottom: 8px; }
+
   .nt-search { flex: 1; min-width: 0; }
   .nt-hint { font-size: var(--fs-xs); color: var(--text-disabled); }
   .nt-switch { display: flex; align-items: center; gap: 4px; font-size: var(--fs-xs); color: var(--text-muted); cursor: pointer; }
@@ -122,12 +131,15 @@
       </div>
       <div class="nt-col-right">
         <div class="nt-sec-head">
-          <span class="nt-sec-title">连接</span>
+          <div class="nt-tabs">
+            <button class="nt-tab active" data-view="procs" id="tabProcs">按程序</button>
+            <button class="nt-tab" data-view="conns" id="tabConns">按连接</button>
+          </div>
           <span class="nt-hint" id="connCount"></span>
           <span class="p-spacer"></span>
-          <input class="p-input nt-search" id="search" placeholder="搜索进程 / IP / 端口 / 状态">
+          <input class="p-input nt-search" id="search" placeholder="搜索进程 / PID / IP / 端口 / 状态">
         </div>
-        <div class="nt-scroll" id="connWrap"></div>
+        <div class="nt-scroll nt-scroll-edge" id="dataWrap"></div>
       </div>
     </div>
   </div>
@@ -135,7 +147,7 @@
   <div class="p-statusbar">
     <span id="status">正在连接后端…</span>
     <span class="p-spacer"></span>
-    <span class="nt-hint">仅统计 IPv4 · 连接级上传/下载仅 TCP · 速率按 1 秒采样计算</span>
+    <span class="nt-hint">仅 IPv4 · TCP 为精确字节计量 · UDP 无系统级按连接计数 · 累计自插件启动起算</span>
   </div>
 </div>
 
@@ -198,7 +210,9 @@
 
   /* ---------- DOM ---------- */
   var $ = function (id) { return document.getElementById(id) }
-  var paused = false, showIdle = false, keyword = '', lastConns = [], perConn = false, timer = null, failures = 0
+  var paused = false, showIdle = false, keyword = '', view = 'procs',
+      lastConns = [], lastProcs = [], perConn = false, elevated = false,
+      perConnNote = '', estatsCode = 0, timer = null, failures = 0
 
   function drawChart(hist) {
     var svg = $('chart')
@@ -268,26 +282,74 @@
     box.innerHTML = html
   }
 
+  // 没有计量数据时把原因直接摆在表格上方，而不是让用户对着一片 — 猜
+  function alertHtml() {
+    if (perConn) return ''
+    var msg
+    if (!elevated) {
+      msg = '当前插件进程不是管理员令牌。请用「以管理员身份运行」启动 QuickDock 宿主并重新打开本插件，' +
+            '才能读取每个程序的上传 / 下载（Windows 的 TCP 扩展统计要求提升令牌）。'
+    } else {
+      msg = 'TCP 扩展统计未能启用' + (estatsCode ? '（错误码 ' + estatsCode + '）' : '') +
+            '，本轮所有连接都没有计量数据。' + (perConnNote ? ' ' + perConnNote : '')
+    }
+    return '<div class="nt-alert">' + esc(msg) + '</div>'
+  }
+
+  function renderProcs(list) {
+    var wrap = $('dataWrap')
+    var kw = keyword.toLowerCase()
+    var rows = list.filter(function (p) {
+      if (!kw) return true
+      return ((p.proc || '系统') + ' ' + p.pid + ' ' + p.tcpConns + ' ' + p.udpConns).toLowerCase().indexOf(kw) >= 0
+    })
+    if (!rows.length) {
+      wrap.innerHTML = alertHtml() + '<div class="nt-center">' + (kw ? '没有匹配的程序' : '暂无网络连接') + '</div>'
+      $('connCount').textContent = list.length ? '0 / ' + list.length : ''
+      return
+    }
+    $('connCount').textContent = rows.length + ' / ' + list.length + ' 个程序'
+    var html = alertHtml() + '<table class="nt-tbl"><thead><tr><th>程序</th><th>PID</th><th>连接</th><th>下载</th><th>上传</th><th>累计 ↓</th><th>累计 ↑</th></tr></thead><tbody>'
+    rows.forEach(function (p) {
+      var canMeasure = perConn && p.tcpConns > 0
+      var tip = canMeasure ? '' : ' title="该进程只有 UDP 连接，或尚未取得计量：Windows 未提供按连接的 UDP 字节统计"'
+      var dRate = canMeasure ? rateText(p.inRate) : '—'
+      var uRate = canMeasure ? rateText(p.outRate) : '—'
+      var connTxt = (p.tcpConns || 0) + ' TCP' + (p.udpConns ? ' + ' + p.udpConns + ' UDP' : '')
+      html += '<tr>' +
+        '<td class="proc" title="' + esc(p.proc || '系统') + '">' + esc(p.proc || '系统') + '</td>' +
+        '<td>' + p.pid + '</td>' +
+        '<td>' + connTxt + '</td>' +
+        '<td' + (p.inRate > 0 ? ' class="d"' : '') + tip + '>' + dRate + '</td>' +
+        '<td' + (p.outRate > 0 ? ' class="u"' : '') + tip + '>' + uRate + '</td>' +
+        '<td>' + (canMeasure ? bytes(p.inTotal) : '—') + '</td>' +
+        '<td>' + (canMeasure ? bytes(p.outTotal) : '—') + '</td>' +
+      '</tr>'
+    })
+    wrap.innerHTML = html + '</tbody></table>'
+  }
+
   function renderConns(list) {
-    var wrap = $('connWrap')
+    var wrap = $('dataWrap')
     var kw = keyword.toLowerCase()
     var rows = list.filter(function (c) {
       if (!kw) return true
       return (c.proc + ' ' + c.local + ' ' + c.remote + ' ' + c.state + ' ' + c.proto + ' ' + c.pid).toLowerCase().indexOf(kw) >= 0
     })
     if (!rows.length) {
-      wrap.innerHTML = '<div class="nt-center">' + (kw ? '没有匹配的连接' : '暂无连接') + '</div>'
+      wrap.innerHTML = alertHtml() + '<div class="nt-center">' + (kw ? '没有匹配的连接' : '暂无连接') + '</div>'
       $('connCount').textContent = list.length ? '0 / ' + list.length : ''
       return
     }
     $('connCount').textContent = rows.length + ' / ' + list.length
-    var html = '<table class="nt-tbl"><thead><tr><th>协议</th><th>进程</th><th>PID</th><th>本地</th><th>远端</th><th>状态</th><th>下载</th><th>上传</th></tr></thead><tbody>'
+    var html = alertHtml() + '<table class="nt-tbl"><thead><tr><th>协议</th><th>进程</th><th>PID</th><th>本地</th><th>远端</th><th>状态</th><th>下载</th><th>上传</th></tr></thead><tbody>'
     rows.forEach(function (c) {
       var cls = c.proto === 'TCP' ? 'tcp' : 'udp'
       var stCls = c.state === 'ESTABLISHED' ? 'est' : (c.state === 'LISTEN' ? 'listen' : '')
-      // 速率列：0 显示 —，UDP / 无权限时自然全是 —
-      var dRate = perConn && c.inRate > 0 ? rateText(c.inRate) : '—'
-      var uRate = perConn && c.outRate > 0 ? rateText(c.outRate) : '—'
+      // 已取得计量的连接即使空闲也显示 0 B/s；UDP / LISTEN / 无权限才显示 —
+      var canMeasure = perConn && c.measured
+      var dRate = canMeasure ? rateText(c.inRate) : '—'
+      var uRate = canMeasure ? rateText(c.outRate) : '—'
       var dCls = c.inRate > 0 ? ' class="d"' : ''
       var uCls = c.outRate > 0 ? ' class="u"' : ''
       html += '<tr>' +
@@ -302,6 +364,19 @@
       '</tr>'
     })
     wrap.innerHTML = html + '</tbody></table>'
+  }
+
+  function renderView() {
+    if (view === 'procs') renderProcs(lastProcs)
+    else renderConns(lastConns)
+  }
+
+  function setView(v) {
+    view = v
+    $('tabProcs').className = 'nt-tab' + (v === 'procs' ? ' active' : '')
+    $('tabConns').className = 'nt-tab' + (v === 'conns' ? ' active' : '')
+    $('search').placeholder = v === 'procs' ? '搜索程序 / PID' : '搜索进程 / IP / 端口 / 状态'
+    renderView()
   }
 
   function tick() {
@@ -322,13 +397,18 @@
       $('sumOut').textContent = bytes(d.outTotal)
       $('clock').textContent = d.sampledAt || '--:--:--'
       perConn = !!d.perConn
-      $('status').textContent = '连接表更新于 ' + (d.connAt || '-') +
-        (perConn ? ' · 连接级上传/下载仅统计 TCP' : ' · 连接级上传/下载不可用（需管理员权限）') +
-        (d.error ? ' · ' + d.error : '')
+      elevated = !!d.elevated
+      perConnNote = d.perConnNote || ''
+      estatsCode = d.estatsCode || 0
+      $('status').textContent = '管理员 ' + (elevated ? '已提升' : '未提升') +
+        ' · ' + (perConn ? 'TCP 计量可用' : 'TCP 计量不可用' + (estatsCode ? ' code=' + estatsCode : '')) +
+        ' · 采样 ' + (d.connAt || '-') + (d.error ? ' · ' + d.error : '')
+      $('status').title = perConnNote || ''
       drawChart(d.history)
       renderIfaces(d.interfaces || [])
       lastConns = d.conns || []
-      renderConns(lastConns)
+      lastProcs = d.processes || []
+      renderView()
     }).catch(function (e) {
       failures++
       $('status').textContent = '采样失败：' + (e.message || e) + (failures > 3 ? '（已连续失败 ' + failures + ' 次）' : '')
@@ -360,11 +440,13 @@
     showIdle = this.checked
     send('traffic.snapshot', {}).then(function (d) { renderIfaces(d.interfaces || []) }).catch(function () {})
   }
+  $('tabProcs').onclick = function () { setView('procs') }
+  $('tabConns').onclick = function () { setView('conns') }
   $('search').oninput = function () {
     keyword = this.value.trim()
-    renderConns(lastConns)
+    renderView()
   }
-  $('connWrap').addEventListener('click', function (e) {
+  $('dataWrap').addEventListener('click', function (e) {
     var td = e.target
     if (td && td.className === 'remote' && td.textContent && td.textContent !== '-') {
       copyText(td.textContent)
@@ -372,7 +454,17 @@
     }
   })
 
-  start()
+  // 首屏请求必须等宿主 plugin:init，太早发的会被宿主直接丢弃；1.5s 兜底防止宿主不发信号
+  var booted = false
+  function boot() {
+    if (booted) return
+    booted = true
+    start()
+  }
+  window.addEventListener('message', function (e) {
+    if (e.data && e.data.type === 'plugin:init') boot()
+  })
+  setTimeout(boot, 1500)
 })()
 </script>
 </body>

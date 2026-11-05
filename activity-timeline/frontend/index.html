@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>电脑活动痕迹</title>
+<link rel="stylesheet" href="qd-theme.css">
+<link rel="stylesheet" href="components.css">
+<style>
+.at-app{display:flex;flex-direction:column;height:100vh;box-sizing:border-box;background:var(--bg-primary);color:var(--text-primary)}
+.at-head{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2);padding:var(--sp-3);border-bottom:1px solid var(--border)}
+.at-title{font-size:var(--fs-lg);font-weight:var(--fw-medium);white-space:nowrap;margin-right:var(--sp-2)}
+.at-sub{font-size:var(--fs-xs);color:var(--text-muted);font-weight:var(--fw-normal);margin-left:var(--sp-2)}
+.at-controls{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2);flex:1}
+.at-controls input[type=date]{padding:5px 8px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:var(--fs-sm);outline:none;color-scheme:dark}
+html[data-theme="light"] .at-controls input[type=date]{color-scheme:light}
+.at-controls input:focus-visible{border-color:var(--accent)}
+.at-sep{font-size:var(--fs-sm);color:var(--text-muted)}
+.at-btn{padding:5px 12px;background:var(--bg-tertiary);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-secondary);font-size:var(--fs-sm);cursor:pointer;white-space:nowrap}
+.at-btn:hover{background:var(--bg-hover);color:var(--text-primary)}
+.at-btn:disabled{opacity:.5;cursor:not-allowed}
+.at-primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.at-primary:hover{background:var(--accent-hover);color:#fff}
+.at-filter{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-1);padding:var(--sp-2) var(--sp-3);border-bottom:1px solid var(--border)}
+.at-chip{padding:3px 10px;border:1px solid var(--border);border-radius:var(--radius-pill);background:transparent;color:var(--text-secondary);font-size:var(--fs-xs);cursor:pointer}
+.at-chip:hover{border-color:var(--border-strong);color:var(--text-primary)}
+.at-chip.on{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent)}
+.at-spacer{flex:1}
+.at-main{flex:1;display:flex;min-height:0;gap:0}
+.at-listwrap{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0}
+.at-summary{padding:var(--sp-2) var(--sp-3);font-size:var(--fs-xs);color:var(--text-muted);border-bottom:1px solid var(--border)}
+.at-list{flex:1;overflow:auto;min-height:0;margin-right:10px;margin-bottom:10px;padding:var(--sp-2) 0 var(--sp-2) var(--sp-3)}
+.at-day{font-size:var(--fs-xs);color:var(--text-muted);padding:var(--sp-2) 0 var(--sp-1);border-bottom:1px dashed var(--border);margin-bottom:var(--sp-1)}
+.at-item{display:flex;gap:var(--sp-2);padding:var(--sp-2) 0;border-bottom:1px solid var(--border)}
+.at-dot{width:8px;height:8px;border-radius:50%;margin-top:5px;flex:none;background:var(--text-muted)}
+.at-dot.tp-session{background:var(--accent)}.at-dot.tp-program{background:#9fc0ff}.at-dot.tp-device{background:#f5b025}
+.at-dot.tp-file{background:#5dcaa5}.at-dot.tp-delete{background:#f09595}.at-dot.tp-change{background:#ba9cff}
+.at-dot.tp-network{background:#85b7eb}.at-dot.tp-tamper{background:var(--danger)}
+.at-row{flex:1;min-width:0}
+.at-meta{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2);font-size:var(--fs-xs);color:var(--text-muted)}
+.at-time{font-variant-numeric:tabular-nums;color:var(--text-secondary)}
+.at-tag{padding:0 6px;border:1px solid var(--border);border-radius:var(--radius-pill)}
+.at-level{padding:0 6px;border-radius:var(--radius-pill);border:1px solid var(--border)}
+.at-level.lv-confirmed{color:var(--success);border-color:var(--success)}.at-level.lv-corroborated{color:var(--accent);border-color:var(--accent-line)}
+.at-level.lv-inferred{color:var(--warning);border-color:var(--warning)}
+.at-title{font-size:var(--fs-md);margin-top:3px;color:var(--text-primary)}
+.at-title.tp-tamper{color:var(--danger)}
+.at-detail{font-size:var(--fs-sm);color:var(--text-secondary);margin-top:2px;line-height:1.5;word-break:break-all}
+.at-src{font-size:var(--fs-xs);color:var(--text-muted);margin-top:4px;word-break:break-all}
+.at-rawbtn{cursor:pointer;color:var(--accent);margin-left:var(--sp-2)}
+.at-raw{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--text-muted);background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius);padding:var(--sp-2);margin-top:6px;white-space:pre-wrap;word-break:break-all}
+.at-side{width:268px;flex:none;border-left:1px solid var(--border);display:flex;flex-direction:column;min-height:0}
+.at-side.hide{display:none}
+.at-sidehead{display:flex;align-items:center;padding:var(--sp-2) var(--sp-3);border-bottom:1px solid var(--border);font-size:var(--fs-sm);font-weight:var(--fw-medium)}
+.at-sidebody{flex:1;overflow:auto;min-height:0;margin-right:10px;margin-bottom:10px;padding:var(--sp-2) var(--sp-3)}
+.at-h{font-size:var(--fs-xs);color:var(--text-muted);margin:var(--sp-3) 0 var(--sp-1)}
+.at-kv{display:flex;justify-content:space-between;gap:var(--sp-2);font-size:var(--fs-xs);padding:2px 0;color:var(--text-secondary)}
+.at-kv b{font-weight:var(--fw-medium);color:var(--text-primary)}
+.at-warn{font-size:var(--fs-xs);color:var(--warning);line-height:1.5;padding:4px 0;border-bottom:1px dashed var(--border)}
+.at-srow{font-size:var(--fs-xs);padding:5px 0;border-bottom:1px solid var(--border);line-height:1.45}
+.at-srow .at-n{color:var(--text-primary)}
+.at-srow .at-st{float:right;padding:0 5px;border-radius:var(--radius-pill);border:1px solid var(--border)}
+.at-srow .ok{color:var(--success)}.at-srow .partial{color:var(--warning)}.at-srow .missing{color:var(--danger)}
+.at-srow .at-note{color:var(--text-muted);display:block;margin-top:2px}
+.at-cmd{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--text-secondary);background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius);padding:5px 7px;margin-top:4px;word-break:break-all}
+.at-foot{display:flex;align-items:center;gap:var(--sp-2);padding:6px var(--sp-3);border-top:1px solid var(--border);font-size:var(--fs-xs);color:var(--text-muted)}
+.at-empty{text-align:center;color:var(--text-muted);font-size:var(--fs-sm);padding:var(--sp-6) var(--sp-3);line-height:1.8}
+</style>
+</head>
+<body>
+<div class="at-app">
+  <header class="at-head">
+    <div class="at-title">电脑活动痕迹<span class="at-sub">只读取证 · 按日期段还原</span></div>
+    <div class="at-controls">
+      <input type="date" id="from"><span class="at-sep">至</span><input type="date" id="to">
+      <button class="at-btn" data-days="1">今天</button>
+      <button class="at-btn" data-days="7">近 7 天</button>
+      <button class="at-btn" data-days="30">近 30 天</button>
+      <button class="at-btn at-primary" id="btnQuery">查询</button>
+    </div>
+  </header>
+  <div class="at-filter" id="filters">
+    <span class="at-sep">类型</span>
+    <button class="at-chip on" data-type="all">全部</button>
+    <button class="at-chip" data-type="session">会话</button>
+    <button class="at-chip" data-type="program">程序</button>
+    <button class="at-chip" data-type="device">设备</button>
+    <button class="at-chip" data-type="file">文件</button>
+    <button class="at-chip" data-type="delete">删除</button>
+    <button class="at-chip" data-type="change">变更</button>
+    <button class="at-chip" data-type="network">网络</button>
+    <button class="at-chip" data-type="tamper">异常</button>
+    <span class="at-spacer"></span>
+    <button class="at-btn" id="btnCsv">导出 CSV</button>
+    <button class="at-btn" id="btnHtml">导出 HTML</button>
+    <button class="at-btn" id="btnSide">体检</button>
+  </div>
+  <div class="at-main">
+    <section class="at-listwrap">
+      <div class="at-summary" id="summary">准备中…</div>
+      <div class="at-list" id="list"><div class="at-empty">正在等待宿主桥接…</div></div>
+    </section>
+    <aside class="at-side" id="side">
+      <div class="at-sidehead"><span class="at-spacer">证据完整度体检</span><button class="at-btn" id="btnCloseSide">收起</button></div>
+      <div class="at-sidebody" id="sideBody"><div class="at-empty">查询后显示</div></div>
+    </aside>
+  </div>
+  <footer class="at-foot"><span id="status">就绪</span><span class="at-spacer"></span><span>全程只读 · 标注「推断」的条目不能当确证</span></footer>
+</div>
+<script>
+(function(){
+  'use strict'
+  var seq=0, pend={}, booted=false
+  var state={events:[],sources:[],status:null,from:'',to:'',type:'all',busy:false}
+  var TYPE_LABEL={session:'会话',program:'程序',device:'设备',file:'文件',delete:'删除',change:'变更',network:'网络',tamper:'异常'}
+  var LEVEL_LABEL={confirmed:'确证',corroborated:'交叉印证',inferred:'推断'}
+  function $(id){return document.getElementById(id)}
+  function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+  function fmtDate(d){var m=('0'+(d.getMonth()+1)).slice(-2),day=('0'+d.getDate()).slice(-2);return d.getFullYear()+'-'+m+'-'+day}
+  function setStatus(t){$('status').textContent=t}
+
+  function send(command,input){
+    return new Promise(function(res,rej){
+      var id='at_'+(++seq)
+      pend[id]={res:res,rej:rej,timer:null}
+      pend[id].timer=setTimeout(function(){
+        var p=pend[id]; if(!p)return; delete pend[id]; p.rej(new Error('请求超时：后端 60 秒无响应'))
+      },60000)
+      parent.postMessage({type:'plugin:execute',id:id,command:command,input:input||{}},'*')
+    })
+  }
+  window.addEventListener('message',function(e){
+    var d=e.data; if(!d||!d.type)return
+    if(d.type==='plugin:init'){ boot(d.data||{}); return }
+    if(d.type==='plugin:theme'){
+      if(d.data&&d.data.theme)document.documentElement.setAttribute('data-theme',d.data.theme)
+      if(d.data&&d.data.locale)document.documentElement.setAttribute('lang',d.data.locale)
+      return
+    }
+    if(d.type==='plugin:result'&&d.id&&pend[d.id]){
+      var p=pend[d.id]; delete pend[d.id]; clearTimeout(p.timer)
+      if(d.error)p.rej(new Error(typeof d.error==='string'?d.error:(d.error.message||'后端错误')))
+      else p.res(d.data||{})
+    }
+  })
+
+  function range(){
+    return {from:$('from').value,to:$('to').value}
+  }
+  function query(){
+    if(state.busy)return
+    var r=range(); if(!r.from||!r.to){setStatus('请选择起止日期');return}
+    state.busy=true; state.from=r.from; state.to=r.to
+    $('btnQuery').disabled=true; setStatus('正在扫描系统痕迹…')
+    $('list').innerHTML='<div class="at-empty">正在只读扫描事件日志 / 注册表 / 文件痕迹…<br>首次查询可能需要十几秒</div>'
+    var types=[]
+    send('timeline.query',{from:r.from,to:r.to,types:types}).then(function(data){
+      state.events=data.events||[]; state.sources=data.sources||[]; state.status=data.status||null
+      renderList(); renderSide(); renderSummary()
+      setStatus('扫描完成 · 共 '+state.events.length+' 条')
+    }).catch(function(err){
+      $('list').innerHTML='<div class="at-empty">查询失败：'+esc(err.message)+'</div>'
+      setStatus('查询失败')
+    }).then(function(){state.busy=false;$('btnQuery').disabled=false})
+  }
+
+  function visibleEvents(){
+    if(state.type==='all')return state.events
+    return state.events.filter(function(e){return e.type===state.type})
+  }
+  function renderSummary(){
+    var ev=visibleEvents(), counts={}
+    ev.forEach(function(e){counts[e.type]=(counts[e.type]||0)+1})
+    var parts=Object.keys(counts).map(function(k){return (TYPE_LABEL[k]||k)+' '+counts[k]})
+    $('summary').textContent=state.from+' ~ '+state.to+' · 共 '+ev.length+' 条'+(parts.length?' · '+parts.join(' / '):'')
+  }
+  function renderList(){
+    var ev=visibleEvents(), box=$('list')
+    if(!ev.length){box.innerHTML='<div class="at-empty">该日期段没有找到痕迹<br>可以换个区间，或展开右侧「体检」看哪些证据源不可用</div>';return}
+    var html=[], lastDay=''
+    ev.forEach(function(e,i){
+      var day=(e.time||'').slice(0,10)
+      if(day!==lastDay){html.push('<div class="at-day">'+esc(day)+'</div>');lastDay=day}
+      html.push('<div class="at-item">')
+      html.push('<div class="at-dot tp-'+esc(e.type)+'"></div><div class="at-row">')
+      html.push('<div class="at-meta"><span class="at-time">'+esc((e.time||'').slice(11))+'</span>')
+      html.push('<span class="at-tag">'+esc(TYPE_LABEL[e.type]||e.type)+'</span>')
+      html.push('<span class="at-level lv-'+esc(e.level)+'">'+esc(LEVEL_LABEL[e.level]||e.level)+'</span></div>')
+      html.push('<div class="at-title tp-'+esc(e.type)+'">'+esc(e.title)+'</div>')
+      if(e.detail)html.push('<div class="at-detail">'+esc(e.detail)+'</div>')
+      html.push('<div class="at-src">来源：'+esc(e.source))
+      if(e.raw)html.push('<span class="at-rawbtn" data-raw="'+i+'">原始字段</span>')
+      html.push('</div>')
+      if(e.raw)html.push('<div class="at-raw" id="raw'+i+'" style="display:none">'+esc(e.raw)+'</div>')
+      html.push('</div></div>')
+    })
+    box.innerHTML=html.join('')
+  }
+  function renderSide(){
+    var s=state.status, box=$('sideBody'), h=[]
+    if(!s){box.innerHTML='<div class="at-empty">暂无体检数据</div>';return}
+    h.push('<div class="at-h">日志可追溯范围</div>')
+    h.push('<div class="at-kv"><span>最早</span><b>'+esc(s.earliest||'读取失败')+'</b></div>')
+    h.push('<div class="at-kv"><span>最新</span><b>'+esc(s.latest||'读取失败')+'</b></div>')
+    h.push('<div class="at-kv"><span>Security 上限</span><b>'+(s.maxLogMB?s.maxLogMB+' MB':'未知')+'</b></div>')
+    h.push('<div class="at-kv"><span>LastAccessTime</span><b>'+(s.lastAccessDisabled?'默认不更新（不可信）':'会更新')+'</b></div>')
+    var audit=s.audit||{}
+    if(Object.keys(audit).length){
+      h.push('<div class="at-h">审核策略现状</div>')
+      Object.keys(audit).forEach(function(k){h.push('<div class="at-kv"><span>'+esc(k)+'</span><b>'+esc(audit[k])+'</b></div>')})
+    }
+    if((s.warnings||[]).length){
+      h.push('<div class="at-h">限制与提示</div>')
+      s.warnings.forEach(function(w){h.push('<div class="at-warn">· '+esc(w)+'</div>')})
+    }
+    h.push('<div class="at-h">证据源状态（'+state.sources.length+'）</div>')
+    state.sources.forEach(function(src){
+      var cls=src.available?(src.level==='partial'?'partial':'ok'):'missing'
+      h.push('<div class="at-srow"><span class="at-st '+cls+'">'+cls+'</span><span class="at-n">'+esc(src.name)+' · '+src.count+' 条</span>')
+      if(src.note)h.push('<span class="at-note">'+esc(src.note)+'</span>')
+      h.push('</div>')
+    })
+    var advice=(s.advice||state.advice||[])
+    if(advice.length){
+      h.push('<div class="at-h">想让以后查得更全（只读建议，插件不会执行）</div>')
+      advice.forEach(function(a){h.push('<div class="at-cmd">'+esc(a)+'</div>')})
+    }
+    box.innerHTML=h.join('')
+  }
+  function exportFile(fmt){
+    if(state.busy)return
+    var r=range()
+    setStatus('正在生成 '+fmt.toUpperCase()+' 报告…')
+    send('report.export',{from:r.from,to:r.to,types:state.type==='all'?[]:[state.type],format:fmt}).then(function(res){
+      var blob=new Blob([res.content],{type:fmt==='csv'?'text/csv;charset=utf-8':'text/html;charset=utf-8'})
+      var url=URL.createObjectURL(blob), a=document.createElement('a')
+      a.href=url; a.download='activity-'+r.from+'_'+r.to+'.'+res.ext
+      document.body.appendChild(a); a.click(); document.body.removeChild(a)
+      setTimeout(function(){URL.revokeObjectURL(url)},2000)
+      setStatus('已导出 '+res.count+' 条')
+    }).catch(function(err){setStatus('导出失败：'+err.message)})
+  }
+  function setDays(n){
+    var to=new Date(), from=new Date(to.getTime()-(n-1)*86400000)
+    $('to').value=fmtDate(to); $('from').value=fmtDate(from)
+  }
+
+  $('btnQuery').addEventListener('click',query)
+  $('btnCsv').addEventListener('click',function(){exportFile('csv')})
+  $('btnHtml').addEventListener('click',function(){exportFile('html')})
+  $('btnSide').addEventListener('click',function(){$('side').classList.toggle('hide')})
+  $('btnCloseSide').addEventListener('click',function(){$('side').classList.add('hide')})
+  $('filters').addEventListener('click',function(e){
+    var b=e.target.closest('.at-chip'); if(!b)return
+    document.querySelectorAll('.at-chip').forEach(function(c){c.classList.remove('on')})
+    b.classList.add('on'); state.type=b.getAttribute('data-type')
+    renderList(); renderSummary()
+  })
+  document.querySelectorAll('[data-days]').forEach(function(b){
+    b.addEventListener('click',function(){setDays(parseInt(b.getAttribute('data-days'),10));query()})
+  })
+  $('list').addEventListener('click',function(e){
+    var t=e.target.closest('.at-rawbtn'); if(!t)return
+    var el=$('raw'+t.getAttribute('data-raw')); if(el)el.style.display=el.style.display==='none'?'block':'none'
+  })
+  $('from').addEventListener('change',function(){if($('to').value&&$('from').value>$('to').value)$('to').value=$('from').value})
+
+  function boot(data){
+    if(booted)return; booted=true
+    var text=(data&&data.text)||''
+    if(text.indexOf('~')>0){
+      var p=text.split('~'); if(p[0].trim())$('from').value=p[0].trim(); if(p[1].trim())$('to').value=p[1].trim()
+    }else{setDays(7)}
+    if(!$('from').value)setDays(7)
+    query()
+  }
+  setTimeout(function(){boot({})},1500)
+})()
+</script>
+</body>
+</html>

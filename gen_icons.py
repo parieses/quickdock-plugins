@@ -1021,3 +1021,6 @@ if __name__ == "__main__":
 
 # plugin-scaffold 注入
 GROUP["plugin-scaffold"] = "violet"
+
+# plugin-scaffold 注入
+GROUP["activity-timeline"] = "amber"
