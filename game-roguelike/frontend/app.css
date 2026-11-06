@@ -8,6 +8,10 @@
   background: var(--bg-primary);
 }
 
+/* 宿主套上窗口材质时：.rl-app 是铺满窗口的页面容器（不是卡片），底色让开；
+   地图面板 / 日志面板仍是实色 --bg-secondary。 */
+html[data-backdrop] .rl-app { background: transparent; }
+
 .rl-head {
   display: flex;
   align-items: center;

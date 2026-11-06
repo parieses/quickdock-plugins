@@ -8,6 +8,9 @@
 <link rel="stylesheet" href="components.css">
 <style>
 .at-app{display:flex;flex-direction:column;height:100vh;box-sizing:border-box;background:var(--bg-primary);color:var(--text-primary)}
+/* 宿主套上窗口材质时：.at-app 是铺满窗口的页面容器（不是卡片），底色让开；
+   时间轴卡片与工具条仍是实色。 */
+html[data-backdrop] .at-app{background:transparent}
 .at-head{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2);padding:var(--sp-3);border-bottom:1px solid var(--border)}
 .at-title{font-size:var(--fs-lg);font-weight:var(--fw-medium);white-space:nowrap;margin-right:var(--sp-2)}
 .at-sub{font-size:var(--fs-xs);color:var(--text-muted);font-weight:var(--fw-normal);margin-left:var(--sp-2)}

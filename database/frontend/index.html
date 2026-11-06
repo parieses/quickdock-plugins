@@ -10,6 +10,9 @@
 
     /* ===== 骨架 ===== */
     .db { display:flex; flex-direction:column; height:100vh; background:var(--bg-primary); }
+    /* 宿主套上窗口材质时：.db 是铺满窗口的页面容器（不是卡片），底色让开；
+       工具条、标签栏、数据表格仍是实色。 */
+    html[data-backdrop] .db { background: transparent; }
 
     /* 顶部工具条 */
     .tb { display:flex; align-items:center; gap:6px; height:44px; padding:0 10px; background:var(--bg-secondary); border-bottom:1px solid var(--border); flex-shrink:0; }
