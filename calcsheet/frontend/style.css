@@ -1,5 +1,8 @@
 /* 计算稿纸 — 使用 common.css 主题变量 */
 html,body,#app { height: 100%; width: 100%; overflow: hidden; background: var(--bg-primary); color: var(--text-primary); font-family: var(--font); font-size: 13px; user-select: none; display: flex; flex-direction: column; }
+/* 宿主套上窗口材质时：上面这条连 <html> 一起铺了实色，画布底会压住材质，
+   这里只把页面级底色（html / body / #app）让开，卡片与工具栏保持原样。 */
+html[data-backdrop], html[data-backdrop] body, html[data-backdrop] #app { background: transparent; }
 .toolbar { display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; background: var(--bg-secondary); border-bottom: 1px solid var(--border); gap: 6px; flex-shrink: 0; min-height: 32px; }
 .tb-left,.tb-right { display: flex; align-items: center; gap: 6px; }
 .tb-select { background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border); border-radius: var(--radius); padding: 3px 6px; font-size: 12px; font-family: inherit; cursor: pointer; max-width: 140px; outline: none; }

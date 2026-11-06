@@ -9,6 +9,9 @@
 <style>
 *{-webkit-box-sizing:border-box;box-sizing:border-box}
 html,body{margin:0;height:100%;background:var(--bg-primary);color:var(--text-primary);font-family:var(--font-sans,system-ui,sans-serif)}
+/* 宿主套上窗口材质时：上面这条连 <html> 一起铺了实色，画布底会压住材质，
+   这里只把页面级底色（html / body）让开，卡片与工具栏保持原样。 */
+html[data-backdrop],html[data-backdrop] body{background:transparent}
 .p-app{display:flex;flex-direction:column;height:100%;min-height:0}
 /* 顶栏统一走 qd-theme.css 的 .p-head（44px），此处不再影子重定义 */
 .p-spacer{flex:1}
