@@ -76,7 +76,10 @@ class CalcEngine {
   }
   static _parse(s) {
     let pos = 0; s = s.trim(); if (!s) return 0
-    const sk = () => { while (pos < s.length && s[pos] === ' ') pos++ }
+    // 空白一律跳过，不只是半角空格：编辑器 Tab 键插入的是 '\t'，从 Excel / 邮件粘贴
+    // 常带制表符或全角空格（\u00A0 / \u3000）。以前只认 ' '，所以
+    // 「93166.59 +\t84697.22」直接报「非法字符 "\t"」——用户感知就是空格影响了计算。
+    const sk = () => { while (pos < s.length && /\s/.test(s[pos])) pos++ }
     const pk = () => pos < s.length ? s[pos] : '\0'
     const ex = (c) => { sk(); if (pk() !== c) throw new Error('期望 "'+c+'" 在 '+pos); pos++ }
     function pn() { const st=pos; let d=false; while (pos < s.length) { const c=s[pos]; if (c>='0'&&c<='9')pos++; else if (c==='.'&&!d){d=true;pos++} else break } if (pos===st) throw new Error('非法字符 '+s[st]); return parseFloat(s.slice(st,pos)) }
@@ -117,7 +120,7 @@ function splitComment(raw) {
   for (let i=0;i<raw.length;i++) {
     if (raw[i]==='(') d++; else if (raw[i]===')') d--
     else if (d===0 && raw[i]==='/' && i+1<raw.length && raw[i+1]==='/') return { expr: raw.slice(0,i).trimEnd(), comment: raw.slice(i+2).trim() }
-    else if (d===0 && raw[i]==='#' && (i===0||raw[i-1]===' ') && !/^\d{3,}/.test(raw.slice(i+1))) return { expr: raw.slice(0,i).trimEnd(), comment: raw.slice(i+1).trim() }
+    else if (d===0 && raw[i]==='#' && (i===0||/\s/.test(raw[i-1])) && !/^\d{3,}/.test(raw.slice(i+1))) return { expr: raw.slice(0,i).trimEnd(), comment: raw.slice(i+1).trim() }
   }
   return { expr: raw.trim(), comment: '' }
 }
@@ -151,16 +154,61 @@ function normalizeSheet(s) {
 }
 
 /**
- * 宿主确认框。window.qdConfirm 由宿主桥接注入（见 quickdock frontend/src/utils/pluginBridge.ts）。
- * 老宿主 / 直接双击 index.html 调试时它不存在 —— 此时裸调用会抛 ReferenceError，
- * 而调用点都在 async 点击处理器里，异常变成 rejected promise 被静默吞掉，
- * 表现就是「点删除毫无反应」（连确认框都不弹）。这里统一兜底到原生 confirm。
+ * 页内弹窗（prompt / confirm 共用）。
+ *
+ * **刻意不依赖宿主桥接**：确认框此前走 window.qdConfirm，三种情况下都会让调用点
+ * `await` 静默失效，表现为「点删除 / 清空毫无反应，连弹窗都不出来」：
+ *   1. 老宿主没注入 qdConfirm → 退回 window.confirm，而沙箱 iframe 里它不弹窗直接返回 false；
+ *   2. 新宿主 toast 未注入时 `toast?.confirm?.()` 返回 undefined，回包里 ok 就是 undefined → 当成取消；
+ *   3. 宿主不认识 plugin:confirm → 回包永远不来 → Promise 永久挂起。
+ * 自己画最稳：不依赖宿主版本，也绝不会挂死。
  */
+function csDialog(opts) {
+  opts = opts || {}
+  const isPrompt = opts.kind === 'prompt'
+  const modal = $('#csModal'), input = $('#csModalInput'), titleEl = $('#csModalTitle')
+  const okBtn = $('#csModalOk'), cancelBtn = $('#csModalCancel')
+  return new Promise((resolve) => {
+    if (!modal || !input || !titleEl || !okBtn || !cancelBtn) {
+      resolve(isPrompt ? null : false); return
+    }
+    titleEl.textContent = opts.title || (isPrompt ? '请输入' : '确认')
+    // 确认态隐藏输入框；用 style 而不是 hidden 属性，避免被 .cs-modal-input 的样式盖掉
+    input.style.display = isPrompt ? '' : 'none'
+    input.value = isPrompt ? (opts.value || '') : ''
+    okBtn.textContent = opts.okText || (isPrompt ? '确定' : '确认')
+    modal.hidden = false
+
+    let done = false
+    const finish = (v) => {
+      if (done) return
+      done = true
+      modal.hidden = true
+      okBtn.onclick = null; cancelBtn.onclick = null; input.onkeydown = null; modal.onclick = null
+      resolve(v)
+    }
+    const submit = () => finish(isPrompt ? (input.value.trim() || null) : true)
+    const cancel = () => finish(isPrompt ? null : false)
+
+    okBtn.onclick = submit
+    cancelBtn.onclick = cancel
+    input.onkeydown = (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); submit() }
+      else if (e.key === 'Escape') { e.preventDefault(); cancel() }
+    }
+    modal.onclick = (e) => { if (e.target === modal) cancel() }
+    setTimeout(() => { if (isPrompt) input.focus(); else okBtn.focus() }, 0)
+  })
+}
+
+// 内联输入弹窗（替代 window.prompt：沙箱 iframe 内 prompt 格式异常）
+function csPrompt(title, def, cb) {
+  csDialog({ kind: 'prompt', title, value: def }).then(v => cb(v))
+}
+
+/** 页内确认框：返回 Promise<boolean>，取消 / 点遮罩 / Esc 均视为 false */
 function csConfirm(msg) {
-  try {
-    if (typeof qdConfirm === 'function') return qdConfirm(msg)
-  } catch (e) {}
-  return Promise.resolve(typeof window.confirm === 'function' ? window.confirm(msg) : true)
+  return csDialog({ kind: 'confirm', title: msg, okText: '确认' })
 }
 
 /** 宿主提示（toast）；缺失时退回 console，绝不抛错打断后续逻辑 */
@@ -169,29 +217,6 @@ function csAlert(msg) {
     if (typeof qdAlert === 'function') { qdAlert(msg); return }
   } catch (e) {}
   console.warn('[calcsheet]', msg)
-}
-
-// 内联输入弹窗（替代 window.prompt：沙箱 iframe 内 prompt 格式异常）
-function csPrompt(title, def, cb) {
-  const modal = $('#csModal'), input = $('#csModalInput'), titleEl = $('#csModalTitle')
-  titleEl.textContent = title || '请输入'
-  input.value = def || ''
-  modal.hidden = false
-  setTimeout(() => input.focus(), 0)
-  function cleanup() {
-    modal.hidden = true
-    $('#csModalCancel').onclick = null
-    $('#csModalOk').onclick = null
-    input.onkeydown = null
-    modal.onclick = null
-  }
-  $('#csModalCancel').onclick = () => { cleanup(); cb(null) }
-  $('#csModalOk').onclick = () => { const v = input.value.trim(); cleanup(); cb(v || null) }
-  input.onkeydown = (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); const v = input.value.trim(); cleanup(); cb(v || null) }
-    else if (e.key === 'Escape') { e.preventDefault(); cleanup(); cb(null) }
-  }
-  modal.onclick = (e) => { if (e.target === modal) { cleanup(); cb(null) } }
 }
 
 // ---- 稿纸数据模型 ----
@@ -374,6 +399,9 @@ class CalcSheetApp {
     const self = this
     // 全局键盘
     document.addEventListener('keydown', (e) => {
+      // 弹窗（新建/重命名/确认）打开时让位：否则确认框里按 Enter 会顺带新增一行
+      const modal = $('#csModal')
+      if (modal && !modal.hidden) return
       const ctrl = e.ctrlKey||e.metaKey
       if (ctrl && e.key==='z') { e.preventDefault(); if(e.shiftKey) self._redo(); else self._undo(); renderAll(self) }
       else if (ctrl && e.key==='y') { e.preventDefault(); self._redo(); renderAll(self) }
@@ -398,18 +426,29 @@ class CalcSheetApp {
       const s = self.activeSheet
       if (!s) { csAlert('没有可删除的稿纸'); return }
       let ok = false
-      try { ok = await csConfirm('删除稿纸「' + s.name + '」？删除后不可恢复') } catch (e) { console.error('[calcsheet] 确认框异常', e); ok = false }
+      try { ok = await csConfirm('删除稿纸「' + s.name + '」？删除后不可恢复') } catch (e) { console.error('[calcsheet] 确认框异常', e); csAlert('确认框异常：' + ((e && e.message) || e)); return }
       if (!ok) return
-      commitEdit()
-      const removed = self._delete(s.id)
-      if (removed) csAlert('已删除稿纸「' + removed + '」')
+      // 删除链路上的异常必须可见：静默 catch 会再次变成「点了没反应」
+      try {
+        commitEdit()
+        const removed = self._delete(s.id)
+        if (removed) csAlert('已删除稿纸「' + removed + '」')
+      } catch (e) {
+        console.error('[calcsheet] 删除稿纸失败', e)
+        csAlert('删除失败：' + ((e && e.message) || e))
+      }
     })
     $('#btnClear').addEventListener('click', async () => {
       if(!self.activeSheet||!self.activeSheet.lines.length) return
       let ok = false
-      try { ok = await csConfirm('清空所有行？此操作不可撤销') } catch (e) { console.error('[calcsheet] 确认框异常', e); ok = false }
+      try { ok = await csConfirm('清空所有行？此操作不可撤销') } catch (e) { console.error('[calcsheet] 确认框异常', e); csAlert('确认框异常：' + ((e && e.message) || e)); return }
       if(!ok) return
-      commitEdit(); self._clear(); renderAll(self)
+      try {
+        commitEdit(); self._clear(); renderAll(self)
+      } catch (e) {
+        console.error('[calcsheet] 清空失败', e)
+        csAlert('清空失败：' + ((e && e.message) || e))
+      }
     })
     $('#btnUndo').addEventListener('click', () => { self._undo(); renderAll(self) })
     $('#btnRedo').addEventListener('click', () => { self._redo(); renderAll(self) })
