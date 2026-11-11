@@ -1,0 +1,189 @@
+{
+  "id": "io.github.parieses.server-audit",
+  "name": "服务器自查",
+  "name_i18n": {
+    "zh-CN": "服务器自查",
+    "en-US": "Server Self-Audit"
+  },
+  "version": "1.0.0",
+  "description": "对你自己的服务器做一次只读暴露面体检：解析预检、常用端口表扫描（可扩到 65535 全量）、服务指纹与 TLS 证书解析、敏感路径只读 GET/HEAD 探测、未授权访问与匿名口令单次校验，输出风险分级与处置建议。只做 connect 扫描与 GET/HEAD，不利用、不爆破、不下载数据。",
+  "description_i18n": {
+    "zh-CN": "对你自己的服务器做一次只读暴露面体检：解析预检、常用端口表扫描（可扩到 65535 全量）、服务指纹与 TLS 证书解析、敏感路径只读 GET/HEAD 探测、未授权访问与匿名口令单次校验，输出风险分级与处置建议。只做 connect 扫描与 GET/HEAD，不利用、不爆破、不下载数据。",
+    "en-US": "Read-only exposure audit for your own server: DNS precheck, common-port scan (optionally all 65535), service fingerprint with TLS certificate parsing, sensitive-path GET/HEAD probes, single-shot anonymous/default credential checks, graded findings with remediation. Connect scan and GET/HEAD only — no exploitation, no brute force, no data downloads."
+  },
+  "author": "QuickDock",
+  "icon": "icon.svg",
+  "category": "安全工具",
+  "platforms": [
+    "windows"
+  ],
+  "capabilities": [
+    "command",
+    "frontend"
+  ],
+  "backend": {
+    "runtime": "native",
+    "entry": "server-audit",
+    "args": []
+  },
+  "frontend": {
+    "enabled": true,
+    "entry": "frontend/index.html",
+    "width": 900,
+    "height": 600
+  },
+  "permissions": {
+    "network": true
+  },
+  "commands": [
+    {
+      "id": "audit",
+      "title": "服务器自查",
+      "description": "打开自查面板（仅界面）；发起巡检请用 audit.start",
+      "keywords": [
+        "服务器",
+        "自查",
+        "暴露面",
+        "安全",
+        "巡检",
+        "端口扫描",
+        "指纹",
+        "证书",
+        "被攻击"
+      ],
+      "aliases": [
+        "安全巡检",
+        "暴露面体检",
+        "服务器体检"
+      ],
+      "title_i18n": {
+        "zh-CN": "服务器自查",
+        "en-US": "Server Self-Audit"
+      }
+    },
+    {
+      "id": "audit.start",
+      "title": "开始自查",
+      "description": "对指定公网域名或 IP 发起只读暴露面巡检，返回 sessionId；结果用 audit.poll 取。内网/回环地址会被拒绝",
+      "params": {
+        "type": "object",
+        "required": [
+          "host"
+        ],
+        "properties": {
+          "host": {
+            "type": "string",
+            "description": "目标域名或公网 IP，如 example.com 或 example.com:8443"
+          },
+          "mode": {
+            "type": "string",
+            "description": "端口范围：common 扫内置常用端口表（约 1100 个），full 追加 1-65535 全量",
+            "enum": [
+              "common",
+              "full"
+            ],
+            "default": "common"
+          },
+          "ports": {
+            "type": "string",
+            "description": "自定义端口，逗号或范围，如 22,80,443,8000-8100；给了就只扫这些"
+          },
+          "timeout": {
+            "type": "integer",
+            "description": "单端口 connect 超时毫秒，默认 800，上限 5000",
+            "default": 800
+          },
+          "concurrency": {
+            "type": "integer",
+            "description": "并发数，默认 500，硬上限 1000",
+            "default": 500
+          },
+          "checkPaths": {
+            "type": "boolean",
+            "description": "是否做敏感路径只读探测（GET，单次、不递归、不下载），默认 true",
+            "default": true
+          },
+          "checkUnauth": {
+            "type": "boolean",
+            "description": "是否做未授权访问与匿名口令单次校验，默认 true",
+            "default": true
+          },
+          "geo": {
+            "type": "boolean",
+            "description": "是否用 HTTP 接口查询 IP 归属（向 ipwho.is 发送目标 IP），默认 false",
+            "default": false
+          }
+        }
+      }
+    },
+    {
+      "id": "audit.poll",
+      "title": "取巡检进度",
+      "description": "取当前阶段、进度、端口/指纹/路径/未授权/风险结果；running=false 表示结束",
+      "params": {
+        "type": "object",
+        "required": [
+          "sessionId"
+        ],
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "description": "audit.start 返回的会话 ID"
+          }
+        }
+      }
+    },
+    {
+      "id": "audit.stop",
+      "title": "停止巡检",
+      "description": "中止当前巡检会话（已扫到的结果保留）",
+      "params": {
+        "type": "object",
+        "required": [
+          "sessionId"
+        ],
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "description": "audit.start 返回的会话 ID"
+          }
+        }
+      }
+    },
+    {
+      "id": "audit.report",
+      "title": "导出自查报告",
+      "description": "把巡检结果导出为纯文本报告（含分级清单与处置建议）",
+      "params": {
+        "type": "object",
+        "required": [
+          "sessionId"
+        ],
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "description": "audit.start 返回的会话 ID"
+          }
+        }
+      }
+    },
+    {
+      "id": "ip.lookup",
+      "title": "IP 归属查询",
+      "description": "查询 IP 的国家/地区、运营商与 ASN（替代 whois，走 HTTP 接口）",
+      "params": {
+        "type": "object",
+        "required": [
+          "ip"
+        ],
+        "properties": {
+          "ip": {
+            "type": "string",
+            "description": "要查询的 IP，如 45.33.32.156"
+          }
+        }
+      }
+    }
+  ],
+  "changelog": "## v1.0.0\n\n- 首个版本：一条流水线跑完「解析预检 → 端口扫描 → 服务指纹 → 敏感路径 → 未授权校验 → 风险分级」\n- 解析预检：域名 → A 记录，记录开始时间；拒绝回环/内网/链路本地/组播/保留地址（防误扫他人内网）\n- 端口扫描：TCP connect 两阶段（内置常用端口表约 1100 个 → 可选 1-65535 全量），默认并发 500、硬上限 1000，单端口超时 800ms，区分开放/关闭/过滤三态；不用 ICMP、不用 raw socket\n- 服务指纹：TLS 优先（协议版本/套件/ALPN，证书 CN/SAN/颁发者/有效期/签名算法/密钥长度）→ banner 抓取 → HTTP HEAD → 单次协议探测，归类 ssh/ftp/http/https/mysql/redis/mongodb/memcached/docker/es 等\n- 敏感路径：36 条内置路径只读 GET（含随机路径基线与关键词佐证，过滤 404 与软 404 兜底页），正文最多读 1KB 作证据并对口令字段打码\n- 未授权校验：Redis PING、Memcached version、Docker /version、ES /、FTP 匿名登录各单次一次，不分发字典、不并发认证\n- 每项风险附处置建议，可导出纯文本报告\n- 视觉走宿主设计令牌（qd-theme 的 .p-* 组件），深浅色自适应"
+}

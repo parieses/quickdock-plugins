@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>服务器自查</title>
+<link rel="stylesheet" href="qd-theme.css">
+<link rel="stylesheet" href="components.css">
+<style>
+.p-app{display:flex;flex-direction:column;height:100vh}
+
+/* 工具条：两行，第一行目标 + 启停，第二行选项与高级参数 */
+.sa-bar{display:flex;flex-direction:column;gap:6px;padding:8px var(--sp-3);background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0}
+.sa-row{display:flex;align-items:center;gap:6px;flex-wrap:nowrap}
+.sa-host{flex:1;min-width:0}
+.sa-chk{display:inline-flex;align-items:center;gap:4px;font-size:var(--fs-xs);color:var(--text-secondary);white-space:nowrap;cursor:pointer;padding:2px 6px;border:1px solid transparent;border-radius:var(--radius-sm)}
+.sa-chk:hover{background:var(--bg-hover)}
+.sa-chk input{accent-color:var(--accent);margin:0;cursor:pointer}
+.sa-num{width:56px;height:24px;padding:0 6px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-tertiary);color:var(--text-primary);font-family:var(--font-mono);font-size:var(--fs-xs);outline:none}
+.sa-num:focus{border-color:var(--focus-border)}
+.sa-hint{font-size:var(--fs-xs);color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:300px}
+.sa-hint.err{color:var(--danger)}
+
+/* 阶段进度 */
+.sa-steps{display:flex;align-items:center;padding:6px var(--sp-3);background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0}
+.sa-step{display:flex;align-items:center;gap:5px;font-size:var(--fs-xs);color:var(--text-muted);white-space:nowrap}
+.sa-step i{width:6px;height:6px;border-radius:50%;background:var(--bg-active);display:block}
+.sa-step.active{color:var(--accent)}
+.sa-step.active i{background:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.sa-step.done{color:var(--text-secondary)}
+.sa-step.done i{background:var(--success)}
+.sa-step-sep{flex:1;height:1px;background:var(--border);margin:0 8px;min-width:10px}
+.sa-prog{height:2px;background:var(--bg-active);flex-shrink:0;overflow:hidden}
+.sa-prog>i{display:block;height:100%;width:0;background:var(--accent);transition:width 240ms}
+
+/* 内容区 */
+.sa-body{flex:1;display:flex;flex-direction:column;min-height:0}
+/* margin-bottom 8px：把横向滚动条推离窗口最外圈 5px 的宿主缩放手柄，
+   padding 无效（滚动条画在 padding 之内、贴元素边框），只有 margin 能挪开 */
+.sa-pane{display:none;flex:1;min-height:0;flex-direction:column;padding:var(--sp-3) var(--sp-3) 10px;margin-bottom:8px;overflow-y:auto}
+.sa-pane.active{display:flex}
+
+/* 概览 */
+.sa-cards{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:8px}
+.sa-card{border:1px solid var(--border);border-radius:var(--radius-md);background:var(--bg-secondary);padding:8px 10px}
+.sa-card-v{font-family:var(--font-mono);font-size:var(--fs-lg);font-weight:var(--fw-semibold);color:var(--text-primary);line-height:1.2}
+.sa-card-k{font-size:var(--fs-xs);color:var(--text-muted);margin-top:2px}
+.sa-card.danger .sa-card-v{color:var(--danger)}
+.sa-card.warn .sa-card-v{color:var(--warning)}
+.sa-card.ok .sa-card-v{color:var(--success)}
+
+.sa-verdict{border:1px solid var(--border);border-left:3px solid var(--border-strong);border-radius:var(--radius-md);background:var(--bg-secondary);padding:9px 12px;font-size:var(--fs-sm);color:var(--text-secondary);margin-bottom:8px;line-height:1.5}
+.sa-verdict.sev-critical{border-left-color:var(--danger);color:var(--text-primary)}
+.sa-verdict.sev-high{border-left-color:var(--warning);color:var(--text-primary)}
+.sa-verdict.sev-medium{border-left-color:var(--warning)}
+.sa-verdict.sev-ok{border-left-color:var(--success)}
+
+.sa-grid{display:grid;grid-template-columns:88px 1fr 88px 1fr;gap:6px 10px}
+.sa-k{color:var(--text-muted);font-size:var(--fs-xs);align-self:center}
+.sa-v{color:var(--text-primary);word-break:break-all;font-family:var(--font-mono);font-size:var(--fs-xs);align-self:center}
+
+/* 表格 */
+.sa-table{width:100%;border-collapse:collapse;font-size:var(--fs-xs)}
+.sa-table th{position:sticky;top:0;background:var(--bg-secondary);text-align:left;padding:6px 8px;color:var(--text-muted);font-weight:var(--fw-medium);border-bottom:1px solid var(--border);white-space:nowrap;z-index:1}
+.sa-table td{padding:6px 8px;border-bottom:1px solid var(--border);color:var(--text-primary);vertical-align:top}
+.sa-table tr:hover td{background:var(--bg-hover)}
+.sa-mono{font-family:var(--font-mono)}
+.sa-dim{color:var(--text-muted)}
+.sa-wrap{display:block;max-width:360px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* 分级标签 */
+.sa-sev{display:inline-block;padding:0 7px;border-radius:var(--radius-pill);font-size:var(--fs-xs);font-weight:var(--fw-medium);line-height:16px;white-space:nowrap}
+.sa-sev-critical{background:var(--danger);color:#fff}
+.sa-sev-high{background:var(--danger-soft);color:var(--danger)}
+.sa-sev-medium{background:var(--warning-soft);color:var(--warning)}
+.sa-sev-low{background:var(--accent-soft);color:var(--accent)}
+.sa-sev-info{background:var(--bg-tertiary);color:var(--text-secondary)}
+
+/* 指纹卡 */
+.sa-svc{border:1px solid var(--border);border-radius:var(--radius-md);background:var(--bg-secondary);padding:10px 12px;margin-bottom:8px}
+.sa-svc-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.sa-svc-port{font-family:var(--font-mono);font-size:var(--fs-md);font-weight:var(--fw-semibold);color:var(--accent)}
+.sa-svc-name{font-size:var(--fs-sm);color:var(--text-primary);font-weight:var(--fw-medium)}
+.sa-svc-ver{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--text-secondary)}
+.sa-kv{display:grid;grid-template-columns:76px 1fr;gap:3px 10px;font-size:var(--fs-xs);align-items:baseline}
+.sa-kv .k{color:var(--text-muted);white-space:nowrap}
+.sa-kv .v{color:var(--text-primary);word-break:break-all}
+.sa-banner{margin-top:6px;padding:6px 8px;background:var(--bg-tertiary);border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:11px;color:var(--text-secondary);word-break:break-all;line-height:1.5;max-height:56px;overflow:hidden}
+
+/* 风险列表 */
+.sa-find{border:1px solid var(--border);border-radius:var(--radius-md);background:var(--bg-secondary);padding:9px 12px;margin-bottom:7px}
+.sa-find-head{display:flex;align-items:baseline;gap:8px;margin-bottom:3px}
+.sa-find-title{font-size:var(--fs-sm);color:var(--text-primary);font-weight:var(--fw-medium);flex:1}
+.sa-find-detail{font-size:var(--fs-xs);color:var(--text-secondary);line-height:1.6;white-space:pre-wrap;word-break:break-all}
+.sa-find-fix{font-size:var(--fs-xs);color:var(--text-muted);line-height:1.6;margin-top:4px;padding-left:14px;position:relative}
+.sa-find-fix::before{content:'→';position:absolute;left:0;color:var(--accent)}
+
+/* 报告浮层 */
+.sa-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
+.sa-overlay.show{display:flex}
+.sa-sheet{width:100%;max-width:780px;max-height:100%;display:flex;flex-direction:column;background:var(--bg-primary);border:1px solid var(--border-strong);border-radius:var(--radius-lg);box-shadow:var(--shadow-2);overflow:hidden}
+.sa-sheet-head{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg-secondary);border-bottom:1px solid var(--border);font-size:var(--fs-sm);color:var(--text-primary)}
+.sa-pre{flex:1;margin:0;padding:12px;overflow:auto;font-family:var(--font-mono);font-size:11px;line-height:1.65;color:var(--text-primary);white-space:pre-wrap;word-break:break-all}
+.sa-foot{display:flex;align-items:center;gap:8px;padding:6px var(--sp-3);border-top:1px solid var(--border);background:var(--bg-secondary);font-size:var(--fs-xs);color:var(--text-muted);flex-shrink:0}
+</style>
+</head>
+<body>
+<div class="p-app">
+  <div class="p-head">
+    <span class="p-head-title">服务器自查</span>
+    <span class="sa-hint" style="max-width:220px">只读 · 不利用 · 不爆破</span>
+    <div class="p-head-actions">
+      <button id="btn-report" class="p-btn p-btn-sm" disabled>查看报告</button>
+      <button id="btn-stop" class="p-btn p-btn-sm p-btn-danger" style="display:none">停止</button>
+    </div>
+  </div>
+
+  <div class="sa-bar">
+    <div class="sa-row">
+      <input id="host" class="p-input sa-host" placeholder="你的服务器域名或公网 IP，如 example.com" spellcheck="false">
+      <button id="go" class="p-btn p-btn-primary">开始巡检</button>
+    </div>
+    <div class="sa-row">
+      <label class="sa-chk"><input type="checkbox" id="opt-paths" checked>敏感路径</label>
+      <label class="sa-chk"><input type="checkbox" id="opt-unauth" checked>未授权校验</label>
+      <label class="sa-chk"><input type="checkbox" id="opt-geo">IP 归属</label>
+      <label class="sa-chk"><input type="checkbox" id="opt-full">全端口 65535</label>
+      <span class="p-sep"></span>
+      <span class="p-label">并发</span><input id="opt-conc" class="sa-num" type="number" value="500" min="16" max="1000">
+      <span class="p-label">超时ms</span><input id="opt-timeout" class="sa-num" type="number" value="800" min="100" max="5000">
+      <span class="p-spacer"></span>
+      <span id="hint" class="sa-hint">只扫公网目标，内网/回环地址会被拒绝</span>
+    </div>
+  </div>
+
+  <div class="sa-steps" id="steps">
+    <div class="sa-step" data-stage="resolve"><i></i>解析预检</div><span class="sa-step-sep"></span>
+    <div class="sa-step" data-stage="ports"><i></i>端口扫描</div><span class="sa-step-sep"></span>
+    <div class="sa-step" data-stage="finger"><i></i>服务指纹</div><span class="sa-step-sep"></span>
+    <div class="sa-step" data-stage="paths"><i></i>敏感路径</div><span class="sa-step-sep"></span>
+    <div class="sa-step" data-stage="unauth"><i></i>未授权校验</div><span class="sa-step-sep"></span>
+    <div class="sa-step" data-stage="report"><i></i>生成报告</div>
+  </div>
+  <div class="sa-prog"><i id="prog"></i></div>
+
+  <div class="p-tabs" id="tabs">
+    <button class="p-tab active" data-tab="overview">概览</button>
+    <button class="p-tab" data-tab="ports">端口</button>
+    <button class="p-tab" data-tab="finger">指纹</button>
+    <button class="p-tab" data-tab="paths">敏感路径</button>
+    <button class="p-tab" data-tab="auth">认证</button>
+    <button class="p-tab" data-tab="findings">风险</button>
+  </div>
+
+  <div class="sa-body">
+    <div class="sa-pane active" id="pane-overview">
+      <div class="sa-cards">
+        <div class="sa-card" id="c-open"><div class="sa-card-v" id="v-open">-</div><div class="sa-card-k">开放端口</div></div>
+        <div class="sa-card" id="c-high"><div class="sa-card-v" id="v-high">-</div><div class="sa-card-k">高危及以上</div></div>
+        <div class="sa-card" id="c-mid"><div class="sa-card-v" id="v-mid">-</div><div class="sa-card-k">加固项</div></div>
+        <div class="sa-card" id="c-path"><div class="sa-card-v" id="v-path">-</div><div class="sa-card-k">敏感路径</div></div>
+        <div class="sa-card" id="c-tls"><div class="sa-card-v" id="v-tls">-</div><div class="sa-card-k">证书剩余天数</div></div>
+      </div>
+      <div class="sa-verdict" id="verdict">填目标后点「开始巡检」。只做 connect 扫描与 GET/HEAD，不利用漏洞、不轮询口令。</div>
+      <div class="sa-grid" id="target"></div>
+    </div>
+
+    <div class="sa-pane" id="pane-ports">
+      <table class="sa-table">
+        <thead><tr><th style="width:64px">端口</th><th style="width:70px">状态</th><th style="width:120px">服务</th><th style="width:130px">版本</th><th>判定依据 / banner</th></tr></thead>
+        <tbody id="ports-body"><tr><td colspan="5" class="sa-dim" style="padding:16px">尚未开始</td></tr></tbody>
+      </table>
+    </div>
+
+    <div class="sa-pane" id="pane-finger">
+      <div id="finger-body" class="sa-dim" style="font-size:var(--fs-sm);padding:8px 0">尚未开始</div>
+    </div>
+
+    <div class="sa-pane" id="pane-paths">
+      <table class="sa-table">
+        <thead><tr><th style="width:180px">路径</th><th style="width:56px">状态</th><th style="width:64px">大小</th><th style="width:64px">级别</th><th>说明 / 证据</th></tr></thead>
+        <tbody id="paths-body"><tr><td colspan="5" class="sa-dim" style="padding:16px">尚未开始</td></tr></tbody>
+      </table>
+    </div>
+
+    <div class="sa-pane" id="pane-auth">
+      <table class="sa-table">
+        <thead><tr><th style="width:64px">端口</th><th style="width:150px">检查项</th><th style="width:80px">结果</th><th>详情</th></tr></thead>
+        <tbody id="auth-body"><tr><td colspan="4" class="sa-dim" style="padding:16px">尚未开始</td></tr></tbody>
+      </table>
+    </div>
+
+    <div class="sa-pane" id="pane-findings">
+      <div id="findings-body" class="sa-dim" style="font-size:var(--fs-sm);padding:8px 0">尚未开始</div>
+    </div>
+  </div>
+
+  <div class="sa-foot">
+    <span id="foot-left">就绪</span>
+    <span class="p-spacer"></span>
+    <span id="foot-right"></span>
+  </div>
+</div>
+
+<div class="sa-overlay" id="overlay">
+  <div class="sa-sheet">
+    <div class="sa-sheet-head">
+      <span>自查报告</span>
+      <span class="p-spacer"></span>
+      <button id="btn-copy" class="p-btn p-btn-sm">复制</button>
+      <button id="btn-close" class="p-btn p-btn-sm p-btn-ghost">关闭</button>
+    </div>
+    <pre class="sa-pre" id="report-text"></pre>
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict'
+
+  /* ---------- 与宿主通信 ---------- */
+  var seq=0, pend={}
+  function send(command, input){
+    return new Promise(function(res,rej){
+      var id='sa_'+(++seq); pend[id]={res:res,rej:rej}
+      parent.postMessage({type:'plugin:execute', id:id, command:command, input:input||{}}, '*')
+      setTimeout(function(){
+        var t=pend[id]; if(t&&!t.__t){t.__t=1; if(t.rej) t.rej(new Error('请求超时：后端 30 秒无响应'))}
+      },30000)
+    })
+  }
+  window.addEventListener('message', function(e){
+    var d=e.data; if(!d) return
+    if(d.type==='plugin:result' && d.id && pend[d.id]){
+      var p=pend[d.id]; delete pend[d.id]
+      if(d.error) p.rej(new Error(d.error)); else p.res(d.data)
+      return
+    }
+    if(d.type==='plugin:theme' && d.data && d.data.locale){
+      document.documentElement.setAttribute('lang', d.data.locale)
+    }
+    if(d.type==='plugin:init' && d.data && d.data.text){
+      var t=String(d.data.text).trim()
+      if(t){ document.getElementById('host').value=t }
+    }
+  })
+
+  /* ---------- 工具 ---------- */
+  function esc(s){
+    return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
+  }
+  function $(id){return document.getElementById(id)}
+  function hint(msg, isErr){
+    var el=$('hint')
+    el.textContent=msg
+    el.className='sa-hint'+(isErr?' err':'')
+  }
+  function sevTag(sev){
+    var names={critical:'严重',high:'高危',medium:'中危',low:'低危',info:'提示'}
+    return '<span class="sa-sev sa-sev-'+esc(sev)+'">'+(names[sev]||esc(sev))+'</span>'
+  }
+  function num(n){ return (n==null||isNaN(n))?'-':String(n) }
+
+  /* ---------- 状态 ---------- */
+  var S={sid:null, running:false, timer:null, data:null}
+  var STAGE_ORDER={resolve:0,ports:1,finger:2,paths:3,unauth:4,report:5,done:6}
+
+  /* ---------- 标签页 ---------- */
+  $('tabs').addEventListener('click', function(e){
+    var b=e.target.closest('.p-tab'); if(!b) return
+    var tab=b.getAttribute('data-tab')
+    Array.prototype.forEach.call(document.querySelectorAll('.p-tab'), function(t){
+      t.classList.toggle('active', t===b)
+    })
+    Array.prototype.forEach.call(document.querySelectorAll('.sa-pane'), function(p){
+      p.classList.toggle('active', p.id==='pane-'+tab)
+    })
+  })
+
+  /* ---------- 渲染 ---------- */
+  function renderSteps(d){
+    var cur=STAGE_ORDER[d.stage]
+    if(cur==null) cur=-1
+    Array.prototype.forEach.call(document.querySelectorAll('.sa-step'), function(el){
+      var n=STAGE_ORDER[el.getAttribute('data-stage')]
+      el.classList.toggle('done', d.running ? n<cur : (d.stage==='done' || n<=cur))
+      el.classList.toggle('active', d.running && n===cur)
+    })
+    var pct=0
+    var pr=d.progress||{}
+    if(d.stage==='done'){ pct=100 }
+    else if(d.running && pr.total){ pct=pr.pct||0 }
+    else { pct=Math.min(90, (Math.max(cur,0)/6)*100) }
+    $('prog').style.width=pct+'%'
+  }
+
+  function renderOverview(d){
+    var t=d.target||{}, sm=d.summary||{}
+    var tlsDays=null
+    ;(d.services||[]).forEach(function(s){
+      if(s.tls && s.tls.daysLeft!=null){
+        if(tlsDays===null || s.tls.daysLeft<tlsDays) tlsDays=s.tls.daysLeft
+      }
+    })
+    $('v-open').textContent = num(d.portStats?d.portStats.open:0)
+    $('v-high').textContent = num((sm.critical||0)+(sm.high||0))
+    $('v-mid').textContent = num(sm.medium||0)
+    $('v-path').textContent = num((d.paths||[]).length)
+    $('v-tls').textContent = tlsDays===null?'-':num(tlsDays)
+    $('c-high').className='sa-card'+((sm.critical||0)>0?' danger':((sm.high||0)>0?' warn':''))
+    $('c-tls').className='sa-card'+(tlsDays!==null&&tlsDays<15?' danger':'')
+    $('c-path').className='sa-card'+((d.paths||[]).some(function(p){return p.severity==='critical'})?' danger':'')
+
+    var v=$('verdict')
+    if(d.error){ v.className='sa-verdict sev-critical'; v.textContent=d.error }
+    else if(!S.sid){ v.className='sa-verdict'; v.textContent='填目标后点「开始巡检」。只做 connect 扫描与 GET/HEAD，不利用漏洞、不轮询口令。' }
+    else if(d.running){ v.className='sa-verdict'; v.textContent=(d.stageText||'进行中')+'…' }
+    else {
+      var sev=(sm.critical||0)>0?'critical':((sm.high||0)>0?'high':((sm.medium||0)>0?'medium':'ok'))
+      v.className='sa-verdict sev-'+sev
+      v.textContent=sm.verdict||'巡检完成'
+    }
+
+    var geo=''
+    if(t.geo&&t.geo.ok&&t.geo.fields){
+      t.geo.fields.forEach(function(f){
+        if(f.label==='国家/地区'||f.label==='运营商'){ geo+=(geo?' · ':'')+f.value }
+      })
+    } else if(t.geo&&t.geo.error){ geo=t.geo.error }
+
+    var rows=[
+      ['目标', t.host||'-'],
+      ['解析 IP', (t.ips&&t.ips.length?t.ips.join(' / '):'-')],
+      ['IP 归属', geo||'-'],
+      ['开始时间', t.startedAt?t.startedAt.replace('T',' ').slice(0,19):'-'],
+      ['耗时', d.elapsedMs?(d.elapsedMs/1000).toFixed(1)+' s':'-'],
+      ['端口探测', d.portStats?((d.portStats.total||0)+' 个：开放 '+d.portStats.open+' / 关闭 '+d.portStats.closed+' / 过滤 '+d.portStats.filtered):'-'],
+      ['并发/超时', (d.options?d.options.concurrency:'-')+' 路 / '+(d.options?d.options.timeoutMs:'-')+' ms'],
+      ['路径探测', d.pathsChecked?(d.pathsChecked+' 次 GET（单次、不递归）'):'-']
+    ]
+    var html=''
+    rows.forEach(function(r){ html+='<div class="sa-k">'+esc(r[0])+'</div><div class="sa-v">'+esc(r[1])+'</div>' })
+    $('target').innerHTML=html
+  }
+
+  function renderPorts(d){
+    var ports=(d.services&&d.services.length)?d.services:(d.ports||[])
+    if(!ports.length){
+      $('ports-body').innerHTML='<tr><td colspan="5" class="sa-dim" style="padding:16px">'+
+        (d.running?'扫描中…':'没有发现开放端口')+'</td></tr>'
+      return
+    }
+    var html=''
+    ports.forEach(function(p){
+      var isSvc=!!p.label
+      html+='<tr>'+
+        '<td class="sa-mono" style="color:var(--accent)">'+p.port+'</td>'+
+        '<td><span class="p-tag p-tag-ok">开放</span></td>'+
+        '<td>'+(isSvc?esc(p.label):'<span class="sa-dim">未识别</span>')+'</td>'+
+        '<td class="sa-mono">'+(p.version?esc(p.version):'<span class="sa-dim">-</span>')+'</td>'+
+        '<td><span class="sa-wrap sa-dim" title="'+esc(p.banner||p.evidence||'')+'">'+esc(p.evidence||p.banner||'')+'</span></td>'+
+        '</tr>'
+    })
+    $('ports-body').innerHTML=html
+  }
+
+  function renderFinger(d){
+    var list=d.services||[]
+    if(!list.length){
+      $('finger-body').innerHTML=d.running?'指纹识别中…':'没有可识别的服务'
+      return
+    }
+    var html=''
+    list.forEach(function(s){
+      html+='<div class="sa-svc">'
+      html+='<div class="sa-svc-head">'
+      html+='<span class="sa-svc-port">:'+s.port+'</span>'
+      html+='<span class="sa-svc-name">'+esc(s.label||s.service||'未知')+'</span>'
+      if(s.version) html+='<span class="sa-svc-ver">'+esc(s.version)+'</span>'
+      html+='<span class="p-spacer"></span>'
+      html+='<span class="sa-sev sa-sev-info">'+esc((s.scheme||'tcp').toUpperCase())+'</span>'
+      if(s.status) html+='<span class="sa-sev sa-sev-info">HTTP '+s.status+'</span>'
+      html+='</div>'
+      if(s.evidence) html+='<div class="sa-kv"><span class="k">判定依据</span><span class="v">'+esc(s.evidence)+'</span></div>'
+      if(s.tls){
+        var t=s.tls
+        html+='<div class="sa-kv" style="margin-top:5px">'
+        html+='<span class="k">协议</span><span class="v">'+esc(t.version)+' · '+esc(t.cipher)+(t.alpn?' · ALPN '+esc(t.alpn):'')+'</span>'
+        html+='<span class="k">证书主体</span><span class="v">'+esc(t.subject)+'</span>'
+        html+='<span class="k">SAN</span><span class="v">'+esc((t.san||[]).join(', ')||'-')+'</span>'
+        html+='<span class="k">颁发者</span><span class="v">'+esc(t.issuer)+'</span>'
+        html+='<span class="k">有效期</span><span class="v">'+esc(t.notBefore)+' → '+esc(t.notAfter)+'（剩 '+t.daysLeft+' 天）</span>'
+        html+='<span class="k">签名/密钥</span><span class="v">'+esc(t.sigAlg)+' · '+esc(t.keyAlg)+' '+t.keyBits+' 位</span>'
+        if(t.selfSigned||t.hostMismatch){
+          var flags=[]
+          if(t.selfSigned) flags.push('自签名')
+          if(t.hostMismatch) flags.push('域名不匹配')
+          html+='<span class="k">风险</span><span class="v" style="color:var(--danger)">'+esc(flags.join(' · '))+'</span>'
+        }
+        html+='</div>'
+      }
+      if(s.headers&&s.headers.length){
+        html+='<div class="sa-kv" style="margin-top:5px">'
+        s.headers.forEach(function(h){
+          html+='<span class="k">'+esc(h.k)+'</span><span class="v">'+esc(h.v)+'</span>'
+        })
+        html+='</div>'
+      }
+      if(s.banner){
+        html+='<div class="sa-banner" title="'+esc(s.banner)+'">'+esc(s.banner)+'</div>'
+      }
+      html+='</div>'
+    })
+    $('finger-body').innerHTML=html
+  }
+
+  function renderPaths(d){
+    var list=d.paths||[]
+    if(!list.length){
+      $('paths-body').innerHTML='<tr><td colspan="5" class="sa-dim" style="padding:16px">'+
+        (d.running?'探测中…':'没有命中（已排除 404 与软 404 兜底页）')+'</td></tr>'
+      return
+    }
+    var html=''
+    list.forEach(function(p){
+      html+='<tr>'+
+        '<td class="sa-mono">'+esc(p.path)+'</td>'+
+        '<td class="sa-mono">'+p.status+'</td>'+
+        '<td class="sa-mono sa-dim">'+p.size+'</td>'+
+        '<td>'+sevTag(p.severity)+'</td>'+
+        '<td><span class="sa-dim" style="font-size:11px">'+esc(p.note||'')+
+          (p.evidence?'<br><span class="sa-mono">'+esc(p.evidence)+'</span>':'')+'</span></td>'+
+        '</tr>'
+    })
+    $('paths-body').innerHTML=html
+  }
+
+  function renderAuth(d){
+    var list=d.unauth||[]
+    if(!list.length){
+      $('auth-body').innerHTML='<tr><td colspan="4" class="sa-dim" style="padding:16px">'+
+        (d.options&&d.options.checkUnauth===false?'已关闭未授权校验':'没有可校验的服务（覆盖 Redis/Memcached/Docker/Elasticsearch/FTP）')+'</td></tr>'
+      return
+    }
+    var html=''
+    list.forEach(function(u){
+      html+='<tr>'+
+        '<td class="sa-mono">'+u.port+'</td>'+
+        '<td>'+esc(u.label)+'</td>'+
+        '<td>'+(u.vulnerable?sevTag(u.severity):'<span class="p-tag p-tag-ok">已防护</span>')+'</td>'+
+        '<td style="font-size:11px">'+esc(u.detail)+(u.vulnerable&&u.fix?'<br><span class="sa-dim">→ '+esc(u.fix)+'</span>':'')+'</td>'+
+        '</tr>'
+    })
+    $('auth-body').innerHTML=html
+  }
+
+  function renderFindings(d){
+    var list=d.findings||[]
+    if(!list.length){
+      $('findings-body').innerHTML=d.running?'正在汇总…':'没有需要处置的条目'
+      return
+    }
+    var html=''
+    list.forEach(function(f){
+      html+='<div class="sa-find">'
+      html+='<div class="sa-find-head">'+sevTag(f.severity)+'<span class="sa-find-title">'+esc(f.title)+'</span>'
+      if(f.port) html+='<span class="sa-sev sa-sev-info">:'+f.port+'</span>'
+      html+='</div>'
+      html+='<div class="sa-find-detail">'+esc(f.detail)+'</div>'
+      if(f.fix) html+='<div class="sa-find-fix">'+esc(f.fix)+'</div>'
+      html+='</div>'
+    })
+    $('findings-body').innerHTML=html
+  }
+
+  function render(d){
+    S.data=d
+    renderSteps(d)
+    renderOverview(d)
+    renderPorts(d)
+    renderFinger(d)
+    renderPaths(d)
+    renderAuth(d)
+    renderFindings(d)
+
+    if(d.target&&d.target.host){
+      $('foot-left').textContent=(d.error?'已中止：':(d.running?'进行中：':'完成：'))+d.target.host+(d.target.ip?' ('+d.target.ip+')':'')
+    }
+    if(d.running){
+      var p=d.progress||{}
+      $('foot-right').textContent=(p.total?('进度 '+p.scanned+'/'+p.total+' · '+p.pct+'%'):'')+
+        (d.elapsedMs?(' · '+(d.elapsedMs/1000).toFixed(1)+'s'):'')
+    } else if(S.sid){
+      $('foot-right').textContent='耗时 '+(d.elapsedMs/1000).toFixed(1)+'s'
+    }
+  }
+
+  /* ---------- 流程 ---------- */
+  function setRunning(on){
+    S.running=on
+    $('go').textContent=on?'巡检中…':'开始巡检'
+    $('go').disabled=on
+    $('btn-stop').style.display=on?'':'none'
+    ;['opt-paths','opt-unauth','opt-geo','opt-full','opt-conc','opt-timeout'].forEach(function(id){ $(id).disabled=on })
+  }
+
+  function poll(){
+    if(!S.sid) return
+    send('audit.poll',{sessionId:S.sid}).then(function(d){
+      render(d)
+      if(!d.running) finish()
+    }).catch(function(e){
+      hint(e.message||String(e), true)
+      finish()
+    })
+  }
+
+  function finish(){
+    if(S.timer){ clearInterval(S.timer); S.timer=null }
+    setRunning(false)
+    $('btn-report').disabled=!S.sid
+    hint(S.data&&S.data.error?'已中止':'巡检完成，可切到「风险」看处置建议')
+  }
+
+  function start(){
+    var host=$('host').value.trim()
+    if(!host){ hint('请填写服务器域名或公网 IP', true); $('host').focus(); return }
+    S.sid=null
+    $('btn-report').disabled=true
+    hint('正在解析预检…')
+    setRunning(true)
+    send('audit.start', {
+      host: host,
+      mode: $('opt-full').checked?'full':'common',
+      checkPaths: $('opt-paths').checked,
+      checkUnauth: $('opt-unauth').checked,
+      geo: $('opt-geo').checked,
+      concurrency: parseInt($('opt-conc').value,10)||500,
+      timeout: parseInt($('opt-timeout').value,10)||800
+    }).then(function(r){
+      S.sid=r.sessionId
+      hint('已开始：'+host)
+      S.timer=setInterval(poll, 700)
+      poll()
+    }).catch(function(e){
+      hint(e.message||String(e), true)
+      setRunning(false)
+    })
+  }
+
+  function stop(){
+    if(!S.sid) return
+    hint('正在停止…')
+    send('audit.stop',{sessionId:S.sid}).catch(function(){})
+  }
+
+  $('go').addEventListener('click', function(){ if(!S.running) start() })
+  $('btn-stop').addEventListener('click', stop)
+  $('host').addEventListener('keydown', function(e){ if(e.key==='Enter' && !S.running) start() })
+
+  /* ---------- 报告 ---------- */
+  $('btn-report').addEventListener('click', function(){
+    if(!S.sid) return
+    send('audit-report',{sessionId:S.sid}).then(function(r){
+      $('report-text').textContent=r.report||'（报告为空）'
+      $('overlay').classList.add('show')
+    }).catch(function(e){ hint(e.message||String(e), true) })
+  })
+  $('btn-close').addEventListener('click', function(){ $('overlay').classList.remove('show') })
+  $('overlay').addEventListener('click', function(e){ if(e.target===$('overlay')) $('overlay').classList.remove('show') })
+  $('btn-copy').addEventListener('click', function(){
+    var text=$('report-text').textContent
+    var done=function(){ $('btn-copy').textContent='已复制'; setTimeout(function(){ $('btn-copy').textContent='复制' },1500) }
+    var select=function(){
+      var r=document.createRange(); r.selectNodeContents($('report-text'))
+      var s=window.getSelection(); s.removeAllRanges(); s.addRange(r)
+      $('btn-copy').textContent='已选中'
+      setTimeout(function(){ $('btn-copy').textContent='复制' },1500)
+    }
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(done).catch(select)
+    } else { select() }
+  })
+})()
+</script>
+</body>
+</html>

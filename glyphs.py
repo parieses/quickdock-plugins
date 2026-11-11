@@ -678,3 +678,8 @@ GLYPH["activity-timeline"] = """
   <circle cx="5.5" cy="17" r="1.7"/>
   <path d="M10 7h9M10 12h6M10 17h8.5" opacity="0.55"/>
 """
+
+GLYPH["server-audit"] = """
+  <path d="M12 3.2 5.4 6v5.1c0 4 2.7 7.7 6.6 9.1 3.9-1.4 6.6-5.1 6.6-9.1V6z"/>
+  <path d="M9.2 11.6l2 2 3.6-3.8" opacity="0.8"/>
+"""

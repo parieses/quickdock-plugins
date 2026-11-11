@@ -1460,7 +1460,7 @@ native 侧的关键设计（改之前先看 `qdlog.go` 顶部注释）：
 | word-count | 实时统计文本的字数、词数、行数、段落数、字节数与阅读时长，支持中英文混合。 | 纯前端 |
 | xiangqi | 单机中国象棋，完整走子与吃子规则，含基于局面评估的简易 AI 对手。 | 纯前端 |
 
-**Native 插件（`runtime: native`，自带 Go 源码 + 编译产物）** — 共 38 个
+**Native 插件（`runtime: native`，自带 Go 源码 + 编译产物）** — 共 39 个
 | 插件 ID | 功能 |
 |---|---|
 | activity-timeline | 按日期段还原电脑使用痕迹：登录解锁、软件启动、U 盘接入、文件打开、删除与系统变更 |
@@ -1493,6 +1493,7 @@ native 侧的关键设计（改之前先看 `qdlog.go` 顶部注释）：
 | photo-library | 选择本地文件夹，网格缩略图浏览照片，按日期/文件夹筛选，点击查看 EXIF 拍摄信息与参数 |
 | port-scanner | 检查端口占用，显示进程名和 PID |
 | secrets-scanner | 扫描项目目录，找出意外硬编码的密钥、私钥、token、密码字段与身份证号等敏感信息，防止它们被提交进仓库或泄露 |
+| server-audit | 对你自己的服务器做一次只读暴露面体检：解析预检、常用端口表扫描（可扩到 65535 全量）、服务指纹与 TLS 证书解析、敏感路径只读 GET/HEAD 探测、未授权访问与匿名口令单次校验，输出风险分级与处置建议。只做 connect 扫描与 GET/HEAD，不利用、不爆破、不下载数据。 |
 | service-manager | 查看本机 Windows 服务列表，按名称筛选，并启动 / 停止 / 重启服务。 |
 | site-audit | 将 WHOIS 查询、SSL 证书检查、DNS 查询、DNS 传播检查、HTTP 状态码速查、HTTP 安全头审计六个站点工具合并为单一插件，按需切换标签页，共享一个原生子进程 |
 | speed-test | 测量网络下载速率与延迟：流式下载测速（支持自定义测速节点 URL），实时显示速率与进度，采用异步会话模型规避宿主执行超时 |
@@ -1502,7 +1503,7 @@ native 侧的关键设计（改之前先看 `qdlog.go` 顶部注释）：
 | wifi-manager | 查看网络列表、WiFi 密码、连接状态 |
 | ws-tester | 连接 ws/wss 服务，发送消息并实时查看返回的帧，支持多连接与历史 |
 
-> 以上 84 个插件均在本仓库根目录各有独立子目录（ID 为 `io.github.parieses.*`），代码可直接复用。goja/none 插件演示「零宿主依赖、纯 JS 自包含」的外部化样板；native 插件演示「Go 源码 vendor + 自编译 entry exe」模式（`build.py` 直接在插件目录 `go build`）。完整 goja 模板见上文「完整示例」。
+> 以上 85 个插件均在本仓库根目录各有独立子目录（ID 为 `io.github.parieses.*`），代码可直接复用。goja/none 插件演示「零宿主依赖、纯 JS 自包含」的外部化样板；native 插件演示「Go 源码 vendor + 自编译 entry exe」模式（`build.py` 直接在插件目录 `go build`）。完整 goja 模板见上文「完整示例」。
 
 <!--DEVGUIDE_PLUGINS_END-->
 

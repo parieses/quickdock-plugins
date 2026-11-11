@@ -1015,12 +1015,11 @@ def main():
     ap.print_help()
     return 0
 
+# 由 plugin-scaffold 注入（必须在 __main__ 守卫之前，否则 GROUP 不会生效）
+GROUP["plugin-scaffold"] = "violet"
+GROUP["activity-timeline"] = "amber"
+GROUP["server-audit"] = "amber"
+
 
 if __name__ == "__main__":
     sys.exit(main())
-
-# plugin-scaffold 注入
-GROUP["plugin-scaffold"] = "violet"
-
-# plugin-scaffold 注入
-GROUP["activity-timeline"] = "amber"

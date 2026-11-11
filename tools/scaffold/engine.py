@@ -580,10 +580,18 @@ def _integrate(repo: Path, dir_name: str, category: str) -> list:
     gicons = repo / "gen_icons.py"
     if gicons.exists():
         if ('GROUP["%s"]' % dir_name) not in gicons.read_text(encoding="utf-8"):
-            block = '\n# plugin-scaffold 注入\nGROUP["%s"] = "%s"\n' % (dir_name, color)
-            with gicons.open("a", encoding="utf-8") as f:
-                f.write(block)
-            steps.append("gen_icons.py 追加 GROUP[%s]=%s" % (dir_name, color))
+            block = '# plugin-scaffold 注入\nGROUP["%s"] = "%s"\n\n' % (dir_name, color)
+            text = gicons.read_text(encoding="utf-8")
+            guard = 'if __name__ == "__main__":'
+            # 必须插到 __main__ 守卫之前：追加到文件末尾会落在 sys.exit() 之后，
+            # GROUP 实际不生效（图标语义色丢失、gen_icons --check 报未登记）
+            if guard in text:
+                head, rest = text.split(guard, 1)
+                text = head.rstrip("\n") + "\n\n" + block + guard + rest
+            else:
+                text = text + "\n" + block
+            gicons.write_text(text, encoding="utf-8")
+            steps.append("gen_icons.py 插入 GROUP[%s]=%s" % (dir_name, color))
         else:
             steps.append("gen_icons.py 已存在 GROUP[%s]，跳过" % dir_name)
 
