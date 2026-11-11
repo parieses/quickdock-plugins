@@ -5,11 +5,11 @@
     "zh-CN": "数据库客户端",
     "en-US": "Database Client"
   },
-  "version": "1.9.8",
-  "description": "轻量数据库连接与查询工具：MySQL / SQLite / Redis 连接管理、SQL 与 Redis 命令执行、库表浏览器（库→表/视图→字段、Redis 键树）、Redis 键类型感知详情与增删改（string/hash/list/set/zset）、TTL 与 DB 管理、结果网格内联行编辑、智能列筛选（运算符/区间/多值/判空，回车或失焦即滤）、勾选批量修改字段（值 / NULL / 表达式）与勾选批量删除（均支持全选匹配筛选的行）；表结构可视化设计（字段/索引可编辑、实时生成 ALTER SQL、保存二次确认）。数据独立存储。",
+  "version": "1.9.9",
+  "description": "轻量数据库连接与查询工具：MySQL / SQLite / Redis 连接管理、SQL 与 Redis 命令执行、库表浏览器（库→表/视图→字段、Redis 键树）、Redis 键类型感知详情与增删改（string/hash/list/set/zset）、TTL 与 DB 管理、结果网格内联行编辑、智能列筛选（运算符/区间/多值/判空，回车或失焦即滤）、勾选批量修改字段（值 / NULL / 表达式）与勾选批量删除（均支持全选匹配筛选的行）；表结构可视化设计（字段/索引可编辑、实时生成 ALTER SQL、保存二次确认）；左侧连接列表显示真实连接状态（已连接/未连接），右键可刷新、测试连接、断开连接。数据独立存储。",
   "description_i18n": {
-    "zh-CN": "轻量数据库连接与查询工具：MySQL / SQLite / Redis 连接管理、SQL 与 Redis 命令执行、库表浏览器（库→表/视图→字段、Redis 键树）、结果网格内联行编辑、勾选批量修改字段（值 / NULL / SQL 表达式）与批量删除；表结构可视化设计（字段/索引可编辑、实时生成 ALTER SQL、保存二次确认）。数据独立存储。",
-    "en-US": "A lightweight database client: manage MySQL / SQLite / Redis connections, run SQL & Redis commands, browse schema (database→table/view→columns, Redis key tree), inspect and CRUD Redis keys by type (string/hash/list/set/zset) with TTL & DB management, inline-edit rows in the result grid, and bulk-update a column across checked rows (value / NULL / SQL expression) or bulk-delete them. Self-contained storage."
+    "zh-CN": "轻量数据库连接与查询工具：MySQL / SQLite / Redis 连接管理、SQL 与 Redis 命令执行、库表浏览器（库→表/视图→字段、Redis 键树）、结果网格内联行编辑、勾选批量修改字段（值 / NULL / SQL 表达式）与批量删除；表结构可视化设计（字段/索引可编辑、实时生成 ALTER SQL、保存二次确认）；连接列表显示真实连接状态，右键可刷新 / 测试 / 断开连接。数据独立存储。",
+    "en-US": "A lightweight database client: manage MySQL / SQLite / Redis connections, run SQL & Redis commands, browse schema (database→table/view→columns, Redis key tree), inspect and CRUD Redis keys by type (string/hash/list/set/zset) with TTL & DB management, inline-edit rows in the result grid, and bulk-update a column across checked rows (value / NULL / SQL expression) or bulk-delete them. The connection list shows the real session state, with a right-click menu to refresh, test and disconnect. Self-contained storage."
   },
   "author": "QuickDock",
   "category": "开发者日常",

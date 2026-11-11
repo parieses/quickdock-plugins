@@ -238,6 +238,8 @@ func handleCommand(id int64, p executeParams) {
 		handleConnDelete(id, p.Input)
 	case "conn.test", "test":
 		handleConnTest(id, p.Input)
+	case "conn.disconnect":
+		handleConnDisconnect(id, p.Input)
 	// 查询
 	case "query.run", "query":
 		handleQueryRun(id, p.Input)

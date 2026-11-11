@@ -313,6 +313,52 @@ func invalidateConnCache(id string) {
 	connCacheMu.Unlock()
 }
 
+// connLiveIDs 返回当前缓存中仍持有底层连接的连接 id 集合。
+// 前端「连接列表」用它还原真实状态：只有本进程真的建过连、且没超过空闲回收
+// 时间的连接才算「已连接」。曾经没有这个信息，列表里只能靠类型色点猜，
+// 表现就是「打开时全都像是连着的」。
+func connLiveIDs() map[string]bool {
+	connCacheMu.Lock()
+	defer connCacheMu.Unlock()
+	now := time.Now()
+	live := make(map[string]bool, len(connCache))
+	for k, c := range connCache {
+		if now.Sub(c.lastUsed) > connIdleTimeout {
+			continue // 已超过空闲回收时间：下次访问才会被真正关掉，但状态已不该算连接中
+		}
+		if i := strings.IndexByte(k, 0); i > 0 {
+			live[k[:i]] = true
+		}
+	}
+	return live
+}
+
+// disconnectConnCache 关闭并移除指定连接（db 为空 = 该连接下所有库上下文）的
+// 缓存连接，返回实际关闭的数量。前端右键「断开连接」用它主动释放会话。
+func disconnectConnCache(id, db string) int {
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return 0
+	}
+	db = strings.TrimSpace(db)
+	prefix := id + "\x00"
+	n := 0
+	connCacheMu.Lock()
+	for k, c := range connCache {
+		if !strings.HasPrefix(k, prefix) {
+			continue
+		}
+		if db != "" && k != connKey(id, db) {
+			continue
+		}
+		c.adapter.closeReal()
+		delete(connCache, k)
+		n++
+	}
+	connCacheMu.Unlock()
+	return n
+}
+
 // closeAllConnCache 进程退出前释放全部缓存连接（避免锁住 SQLite 文件）。
 func closeAllConnCache() {
 	connCacheMu.Lock()

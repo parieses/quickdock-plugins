@@ -10,17 +10,38 @@ import (
 	"github.com/go-sql-driver/mysql"
 )
 
+// connListItem 在连接记录基础上补一个运行期状态字段（不落库）。
+type connListItem struct {
+	*DbConnection
+	Connected bool `json:"connected"`
+}
+
 // handleConnList 列出全部连接，password 脱敏（返回空串，避免泄露密文）。
+// connected 表示本进程当前是否还持有该连接的底层会话，供左侧列表显示真实状态。
 func handleConnList(id int64, input map[string]interface{}) {
 	list, err := listConnections()
 	if err != nil {
 		respondError(id, -32000, err.Error())
 		return
 	}
+	live := connLiveIDs()
+	out := make([]connListItem, 0, len(list))
 	for i := range list {
 		list[i].Password = ""
+		out = append(out, connListItem{DbConnection: &list[i], Connected: live[list[i].ID]})
 	}
-	respond(id, map[string]interface{}{"connections": list})
+	respond(id, map[string]interface{}{"connections": out})
+}
+
+// handleConnDisconnect 断开一个已保存连接：关闭并移除其底层会话（不影响保存的配置）。
+func handleConnDisconnect(id int64, input map[string]interface{}) {
+	cid := strFrom(input, "id")
+	if cid == "" {
+		respondError(id, -32602, "缺少连接 id")
+		return
+	}
+	n := disconnectConnCache(cid, strFrom(input, "db"))
+	respond(id, map[string]interface{}{"ok": true, "closed": n})
 }
 
 // handleConnSave 新建或更新连接。密码明文入参，落库前加密；更新时空密码表示保留原值。
@@ -214,6 +235,9 @@ func handleTreeList(id int64, input map[string]interface{}) {
 	case "mysql", "sqlite":
 		tree, e := listSqlDatabases(conn.sqlDB, conn.kind, saved.Database)
 		if e != nil {
+			// 读库列表失败基本等于这个连接连不上：顺手丢掉缓存会话，
+			// 否则「已连接」状态会误报，也避免下次继续复用坏连接。
+			disconnectConnCache(cid, "")
 			respondError(id, -32000, "读取库列表失败: "+e.Error())
 			return
 		}
@@ -228,6 +252,7 @@ func handleTreeList(id int64, input map[string]interface{}) {
 		keys, e := listRedisKeys(conn.redis, dbIndex,
 			strFrom(input, "pattern"), intFrom(input, "limit", 300))
 		if e != nil {
+			disconnectConnCache(cid, "")
 			respondError(id, -32000, "读取键失败: "+e.Error())
 			return
 		}

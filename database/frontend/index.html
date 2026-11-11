@@ -41,6 +41,8 @@
     .conn .acts { display:none; gap:1px; flex-shrink:0; }
     .conn:hover .acts { display:flex; }
     .cdot { width:8px; height:8px; border-radius:50%; flex-shrink:0; box-shadow:0 0 0 1px var(--border); }
+    /* 未连接：空心灰环。默认就应该是「未连接」，不再是每个连接都亮着实心色点 */
+    .cdot.off { background:transparent !important; box-shadow:inset 0 0 0 1px var(--text-disabled) !important; opacity:.7; }
     .side-filter { padding:5px 8px; border-bottom:1px solid var(--border); }
     .side-filter .input { width:100%; height:24px; }
 
@@ -335,6 +337,8 @@
     .tab-menu .tm-i:hover { background:var(--accent-soft); color:var(--accent); }
     .tab-menu .tm-i.dim { color:var(--text-disabled); cursor:default; }
     .tab-menu .tm-i.dim:hover { background:transparent; color:var(--text-disabled); }
+    .tab-menu .tm-i.danger { color:var(--danger); }
+    .tab-menu .tm-i.danger:hover { background:rgba(255,80,80,.12); color:var(--danger); }
     .tab-menu .tm-ico { width:12px; text-align:center; opacity:.9; }
     .tab-menu .tm-sep { height:1px; margin:4px 0; background:var(--border); }
     /* AI 助手面板 */
@@ -382,10 +386,11 @@
           <div v-else-if="!filteredConns.length" class="side-empty">没有匹配「{{ connFilter }}」的连接</div>
           <template v-else>
           <template v-for="c in filteredConns" :key="c.id">
-            <div class="conn" :class="{active: selectedConn && selectedConn.id===c.id}" @click="selectConn(c)">
+            <div class="conn" :class="{active: selectedConn && selectedConn.id===c.id}" @click="selectConn(c)"
+                 @contextmenu.prevent="openConnMenu($event, c)" :title="connTitle(c)">
               <span class="caret" :class="{blank: !c._open}" @click.stop="toggleConn(c)">{{ c._open ? '▾' : '▸' }}</span>
               <span class="oico" :class="connIconClass(c)"></span>
-              <span class="cdot" :style="{background: connColor(c)}"></span>
+              <span class="cdot" :class="{off: !c._connected}" :style="connDotStyle(c)"></span>
               <span class="nm">{{ c.name }}</span>
               <span class="tp">{{ c.dbType }}</span>
               <span class="acts">
@@ -1274,6 +1279,17 @@
       <div class="tm-i" :class="{dim: !tabs.length}" @click="tabMenuCloseAll"><span class="tm-ico">⨯</span>全部关闭</div>
     </div>
 
+    <!-- 连接列表右键菜单 -->
+    <div v-if="connMenu.show" class="tab-menu-mask" @click="closeConnMenu" @contextmenu.prevent="closeConnMenu"></div>
+    <div v-if="connMenu.show" ref="connMenu" class="tab-menu" :style="{ left: connMenu.x+'px', top: connMenu.y+'px' }">
+      <div class="tm-i" :class="{dim: !connMenuConn}" @click="connMenuRefresh"><span class="tm-ico">⟳</span>刷新</div>
+      <div class="tm-i" :class="{dim: !connMenuConn}" @click="connMenuTest"><span class="tm-ico">⚡</span>测试连接</div>
+      <div class="tm-i" :class="{dim: !connMenuConn || !connMenuConn._connected}" @click="connMenuDisconnect"><span class="tm-ico">⏻</span>断开连接</div>
+      <div class="tm-sep"></div>
+      <div class="tm-i" :class="{dim: !connMenuConn}" @click="connMenuEdit"><span class="tm-ico">✎</span>编辑连接…</div>
+      <div class="tm-i danger" :class="{dim: !connMenuConn}" @click="connMenuDelete"><span class="tm-ico">✕</span>删除连接</div>
+    </div>
+
     <div class="toast-wrap">
       <div v-for="t in toasts" :key="t.id" class="toast" :class="t.kind">{{ t.msg }}</div>
     </div>
@@ -1452,6 +1468,8 @@
         _clickTimer: null,
         // 标签页右键菜单
         tabMenu: { show:false, x:0, y:0, tabId:'' },
+        // 连接列表右键菜单（刷新 / 测试 / 断开 / 编辑 / 删除）
+        connMenu: { show:false, x:0, y:0, connId:'' },
         suggest: { open:false, tabId:'', items:[], index:0, start:0, token:'' },
         // AI 助手：复用宿主 AI 档案（host.ai.ask），调用前用 host.ai.available 预检是否配置
         ai: { open:false, tabId:'', mode:'gen', prompt:'', output:'', sql:'', loading:false,
@@ -1468,6 +1486,11 @@
           var self = this
           var i = this.tabs.findIndex(function(t){ return t.id===self.tabMenu.tabId })
           return { idx:i, hasLeft:i>0, hasRight:i>=0 && i<this.tabs.length-1 }
+        },
+        // 右键菜单指向的连接：按 id 现查，避免列表刷新后指向已删除的旧对象
+        connMenuConn: function(){
+          var self = this
+          return this.conns.find(function(c){ return c.id===self.connMenu.connId }) || null
         },
       filteredConns: function(){
         var f = (this.connFilter||'').trim().toLowerCase()
@@ -1592,6 +1615,8 @@
             c._open = !!prevOpen[c.id]
             c._loading = false
             c._err = ''
+            // 状态只认后端：进程里真的持有会话才算已连接（新开窗口 / 断开后一律空心点）
+            c._connected = !!c.connected
             return c
           })
           if(self.selectedConn){
@@ -1625,11 +1650,20 @@
         if(c._dbs && c._dbs.length) return Promise.resolve(c._dbs)
         c._loading = true; c._err = ''
         if(c.dbType==='redis'){
-          // Redis 直接给出 0-15 号库节点，无需后端探测
+          // Redis 直接给出 0-15 号库节点，无需后端探测；但要真正确认「连上了」得 ping 一次，
+          // 否则状态点会一直停在未连接（以前连没连上都看不出来）
           c._dbs = []
           for(var i=0;i<16;i++) c._dbs.push({ name:String(i), label:'DB ' + i, detail:'', kind:'redis' })
           c._loading = false
-          return Promise.resolve(c._dbs)
+          return send('conn.test', { id:c.id }).then(function(r){
+            c._connected = !!(r && r.ok)
+            if(!c._connected) c._err = '连接失败: ' + ((r && r.error) || '未知错误')
+            return c._dbs
+          }).catch(function(e){
+            c._connected = false
+            c._err = '连接失败: ' + (e.message||e)
+            return c._dbs
+          })
         }
         return send('tree.list', { id:c.id }).then(function(r){
           var nodes = r.nodes || []
@@ -1642,10 +1676,12 @@
             }
             return { name:n.name, label:label, detail:detail, kind:n.kind }
           })
+          c._connected = true
           return c._dbs
         }).catch(function(e){
           c._err = '读取库列表失败: ' + (e.message||e)
           c._dbs = []
+          c._connected = false
         }).finally(function(){ c._loading = false })
       },
       reloadAll: function(){
@@ -1657,6 +1693,84 @@
           var t = self.activeTab
           if(t) self.reloadTab(t)
         })
+      },
+      /* ---------- 连接右键菜单 ---------- */
+      openConnMenu: function(e, c){
+        var self = this
+        this.connMenu = { show:true, x:e.clientX, y:e.clientY, connId:c.id }
+        // 菜单渲染后按视口边缘翻转，避免超出窗口
+        this.$nextTick(function(){
+          var el = self.$refs.connMenu
+          if(!el) return
+          var w = el.offsetWidth, h = el.offsetHeight
+          self.connMenu.x = Math.max(4, Math.min(e.clientX, window.innerWidth - w - 6))
+          self.connMenu.y = Math.max(4, Math.min(e.clientY, window.innerHeight - h - 6))
+        })
+      },
+      closeConnMenu: function(){
+        this.connMenu.show = false
+        this.connMenu.connId = ''
+      },
+      connTitle: function(c){
+        return c.name + ' · ' + this.dbTypeLabel(c.dbType) + ' · ' + (c._connected ? '已连接' : '未连接') +
+               '\n右键：刷新 / 测试连接 / 断开连接'
+      },
+      // 状态点：已连接 = 连接色实心 + 微光；未连接 = 空心灰环
+      connDotStyle: function(c){
+        if(!c._connected) return { background:'transparent', boxShadow:'inset 0 0 0 1px var(--text-disabled)' }
+        var col = this.connColor(c)
+        return { background:col, boxShadow:'0 0 0 1px ' + col + ', 0 0 6px ' + col }
+      },
+      // 刷新：重新拉库列表（顺带把该连接的标签页标记为过期并刷新当前页）
+      connMenuRefresh: function(){
+        var c = this.connMenuConn
+        this.closeConnMenu()
+        if(!c) return
+        var self = this
+        c._dbs = []
+        c._open = true
+        c._err = ''
+        this.tabs.forEach(function(t){ if(t.connId===c.id) t._stale = true })
+        this.ensureConnOpen(c).then(function(){
+          if(c._err){ toast(c._err,'err'); return }
+          toast('已刷新「' + c.name + '」','ok')
+          var t = self.activeTab
+          if(t && t.connId===c.id) self.reloadTab(t)
+        })
+      },
+      connMenuTest: function(){
+        var c = this.connMenuConn
+        this.closeConnMenu()
+        if(!c) return
+        send('conn.test', { id:c.id }).then(function(r){
+          if(r && r.ok) toast('连接成功 ✓','ok')
+          else toast('连接失败: ' + ((r && r.error) || '未知错误'),'err')
+        }).catch(function(e){ toast('测试失败: ' + (e.message||e),'err') })
+      },
+      // 断开：关闭后端缓存会话，配置保留；该连接的标签页保留但标记过期，再执行会自动重连
+      connMenuDisconnect: function(){
+        var c = this.connMenuConn
+        this.closeConnMenu()
+        if(!c) return
+        var self = this
+        send('conn.disconnect', { id:c.id }).then(function(){
+          c._connected = false
+          c._open = false
+          c._dbs = []
+          c._err = ''
+          self.tabs.forEach(function(t){ if(t.connId===c.id) t._stale = true })
+          toast('已断开「' + c.name + '」','ok')
+        }).catch(function(e){ toast('断开失败: ' + (e.message||e),'err') })
+      },
+      connMenuEdit: function(){
+        var c = this.connMenuConn
+        this.closeConnMenu()
+        if(c) this.openConnModal(c)
+      },
+      connMenuDelete: function(){
+        var c = this.connMenuConn
+        this.closeConnMenu()
+        if(c) this.delConn(c)
       },
       delConn: function(c){
         var self = this
@@ -3028,6 +3142,9 @@
         t.grid.ran = false
         send('query.run', { id:t.connId, query:query, database:t.db || '' }).then(function(r){
           var m = normResultMulti(r)
+          // 本次执行拿到了回包就说明会话是通的：同步状态点（断开后手动执行也会亮回来）
+          var cc = self.conns.find(function(x){ return x.id===t.connId })
+          if(cc) cc._connected = true
           if(opts.statementIndex != null && t.multiResults && t.multiResults[opts.statementIndex]){
             // 只更新这一条结果，保留多结果标签结构
             var idx = opts.statementIndex
