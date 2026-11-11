@@ -101,6 +101,28 @@
 .sa-sheet{width:100%;max-width:780px;max-height:100%;display:flex;flex-direction:column;background:var(--bg-primary);border:1px solid var(--border-strong);border-radius:var(--radius-lg);box-shadow:var(--shadow-2);overflow:hidden}
 .sa-sheet-head{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg-secondary);border-bottom:1px solid var(--border);font-size:var(--fs-sm);color:var(--text-primary)}
 .sa-pre{flex:1;margin:0;padding:12px;overflow:auto;font-family:var(--font-mono);font-size:11px;line-height:1.65;color:var(--text-primary);white-space:pre-wrap;word-break:break-all}
+
+/* 加固对比 */
+.sa-cmp-tools{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.sa-cmp-tools .p-select{min-width:190px;max-width:260px;height:24px;font-size:var(--fs-xs)}
+.sa-cmp-stats{display:flex;gap:8px;margin-bottom:8px}
+.sa-cmp-stat{flex:1;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--bg-secondary);padding:7px 6px;text-align:center}
+.sa-cmp-stat b{display:block;font-size:var(--fs-lg);font-weight:var(--fw-semibold);line-height:1.2}
+.sa-cmp-stat span{font-size:var(--fs-xs);color:var(--text-muted)}
+.sa-cmp-stat.ok b{color:var(--success)}
+.sa-cmp-stat.bad b{color:var(--danger)}
+.sa-cmp-stat.add b{color:var(--warning)}
+.sa-cmp-h{font-size:var(--fs-xs);color:var(--text-muted);margin:8px 0 4px}
+.sa-cmp-row{border:1px solid var(--border);border-left:3px solid var(--border-strong);border-radius:var(--radius-sm);background:var(--bg-secondary);padding:6px 9px;margin-bottom:5px}
+.sa-cmp-row.fixed{border-left-color:var(--success)}
+.sa-cmp-row.still,.sa-cmp-row.worse{border-left-color:var(--danger)}
+.sa-cmp-row.new{border-left-color:var(--warning)}
+.sa-cmp-row .t{font-size:var(--fs-xs);color:var(--text-primary);font-weight:var(--fw-medium)}
+.sa-cmp-row .d{font-size:var(--fs-xs);color:var(--text-muted);margin-top:2px;line-height:1.45}
+.sa-cmp-note{font-size:var(--fs-xs);color:var(--text-muted);line-height:1.5;margin-top:6px}
+.sa-cmp-banner{margin-bottom:8px;padding:7px 10px;border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:var(--radius-md);background:var(--bg-secondary);font-size:var(--fs-xs);color:var(--text-secondary);cursor:pointer}
+.sa-cmp-banner:hover{background:var(--bg-hover)}
+.sa-cmp-banner b{color:var(--text-primary)}
 .sa-foot{display:flex;align-items:center;gap:8px;padding:6px var(--sp-3);border-top:1px solid var(--border);background:var(--bg-secondary);font-size:var(--fs-xs);color:var(--text-muted);flex-shrink:0}
 </style>
 </head>
@@ -150,6 +172,7 @@
     <button class="p-tab" data-tab="paths">敏感路径</button>
     <button class="p-tab" data-tab="auth">认证</button>
     <button class="p-tab" data-tab="findings">风险</button>
+    <button class="p-tab" data-tab="compare">加固对比</button>
   </div>
 
   <div class="sa-body">
@@ -162,6 +185,7 @@
         <div class="sa-card" id="c-tls"><div class="sa-card-v" id="v-tls">-</div><div class="sa-card-k">证书剩余天数</div></div>
       </div>
       <div class="sa-verdict" id="verdict">填目标后点「开始巡检」。只做 connect 扫描与 GET/HEAD，不利用漏洞、不轮询口令。</div>
+      <div class="sa-cmp-banner" id="cmp-banner" style="display:none"></div>
       <div class="sa-grid" id="target"></div>
     </div>
 
@@ -192,6 +216,24 @@
 
     <div class="sa-pane" id="pane-findings">
       <div id="findings-body" class="sa-dim" style="font-size:var(--fs-sm);padding:8px 0">尚未开始</div>
+    </div>
+
+    <div class="sa-pane" id="pane-compare">
+      <div class="sa-cmp-tools">
+        <select id="bl-select" class="p-select"><option value="">（加载中…）</option></select>
+        <button id="bl-compare" class="p-btn p-btn-sm">与当前结果对比</button>
+        <button id="bl-verify" class="p-btn p-btn-sm">快速复验</button>
+        <span class="p-spacer"></span>
+        <button id="bl-save" class="p-btn p-btn-sm">存为基线</button>
+        <button id="bl-del" class="p-btn p-btn-sm p-btn-ghost">删除</button>
+        <button id="bl-report" class="p-btn p-btn-sm p-btn-ghost">对比报告</button>
+      </div>
+      <div class="sa-cmp-stats">
+        <div class="sa-cmp-stat ok"><b id="cmp-fixed">-</b><span>已拦截</span></div>
+        <div class="sa-cmp-stat bad"><b id="cmp-still">-</b><span>仍暴露</span></div>
+        <div class="sa-cmp-stat add"><b id="cmp-new">-</b><span>新增</span></div>
+      </div>
+      <div id="cmp-body" class="sa-dim" style="font-size:var(--fs-sm);padding:8px 0">每轮巡检会自动存为基线；修复后重跑，这里直接显示「已拦截 / 仍暴露 / 新增」。也可选一条基线点「快速复验」：只对基线风险点各发一次只读请求，不重扫端口。</div>
     </div>
   </div>
 
@@ -264,6 +306,7 @@
 
   /* ---------- 状态 ---------- */
   var S={sid:null, running:false, timer:null, data:null}
+  var BL={items:[], loaded:false, comparison:null}
   var STAGE_ORDER={resolve:0,ports:1,finger:2,paths:3,unauth:4,report:5,done:6}
 
   /* ---------- 标签页 ---------- */
@@ -276,6 +319,8 @@
     Array.prototype.forEach.call(document.querySelectorAll('.sa-pane'), function(p){
       p.classList.toggle('active', p.id==='pane-'+tab)
     })
+    // 懒加载：用户点开时才发第一个请求，天然避开宿主 plugin:init 之前的桥接时序问题
+    if(tab==='compare' && !BL.loaded) loadBaselines()
   })
 
   /* ---------- 渲染 ---------- */
@@ -483,6 +528,8 @@
     renderPaths(d)
     renderAuth(d)
     renderFindings(d)
+    // 只在巡检结束后收对比结果；轮询过程中保留用户手动复验出来的内容
+    if(!d.running) renderComparison(d.comparison)
 
     if(d.target&&d.target.host){
       $('foot-left').textContent=(d.error?'已中止：':(d.running?'进行中：':'完成：'))+d.target.host+(d.target.ip?' ('+d.target.ip+')':'')
@@ -495,6 +542,108 @@
       $('foot-right').textContent='耗时 '+(d.elapsedMs/1000).toFixed(1)+'s'
     }
   }
+
+  /* ---------- 加固对比：基线 / 三态差异 / 单次复验 ---------- */
+  function fmtSaved(s){ return s?String(s).replace('T',' ').slice(0,16):'未知时间' }
+
+  function loadBaselines(){
+    BL.loaded=true
+    return send('audit.baseline.list',{}).then(function(r){
+      BL.items=r.items||[]
+      var sel=$('bl-select'), keep=sel.value, html=''
+      if(!BL.items.length) html='<option value="">（暂无基线，先跑一轮巡检）</option>'
+      BL.items.forEach(function(it,i){
+        html+='<option value="'+esc(it.id)+'">'+esc(fmtSaved(it.savedAt))+' · '+esc(it.host)+
+          ' · 风险 '+num(it.riskCount)+(it.label?' · '+esc(it.label):'')+(i===0?'（最新）':'')+'</option>'
+      })
+      sel.innerHTML=html
+      if(keep && BL.items.some(function(it){ return it.id===keep })) sel.value=keep
+      return BL.items
+    }).catch(function(e){
+      BL.loaded=false
+      hint(e.message||String(e), true)
+      return []
+    })
+  }
+
+  function cmpRow(r){
+    var h='<div class="sa-cmp-row '+esc(r.state)+'">'+
+      '<div class="t">'+esc(r.title)+(r.port?'（:'+r.port+'）':'')+'</div>'+
+      '<div class="d">'+esc(r.before)+' → '+esc(r.after)+' · '+esc(r.detail||'')+'</div>'
+    if(r.fix && (r.state==='still'||r.state==='worse'||r.state==='new')){
+      h+='<div class="d">处置：'+esc(r.fix)+'</div>'
+    }
+    return h+'</div>'
+  }
+
+  function renderComparison(c){
+    BL.comparison=c||null
+    var banner=$('cmp-banner')
+    if(!c){
+      banner.style.display='none'
+      $('cmp-fixed').textContent='-'; $('cmp-still').textContent='-'; $('cmp-new').textContent='-'
+      return
+    }
+    var n=c.counts||{}
+    $('cmp-fixed').textContent=num(n.fixed)
+    $('cmp-still').textContent=num(n.still)
+    $('cmp-new').textContent=num(n.new)
+    banner.style.display=''
+    banner.innerHTML='对比基线 '+esc(fmtSaved(c.baselineAt))+'：已拦截 <b>'+num(n.fixed)+
+      '</b> · 仍暴露 <b>'+num(n.still)+'</b> · 新增 <b>'+num(n.new)+'</b>　→ 点击查看详情'
+    var sec=function(title, rows){
+      var h='<div class="sa-cmp-h">'+title+'（'+((rows&&rows.length)||0)+'）</div>'
+      if(!rows||!rows.length) return h+'<div class="sa-dim" style="font-size:var(--fs-xs);padding:2px 0 6px">（无）</div>'
+      rows.forEach(function(r){ h+=cmpRow(r) })
+      return h
+    }
+    var html=sec('已拦截', c.fixed)+sec('仍暴露', c.still)+sec('新增', c.new)
+    if(c.note) html+='<div class="sa-cmp-note">'+esc(c.note)+'</div>'
+    $('cmp-body').innerHTML=html
+  }
+
+  function activeBaseline(){
+    var id=$('bl-select').value
+    if(!id){ hint('请先跑一轮巡检生成基线', true); return null }
+    return id
+  }
+  function showCmp(r){ renderComparison(r.comparison); hint('对比完成') }
+
+  $('bl-compare').addEventListener('click', function(){
+    var id=activeBaseline(); if(!id) return
+    if(!S.sid){ hint('请先完成一轮巡检，再用当前结果对比', true); return }
+    hint('正在对比…')
+    send('audit.compare',{baselineId:id, sessionId:S.sid}).then(showCmp)
+      .catch(function(e){ hint(e.message||String(e), true) })
+  })
+  $('bl-verify').addEventListener('click', function(){
+    var id=activeBaseline(); if(!id) return
+    hint('正在单次只读复验…')
+    send('audit.verify',{baselineId:id}).then(showCmp)
+      .catch(function(e){ hint(e.message||String(e), true) })
+  })
+  $('bl-save').addEventListener('click', function(){
+    if(!S.sid){ hint('请先完成一轮巡检', true); return }
+    send('audit.baseline.save',{sessionId:S.sid, label:'手动保存'}).then(function(){
+      return loadBaselines()
+    }).then(function(){ hint('已存为基线') })
+      .catch(function(e){ hint(e.message||String(e), true) })
+  })
+  $('bl-del').addEventListener('click', function(){
+    var id=activeBaseline(); if(!id) return
+    send('audit.baseline.delete',{id:id}).then(function(){ return loadBaselines() })
+      .then(function(){ hint('已删除基线') })
+      .catch(function(e){ hint(e.message||String(e), true) })
+  })
+  $('bl-report').addEventListener('click', function(){
+    if(!BL.comparison||!BL.comparison.report){ hint('暂无对比结果', true); return }
+    $('report-text').textContent=BL.comparison.report
+    $('overlay').classList.add('show')
+  })
+  $('cmp-banner').addEventListener('click', function(){
+    var b=document.querySelector('.p-tab[data-tab="compare"]')
+    if(b) b.click()
+  })
 
   /* ---------- 流程 ---------- */
   function setRunning(on){
@@ -520,7 +669,11 @@
     if(S.timer){ clearInterval(S.timer); S.timer=null }
     setRunning(false)
     $('btn-report').disabled=!S.sid
-    hint(S.data&&S.data.error?'已中止':'巡检完成，可切到「风险」看处置建议')
+    if(BL.loaded) loadBaselines()
+    var cmp=S.data&&S.data.comparison, n=(cmp&&cmp.counts)||{}
+    hint(S.data&&S.data.error?'已中止':(cmp?
+      ('巡检完成 · 对比上一轮：已拦截 '+num(n.fixed)+' / 仍暴露 '+num(n.still)+' / 新增 '+num(n.new)):
+      '巡检完成，可切到「风险」看处置建议'))
   }
 
   function start(){
@@ -537,7 +690,8 @@
       checkUnauth: $('opt-unauth').checked,
       geo: $('opt-geo').checked,
       concurrency: parseInt($('opt-conc').value,10)||500,
-      timeout: parseInt($('opt-timeout').value,10)||800
+      timeout: parseInt($('opt-timeout').value,10)||800,
+      compareWith: $('bl-select').value||''
     }).then(function(r){
       S.sid=r.sessionId
       hint('已开始：'+host)

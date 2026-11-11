@@ -118,6 +118,16 @@ func execute(p executeParams) (map[string]interface{}, string) {
 		return handleAuditReport(p.Input)
 	case "ip-lookup":
 		return handleIPLookup(p.Input)
+	case "audit-baseline-list":
+		return handleBaselineList(p.Input)
+	case "audit-baseline-save":
+		return handleBaselineSave(p.Input)
+	case "audit-baseline-delete":
+		return handleBaselineDelete(p.Input)
+	case "audit-compare":
+		return handleCompare(p.Input)
+	case "audit-verify":
+		return handleVerify(p.Input)
 	case "audit":
 		return map[string]interface{}{
 			"ok":   true,

@@ -33,8 +33,9 @@ type auditOptions struct {
 	CheckPaths   bool
 	CheckUnauth  bool
 	LookupGeo    bool
-	AllowPrivate bool // 仅测试用：生产入口不传，恒为 false
-	PortHint     int  // 输入形如 host:8080 时只扫这一个端口
+	AllowPrivate bool   // 仅单元测试内部构造；RPC 入口恒为 false
+	PortHint     int    // 输入形如 host:8080 时只扫这一个端口
+	CompareWith  string // 指定对比的基线 id；留空则自动用该主机上一轮基线
 }
 
 type TargetInfo struct {
@@ -102,6 +103,7 @@ type auditSession struct {
 	unauth     []UnauthCheck
 	findings   []Finding
 	summary    Summary
+	comparison *CompareResult // 本轮与基线的加固对比结果，快照里带给前端
 
 	scanned int64 // atomic，供 worker 高频更新
 	total   int64 // atomic
@@ -206,7 +208,8 @@ func handleAuditStart(input map[string]interface{}) (map[string]interface{}, str
 		CheckPaths:   boolFrom(input, "checkPaths", true),
 		CheckUnauth:  boolFrom(input, "checkUnauth", true),
 		LookupGeo:    boolFrom(input, "geo", false),
-		AllowPrivate: boolFrom(input, "allowPrivate", false),
+		AllowPrivate: false, // 绝不从 RPC 入参放开：内网/回环地址一律拒绝，防误扫他人内网
+		CompareWith:  strFrom(input, "compareWith"),
 	}
 	if opts.TimeoutMs <= 0 {
 		opts.TimeoutMs = defTimeoutMs
@@ -349,6 +352,27 @@ func (s *auditSession) run() {
 	s.mu.Lock()
 	s.findings = findings
 	s.mu.Unlock()
+
+	// 7. 加固对比：先与该主机上一轮基线比对，再把本轮结果存为新基线。
+	//    顺序不能反，否则「上一轮」会拿到刚写的这一轮，永远零差异。
+	if s.errMsg == "" && !s.stopped() {
+		base, ok := previousBaseline(target.Host)
+		if s.opts.CompareWith != "" {
+			if b, found := findBaseline(s.opts.CompareWith); found && b.Host == target.Host {
+				base, ok = b, true
+			}
+		}
+		if ok {
+			cmp := makeCompareResult(base, findings, "full")
+			s.mu.Lock()
+			s.comparison = &cmp
+			s.mu.Unlock()
+		}
+		if _, err := saveBaselineFromSession(s, ""); err != nil {
+			// 落盘失败只记日志，不能让一次写文件问题毁掉整轮巡检结果
+			qdLogInfo("baseline save failed: %v", err)
+		}
+	}
 	s.finish()
 }
 
@@ -415,7 +439,8 @@ func (s *auditSession) snapshot() map[string]interface{} {
 		"pathsChecked": s.pathsCheck,
 		"unauth":       unauth,
 		"findings":     findings,
-		"summary":      summarize(findings),
+		"summary":      summary,
+		"comparison":   s.comparison,
 	}
 }
 

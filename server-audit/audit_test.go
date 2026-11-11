@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"fmt"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -383,5 +384,157 @@ func TestPathProbesAreReadOnly(t *testing.T) {
 		if m != http.MethodGet && m != http.MethodHead {
 			t.Errorf("路径探测出现非只读方法 %s（次数 %d）", m, methods[m])
 		}
+	}
+}
+
+/* ==================== 加固对比 / 基线 ==================== */
+
+func TestCompareFindingsThreeStates(t *testing.T) {
+	base := []Finding{
+		{ID: "path-80-/.env", Severity: "critical", Title: "敏感路径暴露：/.env", Port: 80},
+		{ID: "svc-redis-6379", Severity: "high", Title: "Redis 对公网开放", Port: 6379},
+		{ID: "hsts-443", Severity: "medium", Title: "HSTS 缺失", Port: 443},
+		{ID: "exposure-summary", Severity: "info", Title: "暴露汇总"}, // 应被剔除
+	}
+	cur := []Finding{
+		{ID: "svc-redis-6379", Severity: "critical", Title: "Redis 对公网开放", Port: 6379},
+		{ID: "hsts-443", Severity: "medium", Title: "HSTS 缺失", Port: 443},
+		{ID: "unauth-docker-2375", Severity: "critical", Title: "Docker API 未授权", Port: 2375},
+	}
+	fixed, still, added := compareFindings(base, cur)
+	if len(fixed) != 1 || fixed[0].ID != "path-80-/.env" {
+		t.Errorf("已拦截判定错误: %+v", fixed)
+	}
+	if len(still) != 2 {
+		t.Errorf("仍暴露应为 2 项: %+v", still)
+	}
+	var worse bool
+	for _, r := range still {
+		if r.ID == "svc-redis-6379" && r.State == "worse" {
+			worse = true
+		}
+	}
+	if !worse {
+		t.Error("等级升高应标为 worse")
+	}
+	if len(added) != 1 || added[0].ID != "unauth-docker-2375" {
+		t.Errorf("新增判定错误: %+v", added)
+	}
+}
+
+func TestBaselineStoreRoundTrip(t *testing.T) {
+	t.Setenv("QUICKDOCK_PLUGIN_DATA", t.TempDir())
+	s := newTestSession("example.com", "")
+	s.target = TargetInfo{Host: "example.com", IP: "1.2.3.4"}
+	s.stage = "done"
+	s.findings = []Finding{{ID: "path-80-/.env", Severity: "critical", Title: "敏感路径暴露：/.env"}}
+	s.ports = []PortResult{{Port: 80, State: "open"}, {Port: 22, State: "closed"}}
+
+	item, err := saveBaselineFromSession(s, "修复前")
+	if err != nil {
+		t.Fatalf("保存基线失败: %v", err)
+	}
+	list := listBaselines("example.com")
+	if len(list) != 1 || list[0].RiskCount != 1 || list[0].Label != "修复前" {
+		t.Fatalf("基线列表异常: %+v", list)
+	}
+	got, ok := findBaseline(item.ID)
+	if !ok || len(got.Findings) != 1 || len(got.OpenPorts) != 1 {
+		t.Fatalf("基线读回异常: %+v", got)
+	}
+	if len(listBaselines("other.com")) != 0 {
+		t.Error("按主机过滤失效")
+	}
+
+	for i := 0; i < maxBaselinesPerHost+2; i++ {
+		if _, err := saveBaselineFromSession(s, ""); err != nil {
+			t.Fatalf("第 %d 次保存失败: %v", i, err)
+		}
+	}
+	if got := listBaselines("example.com"); len(got) != maxBaselinesPerHost {
+		t.Errorf("应按主机保留 %d 条，实际 %d", maxBaselinesPerHost, len(got))
+	}
+	if _, ok := findBaseline(item.ID); ok {
+		t.Error("最旧基线应被裁剪掉")
+	}
+	if !deleteBaseline(listBaselines("example.com")[0].ID) {
+		t.Error("删除基线失败")
+	}
+}
+
+func TestQuickVerifyIsReadOnlySingleShot(t *testing.T) {
+	t.Setenv("QUICKDOCK_PLUGIN_DATA", t.TempDir())
+	for _, tc := range []struct {
+		name      string
+		status    int
+		wantFixed int
+		wantStill int
+	}{
+		{"已拦截", http.StatusForbidden, 1, 0},
+		{"仍暴露", http.StatusOK, 0, 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var mu sync.Mutex
+			methods := map[string]int{}
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				mu.Lock()
+				methods[r.Method]++
+				mu.Unlock()
+				w.WriteHeader(tc.status)
+			}))
+			defer srv.Close()
+			u, _ := url.Parse(srv.URL)
+			port, _ := strconv.Atoi(u.Port())
+			base := BaselineItem{
+				ID: "bl-test", Host: u.Hostname(), IP: "127.0.0.1",
+				SavedAt: time.Now().Format(time.RFC3339),
+				Findings: []Finding{{
+					ID: fmt.Sprintf("path-%d-/.env", port), Severity: "critical",
+					Title: "敏感路径暴露：/.env", Port: port,
+				}},
+				Services: []ServiceInfo{{Port: port, Scheme: "http"}},
+			}
+			cr := quickVerify(base)
+			if cr.Mode != "quick" || cr.Counts["fixed"] != tc.wantFixed || cr.Counts["still"] != tc.wantStill {
+				t.Errorf("复验结论异常: %+v", cr.Counts)
+			}
+			if !strings.Contains(cr.Report, "加固对比报告") {
+				t.Error("对比报告缺失")
+			}
+			mu.Lock()
+			defer mu.Unlock()
+			if len(methods) != 1 || methods[http.MethodGet] != 1 {
+				t.Errorf("每个风险点应只发一次 GET，实际 %v", methods)
+			}
+		})
+	}
+}
+
+func TestRPCEntryNeverAllowsPrivate(t *testing.T) {
+	t.Setenv("QUICKDOCK_PLUGIN_DATA", t.TempDir())
+	// 即使入参塞了 allowPrivate，RPC 入口也必须恒为 false。
+	r, errMsg := handleAuditStart(map[string]interface{}{
+		"host": "192.168.1.1", "allowPrivate": true, "checkPaths": false, "checkUnauth": false,
+	})
+	if errMsg != "" {
+		t.Fatalf("启动失败: %s", errMsg)
+	}
+	s := getSession(r["sessionId"].(string))
+	if s == nil {
+		t.Fatal("会话未创建")
+	}
+	if s.opts.AllowPrivate {
+		t.Error("内网限制被 RPC 入参放开了")
+	}
+	for i := 0; i < 100; i++ {
+		if s.snapshot()["running"] == false {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if snap := s.snapshot(); snap["error"] == "" {
+		t.Error("内网目标应在预检阶段被拒绝")
+	} else if !strings.Contains(snap["error"].(string), "拒绝扫描") {
+		t.Errorf("拒绝原因异常: %v", snap["error"])
 	}
 }

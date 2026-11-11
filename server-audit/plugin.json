@@ -5,11 +5,11 @@
     "zh-CN": "服务器自查",
     "en-US": "Server Self-Audit"
   },
-  "version": "1.0.0",
-  "description": "对你自己的服务器做一次只读暴露面体检：解析预检、常用端口表扫描（可扩到 65535 全量）、服务指纹与 TLS 证书解析、敏感路径只读 GET/HEAD 探测、未授权访问与匿名口令单次校验，输出风险分级与处置建议。只做 connect 扫描与 GET/HEAD，不利用、不爆破、不下载数据。",
+  "version": "1.1.0",
+  "description": "对你自己的服务器做只读暴露面体检：常用端口表扫描（可扩到 65535）、服务指纹与 TLS 证书解析、敏感路径只读 GET/HEAD 探测、未授权访问与匿名口令单次校验；自动保存基线，修复后重跑给出「已拦截 / 仍暴露 / 新增」对比，也可对基线风险点单次只读复验。只做 connect 扫描与 GET/HEAD，不利用、不爆破、不下载数据。",
   "description_i18n": {
-    "zh-CN": "对你自己的服务器做一次只读暴露面体检：解析预检、常用端口表扫描（可扩到 65535 全量）、服务指纹与 TLS 证书解析、敏感路径只读 GET/HEAD 探测、未授权访问与匿名口令单次校验，输出风险分级与处置建议。只做 connect 扫描与 GET/HEAD，不利用、不爆破、不下载数据。",
-    "en-US": "Read-only exposure audit for your own server: DNS precheck, common-port scan (optionally all 65535), service fingerprint with TLS certificate parsing, sensitive-path GET/HEAD probes, single-shot anonymous/default credential checks, graded findings with remediation. Connect scan and GET/HEAD only — no exploitation, no brute force, no data downloads."
+    "zh-CN": "对你自己的服务器做只读暴露面体检：常用端口表扫描（可扩到 65535）、服务指纹与 TLS 证书解析、敏感路径只读 GET/HEAD 探测、未授权访问与匿名口令单次校验；自动保存基线，修复后重跑给出「已拦截 / 仍暴露 / 新增」对比，也可对基线风险点单次只读复验。只做 connect 扫描与 GET/HEAD，不利用、不爆破、不下载数据。",
+    "en-US": "Read-only exposure audit for your own server: common-port scan (optionally all 65535), service fingerprint with TLS certificate parsing, sensitive-path GET/HEAD probes, single-shot anonymous/default credential checks. Each run is saved as a baseline; re-run after hardening to get fixed / still-exposed / newly-added comparison, or single-shot read-only re-verification of baseline findings. Connect scan and GET/HEAD only — no exploitation, no brute force, no data downloads."
   },
   "author": "QuickDock",
   "icon": "icon.svg",
@@ -33,7 +33,15 @@
     "height": 600
   },
   "permissions": {
-    "network": true
+    "network": true,
+    "filesystem": {
+      "read": [
+        "~/.quickdock/plugin-data/io.github.parieses.server-audit"
+      ],
+      "write": [
+        "~/.quickdock/plugin-data/io.github.parieses.server-audit"
+      ]
+    }
   },
   "commands": [
     {
@@ -112,6 +120,11 @@
             "type": "boolean",
             "description": "是否用 HTTP 接口查询 IP 归属（向 ipwho.is 发送目标 IP），默认 false",
             "default": false
+          },
+          "compareWith": {
+            "type": "string",
+            "description": "指定对比的基线 id；留空则自动用该主机上一轮基线。修复后重跑会自动产出三态差异",
+            "default": ""
           }
         }
       }
@@ -183,7 +196,98 @@
           }
         }
       }
+    },
+    {
+      "id": "audit.baseline.list",
+      "title": "列出加固基线",
+      "description": "列出已落盘的巡检基线（可按主机过滤）；每主机保留最近 6 条",
+      "params": {
+        "type": "object",
+        "required": [],
+        "properties": {
+          "host": {
+            "type": "string",
+            "description": "只列该主机的基线，留空列全部"
+          }
+        }
+      }
+    },
+    {
+      "id": "audit.baseline.save",
+      "title": "存为加固基线",
+      "description": "把一次已完成的巡检手动存为基线；正常巡检结束会自动存，无需手动调用",
+      "params": {
+        "type": "object",
+        "required": [
+          "sessionId"
+        ],
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "description": "已完成的巡检会话 ID"
+          },
+          "label": {
+            "type": "string",
+            "description": "备注，如「修复前」"
+          }
+        }
+      }
+    },
+    {
+      "id": "audit.baseline.delete",
+      "title": "删除加固基线",
+      "description": "删除指定基线",
+      "params": {
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "基线 id"
+          }
+        }
+      }
+    },
+    {
+      "id": "audit.compare",
+      "title": "与基线对比",
+      "description": "把某次已完成的巡检与指定基线对比，输出已拦截/仍暴露/新增；不传 sessionId 则走单次只读快速复验",
+      "params": {
+        "type": "object",
+        "required": [
+          "baselineId"
+        ],
+        "properties": {
+          "baselineId": {
+            "type": "string",
+            "description": "基线 id"
+          },
+          "sessionId": {
+            "type": "string",
+            "description": "已完成的巡检会话 ID；留空则做快速复验"
+          }
+        }
+      }
+    },
+    {
+      "id": "audit.verify",
+      "title": "快速复验基线",
+      "description": "只针对基线中的风险点各发一次只读请求，判断是否已拦截；不重扫端口、不发现新增风险",
+      "params": {
+        "type": "object",
+        "required": [
+          "baselineId"
+        ],
+        "properties": {
+          "baselineId": {
+            "type": "string",
+            "description": "基线 id"
+          }
+        }
+      }
     }
   ],
-  "changelog": "## v1.0.0\n\n- 首个版本：一条流水线跑完「解析预检 → 端口扫描 → 服务指纹 → 敏感路径 → 未授权校验 → 风险分级」\n- 解析预检：域名 → A 记录，记录开始时间；拒绝回环/内网/链路本地/组播/保留地址（防误扫他人内网）\n- 端口扫描：TCP connect 两阶段（内置常用端口表约 1100 个 → 可选 1-65535 全量），默认并发 500、硬上限 1000，单端口超时 800ms，区分开放/关闭/过滤三态；不用 ICMP、不用 raw socket\n- 服务指纹：TLS 优先（协议版本/套件/ALPN，证书 CN/SAN/颁发者/有效期/签名算法/密钥长度）→ banner 抓取 → HTTP HEAD → 单次协议探测，归类 ssh/ftp/http/https/mysql/redis/mongodb/memcached/docker/es 等\n- 敏感路径：36 条内置路径只读 GET（含随机路径基线与关键词佐证，过滤 404 与软 404 兜底页），正文最多读 1KB 作证据并对口令字段打码\n- 未授权校验：Redis PING、Memcached version、Docker /version、ES /、FTP 匿名登录各单次一次，不分发字典、不并发认证\n- 每项风险附处置建议，可导出纯文本报告\n- 视觉走宿主设计令牌（qd-theme 的 .p-* 组件），深浅色自适应"
+  "changelog": "## v1.1.0\n\n- 加固对比：每轮巡检自动落盘为基线（~/.quickdock/plugin-data/io.github.parieses.server-audit/baselines.json，每主机最近 6 条），修复后重跑自动与上一轮对比，输出「已拦截 / 仍暴露 / 新增」与文本对比报告\n- 快速复验：只针对基线里的风险点各发一次只读请求（路径 GET、Redis PING、端口 connect、TLS 握手、HSTS 头），不重扫端口；20 秒预算，未复验项按「仍暴露」保守计入，绝不误报已拦截\n- 前端新增「加固对比」标签页：基线选择、手动对比、快速复验、存为/删除基线、导出对比报告；概览页显示对比横幅\n- audit.start 新增 compareWith 参数，可指定要对比的基线\n- 修复：RPC 入口不再接受 allowPrivate 参数（内网/回环一律拒绝）；错误路径的 summary.verdict 现在能正确输出\n- 新增 filesystem 权限声明，仅授权插件自己的 plugin-data 目录读写\n\n## v1.0.0\n\n- 首个版本：一条流水线跑完「解析预检 → 端口扫描 → 服务指纹 → 敏感路径 → 未授权校验 → 风险分级」\n- 解析预检：域名 → A 记录，记录开始时间；拒绝回环/内网/链路本地/组播/保留地址（防误扫他人内网）\n- 端口扫描：TCP connect 两阶段（内置常用端口表约 1100 个 → 可选 1-65535 全量），默认并发 500、硬上限 1000，单端口超时 800ms，区分开放/关闭/过滤三态；不用 ICMP、不用 raw socket\n- 服务指纹：TLS 优先（协议版本/套件/ALPN，证书 CN/SAN/颁发者/有效期/签名算法/密钥长度）→ banner 抓取 → HTTP HEAD → 单次协议探测，归类 ssh/ftp/http/https/mysql/redis/mongodb/memcached/docker/es 等\n- 敏感路径：36 条内置路径只读 GET（含随机路径基线与关键词佐证，过滤 404 与软 404 兜底页），正文最多读 1KB 作证据并对口令字段打码\n- 未授权校验：Redis PING、Memcached version、Docker /version、ES /、FTP 匿名登录各单次一次，不分发字典、不并发认证\n- 每项风险附处置建议，可导出纯文本报告\n- 视觉走宿主设计令牌（qd-theme 的 .p-* 组件），深浅色自适应"
 }
