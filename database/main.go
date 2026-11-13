@@ -6,6 +6,7 @@
 //   conn.delete    删除连接
 //   conn.test      用传入配置测试连通性（无需先保存）
 //   query.run      执行 SQL（MySQL/SQLite）或 Redis 命令，返回列 + 行 + 可编辑元数据
+//   query.explain  只解释不执行：MySQL EXPLAIN / SQLite EXPLAIN QUERY PLAN + 中文诊断提示
 //   tree.list      库表浏览器根节点（SQL：库；Redis：键树）
 //   tree.objects   按需展开某个库下的 表/视图/字段
 //   table.list     列出某库全部表/视图（引擎、行数、注释等元信息）
@@ -243,6 +244,8 @@ func handleCommand(id int64, p executeParams) {
 	// 查询
 	case "query.run", "query":
 		handleQueryRun(id, p.Input)
+	case "query.explain":
+		handleQueryExplain(id, p.Input)
 	// 库表树
 	case "tree.list", "tree":
 		handleTreeList(id, p.Input)

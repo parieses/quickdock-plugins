@@ -351,6 +351,70 @@
                  border:1px solid var(--qi-border,#2a2f3a); border-radius:6px; padding:8px; font-size:12px; max-height:240px; overflow:auto; }
     .ai-warn{ background:rgba(255,170,0,.08); border:1px solid rgba(255,170,0,.3); border-radius:6px; padding:6px 8px; color:var(--qi-fg,#e6e6e6); font-size:12px; }
     .ai-err{ color:#ff7b72; font-size:12px; }
+
+    /* ===== 查询工作台：执行历史 / SQL 片段（参考 dbx 的 persistent history + snippets） ===== */
+    .wb-modal { width:720px; max-width:94vw; height:min(520px,84vh); padding:0; overflow:hidden; }
+    .wb-head { display:flex; align-items:center; gap:8px; padding:10px 12px 0; flex-shrink:0; }
+    .wb-head strong { font-size:var(--fs-lg); font-weight:var(--fw-semibold); }
+    .wb-tabs { display:flex; gap:2px; padding:0 12px; border-bottom:1px solid var(--border); flex-shrink:0; }
+    .wb-tab { padding:8px 12px; font-size:var(--fs-sm); color:var(--text-muted); cursor:pointer; border-bottom:2px solid transparent; }
+    .wb-tab:hover { color:var(--text-primary); }
+    .wb-tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+    .wb-bar { display:flex; align-items:center; gap:6px; padding:8px 12px; border-bottom:1px solid var(--border); flex-shrink:0; }
+    .wb-list { flex:1; min-height:0; overflow:auto; padding:2px 12px 10px; }
+    .wb-item { display:flex; flex-direction:column; gap:4px; margin-top:6px; padding:7px 9px;
+               border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg-primary); }
+    .wb-item:hover { border-color:var(--accent-line); }
+    .wb-top { display:flex; align-items:center; gap:7px; font-size:var(--fs-xs); color:var(--text-muted); }
+    .wb-top .spacer { flex:1; }
+    .wb-sql { font-family:var(--font-mono); font-size:var(--fs-xs); color:var(--text-primary);
+              white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; }
+    .wb-sql:hover { color:var(--accent); }
+    .wb-acts { display:flex; gap:4px; flex-shrink:0; }
+    .wb-empty { padding:42px 12px; text-align:center; color:var(--text-disabled); font-size:var(--fs-xs); line-height:2; }
+    .wb-foot { display:flex; align-items:center; gap:6px; padding:8px 12px; border-top:1px solid var(--border); flex-shrink:0; }
+    .wb-flag { padding:1px 6px; border-radius:8px; font-size:var(--fs-xs); }
+    .wb-flag.ok { background:var(--success-soft); color:var(--success); }
+    .wb-flag.err { background:var(--danger-soft); color:var(--danger); }
+
+    /* ===== 结果导出 / 复制（CSV / JSON / Markdown / INSERT / VALUES） ===== */
+    .exp-row { display:flex; flex-direction:column; gap:6px; margin-bottom:12px; }
+    .exp-row > label { font-size:var(--fs-xs); color:var(--text-muted); }
+    .exp-fmts { display:flex; gap:5px; flex-wrap:wrap; }
+    .exp-fmt { padding:5px 10px; border:1px solid var(--border); border-radius:5px; background:var(--bg-tertiary);
+               color:var(--text-secondary); font-size:var(--fs-xs); cursor:pointer; }
+    .exp-fmt:hover { border-color:var(--accent-line); }
+    .exp-fmt.active { background:var(--accent-soft); color:var(--accent); border-color:var(--accent-line); }
+    .exp-hint { font-size:var(--fs-xs); color:var(--text-muted); line-height:1.7; }
+    .exp-check { display:flex; align-items:center; gap:6px; font-size:var(--fs-sm); color:var(--text-secondary); }
+
+    /* ===== EXPLAIN 执行计划 ===== */
+    .plan-panel { flex:1; min-height:0; display:flex; flex-direction:column; overflow:hidden;
+                  margin-bottom:8px; /* 底部滚动条避开宿主的 5px 缩放手柄 */ }
+    .plan-head { display:flex; align-items:center; gap:8px; padding:7px 10px; flex-wrap:wrap; flex-shrink:0; }
+    .plan-sql { font-family:var(--font-mono); font-size:var(--fs-xs); color:var(--text-muted);
+                background:var(--bg-tertiary); border:1px solid var(--border); border-radius:5px;
+                padding:5px 7px; margin:0 10px 8px; word-break:break-all; flex-shrink:0; }
+    .plan-hints { display:flex; flex-direction:column; gap:4px; margin:0 10px 8px; flex-shrink:0; }
+    .plan-hint { display:flex; align-items:flex-start; gap:6px; font-size:var(--fs-xs); line-height:1.6;
+                 padding:5px 8px; border:1px solid var(--border); border-radius:5px;
+                 background:var(--bg-secondary); color:var(--text-secondary); }
+    .plan-hint.warn { border-color:rgba(245,158,11,.4); background:var(--warning-soft); color:var(--text-primary); }
+    .plan-hint.ok { border-color:rgba(34,197,94,.35); background:var(--success-soft); }
+    .plan-grid { flex:1; min-height:0; overflow:auto; margin:0 10px; }
+    .plan-grid .grid { width:100%; }
+    .plan-empty { padding:30px 10px; text-align:center; color:var(--text-disabled); font-size:var(--fs-xs); line-height:2; }
+    /* 单元格交互增强：点击高亮当前格、悬停出现复制按钮 */
+    table.grid td { position:relative; }
+    table.grid td.cell-active { outline:2px solid var(--accent); outline-offset:-2px; }
+    table.grid .cell-copy {
+      position:absolute; top:1px; right:1px; z-index:3;
+      width:18px; height:18px; line-height:16px; padding:0; border:none;
+      background:var(--bg-secondary); color:var(--text-muted);
+      border-radius:4px; cursor:pointer; opacity:0; transition:opacity .1s; font-size:12px;
+    }
+    table.grid td:hover .cell-copy { opacity:1; }
+    table.grid .cell-copy:hover { color:var(--accent); background:var(--bg-hover); }
   </style>
 </head>
 <body>
@@ -363,6 +427,7 @@
       <button class="btn btn-xs" @click="reloadAll">刷新</button>
       <span class="tb-sep"></span>
       <button class="btn btn-xs" :disabled="!selectedConn" @click="newQueryTab()">＋ 新建查询</button>
+      <button class="btn btn-xs" @click="openWorkbench()" title="执行历史 / SQL 片段（关闭重开不丢）">工作台</button>
       <button class="btn btn-xs qi-ico qi-ico-settings" @click="showSettings=true">设置</button>
       <div class="spacer"></div>
       <span class="tb-meta" v-if="selectedConn">{{ selectedConn.name }} · {{ dbTypeLabel(selectedConn.dbType) }}</span>
@@ -528,7 +593,7 @@
               <span class="spacer"></span>
               <button class="btn btn-xs" v-if="!t.designing" @click="openInsert(t)" :disabled="!canCrud(t)">＋ 新增</button>
               <button class="btn btn-xs" v-if="!t.designing" @click="deleteRow(t)" :disabled="!canCrud(t) || t.grid.selRow<0">删除行</button>
-              <button class="btn btn-xs" v-if="!t.designing" @click="exportCsv(t)" :disabled="!t.grid.rows.length">导出 CSV</button>
+              <button class="btn btn-xs" v-if="!t.designing" @click="openExport(t)" :disabled="!t.grid.rows.length">导出 ▾</button>
               <button class="btn btn-xs" @click="reloadTableTab(t)">刷新</button>
               <button class="btn btn-xs" v-if="!t.designing && !t.isView && t.struct" @click="startDesign(t)">设计表</button>
               <button class="btn btn-xs btn-primary" v-if="t.designing" @click="saveDesign(t)" :disabled="!genStructSQL(t).trim()">保存</button>
@@ -544,6 +609,7 @@
               <span class="muted" v-if="t.selAllLoading">正在收集…</span>
               <span class="spacer"></span>
               <button class="btn btn-xxs" @click="openBulkEdit(t, '')" title="把勾选行的某一列统一设为同一个值 / NULL / SQL 表达式">批量修改所选</button>
+              <button class="btn btn-xxs" @click="copySelectedRows(t)" title="把勾选的行以 Tab 分隔复制到剪贴板（可直接粘进 Excel）">复制所选</button>
               <button class="btn btn-xxs" @click="clearSel(t)">清除选择</button>
               <button class="btn btn-xxs" style="background:var(--danger);border-color:var(--danger);color:#fff" @click="deleteSelected(t)">删除所选</button>
             </div>
@@ -806,11 +872,14 @@
                       <td class="grid-check"><input type="checkbox" :checked="isRowSelected(t,row)" :disabled="!canCrud(t)" @click.stop="onRowCheck(t, ri, $event)" title="勾选此行（Shift 点击可范围多选）" /></td>
                       <td class="dim">{{ (t.grid.page-1)*t.grid.pageSize + ri + 1 }}</td>
                       <td v-for="(cell,ci) in row" :key="ci"
-                          :class="[ isPk(t,ci) ? 'pk' : '', isNull(t,ri,ci) ? 'dim' : '', canEdit(t) && !isPk(t,ci) ? 'editable' : '', isEditing(t,ri,ci) ? 'editing' : '' ]"
-                          @dblclick="beginEdit(t,ri,ci)">
+                          :class="[ isPk(t,ci) ? 'pk' : '', isNull(t,ri,ci) ? 'dim' : '', canEdit(t) && !isPk(t,ci) ? 'editable' : '', isEditing(t,ri,ci) ? 'editing' : '', cellActive(t,ri,ci) ? 'cell-active' : '' ]"
+                          @click="onCellClick(t,ri,ci)"
+                          @dblclick="beginEdit(t,ri,ci)"
+                          @contextmenu.prevent="openCellMenu($event, t, ri, ci)">
                         <input v-if="isEditing(t,ri,ci)" v-model="t.grid.draft"
                                @keydown.enter.prevent="commitEdit(t,ri,ci)" @keydown.esc.prevent="cancelEdit(t)" @blur="commitEdit(t,ri,ci)" ref="editInput" />
                         <div class="cell" v-else :title="isNull(t,ri,ci) ? '' : cell">{{ isNull(t,ri,ci) ? 'NULL' : cell }}</div>
+                        <button class="cell-copy" v-if="!isEditing(t,ri,ci)" @click.stop="copyCell(t,ri,ci)" title="复制单元格值">⧉</button>
                       </td>
                     </tr>
                   </tbody>
@@ -969,7 +1038,9 @@
               <button class="btn btn-xs" @click="t.sql=''">清空</button>
               <button class="btn btn-xs" @click="formatSql(t)" title="把 SQL 重新排版：关键字大写、子句换行、AND/OR 缩进、SELECT 列分行">美化</button>
               <button class="btn btn-xs" @click="toggleAi(t)" :class="{active: ai.open && ai.tabId===t.id}" title="用宿主 AI 档案生成 / 解释 SQL">✦ AI</button>
-              <button class="btn btn-xs" @click="exportCsv(t)" :disabled="!t.grid.rows.length">导出 CSV</button>
+              <button class="btn btn-xs" @click="openExport(t)" :disabled="!t.grid.rows.length">导出 ▾</button>
+              <button class="btn btn-xs" @click="explainQuery(t)" :disabled="t.plan.loading || connTypeOf(t)==='redis'" title="只解释 SQL、不执行；展示 MySQL / SQLite 的查询计划与优化提示">执行计划</button>
+              <button class="btn btn-xs" v-if="t.viewMode==='plan'" @click="t.viewMode='result'">看结果</button>
               <button class="btn btn-xs" @click="openInsert(t)" :disabled="!canCrud(t)">＋ 新增</button>
               <button class="btn btn-xs" @click="deleteRow(t)" :disabled="!canCrud(t) || t.grid.selRow<0">删除行</button>
               <span class="spacer"></span>
@@ -1046,7 +1117,41 @@
                 </template>
                 <span class="muted" v-else>尚未执行</span>
               </div>
-              <div class="result-tabs" v-if="t.multiResults && t.multiResults.length > 1">
+              <!-- EXPLAIN 执行计划：只解释、不执行，与查询结果共用同一块区域（可来回切换） -->
+              <div class="plan-panel" v-if="t.viewMode==='plan'">
+                <div class="plan-head">
+                  <strong style="font-size:var(--fs-sm)">执行计划</strong>
+                  <span class="badge" :class="t.plan.error ? 'badge-danger' : (t.plan.loading ? 'badge-warning' : 'badge-success')">
+                    {{ t.plan.loading ? '分析中' : (t.plan.error ? '失败' : (t.plan.kind || '完成')) }}
+                  </span>
+                  <span class="muted" v-if="!t.plan.error && t.plan.ran">{{ t.plan.durationMs }} ms · {{ t.plan.rowCount }} 行 · 不会执行 SQL</span>
+                  <span style="flex:1"></span>
+                  <button class="btn btn-xs" @click="explainQuery(t)" :disabled="t.plan.loading">↻ 重新分析</button>
+                  <button class="btn btn-xs" @click="t.viewMode='result'">看结果</button>
+                </div>
+                <div v-if="t.plan.error" class="err-box" style="margin:0 10px 10px;white-space:pre-wrap">{{ t.plan.error }}</div>
+                <template v-else-if="t.plan.ran">
+                  <div class="plan-sql">{{ t.plan.sql }}</div>
+                  <div class="plan-hints" v-if="t.plan.hints.length">
+                    <div v-for="(h,hi) in t.plan.hints" :key="hi" class="plan-hint" :class="h.level">
+                      <span>{{ h.level==='warn' ? '!' : (h.level==='ok' ? '✓' : 'i') }}</span><span>{{ h.text }}</span>
+                    </div>
+                  </div>
+                  <div class="plan-grid">
+                    <table class="grid" v-if="t.plan.columns.length">
+                      <thead><tr><th v-for="(c,ci) in t.plan.columns" :key="ci">{{ c }}</th></tr></thead>
+                      <tbody>
+                        <tr v-for="(row,ri) in t.plan.rows" :key="ri">
+                          <td v-for="(cell,ci) in row" :key="ci">{{ cell === '' ? '—' : cell }}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                    <div v-else class="plan-empty">数据库没有返回计划行</div>
+                  </div>
+                </template>
+                <div v-else class="plan-empty">{{ t.plan.loading ? '正在生成执行计划…' : '点「执行计划」分析当前 SQL' }}</div>
+              </div>
+              <div class="result-tabs" v-show="t.viewMode!=='plan'" v-if="t.multiResults && t.multiResults.length > 1">
                 <div v-for="(rs,i) in t.multiResults" :key="i" :class="['rtab', {active: t.activeResult===i}]" @click="switchResult(t,i)">
                   <span class="rtab-no">结果 {{ i+1 }}</span>
                   <span class="rtab-badge" :class="rs.error ? 'bad-err' : (rs.columns.length ? 'bad-ok' : 'bad-aff')">
@@ -1055,7 +1160,7 @@
                   <button class="rtab-run" @click.stop="runQueryTab(t, {statementIndex:i})" title="只重新执行这条语句" :disabled="t.grid.loading">↻</button>
                 </div>
               </div>
-              <div class="gridwrap" :data-gw-query="t.id">
+              <div class="gridwrap" v-show="t.viewMode!=='plan'" :data-gw-query="t.id">
                 <div class="grid-refresh-bar" v-if="t.grid.loading && t.grid.columns.length"></div>
                 <div v-if="t.grid.error" class="err-box">{{ t.grid.error }}</div>
                 <table class="grid grid-resizable" v-else-if="t.grid.columns.length"
@@ -1070,11 +1175,14 @@
                   <tbody>
                     <tr v-for="(row,ri) in t.grid.rows" :key="ri" :class="{sel: t.grid.selRow===ri}" @click="selectRow(t, ri)">
                       <td v-for="(cell,ci) in row" :key="ci"
-                          :class="[ isPk(t,ci) ? 'pk' : '', isNull(t,ri,ci) ? 'dim' : '', canEdit(t) && !isPk(t,ci) ? 'editable' : '', isEditing(t,ri,ci) ? 'editing' : '' ]"
-                          @dblclick="beginEdit(t,ri,ci)">
+                          :class="[ isPk(t,ci) ? 'pk' : '', isNull(t,ri,ci) ? 'dim' : '', canEdit(t) && !isPk(t,ci) ? 'editable' : '', isEditing(t,ri,ci) ? 'editing' : '', cellActive(t,ri,ci) ? 'cell-active' : '' ]"
+                          @click="onCellClick(t,ri,ci)"
+                          @dblclick="beginEdit(t,ri,ci)"
+                          @contextmenu.prevent="openCellMenu($event, t, ri, ci)">
                         <input v-if="isEditing(t,ri,ci)" v-model="t.grid.draft"
                                @keydown.enter.prevent="commitEdit(t,ri,ci)" @keydown.esc.prevent="cancelEdit(t)" @blur="commitEdit(t,ri,ci)" ref="editInput" />
                         <div class="cell" v-else :title="isNull(t,ri,ci) ? '' : cell">{{ isNull(t,ri,ci) ? 'NULL' : cell }}</div>
+                        <button class="cell-copy" v-if="!isEditing(t,ri,ci)" @click.stop="copyCell(t,ri,ci)" title="复制单元格值">⧉</button>
                       </td>
                     </tr>
                   </tbody>
@@ -1178,6 +1286,10 @@
           </select>
           <span class="muted" style="margin-top:4px">双击打开表默认取该值；可随时在结果页的分页下拉里临时调整。</span>
         </div>
+        <div class="field-row">
+          <label class="exp-check"><input type="checkbox" v-model="settings.restoreTabs" /> 关闭插件后保留标签页</label>
+          <span class="muted" style="margin-top:4px">重开插件时恢复查询标签（SQL、库上下文）与已打开的表 / 对象标签；结果数据不缓存，点开标签时重新加载。执行历史与 SQL 片段始终保留。</span>
+        </div>
         <div class="abar">
           <div class="spacer"></div>
           <button class="btn btn-xs" @click="showSettings=false">取消</button>
@@ -1254,6 +1366,120 @@
       </div>
     </div>
 
+    <!-- 查询工作台：执行历史 / SQL 片段（参考 dbx 的 persistent history + saved snippets） -->
+    <div v-if="workbench.show" class="modal-mask" @click.self="workbench.show=false">
+      <div class="modal modal-compact wb-modal">
+        <div class="wb-head">
+          <strong>查询工作台</strong>
+          <span class="muted">执行过的 SQL 与常用片段都保存在本机，关闭插件不会丢</span>
+          <span style="flex:1"></span>
+          <button class="btn btn-xs" @click="workbench.show=false">✕</button>
+        </div>
+        <div class="wb-tabs">
+          <div class="wb-tab" :class="{active: workbench.tab==='history'}" @click="workbench.tab='history'">执行历史（{{ history.length }}）</div>
+          <div class="wb-tab" :class="{active: workbench.tab==='snippets'}" @click="workbench.tab='snippets'">SQL 片段（{{ snippets.length }}）</div>
+        </div>
+        <div class="wb-bar">
+          <input class="input input-sm" style="width:250px" v-model="workbench.search" placeholder="搜索 SQL / 连接 / 片段名…" />
+          <span style="flex:1"></span>
+          <template v-if="workbench.tab==='snippets'">
+            <button class="btn btn-xs" @click="snipDraftFromActive">＋ 保存当前查询</button>
+            <button class="btn btn-xs" @click="snipDraftNew">＋ 新建片段</button>
+          </template>
+          <button class="btn btn-xs" v-else @click="clearHistory">清空历史</button>
+        </div>
+        <div class="wb-bar" v-if="workbench.tab==='snippets' && snipDraft.show">
+          <input class="input input-sm" style="width:170px" v-model="snipDraft.name" placeholder="片段名称" @keydown.enter.prevent="saveSnippet" />
+          <input class="input input-sm" style="flex:1;min-width:0" v-model="snipDraft.sql" placeholder="SQL（可从当前查询带入后修改）" />
+          <button class="btn btn-xs btn-primary" @click="saveSnippet">保存</button>
+          <button class="btn btn-xs" @click="snipDraft.show=false">取消</button>
+        </div>
+        <div class="wb-list">
+          <template v-if="workbench.tab==='history'">
+            <div v-if="!filteredHistory.length" class="wb-empty">
+              {{ workbench.search ? '没有匹配的执行记录' : '还没有执行过查询' }}<br>
+              在查询页点「执行」后，SQL、连接、耗时与结果行数会自动记在这里
+            </div>
+            <div class="wb-item" v-for="h in filteredHistory" :key="h.id">
+              <div class="wb-top">
+                <span class="wb-flag" :class="h.ok ? 'ok' : 'err'">{{ h.ok ? '成功' : '失败' }}</span>
+                <span>{{ fmtTs(h.ts) }}</span>
+                <span>{{ h.connName || h.connId }}</span>
+                <span v-if="h.db">· {{ h.db }}</span>
+                <span v-if="h.ok">{{ h.rows }} 行 · {{ h.ms }} ms</span>
+                <span v-else :title="h.error" style="color:var(--danger)">{{ (h.error || '失败').slice(0, 36) }}</span>
+                <span style="flex:1"></span>
+                <div class="wb-acts">
+                  <button class="btn btn-xxs" @click="useHistory(h)">打开</button>
+                  <button class="btn btn-xxs" @click="copyText(h.sql)">复制</button>
+                  <button class="btn btn-xxs" @click="snippetFromSql(h.sql)">存片段</button>
+                  <button class="btn btn-xxs" style="color:var(--danger)" @click="delHistory(h)">✕</button>
+                </div>
+              </div>
+              <div class="wb-sql" :title="h.sql" @click="useHistory(h)">{{ oneLine(h.sql) }}</div>
+            </div>
+          </template>
+          <template v-else>
+            <div v-if="!filteredSnippets.length" class="wb-empty">
+              {{ workbench.search ? '没有匹配的片段' : '还没有保存的片段' }}<br>
+              点「＋ 保存当前查询」，或在执行历史里点「存片段」，常用的 SQL 就能一键回填
+            </div>
+            <div class="wb-item" v-for="s in filteredSnippets" :key="s.id">
+              <div class="wb-top">
+                <span class="wb-flag ok">{{ s.name }}</span>
+                <span>{{ fmtTs(s.ts) }}</span>
+                <span style="flex:1"></span>
+                <div class="wb-acts">
+                  <button class="btn btn-xxs" @click="useSnippet(s)">打开</button>
+                  <button class="btn btn-xxs" @click="insertSnippet(s)">插入当前</button>
+                  <button class="btn btn-xxs" @click="copyText(s.sql)">复制</button>
+                  <button class="btn btn-xxs" @click="editSnippet(s)">编辑</button>
+                  <button class="btn btn-xxs" style="color:var(--danger)" @click="delSnippet(s)">✕</button>
+                </div>
+              </div>
+              <div class="wb-sql" :title="s.sql" @click="useSnippet(s)">{{ oneLine(s.sql) }}</div>
+            </div>
+          </template>
+        </div>
+        <div class="wb-foot">
+          <span class="muted">历史最多 200 条、片段 100 条；重复执行同一条 SQL 只更新时间</span>
+          <span style="flex:1"></span>
+          <button class="btn btn-xs" @click="workbench.show=false">关闭</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 结果导出 / 复制：CSV / JSON / Markdown / INSERT / VALUES -->
+    <div v-if="exportDlg.show" class="modal-mask" @click.self="exportDlg.show=false">
+      <div class="modal modal-compact" style="width:460px">
+        <div class="modal-compact-head">
+          <span>导出结果 · {{ exportDlg.rows }} 行 × {{ exportDlg.cols }} 列</span>
+          <button class="btn btn-xs" @click="exportDlg.show=false">✕</button>
+        </div>
+        <div class="exp-row">
+          <label>格式</label>
+          <div class="exp-fmts">
+            <button v-for="f in exportFormats" :key="f.v" class="exp-fmt" :class="{active: exportDlg.fmt===f.v}" @click="exportDlg.fmt=f.v">{{ f.label }}</button>
+          </div>
+          <span class="exp-hint">{{ exportHint }}</span>
+        </div>
+        <div class="exp-row" v-if="exportDlg.fmt==='csv' || exportDlg.fmt==='md'">
+          <label class="exp-check"><input type="checkbox" v-model="exportDlg.header" /> 包含表头（第一行写列名）</label>
+        </div>
+        <div class="exp-row" v-if="exportDlg.fmt==='insert'">
+          <label>目标表名</label>
+          <input class="p-input" v-model="exportDlg.table" placeholder="例如 users" />
+          <span class="exp-hint">生成可直接执行的 INSERT INTO … VALUES …；NULL 写成 NULL，单引号自动转义。</span>
+        </div>
+        <div class="abar">
+          <span class="muted">基于当前结果网格（含筛选 / 当前页 / 当前结果标签）</span>
+          <div class="spacer"></div>
+          <button class="btn btn-xs" @click="doExport(true)">复制到剪贴板</button>
+          <button class="btn btn-xs btn-primary" @click="doExport(false)">下载文件</button>
+        </div>
+      </div>
+    </div>
+
     <!-- 通用确认 -->
     <div v-if="confirmDialog.visible" class="modal-mask" @click.self="confirmCancel">
       <div class="modal modal-compact" style="width:380px">
@@ -1277,6 +1503,14 @@
       <div class="tm-i" :class="{dim: !tabMenuFlags.hasRight}" @click="tabMenuCloseRight"><span class="tm-ico">▶</span>关闭右侧</div>
       <div class="tm-sep"></div>
       <div class="tm-i" :class="{dim: !tabs.length}" @click="tabMenuCloseAll"><span class="tm-ico">⨯</span>全部关闭</div>
+    </div>
+
+    <!-- 单元格右键菜单 -->
+    <div v-if="cellMenu.show" class="tab-menu-mask" @click="closeCellMenu" @contextmenu.prevent="closeCellMenu"></div>
+    <div v-if="cellMenu.show" ref="cellMenu" class="tab-menu" :style="{ left: cellMenu.x+'px', top: cellMenu.y+'px' }">
+      <div class="tm-i" @click="cellMenuCopy"><span class="tm-ico">⧉</span>复制单元格</div>
+      <div class="tm-i" @click="cellMenuCopyRow"><span class="tm-ico">≣</span>复制整行（Tab 分隔）</div>
+      <div class="tm-i" @click="cellMenuCopyCol"><span class="tm-ico">#</span>复制列名</div>
     </div>
 
     <!-- 连接列表右键菜单 -->
@@ -1309,7 +1543,14 @@
     return new Promise(function(res, rej){
       var id = 'db_' + (++seq)
       pend[id] = { res: res, rej: rej }
-      parent.postMessage({ type:'plugin:execute', id:id, command:command, input: input || {} }, '*')
+      // Vue 3 的 data 是 Proxy；postMessage 的结构化克隆遇到 Proxy 会直接抛
+      // DataCloneError，而这里没 catch、外层又多吞在 .catch 里，表现成「保存成功
+      // 但重开就没了」。统一做一次纯 JSON 往返再发：既让执行历史 / SQL 片段 /
+      // 标签快照能落盘，也顺带修好设置、列宽等旧持久化。
+      var payload
+      try { payload = JSON.parse(JSON.stringify(input || {})) }
+      catch(err){ payload = input || {} }
+      parent.postMessage({ type:'plugin:execute', id:id, command:command, input: payload }, '*')
       setTimeout(function(){var t=pend[id];if(t&&!t.__timeout){t.__timeout=1;(t.reject||t.rej)(new Error('请求超时：后端 30 秒无响应'))}},30000)
     })
   }
@@ -1462,18 +1703,31 @@
                      nowLabel:'NOW()', nowExpr:'NOW()', count:0, running:false },
         toasts: [],
         confirmDialog: { visible:false, message:'', onConfirm:null },
-        // 设置（持久化到后端 KV）：默认每页行数 / 各连接上次打开的库
-        settings: { pageSize:200, lastDb:{} },
+        // 设置（持久化到后端 KV）：默认每页行数 / 各连接上次打开的库 / 是否恢复标签
+        settings: { pageSize:200, lastDb:{}, restoreTabs:true },
         showSettings: false,
         _clickTimer: null,
         // 标签页右键菜单
         tabMenu: { show:false, x:0, y:0, tabId:'' },
+        cellMenu: { show:false, x:0, y:0, tabId:'', ri:-1, ci:-1 },
         // 连接列表右键菜单（刷新 / 测试 / 断开 / 编辑 / 删除）
         connMenu: { show:false, x:0, y:0, connId:'' },
         suggest: { open:false, tabId:'', items:[], index:0, start:0, token:'' },
         // AI 助手：复用宿主 AI 档案（host.ai.ask），调用前用 host.ai.available 预检是否配置
         ai: { open:false, tabId:'', mode:'gen', prompt:'', output:'', sql:'', loading:false,
-              checking:false, available:null, reason:'', profile:'', model:'', error:'' }
+              checking:false, available:null, reason:'', profile:'', model:'', error:'' },
+        // 查询工作台（执行历史 / SQL 片段）+ 标签恢复：全部持久化到后端 kv.*
+        workbench: { show:false, tab:'history', search:'' },
+        history: [],
+        snippets: [],
+        snipDraft: { show:false, id:'', name:'', sql:'' },
+        exportFormats: [
+          { v:'csv', label:'CSV' }, { v:'json', label:'JSON' },
+          { v:'md', label:'Markdown' }, { v:'insert', label:'INSERT' }, { v:'values', label:'VALUES 值列表' }
+        ],
+        exportDlg: { show:false, tabId:'', fmt:'csv', header:true, table:'', rows:0, cols:0 },
+        _wsSaveTimer: null,
+        _wsRestored: false
       }
     },
       computed: {
@@ -1509,36 +1763,64 @@
         else val = "'" + String(m.value == null ? '' : m.value) + "'"
         return 'UPDATE ' + m.table + ' SET ' + m.col + ' = ' + val +
                ' WHERE ' + m.pk + ' IN (… ' + m.count + ' 个主键 …)'
+      },
+      filteredHistory: function(){
+        var f = (this.workbench.search||'').trim().toLowerCase()
+        if(!f) return this.history
+        return this.history.filter(function(h){
+          return (h.sql||'').toLowerCase().indexOf(f)>=0 ||
+                 (h.connName||'').toLowerCase().indexOf(f)>=0 ||
+                 (h.db||'').toLowerCase().indexOf(f)>=0
+        })
+      },
+      filteredSnippets: function(){
+        var f = (this.workbench.search||'').trim().toLowerCase()
+        if(!f) return this.snippets
+        return this.snippets.filter(function(s){
+          return (s.sql||'').toLowerCase().indexOf(f)>=0 || (s.name||'').toLowerCase().indexOf(f)>=0
+        })
+      },
+      exportHint: function(){
+        return ({
+          csv:      '逗号分隔，含 BOM，用 Excel / WPS 打开不乱码；NULL 写成空单元格。',
+          json:     '每行一个对象 [{ "列名": 值 }]，NULL 写成 null，适合喂给脚本或其它系统。',
+          md:       'Markdown 表格，直接粘进文档 / Issue；单元格里的竖线与换行会自动转义。',
+          insert:   '每行一条 INSERT 语句，可直接拿到数据库执行；无表名时会用 your_table 占位。',
+          values:   '只生成 (…), (…) 值列表，适合粘进 INSERT … VALUES 或 IN (…) 子句。'
+        })[this.exportDlg.fmt] || ''
       }
     },
     methods: {
       /* ---------- 连接 ---------- */
       onBoot: function(payload){
         var self = this
-        this.loadSettings().then(function(){
-          return self.loadConns()
-        }).then(function(){
-          var cmd = payload && payload.command ? String(payload.command) : ''
-          var text = payload && payload.text ? String(payload.text).trim() : ''
-          // 带文本（命令面板 /db SELECT …）：开查询标签页并执行
-          if(text){
-            // 命令面板带文本打开（如 /db SELECT ...）：此时没有选中连接，
-            // 退回第一个以保证命令仍然可用 —— 这是用户显式发起的查询，
-            // 不同于「打开插件时的默认展开」，不属于自动替用户做选择
-            var c = self.selectedConn || self.conns[0]
-            if(c){
-              self.selectConn(c).then(function(){
-                var t = self.newQueryTab()
-                if(!t) return
-                t.sql = String(payload.text)
-                self.runQueryTab(t)
-              })
+        var cmd = payload && payload.command ? String(payload.command) : ''
+        var text = payload && payload.text ? String(payload.text).trim() : ''
+        var finish = function(){ self._wsRestored = true; self.scheduleTabsSave() }
+        this.loadSettings()
+          .then(function(){ return self.loadConns() })
+          .then(function(){ return self.wsLoad() }) // 历史 / 片段 / 标签快照
+          .then(function(snap){
+            // 带文本（命令面板 /db SELECT …）：开查询标签页并执行
+            if(text){
+              var c = self.selectedConn || self.conns[0]
+              if(c){
+                self.selectConn(c).then(function(){
+                  var t = self.newQueryTab()
+                  if(!t) return
+                  t.sql = String(payload.text)
+                  self.runQueryTab(t)
+                })
+              }
+              finish()
+              return
             }
-            return
-          }
-          // 无文本：按 command 直达对应页面（宿主只下发 command，跳转由前端负责）
-          if(cmd && self.gotoCommand(cmd)) return
-        })
+            // 命令直达（连接列表 / 库表树 / 新建查询）时不恢复标签，免得跳错页面
+            if(cmd && self.gotoCommand(cmd)){ finish(); return }
+            self.restoreTabs(snap)
+            finish()
+          })
+          .catch(function(){ finish() })
       },
       // 命令面板直达路由：host 经 plugin:init 下发 {text, command}，前端按命令跳到对应页面。
       // 只收录「页面 / 标签跳转」类命令；需要连接上下文才能执行的纯动作命令
@@ -1593,6 +1875,7 @@
           if(v && typeof v === 'object'){
             if(v.pageSize) self.settings.pageSize = v.pageSize
             if(v.lastDb && typeof v.lastDb === 'object') self.settings.lastDb = v.lastDb
+            if(typeof v.restoreTabs === 'boolean') self.settings.restoreTabs = v.restoreTabs
           }
         }).catch(function(){ /* 无设置或读取失败 → 用默认值 */ })
       },
@@ -1846,17 +2129,37 @@
           if(!t.grid) t.grid = blankGrid()
           t.grid.pageSize = this.settings.pageSize // 用设置的默认每页行数
         }
+        if(t.kind==='query'){
+          if(!t.plan) t.plan = blankPlan()
+          if(!t.viewMode) t.viewMode = 'result'
+        }
         this.tabs.push(t)
         this.activeTabId = id
+        this.scheduleTabsSave()
         // 必须返回响应式代理（直接返回原始对象的话，后续 tab.xxx 赋值不会触发渲染）
         return this.tabs[this.tabs.length - 1]
       },
-      activate: function(t){ this.activeTabId = t.id; this.selectedConn = this.conns.find(function(c){ return c.id===t.connId }) || this.selectedConn },
+      activate: function(t){
+        this.activeTabId = t.id
+        this.selectedConn = this.conns.find(function(c){ return c.id===t.connId }) || this.selectedConn
+        this.scheduleTabsSave()
+        // 恢复出来的标签 / 刷新或断开后标记过期的标签：第一次点开才重新拉数据，
+        // 启动时不发 N 个请求，也不会展示上次会话的旧结果。
+        if(t._stale) this.refreshStaleTab(t)
+      },
+      refreshStaleTab: function(t){
+        t._stale = false
+        if(t.kind==='objects' || t.kind==='keys') this.reloadObjects(t)
+        else if(t.kind==='table') this.reloadTableTab(t)
+        else if(t.kind==='key') this.reloadKey(t)
+        else if(t.kind==='query') this.loadQueryTables(t)
+      },
       closeTab: function(t){
         var i = this.tabs.findIndex(function(x){ return x.id===t.id })
         if(i<0) return
         this.tabs.splice(i,1)
         if(this.activeTabId===t.id) this.activeTabId = this.tabs.length ? this.tabs[Math.min(i, this.tabs.length-1)].id : ''
+        this.scheduleTabsSave()
       },
       /* ---------- 标签页右键菜单（参考 VS Code） ---------- */
       openTabMenu: function(e, t){
@@ -3140,8 +3443,15 @@
         t.grid.loading = true
         t.grid.error = ''
         t.grid.ran = false
+        if(t.viewMode === 'plan') t.viewMode = 'result' // 执行要看到结果，不在计划视图停留
         send('query.run', { id:t.connId, query:query, database:t.db || '' }).then(function(r){
           var m = normResultMulti(r)
+          var bad = m.results.filter(function(x){ return x.error })[0]
+          self.pushHistory(t, query, !bad, {
+            rows: (m.results[0] && m.results[0].rows || []).length,
+            ms: r.durationMs || 0,
+            error: bad ? String(bad.error).slice(0, 300) : ''
+          })
           // 本次执行拿到了回包就说明会话是通的：同步状态点（断开后手动执行也会亮回来）
           var cc = self.conns.find(function(x){ return x.id===t.connId })
           if(cc) cc._connected = true
@@ -3181,6 +3491,7 @@
             }
           }
         }).catch(function(e){
+          self.pushHistory(t, query, false, { error:String(e.message || e).slice(0, 300) })
           var g = t.grid || blankGrid()
           g.loading = false; g.ran = true; g.error = e.message || String(e)
           if(opts.statementIndex != null && t.multiResults && t.multiResults[opts.statementIndex]){
@@ -3345,6 +3656,7 @@
         t._sqlEl = e.target
         t.selText = '' // 输入会改变选区，清空「选中执行」状态
         this.computeSuggest(t, e.target)
+        this.scheduleTabsSave() // 写到一半的 SQL 也要能恢复
       },
       onSqlFocus: function(t, e){
         t._sqlEl = e.target
@@ -3361,6 +3673,12 @@
           e.preventDefault()
           this.suggest.open = false
           this.runQueryTab(t)
+          return
+        }
+        // ⌃/⌘ + / ：切换行注释（覆盖选区经过的每一行）
+        if((e.ctrlKey || e.metaKey) && (e.key === '/' || e.code === 'Slash')){
+          e.preventDefault()
+          this.toggleComment(t, e.target)
           return
         }
         var s = this.suggest
@@ -3481,6 +3799,7 @@
         // 切换查询的库上下文后记住，下次新建查询默认选中；并刷新表名提示
         if(t.db) this.setLastDb(t.connId, t.db)
         this.loadQueryTables(t)
+        this.scheduleTabsSave()
       },
       saveSettings: function(){
         this.persistSettings()
@@ -3492,22 +3811,312 @@
         this.showSettings = false
         toast('设置已保存','ok')
       },
-      exportCsv: function(t){
-        var g = t.grid
-        if(!g.rows.length) return
-        var esc = function(v){ return '"' + String(v==null?'':v).replace(/"/g,'""') + '"' }
-        var lines = [g.columns.map(esc).join(',')]
-        g.rows.forEach(function(row,ri){
-          lines.push(row.map(function(c,ci){ return esc(self_isNull(g,ri,ci) ? '' : c) }).join(','))
+      /* ---------- 查询工作台：执行历史 / SQL 片段 / 标签恢复 ----------
+         三个 key 各自独立落在后端 kv 表里（kv.set 存任意 JSON），互不覆盖：
+         workspace.history / workspace.snippets / workspace.tabs。        */
+      wsKey: function(k){ return 'workspace.' + k },
+      wsLoad: function(){
+        var self = this
+        return Promise.all(['history','snippets','tabs'].map(function(k){
+          return send('kv.get', { key:self.wsKey(k) }).then(function(r){ return r.value || null }).catch(function(){ return null })
+        })).then(function(a){
+          self.history = Array.isArray(a[0]) ? a[0] : []
+          self.snippets = Array.isArray(a[1]) ? a[1] : []
+          return a[2]
         })
-        var csv = '\ufeff' + lines.join('\r\n')
-        var name = (g.tableName || 'query') + '_' + new Date().toISOString().slice(0,19).replace(/[:T]/g,'-') + '.csv'
-        var blob = new Blob([csv], { type:'text/csv;charset=utf-8' })
+      },
+      wsSave: function(k, v){
+        send('kv.set', { key:this.wsKey(k), value:v }).catch(function(){})
+      },
+      // 标签快照只保留「重建标签所需的白名单字段」：结果网格 / 表结构 / 列宽等
+      // 运行期数据一律不落盘，避免把上万行结果塞进 SQLite、也避免恢复出过期数据。
+      snapshotTabs: function(){
+        return {
+          seq: this.tabSeq, activeId: this.activeTabId,
+          tabs: this.tabs.slice(0, 20).map(function(t){
+            return { id:t.id, kind:t.kind, connId:t.connId, connName:t.connName,
+              db:t.db, dbLabel:t.dbLabel, title:t.title, sql:t.sql || '',
+              table:t.table, isView:!!t.isView, sub:t.sub || '', key:t.key,
+              view:t.view || '', filter:t.filter || '' }
+          })
+        }
+      },
+      scheduleTabsSave: function(){
+        var self = this
+        if(this._wsSaveTimer) clearTimeout(this._wsSaveTimer)
+        this._wsSaveTimer = setTimeout(function(){
+          self._wsSaveTimer = null
+          // _wsRestored 是护栏：恢复完成前不写回，否则启动瞬间的空 tabs 会把旧快照冲掉
+          if(self._wsRestored) self.wsSave('tabs', self.snapshotTabs())
+        }, 600)
+      },
+      restoreTabs: function(snap){
+        if(!this.settings.restoreTabs || !snap || !Array.isArray(snap.tabs) || !snap.tabs.length) return
+        var self = this, added = 0
+        snap.tabs.forEach(function(s){
+          if(!s || !s.id) return
+          if(!self.conns.find(function(c){ return c.id===s.connId })) return // 连接已删除
+          if(self.tabs.find(function(t){ return t.id===s.id })) return
+          var o = Object.assign({}, s, { _stale:true, sel:'', selSet:{}, filters:{}, filtersOff:{}, filtOpen:false })
+          if(s.kind==='query'){
+            Object.assign(o, { tables:[], tableTypes:{}, tableCols:{}, multiResults:null,
+              activeResult:0, colWidths:{}, selText:'', viewMode:'result', plan:blankPlan(), grid:blankGrid() })
+          } else if(s.kind==='table'){
+            Object.assign(o, { struct:null, grid:blankGrid(), colWidths:{}, designing:false,
+              showSql:false, sqlOmitPage:false, _lastSelIdx:-1, _selAllDone:false })
+          } else if(s.kind==='objects'){ o.objects = []; o.error = '' }
+          else if(s.kind==='keys'){ o.keys = [] }
+          else if(s.kind==='key'){ o.detail = null }
+          self.newTab(o)
+          added++
+        })
+        // 快照里的 q:N 编号要接上，否则新建查询标签会撞到已恢复的 id
+        this.tabSeq = Math.max(this.tabSeq, Number(snap.seq)||0, this.tabs.length + 1)
+        var target = this.tabs.find(function(t){ return t.id===snap.activeId }) || this.tabs[0]
+        if(target) this.activate(target) // activate 会按 kind 重新拉数据（_stale）
+        if(added) toast('已恢复 ' + added + ' 个标签页','ok')
+      },
+      // 每次执行（成功或失败）都留一条；同一连接/库下重复执行同一条 SQL 只刷新时间与结果
+      pushHistory: function(t, sql, ok, info){
+        info = info || {}
+        var text = String(sql || '').trim().slice(0, 8000)
+        if(!text) return
+        var item = { id:'h' + Date.now() + Math.random().toString(36).slice(2,6), ts:Date.now(),
+          connId:t.connId, connName:t.connName || '', db:t.db || '', sql:text,
+          ok:!!ok, rows:info.rows || 0, ms:info.ms || 0, error:info.error || '' }
+        var first = this.history[0]
+        if(first && first.sql === item.sql && first.connId === item.connId && first.db === item.db){
+          first.ts = item.ts; first.ok = item.ok; first.rows = item.rows
+          first.ms = item.ms; first.error = item.error
+        } else {
+          this.history.unshift(item)
+          if(this.history.length > 200) this.history.length = 200
+        }
+        this.wsSave('history', this.history)
+      },
+      fmtTs: function(ts){
+        if(!ts) return ''
+        var d = new Date(ts), p = function(n){ return n < 10 ? '0'+n : ''+n }
+        return (d.getMonth()+1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds())
+      },
+      oneLine: function(s){ return String(s == null ? '' : s).replace(/\s+/g,' ').trim() || '（空）' },
+      openWorkbench: function(){ this.workbench.show = true; this.workbench.search = '' },
+      delHistory: function(h){
+        var i = this.history.indexOf(h); if(i < 0) return
+        this.history.splice(i,1); this.wsSave('history', this.history)
+      },
+      clearHistory: function(){
+        var self = this
+        if(!this.history.length) return
+        this.askConfirm('清空全部 ' + this.history.length + ' 条执行历史？SQL 片段不会被删除。', function(){
+          self.history = []; self.wsSave('history', self.history); toast('历史已清空','ok')
+        })
+      },
+      // 打开历史 SQL：切回原连接（不自动展开库，避免多弹出一个对象标签），
+      // 优先复用当前查询标签，没有才新建。
+      switchConnForSql: function(c){ this.selectedConn = c; return this.ensureConnOpen(c) },
+      useHistory: function(h){
+        var self = this
+        var c = this.conns.find(function(x){ return x.id===h.connId })
+        if(!c){ toast('原连接已删除，改用当前连接打开','warn'); c = this.selectedConn || this.conns[0] }
+        if(!c){ toast('还没有连接，请先新建','err'); return }
+        this.workbench.show = false
+        this.switchConnForSql(c).then(function(){
+          var t = (self.activeTab && self.activeTab.kind==='query' && self.activeTab.connId===c.id)
+            ? self.activeTab : self.newQueryTab()
+          if(!t) return
+          t.sql = h.sql
+          if(h.db) t.db = h.db
+          self.activeTabId = t.id
+          self.loadQueryTables(t)
+          self.scheduleTabsSave()
+          toast('已打开历史 SQL','ok')
+        })
+      },
+      defaultSnipName: function(sql){
+        var first = String(sql||'').split('\n').map(function(x){ return x.trim() })
+          .filter(function(x){ return x && x.indexOf('--')!==0 })[0] || '未命名片段'
+        return first.replace(/\s+/g,' ').slice(0, 24)
+      },
+      snipDraftNew: function(){
+        this.workbench.tab = 'snippets'; this.workbench.search = ''
+        this.snipDraft = { show:true, id:'', name:'', sql:'' }
+      },
+      snipDraftFromActive: function(){
+        var t = this.activeTab
+        var sql = t && t.kind==='query' ? (this.getEditorSelection(t) || t.sql || '') : ''
+        if(!String(sql).trim()){ toast('当前没有查询页，或查询页还没有 SQL','err'); return }
+        this.workbench.tab = 'snippets'; this.workbench.search = ''
+        this.snipDraft = { show:true, id:'', name:this.defaultSnipName(sql), sql:String(sql).trim() }
+      },
+      snippetFromSql: function(sql){
+        this.workbench.tab = 'snippets'; this.workbench.search = ''
+        this.snipDraft = { show:true, id:'', name:this.defaultSnipName(sql), sql:String(sql||'').trim() }
+      },
+      editSnippet: function(s){
+        this.workbench.search = ''
+        this.snipDraft = { show:true, id:s.id, name:s.name, sql:s.sql }
+      },
+      saveSnippet: function(){
+        var name = String(this.snipDraft.name||'').trim()
+        var sql = String(this.snipDraft.sql||'').trim()
+        if(!name){ toast('请填写片段名称','err'); return }
+        if(!sql){ toast('SQL 不能为空','err'); return }
+        var id = this.snipDraft.id
+        if(id){
+          var s = this.snippets.find(function(x){ return x.id===id })
+          if(s){ s.name = name; s.sql = sql; s.ts = Date.now() }
+        } else {
+          this.snippets.unshift({ id:'s' + Date.now() + Math.random().toString(36).slice(2,6),
+            name:name, sql:sql, ts:Date.now() })
+          if(this.snippets.length > 100) this.snippets.length = 100
+        }
+        this.wsSave('snippets', this.snippets)
+        this.snipDraft = { show:false, id:'', name:'', sql:'' }
+        toast('片段已保存','ok')
+      },
+      delSnippet: function(s){
+        var self = this
+        this.askConfirm('删除片段「' + s.name + '」？', function(){
+          var i = self.snippets.indexOf(s); if(i >= 0) self.snippets.splice(i,1)
+          self.wsSave('snippets', self.snippets)
+        })
+      },
+      useSnippet: function(s){
+        var t = this.activeTab
+        if(!t || t.kind!=='query'){
+          t = this.tabs.find(function(x){ return x.kind==='query' }) || this.newQueryTab()
+        }
+        if(!t) return
+        t.sql = s.sql
+        this.activeTabId = t.id
+        this.workbench.show = false
+        this.scheduleTabsSave()
+        toast('已打开片段「' + s.name + '」','ok')
+      },
+      insertSnippet: function(s){
+        var t = this.activeTab
+        if(!t || t.kind!=='query'){ this.useSnippet(s); return }
+        var el = t._sqlEl
+        var pos = el ? (el.selectionStart == null ? t.sql.length : el.selectionStart) : t.sql.length
+        var left = t.sql.slice(0, pos), right = t.sql.slice(pos)
+        var sep = left && !/\n\s*$/.test(left) ? '\n' : ''
+        t.sql = left + sep + s.sql + (right ? '\n' : '') + right
+        this.workbench.show = false
+        this.scheduleTabsSave()
+        toast('已插入光标位置','ok')
+      },
+
+      /* ---------- 结果导出 / 复制（CSV / JSON / Markdown / INSERT / VALUES） ---------- */
+      openExport: function(t){
+        var g = t && t.grid
+        if(!g || !g.rows || !g.rows.length){ toast('没有可导出的结果','err'); return }
+        this.exportDlg = { show:true, tabId:t.id, fmt:this.exportDlg.fmt || 'csv', header:true,
+          table:g.tableName || t.table || '', rows:g.rows.length, cols:(g.columns||[]).length }
+      },
+      buildExport: function(g, fmt, o){
+        var cols = g.columns || [], rows = g.rows || [], nulls = g.nulls || []
+        var isNull = function(ri,ci){ return !!(nulls[ri] && nulls[ri][ci]) }
+        var csvEsc = function(v){ return '"' + String(v == null ? '' : v).replace(/"/g,'""') + '"' }
+        var sqlStr = function(v){ return "'" + String(v == null ? '' : v).replace(/'/g,"''") + "'" }
+        var ident = function(v){ return '`' + String(v).replace(/`/g,'``') + '`' }
+        var out = []
+        if(fmt === 'csv'){
+          if(o.header) out.push(cols.map(csvEsc).join(','))
+          rows.forEach(function(row,ri){
+            out.push(row.map(function(c,ci){ return csvEsc(isNull(ri,ci) ? '' : c) }).join(','))
+          })
+          return out.join('\r\n')
+        }
+        if(fmt === 'json'){
+          return JSON.stringify(rows.map(function(row,ri){
+            var obj = {}
+            cols.forEach(function(c,ci){ obj[c] = isNull(ri,ci) ? null : row[ci] })
+            return obj
+          }), null, 2)
+        }
+        if(fmt === 'md'){
+          var md = function(v){ return String(v == null ? '' : v).replace(/\|/g,'\\|').replace(/\r?\n/g,'<br>') }
+          if(o.header){
+            out.push('| ' + cols.map(md).join(' | ') + ' |')
+            out.push('| ' + cols.map(function(){ return '---' }).join(' | ') + ' |')
+          }
+          rows.forEach(function(row,ri){
+            out.push('| ' + row.map(function(c,ci){ return md(isNull(ri,ci) ? 'NULL' : c) }).join(' | ') + ' |')
+          })
+          return out.join('\n')
+        }
+        if(fmt === 'insert'){
+          var table = String(o.table||'').trim() || g.tableName || 'your_table'
+          var colList = cols.map(ident).join(', ')
+          rows.forEach(function(row,ri){
+            var vals = row.map(function(c,ci){ return isNull(ri,ci) ? 'NULL' : sqlStr(c) }).join(', ')
+            out.push('INSERT INTO ' + ident(table) + ' (' + colList + ') VALUES (' + vals + ');')
+          })
+          return out.join('\n')
+        }
+        // values：只给值列表，便于粘进 INSERT … VALUES 或 IN (…)
+        rows.forEach(function(row,ri){
+          out.push('(' + row.map(function(c,ci){ return isNull(ri,ci) ? 'NULL' : sqlStr(c) }).join(', ') + ')')
+        })
+        return out.join(',\n')
+      },
+      downloadText: function(name, text, mime){
+        var blob = new Blob([text], { type:mime || 'text/plain;charset=utf-8' })
         var a = document.createElement('a')
         a.href = URL.createObjectURL(blob); a.download = name
         document.body.appendChild(a); a.click(); document.body.removeChild(a)
         setTimeout(function(){ URL.revokeObjectURL(a.href) }, 2000)
-        toast('已导出 ' + g.rows.length + ' 行','ok')
+      },
+      doExport: function(copy){
+        var d = this.exportDlg
+        var t = this.tabs.find(function(x){ return x.id===d.tabId })
+        if(!t || !t.grid || !t.grid.rows){ toast('结果已失效，请重新查询','err'); return }
+        var text = this.buildExport(t.grid, d.fmt, d)
+        if(copy){ this.copyText(text); d.show = false; return }
+        var ext = { csv:'csv', json:'json', md:'md', insert:'sql', values:'sql' }[d.fmt] || 'txt'
+        var mime = { csv:'text/csv;charset=utf-8', json:'application/json;charset=utf-8',
+                     md:'text/markdown;charset=utf-8', insert:'application/sql;charset=utf-8',
+                     values:'application/sql;charset=utf-8' }[d.fmt] || 'text/plain;charset=utf-8'
+        var base = (t.grid.tableName || t.table || 'query') + '_' +
+                   new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')
+        // CSV 带 BOM，Excel / WPS 打开中文不乱码
+        this.downloadText(base + '.' + ext, (d.fmt==='csv' ? '\ufeff' : '') + text, mime)
+        toast('已导出 ' + t.grid.rows.length + ' 行（' + d.fmt.toUpperCase() + '）','ok')
+        d.show = false
+      },
+
+      /* ---------- EXPLAIN 执行计划 ---------- */
+      explainQuery: function(t){
+        var self = this
+        if(!t) return
+        if(!t.plan) t.plan = blankPlan()
+        if(this.connTypeOf(t) === 'redis'){ toast('Redis 命令没有执行计划','err'); return }
+        var query = this.getEditorSelection(t) || t.sql
+        if(!String(query||'').trim()){ toast('请先写一条 SQL 再分析','err'); return }
+        t.viewMode = 'plan'
+        t.plan.loading = true; t.plan.error = ''; t.plan.ran = false
+        send('query.explain', { id:t.connId, query:query, database:t.db || '' }).then(function(r){
+          var p = blankPlan()
+          p.ran = true
+          p.success = !!r.success
+          p.kind = r.kind || ''
+          p.sql = r.sql || ''
+          p.columns = r.columns || []
+          p.rows = r.rows || []
+          p.nulls = r.nulls || []
+          p.rowCount = r.rowCount || 0
+          p.hints = r.hints || []
+          p.durationMs = r.durationMs || 0
+          p.error = r.error || ''
+          t.plan = p
+          if(p.error) toast('执行计划生成失败','err')
+          self.scheduleTabsSave()
+        }).catch(function(e){
+          var p = blankPlan(); p.ran = true; p.error = e.message || String(e)
+          t.plan = p
+          toast('执行计划请求失败','err')
+        })
       },
 
       /* ---------- Redis key ---------- */
@@ -3672,6 +4281,73 @@
         toast('已复制','ok')
       },
 
+      /* ---------- 单元格交互：选中高亮 / 复制 / 右键菜单 ---------- */
+      onCellClick: function(t, ri, ci){ if(t && t.grid) t.activeCell = { r:ri, c:ci } },
+      cellActive: function(t, ri, ci){ return !!(t.activeCell && t.activeCell.r===ri && t.activeCell.c===ci) },
+      cellValue: function(t, ri, ci){
+        var g = t.grid; if(!g || !g.rows[ri]) return ''
+        return this.isNull(t,ri,ci) ? '' : (g.rows[ri][ci] || '')
+      },
+      copyCell: function(t, ri, ci){ this.copyText(this.cellValue(t, ri, ci)) },
+      openCellMenu: function(e, t, ri, ci){
+        var self = this
+        this.cellMenu = { show:true, x:e.clientX, y:e.clientY, tabId:t.id, ri:ri, ci:ci }
+        this.$nextTick(function(){
+          var el = self.$refs.cellMenu
+          if(!el) return
+          var w = el.offsetWidth, h = el.offsetHeight
+          var x = Math.min(e.clientX, window.innerWidth - w - 6)
+          var y = Math.min(e.clientY, window.innerHeight - h - 6)
+          self.cellMenu.x = Math.max(4, x)
+          self.cellMenu.y = Math.max(4, y)
+        })
+      },
+      closeCellMenu: function(){ this.cellMenu.show = false; this.cellMenu.tabId=''; this.cellMenu.ri=-1; this.cellMenu.ci=-1 },
+      cellMenuTab: function(){ var self = this; return this.tabs.find(function(t){ return t.id===self.cellMenu.tabId }) || null },
+      cellMenuCopy: function(){ var t = this.cellMenuTab(); if(t) this.copyCell(t, this.cellMenu.ri, this.cellMenu.ci); this.closeCellMenu() },
+      cellMenuCopyRow: function(){
+        var t = this.cellMenuTab()
+        if(t && t.grid){
+          var self = this, g = t.grid, ri = this.cellMenu.ri
+          this.copyText(g.columns.map(function(c,ci){ return self.isNull(t,ri,ci) ? '' : g.rows[ri][ci] }).join('\t'))
+        }
+        this.closeCellMenu()
+      },
+      cellMenuCopyCol: function(){ var t = this.cellMenuTab(); if(t && t.grid) this.copyText(t.grid.columns[this.cellMenu.ci] || ''); this.closeCellMenu() },
+      // 复制勾选行（表数据页）：Tab 分隔，可直接粘进 Excel
+      copySelectedRows: function(t){
+        var g = t.grid; if(!g) return
+        var self = this
+        var lines = [ g.columns.join('\t') ]
+        var n = 0
+        g.rows.forEach(function(row, ri){
+          if(self.isRowSelected(t, row)){
+            lines.push(row.map(function(c,ci){ return self.isNull(t,ri,ci) ? '' : c }).join('\t'))
+            n++
+          }
+        })
+        if(!n){ toast('先勾选要复制的行','err'); return }
+        this.copyText(lines.join('\n'))
+      },
+      /* ---------- 编辑器：行注释切换（⌃/⌘ + /） ---------- */
+      toggleComment: function(t, el){
+        var a = el.selectionStart, b = el.selectionEnd
+        var v = t.sql || ''
+        var ls = v.lastIndexOf('\n', a - 1) + 1
+        var le = (v.indexOf('\n', b) === -1) ? v.length : v.indexOf('\n', b)
+        var head = v.slice(0, ls), body = v.slice(ls, le), tail = v.slice(le)
+        var lines = body.split('\n')
+        var all = lines.length > 0 && lines.every(function(l){ return /^\s*--( |$)/.test(l) })
+        var nb = lines.map(function(l){ return all ? l.replace(/^(\s*)-- ?/, '$1') : '-- ' + l }).join('\n')
+        t.sql = head + nb + tail
+        var step = all ? -3 : 3
+        var nlB = function(s, p){ var n=0; for(var i=0;i<p;i++){ if(s[i]==='\n') n++ } return n }
+        var na = a + step * nlB(body, a - ls)
+        var nb2 = b + step * nlB(body, b - ls)
+        var self = this
+        this.$nextTick(function(){ try { el.focus(); el.setSelectionRange(Math.max(ls, na), Math.max(ls, nb2)) } catch(err){} })
+      },
+
       /* ---------- 快捷键：F5 刷新 / Ctrl+S 保存 ---------- */
       // F5：只在表「数据」页重查一次——典型场景是筛选条件没动、库里的数据被别人改了，
       // 想按一下看最新值。reloadData 会原样带上当前筛选 / 排序 / 页码，并还原滚动位置。
@@ -3722,6 +4398,12 @@
     mounted: function(){
       var self = this
       document.addEventListener('keydown', function(e){
+        if(e.key==='Escape' && self.exportDlg.show){ self.exportDlg.show=false; return }
+        if(e.key==='Escape' && self.workbench.show){
+          if(self.snipDraft.show) self.snipDraft.show=false
+          else self.workbench.show=false
+          return
+        }
         if(e.key==='Escape' && self.tabMenu.show) self.closeTabMenu()
         // F5 / Ctrl+R = 刷新当前标签的数据；Ctrl/⌘+S = 保存当前编辑。
         // 两者都要 preventDefault：否则 F5 会把插件跑回初始页（状态全丢），Ctrl+S 会弹浏览器的「保存网页」。
@@ -3743,6 +4425,11 @@
       })
       // 正常路径由 plugin:init 触发 bootNow；这里只是兜底
       setTimeout(function(){ bootNow({}) }, 1000)
+      // 标签快照兜底：切子视图、改筛选等没有显式钩子的状态变化，最多 8 秒后也会落盘。
+      // 只序列化白名单字段，开销极小；_wsRestored 保证不会在恢复前覆盖旧快照。
+      setInterval(function(){
+        if(self._wsRestored && !self._wsSaveTimer) self.scheduleTabsSave()
+      }, 8000)
     }
   })
 
@@ -3759,8 +4446,11 @@
     if(g.total < 0) return Math.max(1, g.page)
     return Math.max(1, Math.ceil(g.total / (g.pageSize||100)))
   }
-  // 供 exportCsv 使用的无 this 版本（在 Vue 方法外，避免闭包 this 混乱）
-  function self_isNull(g, ri, ci){ return !!(g.nulls[ri] && g.nulls[ri][ci]) }
+  // 执行计划面板的默认状态（与 blankGrid 同理：每个查询标签一份，不共享引用）
+  function blankPlan(){
+    return { loading:false, ran:false, success:false, kind:'', sql:'', columns:[], rows:[],
+             nulls:[], rowCount:0, hints:[], durationMs:0, error:'' }
+  }
 
   // 勾选框半选态：浏览器原生 indeterminate 无法用属性绑定，用指令同步
   app.directive('ind', {

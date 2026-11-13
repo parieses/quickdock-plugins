@@ -72,11 +72,11 @@ type DbQueryResult struct {
 // DbQueryMultiResult 一次「query.run」可能包含多条以分号分隔的语句，每条对应一个 DbQueryResult。
 // 前端据此渲染「结果 1 / 结果 2 / …」可切换标签。
 type DbQueryMultiResult struct {
-	Statements int              `json:"statements"` // 切分出的语句总数
+	Statements int             `json:"statements"` // 切分出的语句总数
 	Results    []DbQueryResult `json:"results"`    // 每条语句的结果（遇错即止，含出错那条）
-	Success    bool             `json:"success"`    // 是否全部成功
-	DurationMs int64            `json:"durationMs"` // 整体耗时
-	Error      string           `json:"error"`      // 整体级错误（如全部执行失败时的摘要）
+	Success    bool            `json:"success"`    // 是否全部成功
+	DurationMs int64           `json:"durationMs"` // 整体耗时
+	Error      string          `json:"error"`      // 整体级错误（如全部执行失败时的摘要）
 }
 
 // enrichEditable 探测结果是否来自「单表 SELECT 且含主键列」，若是则填充可编辑元数据。
@@ -375,48 +375,7 @@ func inlineSQLArgs(query string, args []interface{}) string {
 func execSQL(ctx context.Context, d *sql.DB, query string, args ...interface{}) (*DbQueryResult, error) {
 	res := &DbQueryResult{}
 	if isSelectLike(query) {
-		rows, err := d.QueryContext(ctx, query, args...)
-		if err != nil {
-			return res, err
-		}
-		defer rows.Close()
-		cols, err := rows.Columns()
-		if err != nil {
-			return res, err
-		}
-		res.Columns = cols
-		for rows.Next() {
-			raw := make([]sql.RawBytes, len(cols))
-			ptrs := make([]interface{}, len(cols))
-			for i := range raw {
-				ptrs[i] = &raw[i]
-			}
-			if err := rows.Scan(ptrs...); err != nil {
-				return res, err
-			}
-			cells := make([]string, len(cols))
-			rowNull := make([]bool, len(cols))
-			for i, b := range raw {
-				if b == nil {
-					cells[i] = ""
-					rowNull[i] = true
-				} else {
-					cells[i] = string(b)
-				}
-			}
-			res.Rows = append(res.Rows, cells)
-			res.Nulls = append(res.Nulls, rowNull)
-			if len(res.Rows) >= dbMaxRows {
-				// 再看一眼是否真的还有行：正好 dbMaxRows 行时不应误报截断
-				if rows.Next() {
-					res.Truncated = true
-				}
-				break
-			}
-		}
-		res.RowCount = len(res.Rows)
-		res.Success = true
-		return res, rows.Err()
+		return queryRows(ctx, d, query, dbMaxRows, args...)
 	}
 	r, err := d.ExecContext(ctx, query, args...)
 	if err != nil {
@@ -427,6 +386,56 @@ func execSQL(ctx context.Context, d *sql.DB, query string, args ...interface{}) 
 	res.Message = fmt.Sprintf("OK, %d row(s) affected", n)
 	res.Success = true
 	return res, nil
+}
+
+// queryRows 执行「会返回结果集」的语句（SELECT / EXPLAIN / PRAGMA / SHOW …），
+// 把行读成字符串矩阵。execSQL 与 query.explain 共用这一段，避免 EXPLAIN 结果
+// 被 isSelectLike 判成写操作而走 ExecContext、拿不到行。
+// limit <= 0 时视为不限制（EXPLAIN 计划行数很少，直接传一个正的上限即可）。
+func queryRows(ctx context.Context, d *sql.DB, query string, limit int, args ...interface{}) (*DbQueryResult, error) {
+	res := &DbQueryResult{}
+	rows, err := d.QueryContext(ctx, query, args...)
+	if err != nil {
+		return res, err
+	}
+	defer rows.Close()
+	cols, err := rows.Columns()
+	if err != nil {
+		return res, err
+	}
+	res.Columns = cols
+	for rows.Next() {
+		raw := make([]sql.RawBytes, len(cols))
+		ptrs := make([]interface{}, len(cols))
+		for i := range raw {
+			ptrs[i] = &raw[i]
+		}
+		if err := rows.Scan(ptrs...); err != nil {
+			return res, err
+		}
+		cells := make([]string, len(cols))
+		rowNull := make([]bool, len(cols))
+		for i, b := range raw {
+			if b == nil {
+				cells[i] = ""
+				rowNull[i] = true
+			} else {
+				cells[i] = string(b)
+			}
+		}
+		res.Rows = append(res.Rows, cells)
+		res.Nulls = append(res.Nulls, rowNull)
+		if limit > 0 && len(res.Rows) >= limit {
+			// 再看一眼是否真的还有行：正好 limit 行时不应误报截断
+			if rows.Next() {
+				res.Truncated = true
+			}
+			break
+		}
+	}
+	res.RowCount = len(res.Rows)
+	res.Success = true
+	return res, rows.Err()
 }
 
 func execRedis(ctx context.Context, client *redis.Client, query string) (*DbQueryResult, error) {
