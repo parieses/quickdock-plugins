@@ -8,6 +8,25 @@
   <style>
     body { overflow:hidden; }
 
+    /* ===== 字体密度优化（大屏易显大/费眼） =====
+       仅在本插件内收紧，不改共享 tokens（qd-theme.css/components.css 保持逐字节一致，
+       不触发 check_shared.py 漂移）。实际字号还受宿主 UI 缩放（1.0/1.15/1.3）再乘一层。 */
+    #app {
+      --fs-xs: 11px;   /* 数据网格单元格/状态栏：保持 11，避免过小 */
+      --fs-sm: 11px;   /* 12 -> 11：按钮/输入/侧栏树更紧凑 */
+      --fs-md: 12px;   /* 13 -> 12：正文/侧栏/工具条 */
+      --fs-lg: 14px;   /* 15 -> 14：区块标题 */
+      --fs-xl: 15px;   /* 16 -> 15 */
+      --fs-2xl: 18px;  /* 20 -> 18：页面大标题 */
+    }
+    /* 表清单（对象浏览器）：行高过大、留白多 —— 收紧内边距，相同高度多显示约 50% 行 */
+    #app .table th { padding: 6px 12px; font-size: 11px; }
+    #app .table td { padding: 6px 12px; }
+    #app .table th:first-child,
+    #app .table td:first-child { padding-left: 12px; }
+    #app .table th:last-child,
+    #app .table td:last-child { padding-right: 12px; }
+
     /* ===== 骨架 ===== */
     .db { display:flex; flex-direction:column; height:100vh; background:var(--bg-primary); }
     /* 宿主套上窗口材质时：.db 是铺满窗口的页面容器（不是卡片），底色让开；
@@ -240,6 +259,25 @@
     .sect-head .spacer { flex:1; }
     pre.ddl { margin:0; padding:12px 14px; font-family:var(--font-mono); font-size:var(--fs-xs); line-height:1.65; color:var(--text-secondary); white-space:pre-wrap; word-break:break-all; }
     .struct-scroll { flex:1; overflow:auto; min-height:0; }
+
+    /* ===== Navicat 式三栏：内容区 + 右侧「表信息」面板 ===== */
+    .tsplit { flex:1; min-height:0; display:flex; overflow:hidden; }
+    .tsplit-main { flex:1; min-width:0; min-height:0; display:flex; flex-direction:column; overflow:hidden; }
+    .tinfo { width:232px; flex-shrink:0; border-left:1px solid var(--border); background:var(--bg-secondary);
+             overflow:auto; padding:10px 12px; display:flex; flex-direction:column; gap:10px; }
+    .tinfo-hd { display:flex; align-items:center; gap:6px; font-size:var(--fs-md); font-weight:var(--fw-semibold); color:var(--text-primary);
+                word-break:break-all; line-height:1.35; }
+    .tinfo-badges { display:flex; flex-wrap:wrap; gap:4px; }
+    .tinfo-list { margin:0; display:flex; flex-direction:column; }
+    .ti-row { display:flex; align-items:baseline; gap:8px; padding:4px 0; border-bottom:1px dashed var(--border); }
+    .ti-row:last-child { border-bottom:none; }
+    .ti-row dt { width:52px; flex-shrink:0; color:var(--text-muted); font-size:var(--fs-xs); }
+    .ti-row dd { margin:0; flex:1; min-width:0; color:var(--text-primary); font-size:var(--fs-sm);
+                word-break:break-all; }
+    .tinfo-sec { border-top:1px solid var(--border); padding-top:8px; }
+    .tinfo-sec-t { color:var(--text-muted); font-size:var(--fs-xs); margin-bottom:4px; }
+    .tinfo-sec-b { color:var(--text-secondary); font-size:var(--fs-sm); line-height:1.5; word-break:break-all; }
+    .tinfo-loading { color:var(--text-disabled); font-size:var(--fs-xs); }
 
     /* ===== 查询编辑器（透明 textarea + 语法高亮 pre 叠加） ===== */
     .sql-editor { position:relative; height:158px; min-height:80px; resize:vertical; overflow:hidden; border-bottom:1px solid var(--border); background:var(--bg-primary); flex-shrink:0; }
@@ -600,6 +638,9 @@
               <button class="btn btn-xs" v-if="t.designing" @click="cancelDesign(t)">退出设计</button>
             </div>
 
+            <!-- Navicat 式三栏：左内容 + 右侧表信息面板 -->
+            <div class="tsplit">
+              <div class="tsplit-main">
             <!-- 行勾选操作条（批量删除，仅数据页） -->
             <div class="selbar" v-if="t.sub==='data' && t.grid.editable && selCount(t)>0">
               <span>已选 <b>{{ selCount(t) }}</b> 行</span>
@@ -939,6 +980,30 @@
                 <pre class="ddl">{{ t.struct && t.struct.ddl ? t.struct.ddl : '（无 DDL）' }}</pre>
               </div>
             </div>
+              </div><!-- /tsplit-main -->
+
+              <!-- 右侧表信息面板（Navicat 式） -->
+              <aside class="tinfo">
+                <div class="tinfo-hd"><span class="oico" :class="t.isView ? 'qi qi-eye' : 'qi qi-table-2'"></span>{{ t.table }}</div>
+                <div class="tinfo-badges">
+                  <span class="badge badge-square" :class="t.isView ? 'badge-warning' : 'badge-accent'">{{ t.isView ? '视图' : '表' }}</span>
+                  <span class="badge badge-square badge-muted" v-if="t.struct && t.struct.engine">{{ t.struct.engine }}</span>
+                </div>
+                <dl class="tinfo-list">
+                  <div class="ti-row"><dt>行数</dt><dd>{{ fmtRows(t) }}</dd></div>
+                  <div class="ti-row"><dt>大小</dt><dd>{{ (t.struct && t.struct.size) ? t.struct.size : '—' }}</dd></div>
+                  <div class="ti-row"><dt>排序规则</dt><dd>{{ (t.struct && t.struct.collation) ? t.struct.collation : '—' }}</dd></div>
+                  <div class="ti-row" v-if="t.struct"><dt>字段</dt><dd>{{ t.struct.columns.length }}</dd></div>
+                  <div class="ti-row" v-if="t.struct"><dt>索引</dt><dd>{{ t.struct.indexes.length }}</dd></div>
+                  <div class="ti-row" v-if="t.struct && t.struct.fks"><dt>外键</dt><dd>{{ t.struct.fks.length }}</dd></div>
+                </dl>
+                <div class="tinfo-sec" v-if="t.struct && t.struct.comment">
+                  <div class="tinfo-sec-t">注释</div>
+                  <div class="tinfo-sec-b">{{ t.struct.comment }}</div>
+                </div>
+                <div class="tinfo-loading" v-if="!t.struct">加载表信息…</div>
+              </aside>
+            </div><!-- /tsplit -->
           </template>
 
           <!-- ===== Redis key 详情 ===== -->
@@ -3071,6 +3136,12 @@
       selCount: function(t){ return Object.keys(this.selSetOf(t)).length },
       clearSel: function(t){ t.selSet = {}; t._selAllDone = false },
       fmtTotal: function(t){ var g = t.grid; return (g && g.total >= 0) ? String(g.total) : '?' },
+      // 右侧表信息面板：行数（结构里的统计值；SQLite/未知为 -1 → 显示 —）
+      fmtRows: function(t){
+        var r = t.struct ? t.struct.rowCount : null
+        if(r == null || r < 0) return '—'
+        return String(r)
+      },
       // 全选「匹配当前筛选」的全部行（可能跨页）：只把主键收集回来勾上，不拉整表数据。
       // 返回 Promise（收集完成后 resolve），供「点列头批量」时先收集再打开弹窗。
       selectAllMatching: function(t){

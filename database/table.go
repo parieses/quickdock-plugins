@@ -215,6 +215,7 @@ type TableStructure struct {
 	Collation string         `json:"collation"`
 	Comment   string         `json:"comment"`
 	RowCount  int64          `json:"rowCount"` // -1 未知
+	Size      string         `json:"size"`     // MySQL：数据+索引字节换算 MB；SQLite/未知为 "N/A"
 }
 
 // handleTableStructure 返回一张表的完整建表信息。
@@ -335,10 +336,16 @@ func tableStructure(d *sql.DB, kind, dbName, table string) (*TableStructure, err
 			st.Ddl = ddl
 		}
 		var engine, coll, comment sql.NullString
-		mq := `SELECT IFNULL(ENGINE,''), IFNULL(TABLE_COLLATION,''), IFNULL(TABLE_COMMENT,''), IFNULL(TABLE_ROWS,-1)
+		var dataBytes int64
+		mq := `SELECT IFNULL(ENGINE,''), IFNULL(TABLE_COLLATION,''), IFNULL(TABLE_COMMENT,''),
+		              IFNULL(TABLE_ROWS,-1), IFNULL(DATA_LENGTH,0)+IFNULL(INDEX_LENGTH,0)
 		       FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?`
-		if err := d.QueryRowContext(ctx, mq, dbName, table).Scan(&engine, &coll, &comment, &st.RowCount); err == nil {
+		if err := d.QueryRowContext(ctx, mq, dbName, table).Scan(&engine, &coll, &comment, &st.RowCount, &dataBytes); err == nil {
 			st.Engine, st.Collation, st.Comment = engine.String, coll.String, comment.String
+			st.Size = "N/A"
+			if dataBytes > 0 {
+				st.Size = fmt.Sprintf("%.2f MB", float64(dataBytes)/1024/1024)
+			}
 		}
 		return st, nil
 	}
@@ -422,6 +429,7 @@ func tableStructure(d *sql.DB, kind, dbName, table string) (*TableStructure, err
 		"SELECT sql FROM sqlite_master WHERE name = ? AND type IN ('table','view')", table).Scan(&ddl); err == nil {
 		st.Ddl = ddl.String
 		st.Engine = "SQLite"
+		st.Size = "N/A"
 	}
 	return st, nil
 }
