@@ -13,8 +13,10 @@
 //
 // QuestPhoneMirror 协议（严格对齐协议仓 protocol/src/main/java/com/qpm/protocol/Proto.kt）：
 //   统一帧格式 [type:u8][length:u32 LE][body]，单条 TCP 双向复用：
-//     0x01 VIDEO_FRAME  手机→接收端  body=[pts:u64 LE][flags:u8][h264]，flags bit0=关键帧 bit1=SPS/PPS
-//     0x20 SCREEN_INFO  手机→接收端  body=[w:u32][h:u32][dpi:u32]（v1.1.0 起改为配对通过后下发）
+//     0x01 VIDEO_FRAME  手机→接收端  body=[pts:u64 LE][flags:u8][sentAtMs:u32 LE][h264]，
+//                       flags bit0=关键帧 bit1=SPS/PPS；QPM 2026-11-13 起插入 sentAtMs（旧版无此字段）
+//     0x20 SCREEN_INFO  手机→接收端  body=[w:u32][h:u32][dpi:u32][videoW:u32][videoH:u32]
+//                       （后两字段新版追加；v1.1.0 起改为配对通过后下发）
 //     0x10 TAP          接收端→手机  body=[x:f32][y:f32]            （屏幕绝对像素坐标）
 //     0x11 SWIPE        接收端→手机  body=[x1][y1][x2][y2][durMs:u32]
 //     0x12 TEXT         接收端→手机  body=UTF-8 文本
@@ -28,6 +30,8 @@
 //     0x1A FILE_ERROR     手机→接收端  body=UTF-8（如未授权、路径非法）
 //     0x1B HELLO          接收端→手机  body=UTF-8 设备名（建连后立即报送，供手机端「连接管理」展示）
 //     0x1C REJECT         手机→接收端  body=UTF-8 拒绝原因（如未在白名单），发送后即断开
+//   v1.3.2 起：视频帧即使已建立加密通道也走明文、且不计入 AES-GCM 计数器
+//   （对齐 QPM SecureChannel.kt「视频明文、控制加密」）；控制/文件/配对帧仍加密。
 //   v1.1.0 起：手机端配对通过前不下发 SCREEN_INFO/视频帧，也不执行任何控制帧；
 //   文件浏览/下载同样要求配对通过。发现：手机每秒向 255.255.255.255:45555 广播 "QPM1|<tcpPort>|<w>x<h>"；
 //   本插件每秒向同端口广播 "QPMR|<设备名>"，让手机端「连接管理」在连接前即可扫描到本接收端。
@@ -173,6 +177,13 @@ const (
 	TypeFilePushReq  byte = 0x21 // 本插件→手机 body=[total:u64][path UTF-8]，path 为手机侧目标文件名
 	TypeFilePushData byte = 0x22 // 本插件→手机 body=[offset:u64][flags:u8(eof)][chunk]，64KB 分片
 	TypeFilePushRes  byte = 0x23 // 手机→本插件 body=[ok:u8][msg UTF-8]，ok=1 时 msg 为手机侧保存路径
+
+	// v1.3.2 起对齐 QPM 2026-11-13 新协议：延迟探针 + 接收端反馈（均为加密控制帧）。
+	// 0x27-0x29 TOUCH_DOWN/MOVE/UP 连续手势暂未接入：手机端仍支持旧的 TAP/SWIPE，
+	// 现有拖拽链路可用，改连续手势需同步重写前端拖拽时序。
+	TypePing     byte = 0x24 // 本插件→手机 body=[t1:u32 LE]（本机单调毫秒低 32 位）
+	TypePong     byte = 0x25 // 手机→本插件 body=[t1:u32 LE][t2:u32 LE]（t1 原样回带）
+	TypeFeedback byte = 0x26 // 本插件→手机 body=[fps:u16][backlogMs:u16][dropped:u16][rttMs:u16] LE
 )
 
 const (
@@ -292,6 +303,41 @@ func encodeHello(name string) []byte { return []byte(name) }
 
 func decodePairResult(body []byte) bool {
 	return len(body) > 0 && body[0] != 0
+}
+
+// ---------- 延迟探针 / 接收端反馈（0x24-0x26） ----------
+
+// processStart 只用于生成本机单调时钟的低 32 位；PING 的 t1 由 PONG 原样回带，
+// 不需要与手机端时钟同步，u32 回绕对秒级差值天然正确。
+var processStart = time.Now()
+
+func monotonicMs() uint32 { return uint32(time.Since(processStart).Milliseconds()) }
+
+func encodePing(t1 uint32) []byte {
+	b := make([]byte, 4)
+	binary.LittleEndian.PutUint32(b, t1)
+	return b
+}
+
+func decodePong(body []byte) (uint32, bool) {
+	if len(body) < 4 {
+		return 0, false
+	}
+	return binary.LittleEndian.Uint32(body[0:4]), true
+}
+
+// encodeFeedback 对齐 Proto.feedback：[decodedFps][backlogMs][dropped][rttMs] 四个 u16 LE。
+func encodeFeedback(fps, backlogMs, dropped, rttMs int) []byte {
+	b := make([]byte, 8)
+	for i, v := range [4]int{fps, backlogMs, dropped, rttMs} {
+		if v < 0 {
+			v = 0
+		} else if v > 65535 {
+			v = 65535
+		}
+		binary.LittleEndian.PutUint16(b[i*2:i*2+2], uint16(v))
+	}
+	return b
 }
 
 // ---------- 文件（0x16-0x1A） ----------
@@ -511,6 +557,42 @@ func isAnnexB(b []byte) bool {
 		return true
 	}
 	return len(b) >= 3 && b[0] == 0 && b[1] == 0 && b[2] == 1
+}
+
+// 视频帧 body 头长度：旧版 [pts:u64][flags:u8]，QPM 2026-11-13 起在 flags 后
+// 插入 [sentAtMs:u32] 用于端到端延迟统计（Proto.VIDEO_HEADER）。
+const (
+	videoHeaderLegacy = 9
+	videoHeaderNew    = 13
+)
+
+// videoHeaderLen 判定 VIDEO_FRAME 的 body 头长度。两端没有版本协商，
+// 靠首个 NAL 的封装特征嗅探：新版在 9 字节偏移处是任意 u32 时间戳，
+// 13 字节偏移处才是 Annex-B 起始码 / AVCC 长度前缀。
+func videoHeaderLen(body []byte) int {
+	if len(body) < videoHeaderNew {
+		return videoHeaderLegacy
+	}
+	if !looksLikeH264(body[videoHeaderLegacy:]) && looksLikeH264(body[videoHeaderNew:]) {
+		return videoHeaderNew
+	}
+	return videoHeaderLegacy
+}
+
+// looksLikeH264 判断 b 开头是否像 Annex-B 起始码或 AVCC 长度前缀。
+func looksLikeH264(b []byte) bool {
+	if isAnnexB(b) {
+		return true
+	}
+	if len(b) < 5 {
+		return false
+	}
+	n := int(binary.BigEndian.Uint32(b[:4]))
+	if n <= 0 || n > len(b)-4 {
+		return false
+	}
+	nalType := b[4] & 0x1F
+	return nalType >= 1 && nalType <= 23
 }
 
 // normalizeToAVCC 把视频载荷统一成 AVCC（4 字节大端长度前缀）。
@@ -1148,6 +1230,13 @@ type app struct {
 	tickFrames int64
 	tickBytes  int64
 	lastTick   time.Time
+
+	// 新协议延迟 / 反馈（v1.3.2）：readLoop 与 statsLoop 都会访问，统一由 a.mu 保护。
+	rttMs      int       // 最近一次 PING/PONG 测得的往返延迟
+	backlogMs  int       // 由视频帧 sentAtMs 推算的链路积压（平滑值）
+	lastSentAt uint32    // 上一视频帧的 sentAtMs
+	lastArrive time.Time // 上一视频帧的到达时刻
+	pingAt     uint32    // 最近一次发出的 PING 的 t1（0 = 无在途）
 
 	// 发现
 	discovering  bool
@@ -1884,7 +1973,11 @@ func (a *app) onPhoneFrame(typ byte, body []byte) {
 		}
 		pts := binary.LittleEndian.Uint64(body[0:8])
 		flags := body[8]
-		data := body[9:]
+		hdr := videoHeaderLen(body)
+		data := body[hdr:]
+		if hdr == videoHeaderNew {
+			a.observeVideoTiming(binary.LittleEndian.Uint32(body[9:13]))
+		}
 
 		if flags&vFlagConfig != 0 {
 			// 参数集帧：SPS/PPS（Annex-B）——转成 avcC 下发给前端
@@ -1903,6 +1996,17 @@ func (a *app) onPhoneFrame(typ byte, body []byte) {
 		}
 		// 统一成 AVCC 再下发：前端用固定 avcC 描述配置解码器，只需喂 AVCC 帧
 		a.pushFrame(flags, pts, normalizeToAVCC(data))
+
+	case TypePong:
+		// 手机端原样回带 t1；只认最近一次 PING，迟到的 PONG 不影响 RTT。
+		if t1, ok := decodePong(body); ok {
+			a.mu.Lock()
+			if a.pingAt != 0 && t1 == a.pingAt {
+				a.rttMs = int(monotonicMs() - t1)
+				a.pingAt = 0
+			}
+			a.mu.Unlock()
+		}
 
 	case TypePairResult:
 		a.onPairResult(decodePairResult(body))
@@ -1950,6 +2054,26 @@ func (a *app) onPhoneFrame(typ byte, body []byte) {
 		ok, msg := decodeFilePushRes(body)
 		a.onFilePushRes(ok, msg)
 	}
+}
+
+// observeVideoTiming 用新版视频帧的 sentAtMs 估算链路积压：相邻帧的
+// 到达间隔持续大于发送间隔，说明帧在链路上排队。平滑后供 FEEDBACK 上报。
+func (a *app) observeVideoTiming(sentAt uint32) {
+	now := time.Now()
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if !a.lastArrive.IsZero() {
+		arriveGap := now.Sub(a.lastArrive).Milliseconds()
+		sentGap := int64(int32(sentAt - a.lastSentAt)) // u32 回绕对短间隔天然正确
+		if arriveGap >= 0 && sentGap >= 0 && sentGap < 1000 && arriveGap < 1000 {
+			delta := arriveGap - sentGap
+			if delta < 0 {
+				delta = 0
+			}
+			a.backlogMs = int(float64(a.backlogMs)*0.7 + float64(delta)*0.3)
+		}
+	}
+	a.lastSentAt, a.lastArrive = sentAt, now
 }
 
 func (a *app) hasAvcC() bool {
@@ -3100,7 +3224,25 @@ func (a *app) statsLoop() {
 		a.kbps = float64(a.tickBytes*8) / 1000 / dt
 		a.tickFrames, a.tickBytes = 0, 0
 		a.lastTick = time.Now()
+		live := a.connected && a.paired
+		fps := int(a.fps + 0.5)
+		backlog, rtt := a.backlogMs, a.rttMs
+		t1 := monotonicMs()
+		if live {
+			a.pingAt = t1
+		} else {
+			// 连接结束后清掉上一轮的时序基线，避免重连时首帧算出巨大积压
+			a.pingAt, a.rttMs, a.backlogMs, a.lastSentAt = 0, 0, 0, 0
+			a.lastArrive = time.Time{}
+		}
 		a.mu.Unlock()
+		if live {
+			// PING / FEEDBACK 都是加密控制帧，走 sendFrame 保证 GCM 计数与写出同步。
+			// 旧版手机端不认识这两种帧会直接忽略，不影响连接。
+			_ = a.sendFrame(TypePing, encodePing(t1))
+			// dropped 恒为 0：本端走 TCP 有序收帧、不主动丢帧，解码丢帧只有前端知道。
+			_ = a.sendFrame(TypeFeedback, encodeFeedback(fps, backlog, 0, rtt))
+		}
 		if a.ctlHub.count() > 0 {
 			a.broadcastStatus()
 		}

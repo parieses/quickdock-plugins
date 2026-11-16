@@ -13,6 +13,11 @@ package main
 //
 // 只加密帧体：[type:u8][length:u32 LE] 头保持明文，上层协议帧解析完全不变。
 // 未武装（握手前/失败回落）时加解密都原样透传。
+//
+// 2026-11-13 起 QPM 发送端把 VIDEO_FRAME(0x01) 排除出加密与计数（明文透传，
+// 见 SecureChannel.kt 的「视频明文、控制加密」）：本端必须同步，否则首个明文
+// 视频帧会 GCM 校验失败并触发 readLoop 主动断开，表现为「连上即断」。
+// 其余帧（配对 / 控制 / 统计 / 文件 / 剪贴板）仍加密且各自方向计数连续。
 
 import (
 	"crypto/aes"
@@ -129,6 +134,9 @@ func (sc *secureChannel) seal(wire []byte) []byte {
 	if !sc.armed || sc.broken || len(wire) < 5 {
 		return wire
 	}
+	if wire[0] == TypeVideoFrame {
+		return wire // 视频帧明文，且不占用发送方向计数器
+	}
 	bodyLen := int(binary.LittleEndian.Uint32(wire[1:5]))
 	if 5+bodyLen > len(wire) {
 		return wire
@@ -160,6 +168,9 @@ func (sc *secureChannel) open(typ byte, body []byte) (byte, []byte, error) {
 	defer sc.mu.Unlock()
 	if !sc.armed || sc.broken {
 		return typ, body, nil
+	}
+	if typ == TypeVideoFrame {
+		return typ, body, nil // 明文，且不推进接收方向计数器
 	}
 	block, err := aes.NewCipher(sc.key)
 	if err != nil {

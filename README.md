@@ -25,6 +25,7 @@
 
 > 以下日期取自真实提交记录。更早的变更见 [Releases](https://github.com/parieses/quickdock-plugins/releases) 与各插件 `plugin.json` 的 `changelog`。
 
+- **2026-11-16 · `control-receiver` 适配新版 QPM 手机端协议（1.3.2）**：手机端 2026-11-13 的性能优化提交把视频帧改成**明文且不占 AES-GCM 计数**，接收端仍逐帧解密，首个视频帧校验失败后 `readLoop` 主动断开并反复重连（表现为「连上即断」）；同时帧头在 `flags` 后新增 `sentAtMs:u32`，H.264 载荷起点从 9 字节变 13 字节，旧代码把时间戳当 NAL 数据，Annex-B/AVCC 识别失败会黑屏。现在 `secure.go` 对 `0x01` 视频帧原样透传且不推进方向计数（控制 / 文件 / 配对帧仍加密），并按首个 NAL 的封装特征自动嗅探新旧帧头，两种格式都能正确出画。顺带补齐新协议能力：每秒发 `PING`(0x24)、用 `PONG`(0x25) 回带算 RTT，并发 `FEEDBACK`(0x26) 上报帧率 / 链路积压 / RTT 驱动手机端自适应码率，积压由 `sentAtMs` 的到达与发送间隔差推算；`SCREEN_INFO` 追加的编码尺寸前 12 字节不变、无需处理，连续手势 `0x27`–`0x29` 未接入（旧 TAP/SWIPE 仍可用）。**需配套 2026-11-13 之后的手机端**，与更早版本混连不兼容。
 - **2026-11-05 · `net-traffic` estats 1784 与 `hosts-manager` 写入权限修复（1.2.2 / 1.0.10）**：两处报错都跟「没提权」无关。`net-traffic` 的 1784 是 `ERROR_INVALID_USER_BUFFER`（提供给请求操作的用户缓冲区无效）——`SetPerTcpConnectionEStats` 的 Rw 缓冲区写死 4 字节，而部分 Windows 版本要 1 字节 `BOOLEAN`；本机探针证实未提权时任意尺寸都返回 5、提权后才可能碰到 1784，所以旧提示「需以管理员身份运行宿主」纯属误导。现按 1 → 4 字节自适应并缓存成功尺寸，错误码分流给出可照做的说明。`hosts-manager` 则是把 hosts 写成「临时文件 + `os.Rename` 原子替换」：替换 `system32\drivers\etc\hosts` 需要目标 DELETE 权限且常被安全软件句柄拦住，管理员身份下照样 `Access is denied`；改为原地截断写入（与 port-scanner / wifi-manager 一致），保留备份、落盘与只读属性兜底。顺带修掉 `hosts-manager` 里一个更致命的协议 bug：前端发字符串 id、后端按 `int64` 接收，整条请求被静默丢弃，UI 里所有 hosts 操作都会 20 秒超时；现改 `json.RawMessage` 原样回显，字符串与数字 id 都兼容。
 - **2026-11-05 · `color-converter` 移除重复取色（1.1.3）**：宿主截图覆盖层已自带跟随光标的放大镜取色卡（可复制 HEX / RGB），插件里的 F8 热键取色就成了重复实现，还会在命令面板与宿主取色入口撞名。本版删掉取色按钮、隐藏窗口 / 通知提示、轮询回填，以及后端 `GetPixel` 采样与热键状态机（`picker_windows.go` / `picker_unix.go` 一并移除）；命令入口由 `screen-pick` 改名为 `color-panel` 并去掉取色搜索词。HEX / RGB / HSL 三栏互转、原生拾色器、英文色名识别与三个复制按钮全部保留，转换仍在前端完成。
 - **2026-11-05 · `net-traffic` 按程序流量与协议修复（1.2.0）**：修掉一个致命协议 bug——前端发 `nt_N` 字符串 id、后端却按 int64 接收，请求被静默丢弃，真实 UI 里所有快照都拿不到回包，这才是「每个程序的上传/下载没显示」的根因，与管理员权限无关。现新增默认「按程序」视图：按 PID 聚合每条 TCP 连接的 `DataBytesIn/Out` 差分，给出每个程序的实时速率与会话累计；estats 改为每轮先启用再读取、单条失败不再全局熔断；状态栏直接显示插件进程是否已提升到管理员令牌，未提升时给出明确原因。能力边界也标清楚了：仅 IPv4 TCP 可精确计量，Windows 没有按连接的 UDP 字节统计接口。
@@ -147,7 +148,7 @@
 |------|------|------|
 | [IP 归属地](./geoip/) | 1.0.7 | 查询 IP 的地理位置、运营商、时区与坐标，支持指定 IP 或查询本机公网 IP。 |
 | [WebSocket 测试](./ws-tester/) | 1.0.7 | 连接 ws/wss 服务，发送消息并实时查看返回的帧，支持多连接与历史 |
-| [qpm接收端](./control-receiver/) | 1.3.1 | 手机屏幕镜像接收端 + 控制端：连接 QuestPhoneMirror 发送端实时显示画面，鼠标点击/拖拽反向操控真机；支持加密通道、剪贴板双向同步、文件上传手机与投屏统计（配套手机端发送端见 https://github.com/parieses/QuestPhoneMirror） |
+| [qpm接收端](./control-receiver/) | 1.3.2 | 手机屏幕镜像接收端 + 控制端：连接 QuestPhoneMirror 发送端实时显示画面，鼠标点击/拖拽反向操控真机；支持加密通道、剪贴板双向同步、文件上传手机与投屏统计（配套手机端发送端见 https://github.com/parieses/QuestPhoneMirror） |
 | [子域名枚举](./subdomain-enum/) | 1.0.7 | 被动收集域名子域名（证书透明日志 CertSpotter / crt.sh + HackerTarget + urlscan + rapiddns + AlienVault OTX），可选并发解析 A 记录筛选存活 |
 | [实时流量监控](./net-traffic/) | 1.2.2 | 每秒采样的本机流量监控：实时上下行速率与 5 分钟曲线、按网卡拆分、会话累计与峰值，以及按程序聚合的上传/下载速率与累计（TCP 精确字节计量，需管理员权限）；可切换到逐条连接视图查看进程、地址、状态与每条 TCP 连接的速率。 |
 | [局域网设备扫描](./lan-scanner/) | 1.0.3 | 扫描你所在局域网里的在线设备：自动识别网段，并发探测存活、主机名、MAC 与厂商、开放端口，用于查陌生设备和找 NAS / 打印机地址。只读，只扫你自己的网段 |
