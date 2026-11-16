@@ -1252,6 +1252,10 @@
     var localFps = state.fps || 0
     if (phoneFps < 25 || localFps <= 0) return      // 手机端本身就慢 → 不是本机瓶颈，不提示
     if (localFps >= phoneFps * 0.7) return          // 本机跟得上
+    // 手机端 STATS.fps 是编码器帧率配置，不是实际出帧数：画面静止时编码器几乎不产帧
+    // （码率会跌到几百 kb/s 以下），本机自然只解出几帧。此时比 fps 会误报「本机瓶颈」，
+    // 必须确认码流真的在跑（动态画面）才成立。
+    if ((state.stats.bitrate || 0) < 500000) return
     if (Date.now() - perfHintAt < 30000) return     // 30 秒最多提示一次，别刷屏
     perfHintAt = Date.now()
     log('warn', '本机显示 ' + localFps + ' fps、手机端编码 ' + phoneFps +
