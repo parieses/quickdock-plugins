@@ -8,24 +8,25 @@
   <style>
     body { overflow:hidden; }
 
-    /* ===== 字体密度优化（大屏易显大/费眼） =====
-       仅在本插件内收紧，不改共享 tokens（qd-theme.css/components.css 保持逐字节一致，
-       不触发 check_shared.py 漂移）。实际字号还受宿主 UI 缩放（1.0/1.15/1.3）再乘一层。 */
+    /* ===== 字号放大（v1.11.1）=====
+       用户反馈「字太小、看着费眼」；v1.11.0 误判为字太大、把字号压小了一档，这里反转放大。
+       仍只在本插件 #app 作用域覆盖，不改共享 tokens（qd-theme.css/components.css 保持逐字节
+       一致，不触发 check_shared.py 漂移）。实际字号还受宿主 UI 缩放（1.0/1.15/1.3）再乘一层。 */
     #app {
-      --fs-xs: 11px;   /* 数据网格单元格/状态栏：保持 11，避免过小 */
-      --fs-sm: 11px;   /* 12 -> 11：按钮/输入/侧栏树更紧凑 */
-      --fs-md: 12px;   /* 13 -> 12：正文/侧栏/工具条 */
-      --fs-lg: 14px;   /* 15 -> 14：区块标题 */
-      --fs-xl: 15px;   /* 16 -> 15 */
-      --fs-2xl: 18px;  /* 20 -> 18：页面大标题 */
+      --fs-xs: 11px;   /* 数据网格单元格 / 状态栏 / 小标签：保持 11，密集等宽数据不宜再大 */
+      --fs-sm: 13px;   /* 12 -> 13：按钮 / 输入 / 侧栏树 / 面包屑 */
+      --fs-md: 14px;   /* 13 -> 14：正文 / 侧栏 / 工具条 */
+      --fs-lg: 16px;   /* 15 -> 16：区块标题 */
+      --fs-xl: 17px;   /* 16 -> 17 */
+      --fs-2xl: 22px;  /* 20 -> 22：页面大标题 */
     }
-    /* 表清单（对象浏览器）：行高过大、留白多 —— 收紧内边距，相同高度多显示约 50% 行 */
-    #app .table th { padding: 6px 12px; font-size: 11px; }
-    #app .table td { padding: 6px 12px; }
-    #app .table th:first-child,
-    #app .table td:first-child { padding-left: 12px; }
-    #app .table th:last-child,
-    #app .table td:last-child { padding-right: 12px; }
+    /* 对象清单 / 结构表用的也是 table.grid，单元格字号来自 --fs-xs(11px)，
+       正是「字太小」最扎眼的地方；数据页网格 .grid-resizable 保持 11px 不动。 */
+    #app table.grid:not(.grid-resizable) td,
+    #app table.grid:not(.grid-resizable) th { font-size: 12px; }
+    /* 表清单行距：v1.11.0 曾收紧到 6/12，这里还原共享组件默认的 10/14，别再挤了 */
+    #app .table th,
+    #app .table td { padding: 10px 14px; }
 
     /* ===== 骨架 ===== */
     .db { display:flex; flex-direction:column; height:100vh; background:var(--bg-primary); }
